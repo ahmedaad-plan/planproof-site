@@ -1683,6 +1683,7 @@ function renderGenericForm(){
         <option>Reputational / media crisis</option><option>Power outage</option><option>Utility outage</option>
         <option>Geopolitical instability</option><option>Terrorism / security threat</option>
         <option>Fire / structural incident</option><option>Fraud / financial crime</option>
+        <option>Critical equipment failure</option><option>Loss of critical records or documents</option>
         <option>Key personnel loss / succession risk</option>
         <option>Other</option>
       </select>
@@ -1691,8 +1692,8 @@ function renderGenericForm(){
         <input type="text" name="risk_other" id="f_risk_other" placeholder="Your primary risk concern">
       </div>
 
-      <label for="f_ops">Key operations or critical dependencies</label>
-      <input type="text" name="operations" id="f_ops" placeholder="e.g. POS systems, cold chain logistics, booking platform">
+      <label for="f_ops">Key operations and what they depend on</label>
+      <input type="text" name="operations" id="f_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
 
       <label for="f_reg">Regulatory framework</label>
       <select name="framework" id="f_reg">
@@ -1795,7 +1796,7 @@ function renderGenericForm(){
         ["Location(s)", document.getElementById("f_location").value],
         ["Company size", document.getElementById("f_size").value],
         ["Primary risk concern", document.getElementById("f_risk").value + (document.getElementById("f_risk").value === "Other" ? " (" + document.getElementById("f_risk_other").value + ")" : "")],
-        ["Key operations/dependencies", document.getElementById("f_ops").value],
+        ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
         ["Preferred duration", document.getElementById("f_duration").value],
@@ -1881,6 +1882,7 @@ function renderPlanForm(){
         <option>Reputational / media crisis</option><option>Power outage</option><option>Utility outage</option>
         <option>Geopolitical instability</option><option>Terrorism / security threat</option>
         <option>Fire / structural incident</option><option>Fraud / financial crime</option>
+        <option>Critical equipment failure</option><option>Loss of critical records or documents</option>
         <option>Key personnel loss / succession risk</option>
         <option>Other</option>
       </select>
@@ -1889,8 +1891,8 @@ function renderPlanForm(){
         <input type="text" name="risk_other" id="p_risk_other" placeholder="Your primary risk concern">
       </div>
 
-      <label for="p_ops">Key operations or critical dependencies</label>
-      <input type="text" name="operations" id="p_ops" placeholder="e.g. POS systems, cold chain logistics, booking platform">
+      <label for="p_ops">Key operations and what they depend on</label>
+      <input type="text" name="operations" id="p_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
 
       <label for="p_reg">Regulatory framework</label>
       <select name="framework" id="p_reg">
@@ -2005,7 +2007,7 @@ function renderPlanForm(){
         ["Location(s)", document.getElementById("p_location").value],
         ["Company size", document.getElementById("p_size").value],
         ["Primary risk concern", document.getElementById("p_risk").value + (document.getElementById("p_risk").value === "Other" ? " (" + document.getElementById("p_risk_other").value + ")" : "")],
-        ["Key operations/dependencies", document.getElementById("p_ops").value],
+        ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
         ["Preferred duration", document.getElementById("p_duration").value],
