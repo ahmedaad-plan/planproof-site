@@ -657,6 +657,8 @@
   .dept-option{ padding: 8px 12px; font-size: 14px; cursor: pointer; }
   .dept-option:hover{ background: var(--panel-raised); }
   .dept-empty{ padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
+  .risk-note{ font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; min-height: 0; }
+  .risk-note:empty{ display: none; }
 
   .field-error{
     border-color: #d84a3a !important;
@@ -1674,25 +1676,21 @@ function renderGenericForm(){
         <option>300\u2013500</option><option>500+</option>
       </select>
 
-      <label for="f_risk">Primary risk concern</label>
-      <select name="risk" id="f_risk">
-        <option>Cyberattack</option><option>IT outage</option><option>Data breach / privacy incident</option>
-        <option>Natural disaster / extreme weather</option>
-        <option>Pandemic / public health emergency</option><option>Flooding</option><option>Extreme heat</option>
-        <option>Supply chain disruption</option><option>Regulatory / compliance failure</option>
-        <option>Reputational / media crisis</option><option>Power outage</option><option>Utility outage</option>
-        <option>Geopolitical instability</option><option>Terrorism / security threat</option>
-        <option>Fire / structural incident</option><option>Fraud / financial crime</option>
-        <option>Key personnel loss / succession risk</option>
-        <option>Other</option>
-      </select>
+      <label for="f_riskSearch">Risk concerns <span class="opt">(select up to 3, the first is your main concern; required)</span></label>
+      <div class="dept-select" id="f_riskSelect">
+        <div class="dept-chips" id="f_riskChips"></div>
+        <input type="text" id="f_riskSearch" placeholder="Search risks\u2026" autocomplete="off">
+        <div class="dept-dropdown" id="f_riskDropdown"></div>
+      </div>
+      <div class="risk-note" id="f_riskNote" aria-live="polite"></div>
+      <input type="hidden" name="risk" id="f_risk">
       <div id="riskOtherWrap" style="display:none;">
         <label for="f_risk_other">Please specify</label>
-        <input type="text" name="risk_other" id="f_risk_other" placeholder="Your primary risk concern">
+        <input type="text" name="risk_other" id="f_risk_other" placeholder="Describe the other risk">
       </div>
 
-      <label for="f_ops">Key operations or critical dependencies</label>
-      <input type="text" name="operations" id="f_ops" placeholder="e.g. POS systems, cold chain logistics, booking platform">
+      <label for="f_ops">Key operations and what they depend on</label>
+      <input type="text" name="operations" id="f_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
 
       <label for="f_reg">Regulatory framework</label>
       <select name="framework" id="f_reg">
@@ -1739,9 +1737,7 @@ function renderGenericForm(){
   document.getElementById("f_industry").addEventListener("change", (e)=>{
     document.getElementById("industryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
-  document.getElementById("f_risk").addEventListener("change", (e)=>{
-    document.getElementById("riskOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
-  });
+  initRiskPicker("f", "riskOtherWrap");
   initDeptPicker("f");
   let genericSummaryText = "";
   document.getElementById("genericFormEl").addEventListener("submit", async (e)=>{
@@ -1772,12 +1768,13 @@ function renderGenericForm(){
     if(mobileDigits.length < 10) markInvalid(mobileEl);
     const email = emailEl.value.trim();
     if(!email) markInvalid(emailEl);
-    if(riskEl.value === "Other" && !riskOtherEl.value.trim()) markInvalid(riskOtherEl);
+    if(!riskEl.value.trim()) markInvalid(document.getElementById("f_riskSelect"));
+    if(/(^|, )Other( \(main\))?(,|$)/.test(riskEl.value) && !riskOtherEl.value.trim()) markInvalid(riskOtherEl);
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
 
     if(firstInvalid){
-      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one department must be selected.";
+      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1794,8 +1791,8 @@ function renderGenericForm(){
         ["Industry", document.getElementById("f_industry").value + (document.getElementById("f_industry").value === "Other" ? " (" + document.getElementById("f_industry_other").value + ")" : "")],
         ["Location(s)", document.getElementById("f_location").value],
         ["Company size", document.getElementById("f_size").value],
-        ["Primary risk concern", document.getElementById("f_risk").value + (document.getElementById("f_risk").value === "Other" ? " (" + document.getElementById("f_risk_other").value + ")" : "")],
-        ["Key operations/dependencies", document.getElementById("f_ops").value],
+        ["Risk concerns (first = main)", document.getElementById("f_risk").value + (document.getElementById("f_risk_other").value.trim() ? " \u2014 Other: " + document.getElementById("f_risk_other").value.trim() : "")],
+        ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
         ["Preferred duration", document.getElementById("f_duration").value],
@@ -1872,25 +1869,21 @@ function renderPlanForm(){
         <option>300\u2013500</option><option>500+</option>
       </select>
 
-      <label for="p_risk">Primary risk concern</label>
-      <select name="risk" id="p_risk">
-        <option>Cyberattack</option><option>IT outage</option><option>Data breach / privacy incident</option>
-        <option>Natural disaster / extreme weather</option>
-        <option>Pandemic / public health emergency</option><option>Flooding</option><option>Extreme heat</option>
-        <option>Supply chain disruption</option><option>Regulatory / compliance failure</option>
-        <option>Reputational / media crisis</option><option>Power outage</option><option>Utility outage</option>
-        <option>Geopolitical instability</option><option>Terrorism / security threat</option>
-        <option>Fire / structural incident</option><option>Fraud / financial crime</option>
-        <option>Key personnel loss / succession risk</option>
-        <option>Other</option>
-      </select>
+      <label for="p_riskSearch">Risk concerns <span class="opt">(select up to 3, the first is your main concern; required)</span></label>
+      <div class="dept-select" id="p_riskSelect">
+        <div class="dept-chips" id="p_riskChips"></div>
+        <input type="text" id="p_riskSearch" placeholder="Search risks\u2026" autocomplete="off">
+        <div class="dept-dropdown" id="p_riskDropdown"></div>
+      </div>
+      <div class="risk-note" id="p_riskNote" aria-live="polite"></div>
+      <input type="hidden" name="risk" id="p_risk">
       <div id="planRiskOtherWrap" style="display:none;">
         <label for="p_risk_other">Please specify</label>
-        <input type="text" name="risk_other" id="p_risk_other" placeholder="Your primary risk concern">
+        <input type="text" name="risk_other" id="p_risk_other" placeholder="Describe the other risk">
       </div>
 
-      <label for="p_ops">Key operations or critical dependencies</label>
-      <input type="text" name="operations" id="p_ops" placeholder="e.g. POS systems, cold chain logistics, booking platform">
+      <label for="p_ops">Key operations and what they depend on</label>
+      <input type="text" name="operations" id="p_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
 
       <label for="p_reg">Regulatory framework</label>
       <select name="framework" id="p_reg">
@@ -1945,9 +1938,7 @@ function renderPlanForm(){
   document.getElementById("p_industry").addEventListener("change", (e)=>{
     document.getElementById("planIndustryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
-  document.getElementById("p_risk").addEventListener("change", (e)=>{
-    document.getElementById("planRiskOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
-  });
+  initRiskPicker("p", "planRiskOtherWrap");
   initDeptPicker("p");
   let planSummaryText = "";
   document.getElementById("planFormEl").addEventListener("submit", async (e)=>{
@@ -1977,12 +1968,13 @@ function renderPlanForm(){
     if(mobileDigits.length < 10) markInvalid(mobileEl);
     if(!emailEl.value.trim()) markInvalid(emailEl);
     if(!serviceEl.value) markInvalid(serviceEl);
-    if(document.getElementById("p_risk").value === "Other" && !document.getElementById("p_risk_other").value.trim()) markInvalid(document.getElementById("p_risk_other"));
+    if(!document.getElementById("p_risk").value.trim()) markInvalid(document.getElementById("p_riskSelect"));
+    if(/(^|, )Other( \(main\))?(,|$)/.test(document.getElementById("p_risk").value) && !document.getElementById("p_risk_other").value.trim()) markInvalid(document.getElementById("p_risk_other"));
     if(!fileInput.files.length) markInvalid(fileInput);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
 
     if(firstInvalid){
-      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one department must be selected.";
+      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -2004,8 +1996,8 @@ function renderPlanForm(){
         ["Industry", document.getElementById("p_industry").value + (document.getElementById("p_industry").value === "Other" ? " (" + document.getElementById("p_industry_other").value + ")" : "")],
         ["Location(s)", document.getElementById("p_location").value],
         ["Company size", document.getElementById("p_size").value],
-        ["Primary risk concern", document.getElementById("p_risk").value + (document.getElementById("p_risk").value === "Other" ? " (" + document.getElementById("p_risk_other").value + ")" : "")],
-        ["Key operations/dependencies", document.getElementById("p_ops").value],
+        ["Risk concerns (first = main)", document.getElementById("p_risk").value + (document.getElementById("p_risk_other").value.trim() ? " \u2014 Other: " + document.getElementById("p_risk_other").value.trim() : "")],
+        ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
         ["Preferred duration", document.getElementById("p_duration").value],
@@ -2080,6 +2072,68 @@ const DEPARTMENTS = {
     "Ideation","Ride Maintenance","Ticketing","Retail","Events Management","Zoological","Hospitality"
   ]
 };
+
+const RISKS = ["Cyberattack", "IT outage", "Data breach / privacy incident", "Natural disaster / extreme weather", "Pandemic / public health emergency", "Flooding", "Extreme heat", "Supply chain disruption", "Regulatory / compliance failure", "Reputational / media crisis", "Power outage", "Utility outage", "Geopolitical instability", "Terrorism / security threat", "Fire / structural incident", "Fraud / financial crime", "Critical equipment failure", "Loss of critical records or documents", "Key personnel loss / succession risk", "Other"];
+const MAX_RISKS = 3;
+function initRiskPicker(prefix, otherWrapId){
+  const selected = [];
+  const chipsEl = document.getElementById(prefix + "_riskChips");
+  const searchEl = document.getElementById(prefix + "_riskSearch");
+  const dropdownEl = document.getElementById(prefix + "_riskDropdown");
+  const hiddenEl = document.getElementById(prefix + "_risk");
+  const wrapEl = document.getElementById(prefix + "_riskSelect");
+  const noteEl = document.getElementById(prefix + "_riskNote");
+  const otherWrap = document.getElementById(otherWrapId);
+
+  function sync(){
+    hiddenEl.value = selected.map((r,i) => i === 0 ? r + " (main)" : r).join(", ");
+    wrapEl.classList.remove("field-error");
+    otherWrap.style.display = selected.includes("Other") ? "block" : "none";
+    searchEl.style.display = selected.length >= MAX_RISKS ? "none" : "";
+    noteEl.textContent = selected.length >= MAX_RISKS ? "Up to 3 risks. Remove one to choose another." : "";
+  }
+  function renderChips(){
+    chipsEl.innerHTML = selected.map((r,i) => `
+      <span class="dept-chip">${i === 0 ? "1. " + r + " (main)" : (i + 1) + ". " + r}<button type="button" data-i="${i}" aria-label="Remove">\u00d7</button></span>
+    `).join("");
+    chipsEl.querySelectorAll("button").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        selected.splice(parseInt(btn.dataset.i,10), 1);
+        renderChips();
+        sync();
+      });
+    });
+  }
+  function addRisk(name){
+    if(selected.length >= MAX_RISKS || selected.includes(name)) return;
+    selected.push(name);
+    renderChips();
+    sync();
+    searchEl.value = "";
+    if(selected.length < MAX_RISKS){ renderDropdown(""); searchEl.focus(); }
+    else dropdownEl.classList.remove("open");
+  }
+  function renderDropdown(term){
+    const t = term.trim().toLowerCase();
+    const matches = RISKS.filter(r => !selected.includes(r) && r.toLowerCase().includes(t));
+    dropdownEl.innerHTML = matches.length
+      ? matches.map(r => `<div class="dept-option" data-name="${r}">${r}</div>`).join("")
+      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`;
+    dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
+      opt.addEventListener("mousedown", (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        addRisk(opt.dataset.name);
+      });
+    });
+    dropdownEl.classList.add("open");
+  }
+  searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
+  searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
+  searchEl.addEventListener("blur", ()=> setTimeout(()=> dropdownEl.classList.remove("open"), 150));
+  sync();
+}
 
 function initDeptPicker(prefix){
   const selected = [];
