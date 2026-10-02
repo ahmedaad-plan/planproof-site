@@ -23,7 +23,11 @@ function parseRiskConcerns(riskStr) {
   return [parts[0] || null, parts[1] || null, parts[2] || null];
 }
 
-async function supabaseInsert(table, rows, { returnRepresentation = false } = {}) {
+// Note: the public key is insert-only (no SELECT policy), by design, so this
+// never asks Postgres to return the inserted row (that would require a SELECT
+// policy too). Instead we generate each row's id ourselves beforehand, so a
+// submission can still reference its client's id without reading it back.
+async function supabaseInsert(table, rows) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new Error("Supabase env vars not set");
@@ -33,34 +37,30 @@ async function supabaseInsert(table, rows, { returnRepresentation = false } = {}
       apikey: key,
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      Prefer: returnRepresentation ? "return=representation" : "return=minimal",
+      Prefer: "return=minimal",
     },
     body: JSON.stringify(rows),
   });
   if (!res.ok) {
     throw new Error(`Supabase insert into ${table} failed: HTTP ${res.status} ${await res.text()}`);
   }
-  return returnRepresentation ? res.json() : null;
 }
 
 async function saveToSupabase(formName, data, humanFields, summary) {
   const [riskMain, risk2, risk3] = parseRiskConcerns(data.risk);
-  const clientRows = await supabaseInsert(
-    "clients",
-    [
-      {
-        company_name: data.organization || humanFields.Organization || humanFields.organization || null,
-        contact_name: data.name || null,
-        email: data.email || null,
-        phone: data.mobile || null,
-      },
-    ],
-    { returnRepresentation: true }
-  );
-  const clientId = clientRows && clientRows[0] && clientRows[0].id;
+  const clientId = crypto.randomUUID();
+  await supabaseInsert("clients", [
+    {
+      id: clientId,
+      company_name: data.organization || humanFields.Organization || humanFields.organization || null,
+      contact_name: data.name || null,
+      email: data.email || null,
+      phone: data.mobile || null,
+    },
+  ]);
   await supabaseInsert("submissions", [
     {
-      client_id: clientId || null,
+      client_id: clientId,
       risk_concern_1: riskMain,
       risk_concern_2: risk2,
       risk_concern_3: risk3,
