@@ -101,17 +101,11 @@ exports.handler = async (event) => {
     const lines = [`New submission: ${formName}`, `Received: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Dubai" })} (UAE time)`, "", summary];
 
     // ---- Save to Supabase (best-effort; never blocks the email below) ----
-    // TEMPORARY: a one-line diagnostic is added to the email below while we
-    // debug this. Remove the "Supabase diagnostic" line (and this comment)
-    // once a submission reliably reaches Supabase.
-    let supabaseDiag = "ok";
     try {
       await saveToSupabase(formName, data, humanFields, summary);
     } catch (err) {
-      supabaseDiag = `FAILED: ${err.message}`;
       console.error("Supabase save error (non-fatal):", err.message);
     }
-    lines.push("", `[Supabase diagnostic] ${supabaseDiag}`);
 
     const attachments = [];
 
