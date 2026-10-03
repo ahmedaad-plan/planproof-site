@@ -5,6 +5,8 @@
   # play/shared.js embeds the Supabase anon key for client-side use — that's
   # expected and safe (it's the same public key already used by the form
   # function; Row Level Security controls what it can do, not secrecy of the
-  # key). Without this, Netlify's secret scanner fails the build thinking
-  # it's a leaked credential.
-  SECRETS_SCAN_OMIT_PATHS = "play/shared.js"
+  # key). Without this, Netlify's secret scanner fails the build because the
+  # literal value matches the SUPABASE_PUBLISHABLE_KEY site env var — the
+  # scan matches by env var NAME, so it's the key name that must be omitted,
+  # not the file path.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
