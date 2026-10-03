@@ -52,6 +52,7 @@
   </div>
 
   <div class="current-inject" id="currentInject">—</div>
+  <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
 
   <div class="link-row">
     Room display link for this session (open on the room screen, or in another tab to test):
@@ -65,6 +66,7 @@
   const indexVal = document.getElementById("indexVal");
   const currentInjectEl = document.getElementById("currentInject");
   const displayLinkEl = document.getElementById("displayLink");
+  const errorBoxEl = document.getElementById("errorBox");
 
   if (!sessionId) {
     document.body.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
@@ -72,33 +74,59 @@
     displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
 
     let currentRow = null;
+    const actionButtons = [
+      document.getElementById("startBtn"),
+      document.getElementById("nextBtn"),
+      document.getElementById("prevBtn"),
+      document.getElementById("endBtn"),
+      document.getElementById("resetBtn"),
+    ];
+
+    // Wraps a button's click handler so that: (1) every click fully finishes
+    // — including the follow-up refresh() — before another click is read,
+    // which was the actual bug behind "Next doesn't work": clicking twice
+    // quickly made the second click read the same not-yet-updated row and
+    // send the same "current + 1" as the first, so it looked stuck; and
+    // (2) a failed request shows an on-screen error instead of silently
+    // doing nothing.
+    function onClick(button, action) {
+      button.addEventListener("click", async () => {
+        actionButtons.forEach((b) => (b.disabled = true));
+        errorBoxEl.style.display = "none";
+        try {
+          await action();
+          await refresh();
+        } catch (err) {
+          errorBoxEl.textContent = `Action failed: ${err.message}`;
+          errorBoxEl.style.display = "block";
+        } finally {
+          actionButtons.forEach((b) => (b.disabled = false));
+        }
+      });
+    }
+
     refresh();
 
-    document.getElementById("startBtn").addEventListener("click", async () => {
-      await patchSession(sessionId, { status: "running", current_inject_index: 0 });
-      refresh();
-    });
-    document.getElementById("nextBtn").addEventListener("click", async () => {
+    onClick(document.getElementById("startBtn"), () =>
+      patchSession(sessionId, { status: "running", current_inject_index: 0 })
+    );
+    onClick(document.getElementById("nextBtn"), () => {
       if (!currentRow) return;
       const max = (currentRow.scenario.injects || []).length - 1;
       const next = Math.min(currentRow.current_inject_index + 1, max);
-      await patchSession(sessionId, { current_inject_index: next });
-      refresh();
+      return patchSession(sessionId, { current_inject_index: next });
     });
-    document.getElementById("prevBtn").addEventListener("click", async () => {
+    onClick(document.getElementById("prevBtn"), () => {
       if (!currentRow) return;
       const prev = Math.max(currentRow.current_inject_index - 1, 0);
-      await patchSession(sessionId, { current_inject_index: prev });
-      refresh();
+      return patchSession(sessionId, { current_inject_index: prev });
     });
-    document.getElementById("endBtn").addEventListener("click", async () => {
-      await patchSession(sessionId, { status: "ended" });
-      refresh();
-    });
-    document.getElementById("resetBtn").addEventListener("click", async () => {
-      await patchSession(sessionId, { status: "lobby", current_inject_index: -1 });
-      refresh();
-    });
+    onClick(document.getElementById("endBtn"), () =>
+      patchSession(sessionId, { status: "ended" })
+    );
+    onClick(document.getElementById("resetBtn"), () =>
+      patchSession(sessionId, { status: "lobby", current_inject_index: -1 })
+    );
 
     async function refresh() {
       currentRow = await fetchSession(sessionId);
