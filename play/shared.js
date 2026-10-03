@@ -86,6 +86,9 @@ const SFX_FILES = {
   explosion: "sfx/explosion.mp3",
   thunder: "sfx/thunder.mp3",
   thunderstorm: "sfx/thunderstorm.mp3",
+  "phone-ring": "sfx/phone-ring.mp3",
+  "phone-busy": "sfx/phone-busy.mp3",
+  "alarm-computer": "sfx/alarm-computer.mp3",
 };
 
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
