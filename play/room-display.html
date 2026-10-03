@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Exercise Room Display (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    --pp-navy: #0b1f3a;
+    --pp-amber: #e8a33d;
+    --pp-paper: #f4f1ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--pp-navy);
+    color: var(--pp-paper);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 32px;
+    border-bottom: 1px solid rgba(244,241,234,0.15);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: 0.02em; }
+  .brand .powered { opacity: 0.6; font-size: 0.85rem; font-weight: 400; }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    gap: 24px;
+  }
+  .timer-row { display: flex; gap: 40px; font-size: 1.1rem; opacity: 0.85; }
+  .timer-row .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; display: block; }
+  .timer-row .value { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .timer-row .value.warn { color: var(--pp-amber); }
+  .video-card {
+    width: min(720px, 90vw);
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #1a3358, #0b1f3a);
+    border: 2px solid var(--pp-amber);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  .video-card .tag { color: var(--pp-amber); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .video-card .title { font-size: 1.4rem; font-weight: 600; padding: 0 24px; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,163,61,0.0); } 50% { box-shadow: 0 0 40px 4px rgba(232,163,61,0.25); } }
+  .inject-title { font-size: 2.2rem; font-weight: 700; max-width: 900px; }
+  .inject-desc { font-size: 1.3rem; max-width: 760px; opacity: 0.9; }
+  .lobby { font-size: 1.5rem; opacity: 0.85; }
+  .ended { font-size: 1.8rem; font-weight: 600; }
+  footer { text-align: center; padding: 14px; font-size: 0.85rem; opacity: 0.5; }
+  .sound-gate {
+    position: fixed; inset: 0; background: var(--pp-navy); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px; z-index: 10;
+  }
+  .sound-gate button {
+    font-size: 1.3rem; padding: 16px 32px; border-radius: 10px; border: none;
+    background: var(--pp-amber); color: var(--pp-navy); font-weight: 700; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="sound-gate" id="soundGate">
+  <div style="font-size:1.1rem; opacity:0.8;">Exercise Room Display</div>
+  <button id="startBtn">Tap to begin (enables sound)</button>
+</div>
+
+<header>
+  <div class="brand">
+    <span id="clientLabel">PlanProof</span>
+  </div>
+  <div class="brand powered">Powered by PlanProof</div>
+</header>
+
+<main id="main">
+  <div class="lobby">Waiting for the facilitator to start the exercise…</div>
+</main>
+
+<footer>Exercise room display — prototype (placeholder sound effects &amp; video cards)</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const mainEl = document.getElementById("main");
+  const clientLabelEl = document.getElementById("clientLabel");
+  let lastRenderedIndex = null;
+  let injectTimerEnd = null;
+  let injectTimerInterval = null;
+
+  if (!sessionId) {
+    mainEl.innerHTML = `<div class="lobby">No ?session=&lt;id&gt; given in the URL.</div>`;
+  } else {
+    document.getElementById("startBtn").addEventListener("click", () => {
+      document.getElementById("soundGate").style.display = "none";
+      // One user gesture here unlocks audio for the rest of the session.
+      playPlaceholderSfx("phone");
+    });
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    fetchSession(sessionId).then(render).catch((err) => {
+      mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
+    });
+
+    subscribeToSession(supabaseClient, sessionId, render);
+  }
+
+  function render(row) {
+    if (!row) return;
+    clientLabelEl.textContent = row.label || "PlanProof";
+
+    if (row.status === "lobby") {
+      clearInjectTimer();
+      mainEl.innerHTML = `<div class="lobby">Waiting for the facilitator to start the exercise…</div>`;
+      lastRenderedIndex = null;
+      return;
+    }
+    if (row.status === "ended") {
+      clearInjectTimer();
+      mainEl.innerHTML = `<div class="ended">Exercise complete.<br/><span style="opacity:0.7; font-size:1rem;">Thank you for participating.</span></div>`;
+      lastRenderedIndex = null;
+      return;
+    }
+
+    const injects = (row.scenario && row.scenario.injects) || [];
+    const idx = row.current_inject_index;
+    const inject = injects[idx];
+    if (!inject) {
+      mainEl.innerHTML = `<div class="lobby">No inject at index ${idx}.</div>`;
+      return;
+    }
+
+    const isNewInject = idx !== lastRenderedIndex;
+    lastRenderedIndex = idx;
+
+    const videoBlock = inject.video
+      ? `<div class="video-card"><div class="tag">Now playing</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
+      : "";
+
+    mainEl.innerHTML = `
+      ${videoBlock}
+      <div class="inject-title">${escapeHtml(inject.title)}</div>
+      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+      <div class="timer-row">
+        <div><span class="label">This inject</span><span class="value" id="injectTimerValue">--:--</span></div>
+      </div>
+    `;
+
+    if (isNewInject) {
+      if (inject.sfx) playPlaceholderSfx(inject.sfx);
+      startInjectTimer(inject.durationMinutes || 0);
+    }
+  }
+
+  function startInjectTimer(minutes) {
+    clearInjectTimer();
+    injectTimerEnd = Date.now() + minutes * 60 * 1000;
+    const valueEl = () => document.getElementById("injectTimerValue");
+    function tick() {
+      const el = valueEl();
+      if (!el) return;
+      const remainingMs = injectTimerEnd - Date.now();
+      const sign = remainingMs < 0 ? "-" : "";
+      const abs = Math.abs(remainingMs);
+      const m = Math.floor(abs / 60000);
+      const s = Math.floor((abs % 60000) / 1000);
+      el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      el.classList.toggle("warn", remainingMs < 0);
+    }
+    tick();
+    injectTimerInterval = setInterval(tick, 1000);
+  }
+
+  function clearInjectTimer() {
+    if (injectTimerInterval) clearInterval(injectTimerInterval);
+    injectTimerInterval = null;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+</script>
+</body>
+</html>

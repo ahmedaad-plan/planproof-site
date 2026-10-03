@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Facilitator Test Controls (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: #f4f1ea;
+    color: #0b1f3a;
+    padding: 32px;
+  }
+  h1 { font-size: 1.3rem; }
+  .note {
+    background: #fff3d6; border: 1px solid #e8a33d; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem;
+  }
+  .status { margin-bottom: 20px; font-size: 1rem; }
+  .status b { font-family: monospace; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  button {
+    font-size: 1rem; padding: 10px 18px; border-radius: 8px; border: 1px solid #0b1f3a;
+    background: white; cursor: pointer;
+  }
+  button.primary { background: #0b1f3a; color: white; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .current-inject { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 600px; }
+  .link-row { margin-top: 24px; font-size: 0.9rem; }
+  .link-row input { width: 100%; padding: 6px; font-family: monospace; }
+</style>
+</head>
+<body>
+  <h1>Facilitator test controls (prototype)</h1>
+  <div class="note">
+    This page drives the demo session directly — it stands in for the real
+    facilitator view (lobby/roster, criteria capture, submissions feed) which
+    isn't built yet. Its only job here is to prove that an action taken here
+    shows up instantly on the room display.
+  </div>
+
+  <div class="status">Status: <b id="statusVal">loading…</b> · Inject index: <b id="indexVal">—</b></div>
+
+  <div class="controls">
+    <button class="primary" id="startBtn">Start exercise</button>
+    <button id="prevBtn">&larr; Previous inject</button>
+    <button id="nextBtn">Next inject &rarr;</button>
+    <button id="endBtn">End exercise</button>
+    <button id="resetBtn">Reset to lobby</button>
+  </div>
+
+  <div class="current-inject" id="currentInject">—</div>
+
+  <div class="link-row">
+    Room display link for this session (open on the room screen, or in another tab to test):
+    <input id="displayLink" readonly />
+  </div>
+
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const statusVal = document.getElementById("statusVal");
+  const indexVal = document.getElementById("indexVal");
+  const currentInjectEl = document.getElementById("currentInject");
+  const displayLinkEl = document.getElementById("displayLink");
+
+  if (!sessionId) {
+    document.body.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+  } else {
+    displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
+
+    let currentRow = null;
+    refresh();
+
+    document.getElementById("startBtn").addEventListener("click", async () => {
+      await patchSession(sessionId, { status: "running", current_inject_index: 0 });
+      refresh();
+    });
+    document.getElementById("nextBtn").addEventListener("click", async () => {
+      if (!currentRow) return;
+      const max = (currentRow.scenario.injects || []).length - 1;
+      const next = Math.min(currentRow.current_inject_index + 1, max);
+      await patchSession(sessionId, { current_inject_index: next });
+      refresh();
+    });
+    document.getElementById("prevBtn").addEventListener("click", async () => {
+      if (!currentRow) return;
+      const prev = Math.max(currentRow.current_inject_index - 1, 0);
+      await patchSession(sessionId, { current_inject_index: prev });
+      refresh();
+    });
+    document.getElementById("endBtn").addEventListener("click", async () => {
+      await patchSession(sessionId, { status: "ended" });
+      refresh();
+    });
+    document.getElementById("resetBtn").addEventListener("click", async () => {
+      await patchSession(sessionId, { status: "lobby", current_inject_index: -1 });
+      refresh();
+    });
+
+    async function refresh() {
+      currentRow = await fetchSession(sessionId);
+      if (!currentRow) return;
+      statusVal.textContent = currentRow.status;
+      indexVal.textContent = currentRow.current_inject_index;
+      const inject = (currentRow.scenario.injects || [])[currentRow.current_inject_index];
+      currentInjectEl.textContent = inject
+        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${inject.durationMinutes} min`
+        : "No current inject.";
+    }
+  }
+</script>
+</body>
+</html>
