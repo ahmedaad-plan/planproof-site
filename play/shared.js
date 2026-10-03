@@ -89,12 +89,21 @@ const SFX_FILES = {
   "phone-ring": "sfx/phone-ring.mp3",
   "phone-busy": "sfx/phone-busy.mp3",
   "alarm-computer": "sfx/alarm-computer.mp3",
+  "roller-coaster": "sfx/roller-coaster.mp3",
+  stampede: "sfx/stampede.mp3",
+  // Realistic automatic-gunfire burst, for an armed-threat/lockdown inject.
+  // IMPORTANT: unlike every other sound here, this one should never be
+  // triggered on a live room-display without first telling the room it's
+  // coming — a sudden realistic gunshot can be mistaken for a real threat
+  // and can alarm people outside the exercise room too. When designing a
+  // scenario that uses it, call this out explicitly to the facilitator.
+  gunfire: "sfx/gunfire.mp3",
 };
 
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
 // sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
 // that should just play through once per inject and not restart on a loop.
-const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm"]);
+const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster"]);
 // How long an ambience track plays before fading out, in seconds — long
 // enough to register, short enough not to drone under the whole inject.
 const AMBIENCE_PLAY_SECONDS = 18;
