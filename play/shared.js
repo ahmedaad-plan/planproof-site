@@ -84,12 +84,14 @@ const SFX_FILES = {
   flood: "sfx/flood.mp3",
   "news-bed": "sfx/news-bed.mp3",
   explosion: "sfx/explosion.mp3",
+  thunder: "sfx/thunder.mp3",
+  thunderstorm: "sfx/thunderstorm.mp3",
 };
 
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
-// sounds (sirens, the earthquake rumble, explosion) that should just play
-// through once per inject and not restart on a loop.
-const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed"]);
+// sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
+// that should just play through once per inject and not restart on a loop.
+const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm"]);
 // How long an ambience track plays before fading out, in seconds — long
 // enough to register, short enough not to drone under the whole inject.
 const AMBIENCE_PLAY_SECONDS = 18;
