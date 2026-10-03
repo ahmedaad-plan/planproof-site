@@ -123,6 +123,12 @@ const SFX_FILES = {
   "roller-coaster": "sfx/roller-coaster.mp3",
   stampede: "sfx/stampede.mp3",
   "crowd-panic": "sfx/crowd-panic.mp3",
+  // Built by overlaying two separate clips: a continuous alarm siren with a
+  // "Warning, evacuate" voice announcement cutting in partway through (the
+  // siren ducks briefly so the voice is clearly audible, then continues
+  // alone) — for a building fire-alarm/evacuation-trigger inject, distinct
+  // from the "fire" ambience (crackling flames) already in the library.
+  "fire-alarm-evacuate": "sfx/fire-alarm-evacuate.mp3",
   // Realistic automatic-gunfire burst, for an armed-threat/lockdown inject.
   // IMPORTANT: unlike every other sound here, this one should never be
   // triggered on a live room-display without first telling the room it's
