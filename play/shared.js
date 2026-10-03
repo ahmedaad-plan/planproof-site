@@ -19,7 +19,25 @@ function getSessionId() {
   return params.get("session");
 }
 
+// UUIDs are always 36 characters (32 hex digits + 4 hyphens) in this exact
+// shape. A session ID that doesn't match this is almost always a link that
+// got cut off while being copied or typed, not a real server-side problem —
+// catching it here turns a cryptic "HTTP 400" into a message that actually
+// tells you what's wrong.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertValidSessionId(sessionId) {
+  if (!sessionId || !UUID_RE.test(sessionId)) {
+    throw new Error(
+      `Session ID "${sessionId}" looks incomplete or malformed — the link may ` +
+        `have been cut off when it was copied or typed. Use the full link, ` +
+        `exactly as given, including everything after "session=".`
+    );
+  }
+}
+
 async function fetchSession(sessionId) {
+  assertValidSessionId(sessionId);
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}&select=*`,
     {
@@ -35,6 +53,7 @@ async function fetchSession(sessionId) {
 }
 
 async function patchSession(sessionId, fields) {
+  assertValidSessionId(sessionId);
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`,
     {
