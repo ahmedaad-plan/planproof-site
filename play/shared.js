@@ -123,6 +123,11 @@ const SFX_FILES = {
   "roller-coaster": "sfx/roller-coaster.mp3",
   stampede: "sfx/stampede.mp3",
   "crowd-panic": "sfx/crowd-panic.mp3",
+  // Happy park-ambience crowd noise — not an incident sound. Meant as a
+  // "calm before the incident" opening ambience for a Miral-venue scenario
+  // (Ferrari World, Yas Waterworld, etc.), playing under an early inject
+  // before anything goes wrong.
+  "crowd-cheer": "sfx/crowd-cheer.mp3",
   // Built by overlaying two separate clips: a continuous alarm siren with a
   // "Warning, evacuate" voice announcement cutting in partway through (the
   // siren ducks briefly so the voice is clearly audible, then continues
@@ -149,7 +154,7 @@ const SFX_OVERLAY = {
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
 // sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
 // that should just play through once per inject and not restart on a loop.
-const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster"]);
+const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer"]);
 // How long an ambience track plays before fading out, in seconds — long
 // enough to register, short enough not to drone under the whole inject.
 const AMBIENCE_PLAY_SECONDS = 18;
