@@ -91,6 +91,7 @@ const SFX_FILES = {
   "alarm-computer": "sfx/alarm-computer.mp3",
   "roller-coaster": "sfx/roller-coaster.mp3",
   stampede: "sfx/stampede.mp3",
+  "crowd-panic": "sfx/crowd-panic.mp3",
   // Realistic automatic-gunfire burst, for an armed-threat/lockdown inject.
   // IMPORTANT: unlike every other sound here, this one should never be
   // triggered on a live room-display without first telling the room it's
@@ -98,6 +99,14 @@ const SFX_FILES = {
   // and can alarm people outside the exercise room too. When designing a
   // scenario that uses it, call this out explicitly to the facilitator.
   gunfire: "sfx/gunfire.mp3",
+};
+
+// Some injects are really two clips playing at once rather than one file —
+// e.g. a stampede reads as one immersive moment of footsteps *and* people
+// shouting for help together, not two sounds back to back. Referencing
+// "stampede" plays every clip listed here simultaneously.
+const SFX_OVERLAY = {
+  stampede: ["stampede", "crowd-panic"],
 };
 
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
@@ -109,21 +118,28 @@ const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", 
 const AMBIENCE_PLAY_SECONDS = 18;
 
 const sfxAudioCache = {};
-let currentSfxAudio = null;
+let currentSfxAudios = [];
 
 function playSfx(name) {
   if (!name || name === "none") return;
+
+  // Stop whatever's currently playing so sounds don't stack on a fast
+  // facilitator advance.
+  currentSfxAudios.forEach((audio) => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+  currentSfxAudios = [];
+
+  const layerNames = SFX_OVERLAY[name] || [name];
+  layerNames.forEach((layerName) => playSfxLayer(layerName));
+}
+
+function playSfxLayer(name) {
   const path = SFX_FILES[name];
   if (!path) {
     console.warn(`No sound file mapped for sfx "${name}"`);
     return;
-  }
-
-  // Stop whatever's currently playing so sounds don't stack on a fast
-  // facilitator advance.
-  if (currentSfxAudio) {
-    currentSfxAudio.pause();
-    currentSfxAudio.currentTime = 0;
   }
 
   if (!sfxAudioCache[name]) {
@@ -133,7 +149,7 @@ function playSfx(name) {
   audio.loop = false;
   audio.volume = 0.8;
   audio.currentTime = 0;
-  currentSfxAudio = audio;
+  currentSfxAudios.push(audio);
 
   audio.play().catch((err) => {
     // Most common cause: no user gesture has unlocked audio yet (the
@@ -144,7 +160,7 @@ function playSfx(name) {
   if (SFX_LOOP.has(name)) {
     audio.loop = true;
     setTimeout(() => {
-      if (currentSfxAudio === audio) {
+      if (currentSfxAudios.includes(audio)) {
         audio.pause();
         audio.currentTime = 0;
       }
