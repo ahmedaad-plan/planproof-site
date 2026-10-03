@@ -1,2 +1,23 @@
 [functions]
   directory = "netlify/functions"
+
+[build.environment]
+  # play/shared.js embeds the Supabase anon key for client-side use — that's
+  # expected and safe (it's the same public key already used by the form
+  # function; Row Level Security controls what it can do, not secrecy of the
+  # key). Without this, Netlify's secret scanner fails the build because the
+  # literal value matches the SUPABASE_PUBLISHABLE_KEY site env var — the
+  # scan matches by env var NAME, so it's the key name that must be omitted,
+  # not the file path.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
+
+# The exercise-player prototype (play/*) is being redeployed many times a day
+# while under active testing. Without this, a browser can hang onto a stale
+# cached copy of play/shared.js (or the HTML pages) from an earlier deploy —
+# indistinguishable, from the user's side, from a real bug, since the page
+# looks fine but runs old code. Forcing no-cache here means every load always
+# gets the exact version that was just deployed.
+[[headers]]
+  for = "/play/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
