@@ -113,6 +113,16 @@
   let lastRenderedIndex = null;
   let injectTimerEnd = null;
   let injectTimerInterval = null;
+  // Audio can only play after a user gesture. If this page loads (or
+  // reloads) while an inject is already showing — not starting fresh from
+  // the lobby — render() runs immediately, before "Tap to begin" has been
+  // clicked, and its playSfx() call gets silently blocked by the browser.
+  // Nothing used to retry it: the sound for whatever inject was already
+  // live when the page loaded was just lost. audioUnlocked / pendingSfx
+  // track that case so the sound plays (or catches up) the moment the gate
+  // is actually dismissed, instead of only on the next inject change.
+  let audioUnlocked = false;
+  let pendingSfx = null;
 
   setSfxStatusHandler((msg) => {
     sfxStatusEl.textContent = `sound: ${msg}`;
@@ -133,7 +143,16 @@
         .play()
         .then(() => {
           unlock.pause();
+          audioUnlocked = true;
           sfxStatusEl.textContent = "sound: unlocked ✓";
+          // Catch up on the sound for whatever inject was already showing
+          // before this tap, since its own playSfx() attempt (at page load)
+          // would have been blocked.
+          if (pendingSfx) {
+            const toPlay = pendingSfx;
+            pendingSfx = null;
+            playSfx(toPlay);
+          }
         })
         .catch((err) => {
           sfxStatusEl.textContent = `sound: unlock failed — ${err.message}`;
@@ -191,7 +210,16 @@
     `;
 
     if (isNewInject) {
-      if (inject.sfx) playSfx(inject.sfx);
+      if (inject.sfx) {
+        if (audioUnlocked) {
+          playSfx(inject.sfx);
+        } else {
+          // Don't attempt a doomed play() before the gate is tapped — queue
+          // it so the unlock handler above can play it the moment it can.
+          pendingSfx = inject.sfx;
+          sfxStatusEl.textContent = `sound: ⏸ waiting for "Tap to begin" to play ${inject.sfx}`;
+        }
+      }
       startInjectTimer(inject.durationMinutes || 0);
     }
   }
