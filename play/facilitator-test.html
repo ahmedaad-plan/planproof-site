@@ -74,13 +74,12 @@
     displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
 
     let currentRow = null;
-    const actionButtons = [
-      document.getElementById("startBtn"),
-      document.getElementById("nextBtn"),
-      document.getElementById("prevBtn"),
-      document.getElementById("endBtn"),
-      document.getElementById("resetBtn"),
-    ];
+    const startBtn = document.getElementById("startBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const endBtn = document.getElementById("endBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const actionButtons = [startBtn, nextBtn, prevBtn, endBtn, resetBtn];
 
     // Wraps a button's click handler so that: (1) every click fully finishes
     // — including the follow-up refresh() — before another click is read,
@@ -100,9 +99,26 @@
           errorBoxEl.textContent = `Action failed: ${err.message}`;
           errorBoxEl.style.display = "block";
         } finally {
-          actionButtons.forEach((b) => (b.disabled = false));
+          updateButtonAvailability();
         }
       });
+    }
+
+    // Next/Prev being clamped at the ends of the inject list is correct —
+    // there's nothing before inject 0 or after the last one — but with no
+    // visual cue it just looks frozen (that's exactly what "stuck at the
+    // last inject" turned out to be). Disabling them at the ends makes that
+    // state visible instead of silent.
+    function updateButtonAvailability() {
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      const atStart = !currentRow || currentRow.current_inject_index <= 0;
+      const atEnd = !currentRow || currentRow.current_inject_index >= injects.length - 1;
+      const isRunning = currentRow && currentRow.status === "running";
+      startBtn.disabled = false;
+      prevBtn.disabled = !isRunning || atStart;
+      nextBtn.disabled = !isRunning || atEnd;
+      endBtn.disabled = false;
+      resetBtn.disabled = false;
     }
 
     refresh();
@@ -130,14 +146,19 @@
 
     async function refresh() {
       currentRow = await fetchSession(sessionId);
+      updateButtonAvailability();
       if (!currentRow) return;
       statusVal.textContent = currentRow.status;
-      indexVal.textContent = currentRow.current_inject_index;
-      const inject = (currentRow.scenario.injects || [])[currentRow.current_inject_index];
+      const injects = currentRow.scenario.injects || [];
+      const isLast = currentRow.current_inject_index === injects.length - 1;
+      indexVal.textContent = `${currentRow.current_inject_index} of ${injects.length - 1}${isLast ? " — last inject" : ""}`;
+      const inject = injects[currentRow.current_inject_index];
       currentInjectEl.textContent = inject
-        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${inject.durationMinutes} min`
+        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${inject.durationMinutes} min${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
         : "No current inject.";
     }
+
+    updateButtonAvailability();
   }
 </script>
 </body>
