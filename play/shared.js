@@ -134,6 +134,16 @@ const SFX_FILES = {
   // alone) — for a building fire-alarm/evacuation-trigger inject, distinct
   // from the "fire" ambience (crackling flames) already in the library.
   "fire-alarm-evacuate": "sfx/fire-alarm-evacuate.mp3",
+  // A short bell-style fire/burglar alarm with its own natural ending —
+  // a different alarm character from the siren-based "fire-alarm-evacuate"
+  // above, for variety across scenarios.
+  "fire-alarm-bell": "sfx/fire-alarm-bell.mp3",
+  // Strong desert wind — a UAE/GCC-specific hazard (sandstorm) distinct
+  // from the general "storm" ambience (rain/wind), which doesn't read as
+  // regionally specific.
+  sandstorm: "sfx/sandstorm.mp3",
+  // A backup generator starting up — for a power-outage scenario.
+  generator: "sfx/generator.mp3",
   // Realistic automatic-gunfire burst, for an armed-threat/lockdown inject.
   // IMPORTANT: unlike every other sound here, this one should never be
   // triggered on a live room-display without first telling the room it's
@@ -154,7 +164,7 @@ const SFX_OVERLAY = {
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
 // sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
 // that should just play through once per inject and not restart on a loop.
-const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer"]);
+const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer", "sandstorm"]);
 // How long an ambience track plays before fading out, in seconds — long
 // enough to register, short enough not to drone under the whole inject.
 const AMBIENCE_PLAY_SECONDS = 18;
