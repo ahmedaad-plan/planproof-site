@@ -7,7 +7,12 @@
 // audio files later without changing how injects reference them.
 
 const SUPABASE_URL = "https://qryfayienxrngavhwfgw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_7jiMcaR_m87y9Avu5bZs9g_KdLij01H";
+// Using the legacy anon JWT key here, not the newer sb_publishable_... key —
+// this project's REST/Realtime gateway returned HTTP 400 for the new format,
+// but the legacy key is the one already proven working (it's what the
+// Netlify form function uses for inserts).
+const SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeWZheWllbnhybmdhdmh3Zmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTQ3MTcsImV4cCI6MjEwNjUzMDcxN30.AeLL04BiZwqwjNqEvV9dwCKK07Wf7HUN149L0k0fXGQ";
 
 function getSessionId() {
   const params = new URLSearchParams(window.location.search);
