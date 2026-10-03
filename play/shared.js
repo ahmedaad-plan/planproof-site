@@ -39,8 +39,20 @@ function assertValidSessionId(sessionId) {
 async function fetchSession(sessionId) {
   assertValidSessionId(sessionId);
   const res = await fetch(
+    // Same URL is requested over and over as the exercise progresses (every
+    // page load, every realtime-triggered refresh), which is exactly the
+    // shape of request a browser's HTTP cache likes to reuse instead of
+    // re-fetching — observed directly as "No inject at index 2" on a
+    // session that actually had 17 injects, because the page was reading
+    // a response cached from before injects were added. `cache: "no-store"`
+    // forces a real network request every time. (Deliberately NOT adding a
+    // cache-busting query param here — PostgREST treats any unrecognized
+    // query parameter as a column filter, e.g. "?_=123" errors with
+    // "column _ does not exist", so cache: "no-store" has to do the job
+    // alone.)
     `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}&select=*`,
     {
+      cache: "no-store",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
