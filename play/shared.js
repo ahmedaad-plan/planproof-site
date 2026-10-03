@@ -139,6 +139,15 @@ const AMBIENCE_PLAY_SECONDS = 18;
 const sfxAudioCache = {};
 let currentSfxAudios = [];
 
+// Lets a page (room-display.html) show what's happening with sound
+// on-screen, without needing the browser's dev tools open — useful for
+// diagnosing playback issues on a real exercise room's laptop, not just in
+// development. No-op until a page calls setSfxStatusHandler.
+let onSfxStatus = () => {};
+function setSfxStatusHandler(fn) {
+  onSfxStatus = fn;
+}
+
 function playSfx(name) {
   if (!name || name === "none") return;
 
@@ -158,6 +167,7 @@ function playSfxLayer(name) {
   const path = SFX_FILES[name];
   if (!path) {
     console.warn(`No sound file mapped for sfx "${name}"`);
+    onSfxStatus(`⚠ no file mapped for "${name}"`);
     return;
   }
 
@@ -170,11 +180,16 @@ function playSfxLayer(name) {
   audio.currentTime = 0;
   currentSfxAudios.push(audio);
 
-  audio.play().catch((err) => {
-    // Most common cause: no user gesture has unlocked audio yet (the
-    // "Tap to begin" screen handles this on room-display.html).
-    console.warn(`Playback blocked for "${name}":`, err.message);
-  });
+  onSfxStatus(`▶ attempting: ${name}`);
+  audio
+    .play()
+    .then(() => onSfxStatus(`✓ playing: ${name}`))
+    .catch((err) => {
+      // Most common cause: no user gesture has unlocked audio yet (the
+      // "Tap to begin" screen handles this on room-display.html).
+      console.warn(`Playback blocked for "${name}":`, err.message);
+      onSfxStatus(`✗ blocked: ${name} — ${err.message}`);
+    });
 
   if (SFX_LOOP.has(name)) {
     audio.loop = true;

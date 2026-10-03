@@ -73,6 +73,13 @@
     font-size: 1.3rem; padding: 16px 32px; border-radius: 10px; border: none;
     background: var(--pp-amber); color: var(--pp-navy); font-weight: 700; cursor: pointer;
   }
+  /* Shows what the last sound attempt actually did (playing / blocked / no
+     file) right on screen, so a sound problem can be diagnosed on the room's
+     own laptop without opening dev tools. */
+  #sfxStatus {
+    position: fixed; left: 12px; bottom: 12px; font-size: 0.8rem; font-family: monospace;
+    opacity: 0.55; z-index: 5;
+  }
 </style>
 </head>
 <body>
@@ -94,6 +101,7 @@
 </main>
 
 <footer>Exercise room display — prototype (placeholder sound effects &amp; video cards)</footer>
+<div id="sfxStatus">sound: —</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./shared.js"></script>
@@ -101,9 +109,14 @@
   const sessionId = getSessionId();
   const mainEl = document.getElementById("main");
   const clientLabelEl = document.getElementById("clientLabel");
+  const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
   let injectTimerEnd = null;
   let injectTimerInterval = null;
+
+  setSfxStatusHandler((msg) => {
+    sfxStatusEl.textContent = `sound: ${msg}`;
+  });
 
   if (!sessionId) {
     mainEl.innerHTML = `<div class="lobby">No ?session=&lt;id&gt; given in the URL.</div>`;
@@ -116,7 +129,15 @@
       // (Safari) that need an actual play() call inside the gesture itself.
       const unlock = new Audio(SFX_FILES["siren-ambulance"]);
       unlock.volume = 0;
-      unlock.play().then(() => unlock.pause()).catch(() => {});
+      unlock
+        .play()
+        .then(() => {
+          unlock.pause();
+          sfxStatusEl.textContent = "sound: unlocked ✓";
+        })
+        .catch((err) => {
+          sfxStatusEl.textContent = `sound: unlock failed — ${err.message}`;
+        });
     });
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
