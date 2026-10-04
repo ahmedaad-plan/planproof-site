@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Join Exercise (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    --pp-navy: #0b1f3a;
+    --pp-amber: #e8a33d;
+    --pp-paper: #f4f1ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--pp-navy);
+    color: var(--pp-paper);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--pp-paper);
+    color: var(--pp-navy);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 440px;
+    width: 100%;
+  }
+  h1 { font-size: 1.3rem; margin-top: 0; }
+  .sub { font-size: 0.9rem; opacity: 0.75; margin-top: -8px; margin-bottom: 24px; }
+  label { display: block; font-weight: 600; font-size: 0.85rem; margin: 18px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 1rem; background: white; color: var(--pp-navy);
+  }
+  .role-options { display: flex; gap: 10px; }
+  .role-options label {
+    flex: 1; margin: 0; font-weight: 500; text-align: center; padding: 10px;
+    border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: block;
+  }
+  .role-options input { display: none; }
+  .role-options label.checked { background: var(--pp-navy); color: white; border-color: var(--pp-navy); }
+  button {
+    width: 100%; margin-top: 26px; font-size: 1.05rem; padding: 12px 18px;
+    border-radius: 8px; border: none; background: var(--pp-navy); color: white;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error {
+    display: none; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+    background: #fde4e1; color: #a3271f; font-size: 0.9rem;
+  }
+  .note {
+    background: #fff3d6; border: 1px solid var(--pp-amber); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">Loading…</div>
+
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const cardEl = document.getElementById("card");
+
+  if (!sessionId) {
+    cardEl.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+  } else {
+    init();
+  }
+
+  async function init() {
+    let session;
+    try {
+      session = await fetchSession(sessionId);
+    } catch (err) {
+      cardEl.innerHTML = `<p>Couldn't load this exercise: ${escapeHtml(err.message)}</p>`;
+      return;
+    }
+    if (!session) {
+      cardEl.innerHTML = "<p>No exercise found for this link.</p>";
+      return;
+    }
+    if (session.status === "ended") {
+      cardEl.innerHTML =
+        "<p>This exercise has already ended — joining is no longer possible.</p>";
+      return;
+    }
+    renderForm(session);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
+  }
+
+  function renderForm(session) {
+    const departments = (session.scenario && session.scenario.departments) || [];
+    const roomCount = session.room_count || 1;
+
+    const departmentField = departments.length
+      ? `<select id="department" required>
+           <option value="" disabled selected>Choose your department</option>
+           ${departments.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("")}
+         </select>`
+      : `<input type="text" id="department" placeholder="e.g. IT, HR, Operations" required />`;
+
+    const roomField = roomCount > 1
+      ? `<label for="room">Which room are you in?</label>
+         <select id="room" required>
+           <option value="" disabled selected>Choose your room</option>
+           ${Array.from({ length: roomCount }, (_, i) => i + 1)
+             .map((n) => `<option value="${n}">Room ${n}${n === 1 ? " (facilitator's room)" : ""}</option>`)
+             .join("")}
+         </select>`
+      : "";
+
+    cardEl.innerHTML = `
+      <h1>Join: ${escapeHtml(session.label || "Exercise")}</h1>
+      <p class="sub">Enter your details to join as a participant or observer.</p>
+      <div class="note">
+        Observers can log notes as the exercise runs, but can't advance it.
+        Participants take part as their department would in a real incident.
+      </div>
+      <label for="name">Your name</label>
+      <input type="text" id="name" placeholder="Full name" required />
+      <label for="department">Department</label>
+      ${departmentField}
+      <label>Role</label>
+      <div class="role-options">
+        <label id="roleParticipantLabel" class="checked">
+          <input type="radio" name="role" value="participant" checked /> Participant
+        </label>
+        <label id="roleObserverLabel">
+          <input type="radio" name="role" value="observer" /> Observer
+        </label>
+      </div>
+      ${roomField}
+      <button id="joinBtn">Join exercise</button>
+      <div class="error" id="errorBox"></div>
+    `;
+
+    const roleRadios = cardEl.querySelectorAll('input[name="role"]');
+    const roleLabels = {
+      participant: document.getElementById("roleParticipantLabel"),
+      observer: document.getElementById("roleObserverLabel"),
+    };
+    roleRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        Object.values(roleLabels).forEach((l) => l.classList.remove("checked"));
+        roleLabels[radio.value].classList.add("checked");
+      });
+    });
+
+    const joinBtn = document.getElementById("joinBtn");
+    const errorBoxEl = document.getElementById("errorBox");
+
+    joinBtn.addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      const department = document.getElementById("department").value.trim();
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      const roomEl = document.getElementById("room");
+      const room = roomEl ? Number(roomEl.value) : null;
+
+      errorBoxEl.style.display = "none";
+      if (!name || !department || (roomEl && !roomEl.value)) {
+        errorBoxEl.textContent = "Please fill in every field before joining.";
+        errorBoxEl.style.display = "block";
+        return;
+      }
+
+      joinBtn.disabled = true;
+      joinBtn.textContent = "Joining…";
+      try {
+        await joinSession(sessionId, { name, department, role, room });
+        // Neither role has its own screen yet (Observer notes and
+        // Participant task-submission UI are later roadmap items) — for
+        // now both land on the same read-only room display everyone else
+        // watches, which is genuinely what an Observer's view is meant to
+        // be ("everything the Facilitator can see, nothing they can do").
+        location.href = `./room-display.html?session=${encodeURIComponent(sessionId)}`;
+      } catch (err) {
+        errorBoxEl.textContent = err.message;
+        errorBoxEl.style.display = "block";
+        joinBtn.disabled = false;
+        joinBtn.textContent = "Join exercise";
+      }
+    });
+  }
+</script>
+</body>
+</html>

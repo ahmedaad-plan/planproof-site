@@ -144,6 +144,54 @@ async function patchSession(sessionId, fields) {
   });
 }
 
+// Registers one person's attendance (roadmap item 2 — identity/join flow).
+// Unlike patchSession, this needs no facilitator token: joining is the one
+// write the public Participant/Observer QR is meant to allow. The database
+// enforces the real rules (room must fit the session's room_count, session
+// must not have ended) via a trigger — this just reports whichever rejection
+// came back in plain language instead of a raw HTTP/Postgres error.
+async function joinSession(sessionId, { name, department, role, room }) {
+  assertValidSessionId(sessionId);
+  // withRetry wraps only the network call, not the outcome check below —
+  // a dropped packet is worth retrying, but a rejected join (wrong room,
+  // session already ended) will fail the exact same way every time, so
+  // retrying it 3 times with backoff would just be a 3.5-second wait to
+  // show the same error.
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/attendees`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        name,
+        department,
+        role,
+        room: room ?? null,
+      }),
+    })
+  );
+  if (!res.ok) {
+    // PostgREST passes the trigger's RAISE EXCEPTION message straight
+    // through as the response body's "message" field — surface that rather
+    // than just the HTTP status, since it's already written in plain
+    // language ("room must be between 1 and 3 for this session.", "This
+    // exercise has already ended — joining is no longer possible.").
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body && body.message) detail = body.message;
+    } catch {
+      /* response wasn't JSON — keep the plain HTTP status above */
+    }
+    throw new Error(`Couldn't join: ${detail}`);
+  }
+}
+
 // Fires `callback` whenever this device looks like it just came back —
 // either the browser's own "online" event, or the tab becoming visible
 // again (mobile browsers suspend/throttle background tabs, which can drop
