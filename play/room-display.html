@@ -166,6 +166,17 @@
     });
 
     subscribeToSession(supabaseClient, sessionId, render);
+
+    // After a WiFi drop or the tab being backgrounded, don't just trust
+    // that the realtime subscription caught everything it missed — pull
+    // the real current state directly. This is what makes "resume from
+    // where we stopped" actually true after a reconnect, rather than
+    // hoping no update was missed while this screen was offline.
+    onReconnect(() => {
+      fetchSession(sessionId)
+        .then(render)
+        .catch((err) => console.warn("Resync after reconnect failed:", err.message));
+    });
   }
 
   function render(row) {

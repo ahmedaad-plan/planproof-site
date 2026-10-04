@@ -123,6 +123,13 @@
 
     refresh();
 
+    // Same reasoning as the room display: a dropped connection or a
+    // backgrounded tab can leave the facilitator looking at a stale status
+    // (e.g. still showing "running" after someone else ended it, or an
+    // old inject index) without any visible error. Force a real refetch
+    // the moment this device looks like it's back.
+    onReconnect(refresh);
+
     onClick(document.getElementById("startBtn"), () =>
       patchSession(sessionId, { status: "running", current_inject_index: 0 })
     );

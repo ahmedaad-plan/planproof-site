@@ -64,22 +64,61 @@ async function fetchSession(sessionId) {
   return rows[0] || null;
 }
 
+// Retries a failed write a few times (with increasing delay) before giving
+// up, so a single dropped packet during a WiFi blip doesn't silently lose a
+// facilitator action — or, once observer/participant writes exist, someone's
+// typed note or submission. Still throws after exhausting attempts, so a
+// caller's existing error handling (e.g. facilitator-test.html's error box)
+// keeps working — this only absorbs *transient* failures, not real ones.
+async function withRetry(fn, { attempts = 3, baseDelayMs = 500 } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** i));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function patchSession(sessionId, fields) {
   assertValidSessionId(sessionId);
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`,
-    {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
-    }
-  );
-  if (!res.ok) throw new Error(`Update session failed: HTTP ${res.status}`);
+  await withRetry(async () => {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
+      }
+    );
+    if (!res.ok) throw new Error(`Update session failed: HTTP ${res.status}`);
+  });
+}
+
+// Fires `callback` whenever this device looks like it just came back —
+// either the browser's own "online" event, or the tab becoming visible
+// again (mobile browsers suspend/throttle background tabs, which can drop
+// the realtime socket without ever firing an "offline" event). A page
+// should treat this as "don't trust whatever you were showing — go fetch
+// the real current state," because a realtime subscription can silently
+// miss updates that happened while it was disconnected; the push stream is
+// a notification to refresh, not a guaranteed log of everything that
+// happened.
+function onReconnect(callback) {
+  window.addEventListener("online", callback);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) callback();
+  });
 }
 
 // Subscribes to live changes on one session row. Calls onChange(newRow) every
