@@ -150,7 +150,14 @@ async function patchSession(sessionId, fields) {
 // enforces the real rules (room must fit the session's room_count, session
 // must not have ended) via a trigger — this just reports whichever rejection
 // came back in plain language instead of a raw HTTP/Postgres error.
-async function joinSession(sessionId, { name, department, role, room }) {
+//
+// The attendee id is generated here in the browser and sent with the insert,
+// rather than read back afterwards — the attendee list is readable only by
+// the facilitator, so a participant's browser can't look its own row up.
+// That id is what ties an individual answer to this person (see
+// saveSubmission). Random UUIDs aren't guessable, and nothing public lists
+// them.
+async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room }) {
   assertValidSessionId(sessionId);
   // withRetry wraps only the network call, not the outcome check below —
   // a dropped packet is worth retrying, but a rejected join (wrong room,
@@ -167,8 +174,14 @@ async function joinSession(sessionId, { name, department, role, room }) {
         Prefer: "return=minimal",
       },
       body: JSON.stringify({
+        id,
         session_id: sessionId,
-        name,
+        // name is recomposed server-side from the two parts; sent only
+        // because the column is NOT NULL.
+        name: `${firstName} ${familyName}`,
+        first_name: firstName,
+        family_name: familyName,
+        job_title: title,
         department,
         role,
         room: room ?? null,
@@ -205,7 +218,15 @@ async function joinSession(sessionId, { name, department, role, room }) {
 // for this inject) falls back to a plain UPDATE, which only needs SELECT
 // on the filter columns (session_id/inject_index/department — granted),
 // never on answer_text/attachments/status.
-async function saveSubmission(sessionId, { injectIndex, department, answerText, attachments, status }) {
+//
+// Group vs individual (Ahmed, 4 October 2026): each inject in the scenario
+// says whether it needs one answer per department ("group" — attendeeId
+// omitted, as before) or one answer per person ("individual" — attendeeId
+// set). An individual row is keyed by the attendee instead of the
+// department, and the database takes the department from that attendee's
+// registration rather than trusting the browser. submitted_at/on_time are
+// stamped by the database at the moment of Submit — never sent from here.
+async function saveSubmission(sessionId, { injectIndex, department, attendeeId, answerText, attachments, status }) {
   assertValidSessionId(sessionId);
   const commonHeaders = {
     apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -214,35 +235,114 @@ async function saveSubmission(sessionId, { injectIndex, department, answerText, 
     Prefer: "return=minimal",
   };
 
+  const row = {
+    session_id: sessionId,
+    inject_index: injectIndex,
+    department,
+    answer_text: answerText,
+    attachments,
+    status,
+  };
+  if (attendeeId) row.attendee_id = attendeeId;
+
   const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions`, {
     method: "POST",
     headers: commonHeaders,
-    body: JSON.stringify({
-      session_id: sessionId,
-      inject_index: injectIndex,
-      department,
-      answer_text: answerText,
-      attachments,
-      status,
-    }),
+    body: JSON.stringify(row),
   });
   if (insertRes.ok) return;
   if (insertRes.status !== 409) {
-    throw new Error(`Couldn't save your answer: HTTP ${insertRes.status}`);
+    throw new Error(`Couldn't save your answer: ${await readErrorDetail(insertRes)}`);
   }
 
-  // 409 = a row for this (session, inject, department) already exists —
-  // expected on every save after the first one for the same inject.
+  // 409 = this answer already has a row (this department's group answer, or
+  // this person's individual answer) — expected on every save after the
+  // first one for the same inject. The group filter must say attendee_id is
+  // null, or it would also overwrite that department's individual answers.
   const filter =
     `session_id=eq.${encodeURIComponent(sessionId)}` +
     `&inject_index=eq.${encodeURIComponent(injectIndex)}` +
-    `&department=eq.${encodeURIComponent(department)}`;
+    (attendeeId
+      ? `&attendee_id=eq.${encodeURIComponent(attendeeId)}`
+      : `&department=eq.${encodeURIComponent(department)}&attendee_id=is.null`);
   const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions?${filter}`, {
     method: "PATCH",
     headers: commonHeaders,
     body: JSON.stringify({ answer_text: answerText, attachments, status }),
   });
-  if (!updateRes.ok) throw new Error(`Couldn't save your answer: HTTP ${updateRes.status}`);
+  if (!updateRes.ok) {
+    throw new Error(`Couldn't save your answer: ${await readErrorDetail(updateRes)}`);
+  }
+}
+
+// Plain-language reason from a failed PostgREST response — the database's
+// own message when there is one (e.g. "This exercise has already ended"),
+// otherwise just the HTTP status.
+async function readErrorDetail(res) {
+  try {
+    const body = await res.json();
+    if (body && body.message) return body.message;
+  } catch {
+    /* not JSON */
+  }
+  return `HTTP ${res.status}`;
+}
+
+// Facilitator dashboard: who has submitted what, and whether it was on time.
+// Metadata only — the database function behind this never returns answer
+// text or attachments, and refuses anyone without this session's
+// facilitator token.
+async function fetchSubmissionStatus(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_submission_status`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(`Fetch submission status failed: ${await readErrorDetail(res)}`);
+  return res.json();
+}
+
+// The inject's output type and responsible departments, with the defaults
+// for a scenario written before these fields existed: a group task that
+// every department is responsible for.
+function injectOutput(inject) {
+  return inject && inject.output === "individual" ? "individual" : "group";
+}
+function injectResponsible(inject) {
+  const r = inject && inject.responsible;
+  if (!r || (Array.isArray(r) && r.length === 0)) return ["All"];
+  return Array.isArray(r) ? r : [r];
+}
+function isDepartmentResponsible(inject, department) {
+  const list = injectResponsible(inject).map((d) => String(d).trim().toLowerCase());
+  return list.includes("all") || list.includes(String(department || "").trim().toLowerCase());
+}
+
+// The moment the current inject's time runs out, as a millisecond timestamp
+// — from the server's own start time, so every device (and a device that
+// reloads mid-inject) agrees with the database's on-time check. null = no
+// deadline (no duration set). Falls back to "now" only for a session row
+// from before start times were recorded.
+function injectDeadlineMs(row, inject) {
+  const minutes = ((inject && inject.durationMinutes) || 0) + ((row && row.inject_extra_minutes) || 0);
+  if (!inject || !inject.durationMinutes) return null;
+  const start = row && row.inject_started_at ? Date.parse(row.inject_started_at) : Date.now();
+  return start + minutes * 60 * 1000;
 }
 
 // Uploads one attachment to Supabase Storage ahead of saveSubmission — the
@@ -301,7 +401,7 @@ async function fetchAttendees(sessionId, facilitatorToken) {
   const res = await withRetry(() =>
     fetch(
       `${SUPABASE_URL}/rest/v1/attendees?session_id=eq.${sessionId}` +
-        `&select=id,name,department,role,room,joined_at&order=joined_at.asc`,
+        `&select=id,name,first_name,family_name,job_title,department,role,room,joined_at&order=joined_at.asc`,
       {
         headers: {
           apikey: SUPABASE_PUBLISHABLE_KEY,

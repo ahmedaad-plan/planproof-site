@@ -20,23 +20,38 @@
     font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
   header {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
     padding: 16px 24px; border-bottom: 1px solid rgba(244,241,234,0.15);
   }
   .brand { font-weight: 600; letter-spacing: 0.02em; }
-  main { max-width: 640px; margin: 0 auto; padding: 24px; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
   .inject-card {
     background: rgba(244,241,234,0.06); border: 1px solid rgba(244,241,234,0.15);
     border-radius: 12px; padding: 20px; margin-bottom: 20px;
   }
   .inject-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
   .inject-desc { opacity: 0.9; margin-bottom: 14px; }
+  .inject-task {
+    background: rgba(232,163,61,0.15); border-left: 3px solid var(--pp-amber);
+    padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 0.95rem;
+  }
+  .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag {
+    font-size: 0.75rem; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid rgba(244,241,234,0.35); opacity: 0.9;
+  }
+  .tag.individual { border-color: var(--pp-amber); color: var(--pp-amber); }
   .timer { font-size: 0.85rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
-  .timer.warn { color: var(--pp-amber); }
+  .timer.warn { color: var(--pp-amber); opacity: 1; }
   .answer-card {
     background: var(--pp-paper); color: var(--pp-navy); border-radius: 12px; padding: 20px;
   }
+  .not-required {
+    background: #eef1f5; color: #3b4a5e; border-radius: 8px; padding: 10px 12px;
+    font-size: 0.85rem; margin-bottom: 12px;
+  }
   label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0 0 6px; }
+  .hint { font-size: 0.8rem; opacity: 0.7; margin: -2px 0 8px; }
   textarea {
     width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
     font-size: 1rem; font-family: inherit; resize: vertical; background: white; color: var(--pp-navy);
@@ -48,7 +63,7 @@
     padding: 6px 10px; background: #f0eee7; border-radius: 6px; margin-bottom: 4px;
   }
   .attachment-list button { border: none; background: none; color: #a3271f; cursor: pointer; font-size: 0.9rem; }
-  input[type="file"] { margin-top: 8px; }
+  input[type="file"] { margin-top: 8px; max-width: 100%; }
   .save-status { font-size: 0.8rem; opacity: 0.65; margin-top: 10px; min-height: 1.2em; }
   .row-buttons { display: flex; gap: 10px; margin-top: 16px; }
   button.submit {
@@ -70,7 +85,7 @@
 <body>
   <header>
     <div class="brand" id="clientLabel">PlanProof</div>
-    <div class="brand" id="whoLabel" style="opacity:0.7; font-size:0.85rem;"></div>
+    <div class="brand" id="whoLabel" style="opacity:0.7; font-size:0.85rem; text-align:right;"></div>
   </header>
   <main id="main">Loading…</main>
 
@@ -84,29 +99,38 @@
 
   let identity = null;
   let formIdx = null; // which inject index the on-screen form currently represents
+  let formInject = null; // the inject object for formIdx (kept separately so leaving an inject saves under ITS group/individual type, not the next one's)
   let attachments = []; // attachments already uploaded for the current inject
   let submittedForCurrent = false;
   let injectLocked = false; // true once Submit was clicked OR this inject's time ran out
+  // True once this device has actually typed or attached something for the
+  // current inject. The automatic saves (on timeout, or when the facilitator
+  // moves on) only fire when this is true — otherwise a phone that reloaded
+  // mid-exercise (and so shows a blank form) would overwrite the answer
+  // already saved on the server with an empty one.
+  let dirtyForCurrent = false;
+  // True while the Facilitator has unlocked an answer this device had
+  // already SUBMITTED. Edits made then are amendments to a submitted answer,
+  // so they're saved as "submitted" — otherwise reopening it would quietly
+  // turn an on-time answer back into an unsubmitted draft on the dashboard.
+  let reopenedSubmitted = false;
   let currentExtraMinutes = 0; // the exercise_sessions.inject_extra_minutes value already applied to the running timer, for the inject currently on screen
   let forceUnlocked = false; // mirrors exercise_sessions.inject_force_unlocked for the inject currently on screen
+  let latestRow = null;
   let saveTimer = null;
   let injectTimerInterval = null;
   // Client-side-only history of what this device had for each inject index,
   // so going back to an earlier inject (the Facilitator can move Previous,
   // then Unlock) restores what was there instead of a blank form. Purely
-  // local — exercise_submissions' content columns stay write-only to anon
+  // local — answer text and attachments are write-only for every browser
   // (see "Participant task submission" in design-notes.md), so this is
   // never re-read from the server. Lost on a page reload; the server copy
   // is unaffected either way.
   const answersCache = {};
-  // References to the currently-rendered form's elements, so the timeout
-  // handler (fired from startInjectTimer, outside renderForm's own closure)
-  // can disable them without re-querying the DOM.
   let currentAnswerEl = null;
   let currentFileInput = null;
   let currentSubmitBtn = null;
   let currentSaveStatusEl = null;
-  let currentInjectData = null; // the inject object currently on screen, so lockForCurrentInject/unlockForCurrentInject (called from outside render()'s closure) can rebuild the form
 
   if (!sessionId) {
     mainEl.innerHTML = `<div class="center-note">No ?session=&lt;id&gt; given in the URL.</div>`;
@@ -116,9 +140,16 @@
     } catch {
       identity = null;
     }
+    const joinLink = `./join.html?session=${encodeURIComponent(sessionId)}`;
     if (!identity || identity.role !== "participant") {
       mainEl.innerHTML = `<div class="center-note">You need to join this exercise first.
-        <br/><a href="./join.html?session=${encodeURIComponent(sessionId)}" style="color:var(--pp-amber);">Join now</a></div>`;
+        <br/><a href="${joinLink}" style="color:var(--pp-amber);">Join now</a></div>`;
+    } else if (!identity.attendeeId) {
+      // Registered before registration asked for first/family name and job
+      // title, and before individual answers existed — no attendee id to
+      // file an individual answer under.
+      mainEl.innerHTML = `<div class="center-note">Registration has been updated — please register again.
+        <br/><a href="${joinLink}" style="color:var(--pp-amber);">Register</a></div>`;
     } else {
       whoLabelEl.textContent = `${identity.name} — ${identity.department}${identity.room ? ` — Room ${identity.room}` : ""}`;
       init();
@@ -138,20 +169,39 @@
     });
   }
 
+  function isIndividual(inject) {
+    return injectOutput(inject) === "individual";
+  }
+
+  // Every save goes through here so a group inject is saved as the
+  // department's shared answer and an individual inject as this person's
+  // own answer.
+  function saveFor(idx, inject, fields) {
+    return saveSubmission(sessionId, {
+      injectIndex: idx,
+      department: identity.department,
+      attendeeId: isIndividual(inject) ? identity.attendeeId : null,
+      ...fields,
+    });
+  }
+
   function render(row) {
     if (!row) return;
+    latestRow = row;
     clientLabelEl.textContent = row.label || "PlanProof";
 
     if (row.status === "ended") {
       clearInjectTimer();
       mainEl.innerHTML = `<div class="center-note">Exercise complete. Thank you for participating.</div>`;
       formIdx = null;
+      formInject = null;
       return;
     }
     if (row.status === "lobby") {
       clearInjectTimer();
       mainEl.innerHTML = `<div class="center-note">Waiting for the facilitator to start the exercise…</div>`;
       formIdx = null;
+      formInject = null;
       return;
     }
 
@@ -162,14 +212,11 @@
       mainEl.innerHTML = `<div class="center-note">No inject at index ${idx}.</div>`;
       return;
     }
-    currentInjectData = inject; // so lock/unlock helpers outside this closure can rebuild the form
 
     if (idx !== formIdx) {
       // Moving to a different inject (forward via Next, or backward via
-      // Previous — the Facilitator can send a participant back to an
-      // earlier inject at any time). Snapshot what's on screen right now
-      // into the local cache before it's replaced, so coming back to THIS
-      // inject later restores it instead of showing blank.
+      // Previous). Snapshot what's on screen into the local cache first, so
+      // coming back to THIS inject later restores it instead of showing blank.
       if (formIdx !== null) {
         const lastAnswerEl = document.getElementById("answerText");
         answersCache[formIdx] = {
@@ -177,34 +224,31 @@
           attachments: attachments.slice(),
           submitted: submittedForCurrent,
           locked: injectLocked,
+          dirty: dirtyForCurrent,
         };
-        // If it wasn't explicitly submitted or already locked, this is the
-        // "facilitator moved on before they clicked Submit" moment — lock
-        // in whatever they have as status=autosaved rather than losing it.
-        if (!submittedForCurrent && !injectLocked && lastAnswerEl) {
-          saveSubmission(sessionId, {
-            injectIndex: formIdx,
-            department: identity.department,
+        // "Facilitator moved on before they clicked Submit" — keep whatever
+        // they wrote as status=autosaved rather than losing it. Saved under
+        // the inject being LEFT (formInject), not the new one.
+        if (!submittedForCurrent && !injectLocked && dirtyForCurrent && lastAnswerEl) {
+          saveFor(formIdx, formInject, {
             answerText: lastAnswerEl.value,
             attachments,
-            status: "autosaved",
+            status: reopenedSubmitted ? "submitted" : "autosaved",
           }).catch((err) => console.warn("Autosave on inject change failed:", err.message));
         }
       }
 
+      reopenedSubmitted = false;
       formIdx = idx;
+      formInject = inject;
       currentExtraMinutes = row.inject_extra_minutes || 0;
       forceUnlocked = !!row.inject_force_unlocked;
 
-      // Restore this inject's own history on this device, if any — e.g. the
-      // Facilitator sent everyone back to an inject already submitted or
-      // timed out. forceUnlocked (only ever true right after an explicit
-      // Unlock, since it's reset on every navigation) means edit it fresh
-      // regardless of that history.
       const cached = answersCache[idx];
       attachments = cached ? cached.attachments.slice() : [];
       submittedForCurrent = forceUnlocked ? false : cached ? cached.submitted : false;
       injectLocked = forceUnlocked ? false : cached ? cached.locked : false;
+      dirtyForCurrent = cached ? cached.dirty : false;
 
       renderForm(inject, idx, {
         answerText: cached ? cached.answerText : "",
@@ -213,51 +257,49 @@
       });
 
       if (!forceUnlocked && !submittedForCurrent && !injectLocked) {
-        // Each inject's own duration (plus any extension already granted
-        // before this device even loaded it) is a real deadline: once it
-        // elapses, the participant can no longer edit or submit for THIS
-        // inject, even if the facilitator hasn't advanced yet (the
-        // facilitator-advance autosave above remains a second, later
-        // safety net in case the facilitator advances before this fires).
-        startInjectTimer((inject.durationMinutes || 0) + currentExtraMinutes, lockForCurrentInject);
+        // The deadline comes from the server's start time for this inject
+        // (plus any extension), so it's the same deadline the database uses
+        // to decide "on time" — and a phone that reloads mid-inject picks
+        // the countdown up where it really is, instead of restarting it.
+        startInjectTimer(injectDeadlineMs(row, inject), () => lockForCurrentInject(false));
       } else {
-        clearInjectTimer();
+        startInjectTimer(null, null);
       }
     } else {
-      // Same inject still on screen. Two independent things the Facilitator
-      // can change without navigating away — check both.
+      formInject = inject;
       const forceNow = !!row.inject_force_unlocked;
       if (forceNow !== forceUnlocked) {
         if (forceNow) {
-          // Confirmed with Ahmed, 4 October 2026: unlocking must re-open
-          // the form even if it was already submitted or timed out, and
-          // allow resubmission. Capture what it was before clearing the
-          // flags, so the rebuilt form can still mention the history.
           const wasSubmitted = submittedForCurrent;
           const wasLocked = injectLocked;
           forceUnlocked = true;
           submittedForCurrent = false;
+          reopenedSubmitted = reopenedSubmitted || wasSubmitted;
           unlockForCurrentInject(
             "The facilitator has unlocked this inject — you can edit and resubmit.",
             wasSubmitted,
             wasLocked
           );
+          startInjectTimer(null, null); // an explicit unlock has no deadline of its own
         } else {
           forceUnlocked = false;
           lockForCurrentInject(true, "The facilitator has locked this inject again.");
+          startInjectTimer(null, null);
         }
       }
 
       // Extending time gives it back even if this device had already locked
-      // the form on timeout — never applies once explicitly submitted, and
-      // not while the Facilitator's manual unlock is already in effect (that
-      // already allows editing regardless of any timer).
+      // the form on timeout — never once explicitly submitted, and not while
+      // the Facilitator's manual unlock is in effect.
       const extraNow = row.inject_extra_minutes || 0;
       if (!forceUnlocked && extraNow > currentExtraMinutes && !submittedForCurrent) {
         currentExtraMinutes = extraNow;
-        startInjectTimer((inject.durationMinutes || 0) + currentExtraMinutes, lockForCurrentInject);
-        if (injectLocked) {
+        const deadline = injectDeadlineMs(row, inject);
+        if (injectLocked && deadline && deadline > Date.now()) {
           unlockForCurrentInject("The facilitator added more time — you can continue.", false, true);
+        }
+        if (!injectLocked) {
+          startInjectTimer(deadline, () => lockForCurrentInject(false));
         }
       }
     }
@@ -265,15 +307,31 @@
 
   function renderForm(inject, idx, initial) {
     initial = initial || {};
+    const individual = isIndividual(inject);
+    const responsible = isDepartmentResponsible(inject, identity.department);
+    const responsibleList = injectResponsible(inject);
+    const responsibleText = responsibleList.some((d) => String(d).toLowerCase() === "all")
+      ? "All departments"
+      : responsibleList.join(", ");
+
     mainEl.innerHTML = `
       <div class="inject-card">
+        <div class="task-tags">
+          <span class="tag ${individual ? "individual" : ""}">${individual ? "Individual task — everyone answers" : "Group task — one answer per department"}</span>
+          <span class="tag">Responsible: ${escapeHtml(responsibleText)}</span>
+        </div>
         <div class="inject-title">${escapeHtml(inject.title)}</div>
         <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+        ${inject.task ? `<div class="inject-task">${escapeHtml(inject.task)}</div>` : ""}
         <div class="timer">Time for this inject: <span id="injectTimerValue">--:--</span></div>
       </div>
       <div class="answer-card">
-        <label for="answerText">Your department's response</label>
-        <textarea id="answerText" placeholder="What is ${escapeHtml(identity.department)} doing right now?">${escapeHtml(initial.answerText || "")}</textarea>
+        ${responsible ? "" : `<div class="not-required">Your department isn't named as responsible for this inject, so no answer is required from you. You can still add input if it's relevant.</div>`}
+        <label for="answerText">${individual ? "Your own response" : `${escapeHtml(identity.department)}'s response`}</label>
+        <div class="hint">${individual
+          ? "Answer for yourself — each person in your department submits their own."
+          : `Anyone in ${escapeHtml(identity.department)} can write and submit this one shared answer.`}</div>
+        <textarea id="answerText" placeholder="${individual ? "Your answer" : `What is ${escapeHtml(identity.department)} doing right now?`}">${escapeHtml(initial.answerText || "")}</textarea>
         <div class="attachments">
           <label>Attach documents (up to 3, 10MB each)</label>
           <input type="file" id="fileInput" multiple
@@ -294,18 +352,21 @@
     const saveStatusEl = document.getElementById("saveStatus");
     const errorBoxEl = document.getElementById("errorBox");
 
-    // So lockForCurrentInject (called from the timer, outside this closure)
-    // can reach this exact form's elements.
     currentAnswerEl = answerEl;
     currentFileInput = fileInput;
     currentSubmitBtn = submitBtn;
     currentSaveStatusEl = saveStatusEl;
 
+    const submittedText = individual
+      ? "✓ Your answer is submitted."
+      : `✓ Submitted for ${escapeHtml(identity.department)}.`;
+
     answerEl.addEventListener("input", () => {
-      if (injectLocked) return; // belt-and-suspenders: disabled fields shouldn't fire input anyway
+      if (injectLocked) return;
+      dirtyForCurrent = true;
       saveStatusEl.textContent = "Saving…";
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => autosaveDraft(idx, answerEl, saveStatusEl), 1500);
+      saveTimer = setTimeout(() => autosaveDraft(idx, inject, answerEl, saveStatusEl), 1500);
     });
 
     fileInput.addEventListener("change", async () => {
@@ -327,8 +388,9 @@
           saveStatusEl.textContent = `Uploading ${file.name}…`;
           const uploaded = await uploadAttachment(sessionId, idx, identity.department, file);
           attachments.push(uploaded);
+          dirtyForCurrent = true;
           renderAttachmentList();
-          await autosaveDraft(idx, answerEl, saveStatusEl);
+          await autosaveDraft(idx, inject, answerEl, saveStatusEl);
         } catch (err) {
           errorBoxEl.textContent = err.message;
           errorBoxEl.style.display = "block";
@@ -342,13 +404,13 @@
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting…";
       try {
-        await saveSubmission(sessionId, {
-          injectIndex: idx,
-          department: identity.department,
+        clearTimeout(saveTimer); // a pending draft save must not land after (and overwrite) the submit
+        await saveFor(idx, inject, {
           answerText: answerEl.value,
           attachments,
           status: "submitted",
         });
+        dirtyForCurrent = true;
         submittedForCurrent = true;
         injectLocked = true; // locked unless/until the Facilitator explicitly unlocks this inject
         answerEl.disabled = true;
@@ -356,9 +418,10 @@
         saveStatusEl.textContent = "";
         document.querySelector(".row-buttons").insertAdjacentHTML(
           "beforebegin",
-          `<div class="submitted-banner">✓ Submitted for ${escapeHtml(identity.department)}.</div>`
+          `<div class="submitted-banner">${submittedText}</div>`
         );
         submitBtn.remove();
+        startInjectTimer(null, null);
       } catch (err) {
         errorBoxEl.textContent = err.message;
         errorBoxEl.style.display = "block";
@@ -367,11 +430,6 @@
       }
     });
 
-    // Apply whatever state this inject was already in — e.g. the Facilitator
-    // sent everyone back to an inject already submitted or timed out on this
-    // device. forceUnlocked overrides all of it (the caller already reset
-    // submittedForCurrent/injectLocked to false in that case) — just note
-    // the history so it isn't a surprise.
     if (forceUnlocked) {
       if (initial.submitted || initial.locked) {
         saveStatusEl.textContent =
@@ -382,7 +440,7 @@
       fileInput.disabled = true;
       document.querySelector(".row-buttons").insertAdjacentHTML(
         "beforebegin",
-        `<div class="submitted-banner">✓ Submitted for ${escapeHtml(identity.department)}.</div>`
+        `<div class="submitted-banner">${submittedText}</div>`
       );
       submitBtn.remove();
     } else if (initial.locked) {
@@ -390,8 +448,9 @@
       fileInput.disabled = true;
       submitBtn.disabled = true;
       submitBtn.textContent = "Time's up";
-      saveStatusEl.textContent =
-        "Time's up for this inject — your response has been saved automatically.";
+      saveStatusEl.textContent = dirtyForCurrent
+        ? "Time's up for this inject — your response has been saved automatically."
+        : "Time's up for this inject.";
     }
 
     renderAttachmentList();
@@ -407,21 +466,23 @@
       .join("");
     listEl.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (injectLocked) return;
         attachments.splice(Number(btn.dataset.i), 1);
+        dirtyForCurrent = true;
         renderAttachmentList();
+        autosaveDraft(formIdx, formInject, currentAnswerEl, currentSaveStatusEl);
       });
     });
   }
 
-  async function autosaveDraft(idx, answerEl, saveStatusEl) {
+  async function autosaveDraft(idx, inject, answerEl, saveStatusEl) {
     if (submittedForCurrent || injectLocked) return;
+    if (idx !== formIdx) return; // the inject changed while this save was waiting — the change handler already saved it
     try {
-      await saveSubmission(sessionId, {
-        injectIndex: idx,
-        department: identity.department,
+      await saveFor(idx, inject, {
         answerText: answerEl.value,
         attachments,
-        status: "draft",
+        status: reopenedSubmitted ? "submitted" : "draft",
       });
       if (saveStatusEl) saveStatusEl.textContent = "Saved.";
     } catch (err) {
@@ -429,24 +490,20 @@
     }
   }
 
-  // Locks the on-screen form — normally the moment this inject's own timer
-  // runs out, but `force` also lets the Facilitator's "Lock this inject"
-  // toggle re-lock it on demand (confirmed with Ahmed, 4 October 2026),
-  // even with no new timeout or submit involved. Whatever's on screen at
-  // that instant is autosaved one last time (unless already explicitly
-  // submitted — that answer stays as submitted, not overwritten with a
-  // draft), then the textarea, file input, and Submit button are disabled.
+  // Locks the on-screen form — normally when this inject's time runs out,
+  // or (force) when the Facilitator re-locks it. Whatever this device wrote
+  // is autosaved one last time (unless already explicitly submitted, or
+  // nothing was written on this device — see dirtyForCurrent).
   function lockForCurrentInject(force, message) {
     if (!force && (injectLocked || submittedForCurrent)) return;
     injectLocked = true;
+    clearTimeout(saveTimer);
     if (currentAnswerEl) {
-      if (!submittedForCurrent) {
-        saveSubmission(sessionId, {
-          injectIndex: formIdx,
-          department: identity.department,
+      if (!submittedForCurrent && dirtyForCurrent) {
+        saveFor(formIdx, formInject, {
           answerText: currentAnswerEl.value,
           attachments,
-          status: "autosaved",
+          status: reopenedSubmitted ? "submitted" : "autosaved",
         }).catch((err) => console.warn("Autosave on lock failed:", err.message));
       }
       currentAnswerEl.disabled = true;
@@ -457,31 +514,19 @@
       currentSubmitBtn.textContent = force ? "Locked" : "Time's up";
     }
     if (currentSaveStatusEl) {
-      currentSaveStatusEl.textContent =
-        message || "Time's up for this inject — your response has been saved automatically.";
+      currentSaveStatusEl.textContent = message || (dirtyForCurrent
+        ? "Time's up for this inject — your response has been saved automatically."
+        : "Time's up for this inject.");
     }
   }
 
-  // Reverses a lock — whether from this inject's own timeout, or from an
-  // explicit Submit (which show different DOM: Submit locks by removing the
-  // button and inserting a banner, not just disabling fields) — by fully
-  // re-rendering the form as editable, with whatever was last on screen
-  // preserved. Triggered by a time extension (timeout-locks only) or by the
-  // Facilitator's explicit "Unlock this inject" (any lock, including an
-  // already-submitted answer — confirmed with Ahmed, 4 October 2026: an
-  // extension gives the time back exactly as if the inject had been that
-  // long from the start; an explicit unlock re-opens it for editing and
-  // resubmission regardless of why it was locked).
+  // Reverses a lock by re-rendering the form as editable, keeping whatever
+  // was last on screen.
   function unlockForCurrentInject(message, wasSubmitted, wasLocked) {
-    if (!currentInjectData) return;
+    if (!formInject) return;
     injectLocked = false;
     const preservedAnswer = currentAnswerEl ? currentAnswerEl.value : "";
-    // submitted/locked here are passed through only so renderForm can note
-    // the history (e.g. "previously submitted") when forceUnlocked is what
-    // made this editable again — they are NOT re-applied as the active
-    // lock state, since the whole point of this call is to make the form
-    // editable right now.
-    renderForm(currentInjectData, formIdx, {
+    renderForm(formInject, formIdx, {
       answerText: preservedAnswer,
       submitted: !!wasSubmitted,
       locked: !!wasLocked,
@@ -491,30 +536,36 @@
     }
   }
 
-  function startInjectTimer(minutes, onExpire) {
+  // deadlineMs: when time runs out (ms timestamp), or null for no deadline
+  // (no duration set, already submitted, or unlocked by the facilitator).
+  function startInjectTimer(deadlineMs, onExpire) {
     clearInjectTimer();
-    const end = Date.now() + minutes * 60 * 1000;
     let expired = false;
     function tick() {
       const el = document.getElementById("injectTimerValue");
-      const remainingMs = end - Date.now();
-      if (el) {
-        const sign = remainingMs < 0 ? "-" : "";
-        const abs = Math.abs(remainingMs);
-        const m = Math.floor(abs / 60000);
-        const s = Math.floor((abs % 60000) / 1000);
-        el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-        el.classList.toggle("warn", remainingMs < 0);
+      if (!deadlineMs) {
+        if (el) {
+          el.textContent = forceUnlocked ? "open (unlocked by facilitator)" : submittedForCurrent ? "submitted" : injectLocked ? "closed" : "no time limit";
+          el.classList.remove("warn");
+        }
+        return;
       }
-      // minutes > 0 guard: an inject with no duration set shouldn't lock the
-      // form the instant it renders — treat it as having no deadline.
-      if (!expired && minutes > 0 && remainingMs <= 0) {
+      const remainingMs = deadlineMs - Date.now();
+      if (el) {
+        const shown = Math.max(0, remainingMs);
+        const m = Math.floor(shown / 60000);
+        const s = Math.floor((shown % 60000) / 1000);
+        el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        el.classList.toggle("warn", remainingMs < 60000);
+      }
+      if (!expired && remainingMs <= 0) {
         expired = true;
+        clearInjectTimer();
         if (onExpire) onExpire();
       }
     }
     tick();
-    injectTimerInterval = setInterval(tick, 1000);
+    if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
   }
 
   function clearInjectTimer() {
@@ -523,9 +574,9 @@
   }
 
   function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str || "";
-    return div.innerHTML;
+    return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
   }
 </script>
 </body>

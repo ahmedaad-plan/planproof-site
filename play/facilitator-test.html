@@ -49,6 +49,36 @@
   .roster-dept li button {
     font-size: 0.8rem; padding: 4px 10px; border-color: #b00020; color: #b00020;
   }
+  .roster-dept .title { opacity: 0.65; }
+  @media (max-width: 600px) { body { padding: 16px; } }
+
+  /* Response status (Ahmed, 4 October 2026): four states per department,
+     only for the departments the inject names as responsible. */
+  .status-section { margin-top: 28px; max-width: 760px; }
+  .status-section h2 { font-size: 1.05rem; margin-bottom: 6px; }
+  .status-current { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .status-head { font-weight: 700; margin-bottom: 2px; }
+  .status-sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .status-list { list-style: none; margin: 0; padding: 0; }
+  .status-list li {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-top: 1px solid #f0f0f0; font-size: 0.92rem;
+  }
+  .status-list li:first-child { border-top: none; }
+  .status-list .dept { flex: 0 0 40%; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+  .status-list .st-label { flex: 1; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; display: inline-block; border: 1px solid rgba(0,0,0,0.15); }
+  .dot.grey { background: #c9ced6; }
+  .dot.amber { background: #e8a33d; }
+  .dot.green { background: #2e9d4f; }
+  .dot.red { background: #c0392b; }
+  .history-wrap { overflow-x: auto; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+  .history { border-collapse: collapse; font-size: 0.85rem; }
+  .history th, .history td { padding: 5px 8px; text-align: center; white-space: nowrap; }
+  .history th:first-child, .history td:first-child { text-align: left; position: sticky; left: 0; background: white; }
+  .history thead th { font-weight: 600; opacity: 0.75; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; opacity: 0.85; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
 </style>
 </head>
 <body>
@@ -81,6 +111,17 @@
 
   <div class="current-inject" id="currentInject">—</div>
   <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+
+  <div class="status-section">
+    <h2>Response status</h2>
+    <div id="statusSection">Loading…</div>
+    <div class="legend">
+      <span><i class="dot grey"></i> Waiting, or not required</span>
+      <span><i class="dot amber"></i> Some have submitted (individual task)</span>
+      <span><i class="dot green"></i> Complete, on time</span>
+      <span><i class="dot red"></i> Time's up, not complete</span>
+    </div>
+  </div>
 
   <div class="roster-section">
     <h2>Registered participants &amp; observers</h2>
@@ -252,12 +293,191 @@
     // dashboard without hammering the database.
     async function refreshRoster() {
       try {
-        const attendees = await fetchAttendees(sessionId, facilitatorToken);
+        const [attendees, submissions] = await Promise.all([
+          fetchAttendees(sessionId, facilitatorToken),
+          fetchSubmissionStatus(sessionId, facilitatorToken),
+        ]);
+        lastAttendees = attendees;
+        lastSubmissions = submissions;
+        rosterErrorEl.style.display = "none";
         renderRoster(attendees);
+        renderStatus();
       } catch (err) {
-        rosterErrorEl.textContent = `Couldn't load roster: ${err.message}`;
+        rosterErrorEl.textContent = `Couldn't load roster/status: ${err.message}`;
         rosterErrorEl.style.display = "block";
       }
+    }
+
+    // ---- Response status -------------------------------------------------
+    // Rules agreed with Ahmed, 4 October 2026:
+    //  1. Only departments the inject names as responsible are coloured;
+    //     everyone else is grey "Not required" (matches the report's gap
+    //     rule: a blank from a non-responsible team is not a gap).
+    //  2. Four states: grey (waiting / not required), amber (individual task,
+    //     some but not all submitted), green (complete within time, incl.
+    //     any extension), red (time's up, not complete).
+    //  3. An answer only auto-saved at timeout is NOT green — red, labelled
+    //     "draft captured, not submitted".
+    //  4. Group task: one on-time submission from the department = green.
+    //     Individual task: every eligible participant must submit on time.
+    //  5. Late joiners don't hold a department back: for an individual task,
+    //     only participants registered before that inject started count.
+    //     Observers never count.
+    // "On time" is decided by the database at the moment of Submit (see
+    // exercise_submissions.on_time), not by this page's clock.
+    const statusSectionEl = document.getElementById("statusSection");
+    let lastAttendees = null;
+    let lastSubmissions = null;
+
+    const sameDept = (a, b) =>
+      String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+    function allDepartments() {
+      const list = [
+        ...((currentRow && currentRow.scenario && currentRow.scenario.departments) || []),
+        ...((currentRow && currentRow.extra_departments) || []),
+        ...((lastAttendees || []).map((a) => a.department)),
+      ];
+      const seen = new Set();
+      return list.filter((d) => {
+        const key = String(d || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function injectStartMs(idx) {
+      const log = (currentRow && currentRow.inject_started_log) || {};
+      return log[String(idx)] ? Date.parse(log[String(idx)]) : null;
+    }
+
+    function isTimeUp(idx, inject) {
+      const isCurrent = currentRow && currentRow.status === "running" && currentRow.current_inject_index === idx;
+      if (!isCurrent) return true; // already moved past it, or the exercise has ended
+      if (currentRow.inject_force_unlocked) return false;
+      const deadline = injectDeadlineMs(currentRow, inject);
+      return deadline !== null && Date.now() > deadline;
+    }
+
+    function departmentStatus(idx, inject, dept) {
+      const subs = (lastSubmissions || []).filter(
+        (s) => s.inject_index === idx && sameDept(s.department, dept)
+      );
+      const timeUp = isTimeUp(idx, inject);
+
+      if (!isDepartmentResponsible(inject, dept)) {
+        const contributed = subs.some((s) => s.status === "submitted" || s.has_content);
+        return { state: "grey", label: contributed ? "Not required (input received)" : "Not required" };
+      }
+
+      if (injectOutput(inject) === "group") {
+        const row = subs.find((s) => !s.attendee_id);
+        if (row && row.status === "submitted") {
+          return row.on_time
+            ? { state: "green", label: "Submitted on time" }
+            : { state: "red", label: "Submitted after the time" };
+        }
+        const draft = !!(row && row.has_content);
+        if (!timeUp) return { state: "grey", label: draft ? "Waiting — drafting" : "Waiting" };
+        return { state: "red", label: draft ? "Draft captured, not submitted" : "No response" };
+      }
+
+      // Individual task
+      const start = injectStartMs(idx);
+      const eligible = (lastAttendees || []).filter(
+        (a) =>
+          a.role === "participant" &&
+          sameDept(a.department, dept) &&
+          (start === null || Date.parse(a.joined_at) <= start)
+      );
+      const ids = new Set(eligible.map((a) => a.id));
+      const mine = subs.filter((s) => s.attendee_id && ids.has(s.attendee_id));
+      const onTime = mine.filter((s) => s.status === "submitted" && s.on_time).length;
+      const drafts = mine.filter((s) => s.status !== "submitted" && s.has_content).length;
+      const n = eligible.length;
+      if (n === 0) return { state: "grey", label: "No participants registered before this inject" };
+      if (onTime === n) return { state: "green", label: `All ${n} submitted on time` };
+      if (!timeUp) {
+        return onTime === 0
+          ? { state: "grey", label: `Waiting — 0 of ${n} submitted` }
+          : { state: "amber", label: `${onTime} of ${n} submitted` };
+      }
+      const draftText = drafts ? ` · ${drafts} draft${drafts > 1 ? "s" : ""} not submitted` : "";
+      return { state: "red", label: `${onTime} of ${n} submitted on time${draftText}` };
+    }
+
+    function responsibleText(inject) {
+      const list = injectResponsible(inject);
+      return list.some((d) => String(d).toLowerCase() === "all") ? "All departments" : list.join(", ");
+    }
+
+    function renderStatus() {
+      if (!currentRow || !lastSubmissions || !lastAttendees) return;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const depts = allDepartments();
+      const played = Object.keys(currentRow.inject_started_log || {})
+        .map(Number)
+        .filter((i) => injects[i])
+        .sort((a, b) => a - b);
+      if (played.length === 0 || depts.length === 0) {
+        statusSectionEl.innerHTML = `<p style="opacity:0.7; font-size:0.9rem;">Statuses appear here once the exercise starts.</p>`;
+        return;
+      }
+
+      const curIdx = currentRow.status === "running" ? currentRow.current_inject_index : null;
+      let html = "";
+      if (curIdx !== null && injects[curIdx]) {
+        const inj = injects[curIdx];
+        const deadline = injectDeadlineMs(currentRow, inj);
+        let timeText = "";
+        if (currentRow.inject_force_unlocked) timeText = " · Unlocked — no deadline";
+        else if (deadline) {
+          const left = deadline - Date.now();
+          timeText = left > 0
+            ? ` · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left`
+            : " · Time's up";
+        }
+        html += `
+          <div class="status-current">
+            <div class="status-head">Inject ${curIdx} — ${escapeHtml(inj.title)}</div>
+            <div class="status-sub">${injectOutput(inj) === "individual" ? "Individual task" : "Group task"} · Responsible: ${escapeHtml(responsibleText(inj))}${timeText}</div>
+            <ul class="status-list">
+              ${depts
+                .map((d) => {
+                  const st = departmentStatus(curIdx, inj, d);
+                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span></li>`;
+                })
+                .join("")}
+            </ul>
+          </div>`;
+      }
+
+      const past = played.filter((i) => i !== curIdx);
+      if (past.length) {
+        html += `
+          <div style="font-size:0.85rem; font-weight:600; margin:4px 0 6px;">Earlier injects</div>
+          <div class="history-wrap">
+            <table class="history">
+              <thead><tr><th>Department</th>${past
+                .map((i) => `<th title="${escapeHtml(injects[i].title)} — ${injectOutput(injects[i])}">#${i}${injectOutput(injects[i]) === "individual" ? " (ind.)" : ""}</th>`)
+                .join("")}</tr></thead>
+              <tbody>
+                ${depts
+                  .map(
+                    (d) => `<tr><td>${escapeHtml(d)}</td>${past
+                      .map((i) => {
+                        const st = departmentStatus(i, injects[i], d);
+                        return `<td title="${escapeHtml(st.label)}"><i class="dot ${st.state}"></i></td>`;
+                      })
+                      .join("")}</tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+      statusSectionEl.innerHTML = html;
     }
 
     function renderRoster(attendees) {
@@ -283,7 +503,7 @@
                   (a) => `
                 <li>
                   <span>
-                    ${escapeHtml(a.name)}${a.role === "observer" ? " — observer" : ""}${a.room ? ` — Room ${a.room}` : ""}
+                    ${escapeHtml(a.name)}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${a.role === "observer" ? " — observer" : ""}${a.room ? ` — Room ${a.room}` : ""}
                   </span>
                   <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
                 </li>`
@@ -315,6 +535,9 @@
     refresh();
     refreshRoster();
     setInterval(refreshRoster, 5000);
+    // Re-draw (no network) every second so the countdown and the switch to
+    // "time's up" happen on time, between the 5-second data polls.
+    setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
 
     // Same reasoning as the room display: a dropped connection or a
@@ -405,6 +628,7 @@
       currentInjectEl.textContent = inject
         ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
         : "No current inject.";
+      renderStatus();
     }
 
     updateButtonAvailability();
