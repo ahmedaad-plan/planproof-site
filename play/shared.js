@@ -331,6 +331,17 @@ function injectResponsible(inject) {
   if (!r || (Array.isArray(r) && r.length === 0)) return ["All"];
   return Array.isArray(r) ? r : [r];
 }
+// The inject's task line for participants. The planproof-scenario skill's
+// Stage 3 JSON gives it as an object ({ type: "PRODUCE|LOCATE|DECIDE",
+// text, label }); the player's demo uses a plain string. Accept both.
+function injectTaskText(inject) {
+  const t = inject && inject.task;
+  if (!t) return "";
+  if (typeof t === "string") return t;
+  const text = t.text || t.label || "";
+  return t.type ? `${t.type} — ${text}` : text;
+}
+
 // The scenario's department list, under either name: "departments" (the
 // player's demo) or "requiredDepartments" (the planproof-scenario skill's
 // Stage 3 JSON). Facilitator-added extra departments are merged in by the

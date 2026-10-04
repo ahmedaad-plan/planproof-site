@@ -322,7 +322,7 @@
         </div>
         <div class="inject-title">${escapeHtml(inject.title)}</div>
         <div class="inject-desc">${escapeHtml(inject.desc)}</div>
-        ${inject.task ? `<div class="inject-task">${escapeHtml(inject.task)}</div>` : ""}
+        ${injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : ""}
         <div class="timer">Time for this inject: <span id="injectTimerValue">--:--</span></div>
       </div>
       <div class="answer-card">
