@@ -55,13 +55,14 @@
   <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
 
   <div class="link-row">
-    Room display link for this session (open on the room screen, or in another tab to test):
+    Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):
     <input id="displayLink" readonly />
   </div>
 
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
+  const facilitatorToken = getFacilitatorToken();
   const statusVal = document.getElementById("statusVal");
   const indexVal = document.getElementById("indexVal");
   const currentInjectEl = document.getElementById("currentInject");
@@ -70,6 +71,19 @@
 
   if (!sessionId) {
     document.body.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+  } else if (!facilitatorToken) {
+    // This page writes to the session (Start/Next/Prev/End/Reset), so without
+    // the facilitator token every action below would be silently rejected by
+    // the database (see shared.js's patchSession). Stop here with a clear
+    // explanation instead of letting someone discover that one click at a
+    // time — this is exactly the "plain session link used where the private
+    // Facilitator link was needed" mistake the roadmap's three-QR design
+    // (Facilitator / Participant-Observer / Room-display) exists to prevent.
+    document.body.innerHTML =
+      "<p>This link is missing its facilitator token (<code>&amp;token=...</code> " +
+      "after the session ID). Use the private Facilitator link for this session, " +
+      "not a room-display or participant link — this page can't control the " +
+      "exercise without it.</p>";
   } else {
     displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
 

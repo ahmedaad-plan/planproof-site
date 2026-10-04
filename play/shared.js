@@ -19,6 +19,17 @@ function getSessionId() {
   return params.get("session");
 }
 
+// The facilitator secret (see "Role enforcement" in design-notes.md / roadmap
+// item 1). Only a link built from the Facilitator QR carries this; the room
+// display and the future Participant/Observer join links never do, and never
+// need to — they only ever read. Reading it here, rather than hardcoding it
+// into facilitator-test.html, keeps the token out of anything that gets
+// cached or shared as a plain session link by mistake.
+function getFacilitatorToken() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("token");
+}
+
 // UUIDs are always 36 characters (32 hex digits + 4 hyphens) in this exact
 // shape. A session ID that doesn't match this is almost always a link that
 // got cut off while being copied or typed, not a real server-side problem —
@@ -87,6 +98,20 @@ async function withRetry(fn, { attempts = 3, baseDelayMs = 500 } = {}) {
 
 async function patchSession(sessionId, fields) {
   assertValidSessionId(sessionId);
+  // Writes now require the session's facilitator token (see
+  // getFacilitatorToken above) — the database rejects any update that
+  // doesn't present it, per the RLS policy added for roadmap item 1
+  // ("Row Level Security on exercise_sessions"). Fail with a clear message
+  // rather than letting the request go out and come back as an opaque
+  // "HTTP 403" — a missing token is almost always a plain room-display link
+  // being used where the Facilitator link (with &token=...) was needed.
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
   await withRetry(async () => {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`,
@@ -96,12 +121,26 @@ async function patchSession(sessionId, fields) {
           apikey: SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal",
+          // return=minimal would make a wrong/stale token fail *silently*:
+          // PostgREST still answers 204 even when the RLS policy filters the
+          // row out of the update entirely (zero rows actually touched), so
+          // return=representation is needed to tell "updated" apart from
+          // "token didn't match, nothing happened" — the response body is
+          // the updated row(s), empty when the token was rejected.
+          Prefer: "return=representation",
+          "x-facilitator-token": facilitatorToken,
         },
         body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
       }
     );
     if (!res.ok) throw new Error(`Update session failed: HTTP ${res.status}`);
+    const rows = await res.json();
+    if (rows.length === 0) {
+      throw new Error(
+        "Update rejected: the facilitator token in this link doesn't match " +
+          "this session. Use the exact Facilitator link that was issued for it."
+      );
+    }
   });
 }
 
