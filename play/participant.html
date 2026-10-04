@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Participant (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    --pp-navy: #0b1f3a;
+    --pp-amber: #e8a33d;
+    --pp-paper: #f4f1ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--pp-navy);
+    color: var(--pp-paper);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-bottom: 1px solid rgba(244,241,234,0.15);
+  }
+  .brand { font-weight: 600; letter-spacing: 0.02em; }
+  main { max-width: 640px; margin: 0 auto; padding: 24px; }
+  .inject-card {
+    background: rgba(244,241,234,0.06); border: 1px solid rgba(244,241,234,0.15);
+    border-radius: 12px; padding: 20px; margin-bottom: 20px;
+  }
+  .inject-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+  .inject-desc { opacity: 0.9; margin-bottom: 14px; }
+  .timer { font-size: 0.85rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
+  .timer.warn { color: var(--pp-amber); }
+  .answer-card {
+    background: var(--pp-paper); color: var(--pp-navy); border-radius: 12px; padding: 20px;
+  }
+  label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0 0 6px; }
+  textarea {
+    width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 1rem; font-family: inherit; resize: vertical; background: white; color: var(--pp-navy);
+  }
+  .attachments { margin-top: 14px; }
+  .attachment-list { list-style: none; padding: 0; margin: 8px 0 0; font-size: 0.85rem; }
+  .attachment-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; background: #f0eee7; border-radius: 6px; margin-bottom: 4px;
+  }
+  .attachment-list button { border: none; background: none; color: #a3271f; cursor: pointer; font-size: 0.9rem; }
+  input[type="file"] { margin-top: 8px; }
+  .save-status { font-size: 0.8rem; opacity: 0.65; margin-top: 10px; min-height: 1.2em; }
+  .row-buttons { display: flex; gap: 10px; margin-top: 16px; }
+  button.submit {
+    flex: 1; font-size: 1.05rem; padding: 12px 18px; border-radius: 8px; border: none;
+    background: var(--pp-navy); color: white; cursor: pointer;
+  }
+  button.submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .submitted-banner {
+    background: #e7f5e9; color: #1e5c28; border-radius: 8px; padding: 10px 14px;
+    font-size: 0.9rem; margin-top: 14px;
+  }
+  .error {
+    display: none; margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+    background: #fde4e1; color: #a3271f; font-size: 0.9rem;
+  }
+  .center-note { text-align: center; opacity: 0.85; padding: 60px 20px; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand" id="clientLabel">PlanProof</div>
+    <div class="brand" id="whoLabel" style="opacity:0.7; font-size:0.85rem;"></div>
+  </header>
+  <main id="main">Loading…</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const mainEl = document.getElementById("main");
+  const clientLabelEl = document.getElementById("clientLabel");
+  const whoLabelEl = document.getElementById("whoLabel");
+
+  let identity = null;
+  let formIdx = null; // which inject index the on-screen form currently represents
+  let attachments = []; // attachments already uploaded for the current inject
+  let submittedForCurrent = false;
+  let saveTimer = null;
+  let injectTimerInterval = null;
+
+  if (!sessionId) {
+    mainEl.innerHTML = `<div class="center-note">No ?session=&lt;id&gt; given in the URL.</div>`;
+  } else {
+    try {
+      identity = JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null");
+    } catch {
+      identity = null;
+    }
+    if (!identity || identity.role !== "participant") {
+      mainEl.innerHTML = `<div class="center-note">You need to join this exercise first.
+        <br/><a href="./join.html?session=${encodeURIComponent(sessionId)}" style="color:var(--pp-amber);">Join now</a></div>`;
+    } else {
+      whoLabelEl.textContent = `${identity.name} — ${identity.department}${identity.room ? ` — Room ${identity.room}` : ""}`;
+      init();
+    }
+  }
+
+  function init() {
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    fetchSession(sessionId).then(render).catch((err) => {
+      mainEl.innerHTML = `<div class="center-note">Couldn't load session: ${escapeHtml(err.message)}</div>`;
+    });
+    subscribeToSession(supabaseClient, sessionId, render);
+    onReconnect(() => {
+      fetchSession(sessionId)
+        .then(render)
+        .catch((err) => console.warn("Resync after reconnect failed:", err.message));
+    });
+  }
+
+  function render(row) {
+    if (!row) return;
+    clientLabelEl.textContent = row.label || "PlanProof";
+
+    if (row.status === "ended") {
+      clearInjectTimer();
+      mainEl.innerHTML = `<div class="center-note">Exercise complete. Thank you for participating.</div>`;
+      formIdx = null;
+      return;
+    }
+    if (row.status === "lobby") {
+      clearInjectTimer();
+      mainEl.innerHTML = `<div class="center-note">Waiting for the facilitator to start the exercise…</div>`;
+      formIdx = null;
+      return;
+    }
+
+    const injects = (row.scenario && row.scenario.injects) || [];
+    const idx = row.current_inject_index;
+    const inject = injects[idx];
+    if (!inject) {
+      mainEl.innerHTML = `<div class="center-note">No inject at index ${idx}.</div>`;
+      return;
+    }
+
+    if (idx !== formIdx) {
+      // Moving to a new inject. If the previous one has unsaved text/
+      // attachments that were never explicitly submitted, this is exactly
+      // the "facilitator moved on before they clicked Submit" moment —
+      // lock in whatever they have as status=autosaved rather than losing
+      // it. (There's no independent per-participant countdown: the
+      // session's shared clock, driven solely by the Facilitator, is what
+      // "time running out" actually means in this design.)
+      if (formIdx !== null && !submittedForCurrent) {
+        const lastAnswer = document.getElementById("answerText");
+        if (lastAnswer) {
+          saveSubmission(sessionId, {
+            injectIndex: formIdx,
+            department: identity.department,
+            answerText: lastAnswer.value,
+            attachments,
+            status: "autosaved",
+          }).catch((err) => console.warn("Autosave on inject change failed:", err.message));
+        }
+      }
+      formIdx = idx;
+      attachments = [];
+      submittedForCurrent = false;
+      renderForm(inject, idx);
+    }
+
+    startInjectTimer(inject.durationMinutes || 0);
+  }
+
+  function renderForm(inject, idx) {
+    mainEl.innerHTML = `
+      <div class="inject-card">
+        <div class="inject-title">${escapeHtml(inject.title)}</div>
+        <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+        <div class="timer">Time for this inject: <span id="injectTimerValue">--:--</span></div>
+      </div>
+      <div class="answer-card">
+        <label for="answerText">Your department's response</label>
+        <textarea id="answerText" placeholder="What is ${escapeHtml(identity.department)} doing right now?"></textarea>
+        <div class="attachments">
+          <label>Attach documents (up to 3, 10MB each)</label>
+          <input type="file" id="fileInput" multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/jpeg,image/png,image/heic" />
+          <ul class="attachment-list" id="attachmentList"></ul>
+        </div>
+        <div class="save-status" id="saveStatus"></div>
+        <div class="error" id="errorBox"></div>
+        <div class="row-buttons">
+          <button class="submit" id="submitBtn">Submit answer</button>
+        </div>
+      </div>
+    `;
+
+    const answerEl = document.getElementById("answerText");
+    const fileInput = document.getElementById("fileInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const saveStatusEl = document.getElementById("saveStatus");
+    const errorBoxEl = document.getElementById("errorBox");
+
+    answerEl.addEventListener("input", () => {
+      saveStatusEl.textContent = "Saving…";
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => autosaveDraft(idx, answerEl, saveStatusEl), 1500);
+    });
+
+    fileInput.addEventListener("change", async () => {
+      const files = Array.from(fileInput.files || []);
+      fileInput.value = "";
+      if (attachments.length + files.length > 3) {
+        errorBoxEl.textContent = "You can attach at most 3 documents.";
+        errorBoxEl.style.display = "block";
+        return;
+      }
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) {
+          errorBoxEl.textContent = `"${file.name}" is over 10MB — not attached.`;
+          errorBoxEl.style.display = "block";
+          continue;
+        }
+        try {
+          saveStatusEl.textContent = `Uploading ${file.name}…`;
+          const uploaded = await uploadAttachment(sessionId, idx, identity.department, file);
+          attachments.push(uploaded);
+          renderAttachmentList();
+          await autosaveDraft(idx, answerEl, saveStatusEl);
+        } catch (err) {
+          errorBoxEl.textContent = err.message;
+          errorBoxEl.style.display = "block";
+        }
+      }
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      errorBoxEl.style.display = "none";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting…";
+      try {
+        await saveSubmission(sessionId, {
+          injectIndex: idx,
+          department: identity.department,
+          answerText: answerEl.value,
+          attachments,
+          status: "submitted",
+        });
+        submittedForCurrent = true;
+        answerEl.disabled = true;
+        fileInput.disabled = true;
+        saveStatusEl.textContent = "";
+        document.querySelector(".row-buttons").insertAdjacentHTML(
+          "beforebegin",
+          `<div class="submitted-banner">✓ Submitted for ${escapeHtml(identity.department)}.</div>`
+        );
+        submitBtn.remove();
+      } catch (err) {
+        errorBoxEl.textContent = err.message;
+        errorBoxEl.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit answer";
+      }
+    });
+
+    renderAttachmentList();
+  }
+
+  function renderAttachmentList() {
+    const listEl = document.getElementById("attachmentList");
+    if (!listEl) return;
+    listEl.innerHTML = attachments
+      .map(
+        (a, i) => `<li><span>${escapeHtml(a.filename)}</span><button data-i="${i}">Remove</button></li>`
+      )
+      .join("");
+    listEl.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        attachments.splice(Number(btn.dataset.i), 1);
+        renderAttachmentList();
+      });
+    });
+  }
+
+  async function autosaveDraft(idx, answerEl, saveStatusEl) {
+    if (submittedForCurrent) return;
+    try {
+      await saveSubmission(sessionId, {
+        injectIndex: idx,
+        department: identity.department,
+        answerText: answerEl.value,
+        attachments,
+        status: "draft",
+      });
+      if (saveStatusEl) saveStatusEl.textContent = "Saved.";
+    } catch (err) {
+      if (saveStatusEl) saveStatusEl.textContent = `Couldn't save: ${err.message}`;
+    }
+  }
+
+  function startInjectTimer(minutes) {
+    clearInjectTimer();
+    const end = Date.now() + minutes * 60 * 1000;
+    function tick() {
+      const el = document.getElementById("injectTimerValue");
+      if (!el) return;
+      const remainingMs = end - Date.now();
+      const sign = remainingMs < 0 ? "-" : "";
+      const abs = Math.abs(remainingMs);
+      const m = Math.floor(abs / 60000);
+      const s = Math.floor((abs % 60000) / 1000);
+      el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      el.classList.toggle("warn", remainingMs < 0);
+    }
+    tick();
+    injectTimerInterval = setInterval(tick, 1000);
+  }
+
+  function clearInjectTimer() {
+    if (injectTimerInterval) clearInterval(injectTimerInterval);
+    injectTimerInterval = null;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+</script>
+</body>
+</html>

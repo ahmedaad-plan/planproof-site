@@ -181,12 +181,26 @@
       joinBtn.textContent = "Joining…";
       try {
         await joinSession(sessionId, { name, department, role, room });
-        // Neither role has its own screen yet (Observer notes and
-        // Participant task-submission UI are later roadmap items) — for
-        // now both land on the same read-only room display everyone else
-        // watches, which is genuinely what an Observer's view is meant to
-        // be ("everything the Facilitator can see, nothing they can do").
-        location.href = `./room-display.html?session=${encodeURIComponent(sessionId)}`;
+        // No login exists, so this is the only way the next page knows who
+        // just joined — a plain same-browser handoff, not the durable
+        // "recognize me on reload" identity persistence that's roadmap
+        // item 9 (that would need to survive a refresh/crash; this only
+        // needs to survive one redirect).
+        try {
+          localStorage.setItem(
+            `pp_identity_${sessionId}`,
+            JSON.stringify({ name, department, role, room })
+          );
+        } catch {
+          /* localStorage unavailable (private mode, etc.) — not fatal, the
+             next page just won't have a name/department prefilled. */
+        }
+        // Observer has no notes panel yet (roadmap item 4), so today they
+        // genuinely belong on the same room display everyone else watches
+        // ("everything the Facilitator can see, nothing they can do").
+        // Participant now has their own task-submission screen.
+        const dest = role === "participant" ? "./participant.html" : "./room-display.html";
+        location.href = `${dest}?session=${encodeURIComponent(sessionId)}`;
       } catch (err) {
         errorBoxEl.textContent = err.message;
         errorBoxEl.style.display = "block";

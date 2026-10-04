@@ -192,6 +192,97 @@ async function joinSession(sessionId, { name, department, role, room }) {
   }
 }
 
+// Saves a department's answer to one inject (roadmap: participant task
+// submission). One row per (session, inject, department) — anyone who
+// joined as that department can write it, same self-declared trust model
+// the join flow already uses (no login exists to check against, so this
+// isn't a new weaker boundary). Deliberately NOT an upsert: PostgREST/
+// Postgres's ON CONFLICT DO UPDATE requires full-row SELECT privilege to
+// even attempt it, which would mean granting anon read access to every
+// department's actual answer text across every session — a much worse
+// exposure than the metadata-only reads already accepted elsewhere. Insert
+// first; a unique-constraint conflict (this department already has a row
+// for this inject) falls back to a plain UPDATE, which only needs SELECT
+// on the filter columns (session_id/inject_index/department — granted),
+// never on answer_text/attachments/status.
+async function saveSubmission(sessionId, { injectIndex, department, answerText, attachments, status }) {
+  assertValidSessionId(sessionId);
+  const commonHeaders = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    "Content-Type": "application/json",
+    Prefer: "return=minimal",
+  };
+
+  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions`, {
+    method: "POST",
+    headers: commonHeaders,
+    body: JSON.stringify({
+      session_id: sessionId,
+      inject_index: injectIndex,
+      department,
+      answer_text: answerText,
+      attachments,
+      status,
+    }),
+  });
+  if (insertRes.ok) return;
+  if (insertRes.status !== 409) {
+    throw new Error(`Couldn't save your answer: HTTP ${insertRes.status}`);
+  }
+
+  // 409 = a row for this (session, inject, department) already exists —
+  // expected on every save after the first one for the same inject.
+  const filter =
+    `session_id=eq.${encodeURIComponent(sessionId)}` +
+    `&inject_index=eq.${encodeURIComponent(injectIndex)}` +
+    `&department=eq.${encodeURIComponent(department)}`;
+  const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions?${filter}`, {
+    method: "PATCH",
+    headers: commonHeaders,
+    body: JSON.stringify({ answer_text: answerText, attachments, status }),
+  });
+  if (!updateRes.ok) throw new Error(`Couldn't save your answer: HTTP ${updateRes.status}`);
+}
+
+// Uploads one attachment to Supabase Storage ahead of saveSubmission — the
+// returned {path, filename, size, contentType} is meant to go straight into
+// that submission's `attachments` array. The bucket itself enforces the
+// real limits (10MB/file, a fixed set of document/image types) server-side
+// regardless of what the browser claims, so a tampered client can't bypass
+// them.
+async function uploadAttachment(sessionId, injectIndex, department, file) {
+  assertValidSessionId(sessionId);
+  const safeDept = department.replace(/[^a-zA-Z0-9_-]/g, "_") || "unknown";
+  const path = `${sessionId}/${injectIndex}/${safeDept}/${Date.now()}-${file.name}`;
+  const res = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/submission-attachments/${path
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    }
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body && body.message) detail = body.message;
+    } catch {
+      /* not JSON — keep the plain status */
+    }
+    throw new Error(`Couldn't upload "${file.name}": ${detail}`);
+  }
+  return { path, filename: file.name, size: file.size, contentType: file.type };
+}
+
 // Fires `callback` whenever this device looks like it just came back —
 // either the browser's own "online" event, or the tab becoming visible
 // again (mobile browsers suspend/throttle background tabs, which can drop
