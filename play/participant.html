@@ -86,8 +86,16 @@
   let formIdx = null; // which inject index the on-screen form currently represents
   let attachments = []; // attachments already uploaded for the current inject
   let submittedForCurrent = false;
+  let injectLocked = false; // true once Submit was clicked OR this inject's time ran out
   let saveTimer = null;
   let injectTimerInterval = null;
+  // References to the currently-rendered form's elements, so the timeout
+  // handler (fired from startInjectTimer, outside renderForm's own closure)
+  // can disable them without re-querying the DOM.
+  let currentAnswerEl = null;
+  let currentFileInput = null;
+  let currentSubmitBtn = null;
+  let currentSaveStatusEl = null;
 
   if (!sessionId) {
     mainEl.innerHTML = `<div class="center-note">No ?session=&lt;id&gt; given in the URL.</div>`;
@@ -146,13 +154,11 @@
 
     if (idx !== formIdx) {
       // Moving to a new inject. If the previous one has unsaved text/
-      // attachments that were never explicitly submitted, this is exactly
-      // the "facilitator moved on before they clicked Submit" moment —
-      // lock in whatever they have as status=autosaved rather than losing
-      // it. (There's no independent per-participant countdown: the
-      // session's shared clock, driven solely by the Facilitator, is what
-      // "time running out" actually means in this design.)
-      if (formIdx !== null && !submittedForCurrent) {
+      // attachments that were never explicitly submitted or already locked
+      // by its own timeout, this is the "facilitator moved on before they
+      // clicked Submit" moment — lock in whatever they have as
+      // status=autosaved rather than losing it.
+      if (formIdx !== null && !submittedForCurrent && !injectLocked) {
         const lastAnswer = document.getElementById("answerText");
         if (lastAnswer) {
           saveSubmission(sessionId, {
@@ -167,10 +173,15 @@
       formIdx = idx;
       attachments = [];
       submittedForCurrent = false;
+      injectLocked = false;
       renderForm(inject, idx);
+      // Each inject's own duration is now a real deadline, not just a
+      // display: once it elapses, the participant can no longer edit or
+      // submit for THIS inject, even if the facilitator hasn't advanced yet
+      // (the facilitator-advance autosave above remains a second, later
+      // safety net in case the facilitator advances before this fires).
+      startInjectTimer(inject.durationMinutes || 0, lockForCurrentInject);
     }
-
-    startInjectTimer(inject.durationMinutes || 0);
   }
 
   function renderForm(inject, idx) {
@@ -203,13 +214,22 @@
     const saveStatusEl = document.getElementById("saveStatus");
     const errorBoxEl = document.getElementById("errorBox");
 
+    // So lockForCurrentInject (called from the timer, outside this closure)
+    // can reach this exact form's elements.
+    currentAnswerEl = answerEl;
+    currentFileInput = fileInput;
+    currentSubmitBtn = submitBtn;
+    currentSaveStatusEl = saveStatusEl;
+
     answerEl.addEventListener("input", () => {
+      if (injectLocked) return; // belt-and-suspenders: disabled fields shouldn't fire input anyway
       saveStatusEl.textContent = "Saving…";
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => autosaveDraft(idx, answerEl, saveStatusEl), 1500);
     });
 
     fileInput.addEventListener("change", async () => {
+      if (injectLocked) return;
       const files = Array.from(fileInput.files || []);
       fileInput.value = "";
       if (attachments.length + files.length > 3) {
@@ -237,6 +257,7 @@
     });
 
     submitBtn.addEventListener("click", async () => {
+      if (injectLocked) return; // time ran out before the click was processed
       errorBoxEl.style.display = "none";
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting…";
@@ -249,6 +270,7 @@
           status: "submitted",
         });
         submittedForCurrent = true;
+        injectLocked = true; // submitted — never editable again for this inject
         answerEl.disabled = true;
         fileInput.disabled = true;
         saveStatusEl.textContent = "";
@@ -285,7 +307,7 @@
   }
 
   async function autosaveDraft(idx, answerEl, saveStatusEl) {
-    if (submittedForCurrent) return;
+    if (submittedForCurrent || injectLocked) return;
     try {
       await saveSubmission(sessionId, {
         injectIndex: idx,
@@ -300,19 +322,57 @@
     }
   }
 
-  function startInjectTimer(minutes) {
+  // Locks the on-screen form the moment this inject's own timer runs out —
+  // not just when the facilitator advances. Ahmed's instruction: once time
+  // is over for an inject, the participant can no longer submit or go back
+  // and edit their remarks for it. Whatever's on screen at that instant is
+  // autosaved one last time (unless already explicitly submitted), then the
+  // textarea, file input, and Submit button are all disabled.
+  function lockForCurrentInject() {
+    if (injectLocked || submittedForCurrent) return;
+    injectLocked = true;
+    if (currentAnswerEl) {
+      saveSubmission(sessionId, {
+        injectIndex: formIdx,
+        department: identity.department,
+        answerText: currentAnswerEl.value,
+        attachments,
+        status: "autosaved",
+      }).catch((err) => console.warn("Autosave on timeout failed:", err.message));
+      currentAnswerEl.disabled = true;
+    }
+    if (currentFileInput) currentFileInput.disabled = true;
+    if (currentSubmitBtn) {
+      currentSubmitBtn.disabled = true;
+      currentSubmitBtn.textContent = "Time's up";
+    }
+    if (currentSaveStatusEl) {
+      currentSaveStatusEl.textContent =
+        "Time's up for this inject — your response has been saved automatically.";
+    }
+  }
+
+  function startInjectTimer(minutes, onExpire) {
     clearInjectTimer();
     const end = Date.now() + minutes * 60 * 1000;
+    let expired = false;
     function tick() {
       const el = document.getElementById("injectTimerValue");
-      if (!el) return;
       const remainingMs = end - Date.now();
-      const sign = remainingMs < 0 ? "-" : "";
-      const abs = Math.abs(remainingMs);
-      const m = Math.floor(abs / 60000);
-      const s = Math.floor((abs % 60000) / 1000);
-      el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-      el.classList.toggle("warn", remainingMs < 0);
+      if (el) {
+        const sign = remainingMs < 0 ? "-" : "";
+        const abs = Math.abs(remainingMs);
+        const m = Math.floor(abs / 60000);
+        const s = Math.floor((abs % 60000) / 1000);
+        el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        el.classList.toggle("warn", remainingMs < 0);
+      }
+      // minutes > 0 guard: an inject with no duration set shouldn't lock the
+      // form the instant it renders — treat it as having no deadline.
+      if (!expired && minutes > 0 && remainingMs <= 0) {
+        expired = true;
+        if (onExpire) onExpire();
+      }
     }
     tick();
     injectTimerInterval = setInterval(tick, 1000);
