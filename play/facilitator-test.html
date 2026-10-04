@@ -47,8 +47,17 @@
     <button class="primary" id="startBtn">Start exercise</button>
     <button id="prevBtn">&larr; Previous inject</button>
     <button id="nextBtn">Next inject &rarr;</button>
+    <button id="extendBtn">+5 min for this inject</button>
+    <button id="unlockBtn">Unlock this inject</button>
     <button id="endBtn">End exercise</button>
     <button id="resetBtn">Reset to lobby</button>
+  </div>
+  <div class="note" style="margin-top:4px; margin-bottom:0;">
+    "Unlock this inject" re-opens participant submissions for whichever inject
+    is current right now — including one they already submitted, or one that
+    timed out — until you click "Lock this inject" again or move on. To
+    revisit and unlock an <em>earlier</em> inject, use Previous to make it
+    current again, then Unlock.
   </div>
 
   <div class="current-inject" id="currentInject">—</div>
@@ -97,9 +106,11 @@
     const startBtn = document.getElementById("startBtn");
     const nextBtn = document.getElementById("nextBtn");
     const prevBtn = document.getElementById("prevBtn");
+    const extendBtn = document.getElementById("extendBtn");
+    const unlockBtn = document.getElementById("unlockBtn");
     const endBtn = document.getElementById("endBtn");
     const resetBtn = document.getElementById("resetBtn");
-    const actionButtons = [startBtn, nextBtn, prevBtn, endBtn, resetBtn];
+    const actionButtons = [startBtn, nextBtn, prevBtn, extendBtn, unlockBtn, endBtn, resetBtn];
 
     // Wraps a button's click handler so that: (1) every click fully finishes
     // — including the follow-up refresh() — before another click is read,
@@ -137,6 +148,11 @@
       startBtn.disabled = false;
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
+      extendBtn.disabled = !isRunning;
+      unlockBtn.disabled = !isRunning;
+      unlockBtn.textContent = currentRow && currentRow.inject_force_unlocked
+        ? "Lock this inject"
+        : "Unlock this inject";
       endBtn.disabled = false;
       resetBtn.disabled = false;
     }
@@ -150,25 +166,68 @@
     // the moment this device looks like it's back.
     onReconnect(refresh);
 
+    // inject_extra_minutes and inject_force_unlocked always reset whenever
+    // current_inject_index actually changes — both only ever mean "about the
+    // inject showing right now." Leaving either one stuck on from a previous
+    // inject would otherwise affect the WRONG inject's form the next time
+    // either value changes.
     onClick(document.getElementById("startBtn"), () =>
-      patchSession(sessionId, { status: "running", current_inject_index: 0 })
+      patchSession(sessionId, {
+        status: "running",
+        current_inject_index: 0,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      })
     );
     onClick(document.getElementById("nextBtn"), () => {
       if (!currentRow) return;
       const max = (currentRow.scenario.injects || []).length - 1;
       const next = Math.min(currentRow.current_inject_index + 1, max);
-      return patchSession(sessionId, { current_inject_index: next });
+      return patchSession(sessionId, {
+        current_inject_index: next,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      });
     });
     onClick(document.getElementById("prevBtn"), () => {
       if (!currentRow) return;
       const prev = Math.max(currentRow.current_inject_index - 1, 0);
-      return patchSession(sessionId, { current_inject_index: prev });
+      return patchSession(sessionId, {
+        current_inject_index: prev,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      });
+    });
+    onClick(document.getElementById("extendBtn"), () => {
+      if (!currentRow) return;
+      // Participants should never need to be told "the facilitator added
+      // time" out of band — the same realtime row update that already
+      // syncs status/current_inject_index everywhere carries this too, so
+      // participant.html picks it up and extends (and un-locks, if it had
+      // already timed out but not been submitted) automatically.
+      const extended = (currentRow.inject_extra_minutes || 0) + 5;
+      return patchSession(sessionId, { inject_extra_minutes: extended });
+    });
+    onClick(document.getElementById("unlockBtn"), () => {
+      if (!currentRow) return;
+      // Toggle: re-opens the CURRENT inject's submission for every
+      // participant even if they already submitted or timed out, until
+      // clicked again (re-locks immediately) or the Facilitator moves on
+      // (which resets this to false anyway, per the comment above). To
+      // revisit an earlier inject, use Previous to make it current first —
+      // this button only ever acts on whichever inject is current right now.
+      return patchSession(sessionId, { inject_force_unlocked: !currentRow.inject_force_unlocked });
     });
     onClick(document.getElementById("endBtn"), () =>
       patchSession(sessionId, { status: "ended" })
     );
     onClick(document.getElementById("resetBtn"), () =>
-      patchSession(sessionId, { status: "lobby", current_inject_index: -1 })
+      patchSession(sessionId, {
+        status: "lobby",
+        current_inject_index: -1,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      })
     );
 
     async function refresh() {
@@ -180,8 +239,13 @@
       const isLast = currentRow.current_inject_index === injects.length - 1;
       indexVal.textContent = `${currentRow.current_inject_index} of ${injects.length - 1}${isLast ? " — last inject" : ""}`;
       const inject = injects[currentRow.current_inject_index];
+      const extra = currentRow.inject_extra_minutes || 0;
+      const durationText = extra > 0
+        ? `${inject && inject.durationMinutes} + ${extra} extended = ${(inject && inject.durationMinutes || 0) + extra} min`
+        : `${inject && inject.durationMinutes} min`;
+      const unlockText = currentRow.inject_force_unlocked ? " — UNLOCKED for participants" : "";
       currentInjectEl.textContent = inject
-        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${inject.durationMinutes} min${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
+        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
         : "No current inject.";
     }
 

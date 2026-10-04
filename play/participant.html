@@ -87,8 +87,18 @@
   let attachments = []; // attachments already uploaded for the current inject
   let submittedForCurrent = false;
   let injectLocked = false; // true once Submit was clicked OR this inject's time ran out
+  let currentExtraMinutes = 0; // the exercise_sessions.inject_extra_minutes value already applied to the running timer, for the inject currently on screen
+  let forceUnlocked = false; // mirrors exercise_sessions.inject_force_unlocked for the inject currently on screen
   let saveTimer = null;
   let injectTimerInterval = null;
+  // Client-side-only history of what this device had for each inject index,
+  // so going back to an earlier inject (the Facilitator can move Previous,
+  // then Unlock) restores what was there instead of a blank form. Purely
+  // local — exercise_submissions' content columns stay write-only to anon
+  // (see "Participant task submission" in design-notes.md), so this is
+  // never re-read from the server. Lost on a page reload; the server copy
+  // is unaffected either way.
+  const answersCache = {};
   // References to the currently-rendered form's elements, so the timeout
   // handler (fired from startInjectTimer, outside renderForm's own closure)
   // can disable them without re-querying the DOM.
@@ -96,6 +106,7 @@
   let currentFileInput = null;
   let currentSubmitBtn = null;
   let currentSaveStatusEl = null;
+  let currentInjectData = null; // the inject object currently on screen, so lockForCurrentInject/unlockForCurrentInject (called from outside render()'s closure) can rebuild the form
 
   if (!sessionId) {
     mainEl.innerHTML = `<div class="center-note">No ?session=&lt;id&gt; given in the URL.</div>`;
@@ -151,40 +162,109 @@
       mainEl.innerHTML = `<div class="center-note">No inject at index ${idx}.</div>`;
       return;
     }
+    currentInjectData = inject; // so lock/unlock helpers outside this closure can rebuild the form
 
     if (idx !== formIdx) {
-      // Moving to a new inject. If the previous one has unsaved text/
-      // attachments that were never explicitly submitted or already locked
-      // by its own timeout, this is the "facilitator moved on before they
-      // clicked Submit" moment — lock in whatever they have as
-      // status=autosaved rather than losing it.
-      if (formIdx !== null && !submittedForCurrent && !injectLocked) {
-        const lastAnswer = document.getElementById("answerText");
-        if (lastAnswer) {
+      // Moving to a different inject (forward via Next, or backward via
+      // Previous — the Facilitator can send a participant back to an
+      // earlier inject at any time). Snapshot what's on screen right now
+      // into the local cache before it's replaced, so coming back to THIS
+      // inject later restores it instead of showing blank.
+      if (formIdx !== null) {
+        const lastAnswerEl = document.getElementById("answerText");
+        answersCache[formIdx] = {
+          answerText: lastAnswerEl ? lastAnswerEl.value : "",
+          attachments: attachments.slice(),
+          submitted: submittedForCurrent,
+          locked: injectLocked,
+        };
+        // If it wasn't explicitly submitted or already locked, this is the
+        // "facilitator moved on before they clicked Submit" moment — lock
+        // in whatever they have as status=autosaved rather than losing it.
+        if (!submittedForCurrent && !injectLocked && lastAnswerEl) {
           saveSubmission(sessionId, {
             injectIndex: formIdx,
             department: identity.department,
-            answerText: lastAnswer.value,
+            answerText: lastAnswerEl.value,
             attachments,
             status: "autosaved",
           }).catch((err) => console.warn("Autosave on inject change failed:", err.message));
         }
       }
+
       formIdx = idx;
-      attachments = [];
-      submittedForCurrent = false;
-      injectLocked = false;
-      renderForm(inject, idx);
-      // Each inject's own duration is now a real deadline, not just a
-      // display: once it elapses, the participant can no longer edit or
-      // submit for THIS inject, even if the facilitator hasn't advanced yet
-      // (the facilitator-advance autosave above remains a second, later
-      // safety net in case the facilitator advances before this fires).
-      startInjectTimer(inject.durationMinutes || 0, lockForCurrentInject);
+      currentExtraMinutes = row.inject_extra_minutes || 0;
+      forceUnlocked = !!row.inject_force_unlocked;
+
+      // Restore this inject's own history on this device, if any — e.g. the
+      // Facilitator sent everyone back to an inject already submitted or
+      // timed out. forceUnlocked (only ever true right after an explicit
+      // Unlock, since it's reset on every navigation) means edit it fresh
+      // regardless of that history.
+      const cached = answersCache[idx];
+      attachments = cached ? cached.attachments.slice() : [];
+      submittedForCurrent = forceUnlocked ? false : cached ? cached.submitted : false;
+      injectLocked = forceUnlocked ? false : cached ? cached.locked : false;
+
+      renderForm(inject, idx, {
+        answerText: cached ? cached.answerText : "",
+        submitted: cached ? cached.submitted : false,
+        locked: cached ? cached.locked : false,
+      });
+
+      if (!forceUnlocked && !submittedForCurrent && !injectLocked) {
+        // Each inject's own duration (plus any extension already granted
+        // before this device even loaded it) is a real deadline: once it
+        // elapses, the participant can no longer edit or submit for THIS
+        // inject, even if the facilitator hasn't advanced yet (the
+        // facilitator-advance autosave above remains a second, later
+        // safety net in case the facilitator advances before this fires).
+        startInjectTimer((inject.durationMinutes || 0) + currentExtraMinutes, lockForCurrentInject);
+      } else {
+        clearInjectTimer();
+      }
+    } else {
+      // Same inject still on screen. Two independent things the Facilitator
+      // can change without navigating away — check both.
+      const forceNow = !!row.inject_force_unlocked;
+      if (forceNow !== forceUnlocked) {
+        if (forceNow) {
+          // Confirmed with Ahmed, 4 October 2026: unlocking must re-open
+          // the form even if it was already submitted or timed out, and
+          // allow resubmission. Capture what it was before clearing the
+          // flags, so the rebuilt form can still mention the history.
+          const wasSubmitted = submittedForCurrent;
+          const wasLocked = injectLocked;
+          forceUnlocked = true;
+          submittedForCurrent = false;
+          unlockForCurrentInject(
+            "The facilitator has unlocked this inject — you can edit and resubmit.",
+            wasSubmitted,
+            wasLocked
+          );
+        } else {
+          forceUnlocked = false;
+          lockForCurrentInject(true, "The facilitator has locked this inject again.");
+        }
+      }
+
+      // Extending time gives it back even if this device had already locked
+      // the form on timeout — never applies once explicitly submitted, and
+      // not while the Facilitator's manual unlock is already in effect (that
+      // already allows editing regardless of any timer).
+      const extraNow = row.inject_extra_minutes || 0;
+      if (!forceUnlocked && extraNow > currentExtraMinutes && !submittedForCurrent) {
+        currentExtraMinutes = extraNow;
+        startInjectTimer((inject.durationMinutes || 0) + currentExtraMinutes, lockForCurrentInject);
+        if (injectLocked) {
+          unlockForCurrentInject("The facilitator added more time — you can continue.", false, true);
+        }
+      }
     }
   }
 
-  function renderForm(inject, idx) {
+  function renderForm(inject, idx, initial) {
+    initial = initial || {};
     mainEl.innerHTML = `
       <div class="inject-card">
         <div class="inject-title">${escapeHtml(inject.title)}</div>
@@ -193,7 +273,7 @@
       </div>
       <div class="answer-card">
         <label for="answerText">Your department's response</label>
-        <textarea id="answerText" placeholder="What is ${escapeHtml(identity.department)} doing right now?"></textarea>
+        <textarea id="answerText" placeholder="What is ${escapeHtml(identity.department)} doing right now?">${escapeHtml(initial.answerText || "")}</textarea>
         <div class="attachments">
           <label>Attach documents (up to 3, 10MB each)</label>
           <input type="file" id="fileInput" multiple
@@ -270,7 +350,7 @@
           status: "submitted",
         });
         submittedForCurrent = true;
-        injectLocked = true; // submitted — never editable again for this inject
+        injectLocked = true; // locked unless/until the Facilitator explicitly unlocks this inject
         answerEl.disabled = true;
         fileInput.disabled = true;
         saveStatusEl.textContent = "";
@@ -286,6 +366,33 @@
         submitBtn.textContent = "Submit answer";
       }
     });
+
+    // Apply whatever state this inject was already in — e.g. the Facilitator
+    // sent everyone back to an inject already submitted or timed out on this
+    // device. forceUnlocked overrides all of it (the caller already reset
+    // submittedForCurrent/injectLocked to false in that case) — just note
+    // the history so it isn't a surprise.
+    if (forceUnlocked) {
+      if (initial.submitted || initial.locked) {
+        saveStatusEl.textContent =
+          `Unlocked by the facilitator — previously ${initial.submitted ? "submitted" : "timed out"}; you can edit and resubmit.`;
+      }
+    } else if (initial.submitted) {
+      answerEl.disabled = true;
+      fileInput.disabled = true;
+      document.querySelector(".row-buttons").insertAdjacentHTML(
+        "beforebegin",
+        `<div class="submitted-banner">✓ Submitted for ${escapeHtml(identity.department)}.</div>`
+      );
+      submitBtn.remove();
+    } else if (initial.locked) {
+      answerEl.disabled = true;
+      fileInput.disabled = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Time's up";
+      saveStatusEl.textContent =
+        "Time's up for this inject — your response has been saved automatically.";
+    }
 
     renderAttachmentList();
   }
@@ -322,33 +429,65 @@
     }
   }
 
-  // Locks the on-screen form the moment this inject's own timer runs out —
-  // not just when the facilitator advances. Ahmed's instruction: once time
-  // is over for an inject, the participant can no longer submit or go back
-  // and edit their remarks for it. Whatever's on screen at that instant is
-  // autosaved one last time (unless already explicitly submitted), then the
-  // textarea, file input, and Submit button are all disabled.
-  function lockForCurrentInject() {
-    if (injectLocked || submittedForCurrent) return;
+  // Locks the on-screen form — normally the moment this inject's own timer
+  // runs out, but `force` also lets the Facilitator's "Lock this inject"
+  // toggle re-lock it on demand (confirmed with Ahmed, 4 October 2026),
+  // even with no new timeout or submit involved. Whatever's on screen at
+  // that instant is autosaved one last time (unless already explicitly
+  // submitted — that answer stays as submitted, not overwritten with a
+  // draft), then the textarea, file input, and Submit button are disabled.
+  function lockForCurrentInject(force, message) {
+    if (!force && (injectLocked || submittedForCurrent)) return;
     injectLocked = true;
     if (currentAnswerEl) {
-      saveSubmission(sessionId, {
-        injectIndex: formIdx,
-        department: identity.department,
-        answerText: currentAnswerEl.value,
-        attachments,
-        status: "autosaved",
-      }).catch((err) => console.warn("Autosave on timeout failed:", err.message));
+      if (!submittedForCurrent) {
+        saveSubmission(sessionId, {
+          injectIndex: formIdx,
+          department: identity.department,
+          answerText: currentAnswerEl.value,
+          attachments,
+          status: "autosaved",
+        }).catch((err) => console.warn("Autosave on lock failed:", err.message));
+      }
       currentAnswerEl.disabled = true;
     }
     if (currentFileInput) currentFileInput.disabled = true;
     if (currentSubmitBtn) {
       currentSubmitBtn.disabled = true;
-      currentSubmitBtn.textContent = "Time's up";
+      currentSubmitBtn.textContent = force ? "Locked" : "Time's up";
     }
     if (currentSaveStatusEl) {
       currentSaveStatusEl.textContent =
-        "Time's up for this inject — your response has been saved automatically.";
+        message || "Time's up for this inject — your response has been saved automatically.";
+    }
+  }
+
+  // Reverses a lock — whether from this inject's own timeout, or from an
+  // explicit Submit (which show different DOM: Submit locks by removing the
+  // button and inserting a banner, not just disabling fields) — by fully
+  // re-rendering the form as editable, with whatever was last on screen
+  // preserved. Triggered by a time extension (timeout-locks only) or by the
+  // Facilitator's explicit "Unlock this inject" (any lock, including an
+  // already-submitted answer — confirmed with Ahmed, 4 October 2026: an
+  // extension gives the time back exactly as if the inject had been that
+  // long from the start; an explicit unlock re-opens it for editing and
+  // resubmission regardless of why it was locked).
+  function unlockForCurrentInject(message, wasSubmitted, wasLocked) {
+    if (!currentInjectData) return;
+    injectLocked = false;
+    const preservedAnswer = currentAnswerEl ? currentAnswerEl.value : "";
+    // submitted/locked here are passed through only so renderForm can note
+    // the history (e.g. "previously submitted") when forceUnlocked is what
+    // made this editable again — they are NOT re-applied as the active
+    // lock state, since the whole point of this call is to make the form
+    // editable right now.
+    renderForm(currentInjectData, formIdx, {
+      answerText: preservedAnswer,
+      submitted: !!wasSubmitted,
+      locked: !!wasLocked,
+    });
+    if (currentSaveStatusEl) {
+      currentSaveStatusEl.textContent = message || "The facilitator added more time — you can continue.";
     }
   }
 
