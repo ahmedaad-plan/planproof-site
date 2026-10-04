@@ -103,7 +103,21 @@
   }
 
   function renderForm(session) {
-    const departments = (session.scenario && session.scenario.departments) || [];
+    // extra_departments are ones the Facilitator added from the dashboard
+    // before starting (roadmap: fixing mis-registrations) — merged in here
+    // so they show up in the dropdown exactly like the scenario's own
+    // departments. De-duplicated case-insensitively in case a facilitator
+    // adds one that's already in the scenario's list under slightly
+    // different casing.
+    const baseDepartments = (session.scenario && session.scenario.departments) || [];
+    const extraDepartments = session.extra_departments || [];
+    const seen = new Set();
+    const departments = [...baseDepartments, ...extraDepartments].filter((d) => {
+      const key = d.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const roomCount = session.room_count || 1;
 
     const departmentField = departments.length

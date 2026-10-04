@@ -30,6 +30,25 @@
   .current-inject { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 600px; }
   .link-row { margin-top: 24px; font-size: 0.9rem; }
   .link-row input { width: 100%; padding: 6px; font-family: monospace; }
+  .roster-section { margin-top: 28px; max-width: 600px; }
+  .roster-section h2 { font-size: 1.05rem; margin-bottom: 4px; }
+  .add-dept-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-dept-row input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.95rem; }
+  .add-dept-row button { padding: 8px 14px; font-size: 0.95rem; }
+  .roster-dept {
+    background: white; border: 1px solid #ddd; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 10px;
+  }
+  .roster-dept h3 { font-size: 0.95rem; margin: 0 0 6px; }
+  .roster-dept ul { list-style: none; margin: 0; padding: 0; }
+  .roster-dept li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 0; font-size: 0.9rem; border-top: 1px solid #f0f0f0;
+  }
+  .roster-dept li:first-child { border-top: none; }
+  .roster-dept li button {
+    font-size: 0.8rem; padding: 4px 10px; border-color: #b00020; color: #b00020;
+  }
 </style>
 </head>
 <body>
@@ -62,6 +81,21 @@
 
   <div class="current-inject" id="currentInject">—</div>
   <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+
+  <div class="roster-section">
+    <h2>Registered participants &amp; observers</h2>
+    <div class="note" id="addDeptNote" style="margin-bottom:10px;">
+      Add any department missing from the list below — do this before
+      clicking "Start exercise". Departments can't be added once the
+      exercise is running.
+    </div>
+    <div class="add-dept-row">
+      <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
+      <button id="addDeptBtn">Add department</button>
+    </div>
+    <div id="rosterError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+    <div id="roster">Loading…</div>
+  </div>
 
   <div class="link-row">
     Participant/Observer join link for this session (share this one — it has no facilitator token):
@@ -112,6 +146,18 @@
     const resetBtn = document.getElementById("resetBtn");
     const actionButtons = [startBtn, nextBtn, prevBtn, extendBtn, unlockBtn, endBtn, resetBtn];
 
+    const addDeptNoteEl = document.getElementById("addDeptNote");
+    const newDeptInputEl = document.getElementById("newDeptInput");
+    const addDeptBtn = document.getElementById("addDeptBtn");
+    const rosterErrorEl = document.getElementById("rosterError");
+    const rosterEl = document.getElementById("roster");
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[c]);
+    }
+
     // Wraps a button's click handler so that: (1) every click fully finishes
     // — including the follow-up refresh() — before another click is read,
     // which was the actual bug behind "Next doesn't work": clicking twice
@@ -155,9 +201,121 @@
         : "Unlock this inject";
       endBtn.disabled = false;
       resetBtn.disabled = false;
+
+      // Departments are only ever added before the exercise starts (per
+      // Ahmed: someone claiming a late-added department mid-exercise
+      // shouldn't be accepted) — hide the control the moment it's running,
+      // rather than relying on people not to click it.
+      const canAddDept = !currentRow || currentRow.status === "lobby";
+      addDeptNoteEl.style.display = canAddDept ? "block" : "none";
+      newDeptInputEl.style.display = canAddDept ? "" : "none";
+      addDeptBtn.style.display = canAddDept ? "" : "none";
+    }
+
+    addDeptBtn.addEventListener("click", async () => {
+      const name = newDeptInputEl.value.trim();
+      rosterErrorEl.style.display = "none";
+      if (!name) return;
+      if (!currentRow) {
+        rosterErrorEl.textContent = "Add department failed: session not loaded yet.";
+        rosterErrorEl.style.display = "block";
+        return;
+      }
+      const existing = [
+        ...((currentRow.scenario && currentRow.scenario.departments) || []),
+        ...(currentRow.extra_departments || []),
+      ].map((d) => d.toLowerCase());
+      if (existing.includes(name.toLowerCase())) {
+        rosterErrorEl.textContent = `"${name}" is already in the department list.`;
+        rosterErrorEl.style.display = "block";
+        return;
+      }
+      addDeptBtn.disabled = true;
+      try {
+        const updated = [...(currentRow.extra_departments || []), name];
+        await patchSession(sessionId, { extra_departments: updated });
+        newDeptInputEl.value = "";
+        await refresh();
+      } catch (err) {
+        rosterErrorEl.textContent = `Add department failed: ${err.message}`;
+        rosterErrorEl.style.display = "block";
+      } finally {
+        addDeptBtn.disabled = false;
+      }
+    });
+
+    // The attendee roster isn't on Realtime (see design-notes.md — a
+    // header-gated RLS policy like this one can't be evaluated for a
+    // realtime payload, since those have no HTTP headers to check), so new
+    // joiners are picked up by polling instead of an instant push. Every 5
+    // seconds is frequent enough to reconcile a room's headcount against the
+    // dashboard without hammering the database.
+    async function refreshRoster() {
+      try {
+        const attendees = await fetchAttendees(sessionId, facilitatorToken);
+        renderRoster(attendees);
+      } catch (err) {
+        rosterErrorEl.textContent = `Couldn't load roster: ${err.message}`;
+        rosterErrorEl.style.display = "block";
+      }
+    }
+
+    function renderRoster(attendees) {
+      if (attendees.length === 0) {
+        rosterEl.innerHTML = "<p>No one has joined yet.</p>";
+        return;
+      }
+      // Grouped by department (not one alphabetical list of names) so the
+      // facilitator can compare headcount per department against the room —
+      // that comparison is the whole point of this view.
+      const byDept = {};
+      attendees.forEach((a) => {
+        (byDept[a.department] = byDept[a.department] || []).push(a);
+      });
+      const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
+      rosterEl.innerHTML = depts
+        .map((dept) => `
+          <div class="roster-dept">
+            <h3>${escapeHtml(dept)} (${byDept[dept].length})</h3>
+            <ul>
+              ${byDept[dept]
+                .map(
+                  (a) => `
+                <li>
+                  <span>
+                    ${escapeHtml(a.name)}${a.role === "observer" ? " — observer" : ""}${a.room ? ` — Room ${a.room}` : ""}
+                  </span>
+                  <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
+                </li>`
+                )
+                .join("")}
+            </ul>
+          </div>`)
+        .join("");
+      rosterEl.querySelectorAll(".removeAttendeeBtn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ok = confirm(
+            `Remove ${btn.dataset.name} from the roster? They'll need to rejoin with the correct department.`
+          );
+          if (!ok) return;
+          btn.disabled = true;
+          rosterErrorEl.style.display = "none";
+          try {
+            await deleteAttendee(btn.dataset.id, facilitatorToken);
+            await refreshRoster();
+          } catch (err) {
+            rosterErrorEl.textContent = `Remove failed: ${err.message}`;
+            rosterErrorEl.style.display = "block";
+            btn.disabled = false;
+          }
+        });
+      });
     }
 
     refresh();
+    refreshRoster();
+    setInterval(refreshRoster, 5000);
+    onReconnect(refreshRoster);
 
     // Same reasoning as the room display: a dropped connection or a
     // backgrounded tab can leave the facilitator looking at a stale status

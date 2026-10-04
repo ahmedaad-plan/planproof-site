@@ -283,6 +283,71 @@ async function uploadAttachment(sessionId, injectIndex, department, file) {
   return { path, filename: file.name, size: file.size, contentType: file.type };
 }
 
+// Reads the attendee roster for the Facilitator dashboard (roadmap: letting
+// the facilitator reconcile registrations against the real headcount and
+// fix a mis-registered department). Gated by the same facilitator-token RLS
+// pattern as patchSession — a plain room-display/participant link can't
+// read this, and the database checks the token via a function that reads
+// the real facilitator_token column with its own elevated privilege, so
+// anon never needs (and never gets) SELECT on that column directly.
+async function fetchAttendees(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
+  const res = await withRetry(() =>
+    fetch(
+      `${SUPABASE_URL}/rest/v1/attendees?session_id=eq.${sessionId}` +
+        `&select=id,name,department,role,room,joined_at&order=joined_at.asc`,
+      {
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          "x-facilitator-token": facilitatorToken,
+        },
+      }
+    )
+  );
+  if (!res.ok) throw new Error(`Fetch attendees failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+// Removes one mis-registered attendee (e.g. joined under the wrong
+// department) so they can rejoin correctly. This is deliberately "delete
+// and ask them to rejoin" rather than editing their department in place —
+// simpler to build, and the roster is only ever corrected before the
+// exercise starts (per Ahmed), so there's no mid-exercise disruption to
+// worry about. Same facilitator-token gating as everything else here.
+async function deleteAttendee(attendeeId, facilitatorToken) {
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/attendees?id=eq.${attendeeId}`, {
+      method: "DELETE",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        Prefer: "return=representation",
+        "x-facilitator-token": facilitatorToken,
+      },
+    })
+  );
+  if (!res.ok) throw new Error(`Remove attendee failed: HTTP ${res.status}`);
+  const rows = await res.json();
+  if (rows.length === 0) {
+    throw new Error(
+      "Remove rejected: the facilitator token in this link doesn't match this session."
+    );
+  }
+}
+
 // Fires `callback` whenever this device looks like it just came back —
 // either the browser's own "online" event, or the tab becoming visible
 // again (mobile browsers suspend/throttle background tabs, which can drop
