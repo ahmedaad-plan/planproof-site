@@ -323,11 +323,23 @@ async function fetchSubmissionStatus(sessionId, facilitatorToken) {
 function injectOutput(inject) {
   return inject && inject.output === "individual" ? "individual" : "group";
 }
+// Accepts both spellings: "responsible" (a list, used by the player's own
+// demo scenario) and "team" (exactly one department or "All" — what the
+// planproof-scenario skill's Stage 3 JSON produces).
 function injectResponsible(inject) {
-  const r = inject && inject.responsible;
+  const r = inject && (inject.responsible != null ? inject.responsible : inject.team);
   if (!r || (Array.isArray(r) && r.length === 0)) return ["All"];
   return Array.isArray(r) ? r : [r];
 }
+// The scenario's department list, under either name: "departments" (the
+// player's demo) or "requiredDepartments" (the planproof-scenario skill's
+// Stage 3 JSON). Facilitator-added extra departments are merged in by the
+// caller.
+function scenarioDepartments(session) {
+  const sc = (session && session.scenario) || {};
+  return sc.departments || sc.requiredDepartments || [];
+}
+
 function isDepartmentResponsible(inject, department) {
   const list = injectResponsible(inject).map((d) => String(d).trim().toLowerCase());
   return list.includes("all") || list.includes(String(department || "").trim().toLowerCase());

@@ -152,7 +152,7 @@
     // the Facilitator added before starting — never free text, so every
     // department is spelled the same way across registrations, submissions
     // and the report. De-duplicated case-insensitively.
-    const baseDepartments = (session.scenario && session.scenario.departments) || [];
+    const baseDepartments = scenarioDepartments(session);
     const extraDepartments = session.extra_departments || [];
     const seen = new Set();
     const departments = [...baseDepartments, ...extraDepartments].filter((d) => {

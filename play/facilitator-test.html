@@ -263,7 +263,7 @@
         return;
       }
       const existing = [
-        ...((currentRow.scenario && currentRow.scenario.departments) || []),
+        ...scenarioDepartments(currentRow),
         ...(currentRow.extra_departments || []),
       ].map((d) => d.toLowerCase());
       if (existing.includes(name.toLowerCase())) {
@@ -334,7 +334,7 @@
 
     function allDepartments() {
       const list = [
-        ...((currentRow && currentRow.scenario && currentRow.scenario.departments) || []),
+        ...scenarioDepartments(currentRow),
         ...((currentRow && currentRow.extra_departments) || []),
         ...((lastAttendees || []).map((a) => a.department)),
       ];
