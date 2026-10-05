@@ -512,6 +512,160 @@ function subscribeToSession(supabaseClient, sessionId, onChange) {
     .subscribe();
 }
 
+// ---- Facilitator broadcast messages (added 5 October 2026) ----------------
+// One table (session_messages) carries all exercise messaging. Today only
+// the Facilitator -> everyone broadcast exists (department null); roadmap
+// item 4 adds department-targeted messages and replies on the same table.
+// The database checks the facilitator token on every send and stamps the
+// time and the inject showing when it was sent; the browser can't set
+// either. Messages are operational only and stay out of the report.
+//
+// Ready-made messages for the facilitator's dropdown. Choosing one only
+// fills the text box — the facilitator can edit it or type anything else.
+// preset_key is recorded only when a preset is sent unedited.
+const BROADCAST_PRESETS = [
+  { key: "five_min", text: "5 minutes left on this inject" },
+  { key: "two_min", text: "2 minutes left — please finalise your answer" },
+  { key: "submit_now", text: "Please submit now" },
+  { key: "next_soon", text: "Moving to the next inject shortly" },
+  { key: "short_break", text: "Short break — please stay nearby" },
+];
+const MESSAGE_MAX_LENGTH = 280;
+
+async function sendBroadcast(sessionId, { body, presetKey }) {
+  assertValidSessionId(sessionId);
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
+  // Same pattern as joinSession: retry only the network call; a rejection
+  // (wrong token, exercise ended, empty/too-long text) fails once, at once.
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/session_messages`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        direction: "to_participants",
+        body,
+        preset_key: presetKey || null,
+      }),
+    })
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      if (err && err.message) detail = err.message;
+    } catch {
+      /* not JSON — keep the HTTP status */
+    }
+    if (/row-level security/i.test(detail)) {
+      detail =
+        "the facilitator token in this link doesn't match this session. " +
+        "Use the exact Facilitator link that was issued for it.";
+    } else if (/check constraint/i.test(detail)) {
+      detail = `the message must be between 1 and ${MESSAGE_MAX_LENGTH} characters.`;
+    }
+    throw new Error(`Message not sent: ${detail}`);
+  }
+}
+
+// Messages addressed to participants, oldest first. Read is open (see the
+// table's comments) because Realtime can't check a header.
+async function fetchMessages(sessionId) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(
+      `${SUPABASE_URL}/rest/v1/session_messages?session_id=eq.${sessionId}` +
+        `&direction=eq.to_participants` +
+        `&select=id,department,inject_index,preset_key,body,created_at&order=created_at.asc`,
+      {
+        cache: "no-store",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      }
+    )
+  );
+  if (!res.ok) throw new Error(`Fetch messages failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+// Calls onMessage(row) for every new message in this session, live.
+function subscribeToMessages(supabaseClient, sessionId, onMessage) {
+  return supabaseClient
+    .channel(`messages-${sessionId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "session_messages",
+        filter: `session_id=eq.${sessionId}`,
+      },
+      (payload) => {
+        if (payload.new && payload.new.direction === "to_participants") onMessage(payload.new);
+      }
+    )
+    .subscribe();
+}
+
+function formatMessageTime(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// A short two-note chime for a new broadcast on the room display. Made with
+// the Web Audio API rather than a sound file, and kept separate from
+// playSfx so it never stops an inject's own sound effect. Needs
+// unlockChime() to have run inside a user gesture ("Tap to begin").
+let chimeCtx = null;
+function unlockChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    chimeCtx = chimeCtx || new Ctx();
+    if (chimeCtx.state === "suspended") chimeCtx.resume();
+  } catch {
+    chimeCtx = null;
+  }
+}
+function playChime() {
+  if (!chimeCtx) return false;
+  try {
+    const now = chimeCtx.currentTime;
+    [
+      [880, 0],
+      [1318.5, 0.18],
+    ].forEach(([freq, offset]) => {
+      const osc = chimeCtx.createOscillator();
+      const gain = chimeCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.6);
+      osc.connect(gain).connect(chimeCtx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.65);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // --- Real sound effects (licensed clips Ahmed sourced from Zapsplat /
 // Smartsound), replacing the earlier synthesized placeholders. Every inject
 // references its effect by this same short name ("sfx"), so adding a new

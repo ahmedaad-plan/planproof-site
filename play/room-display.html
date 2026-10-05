@@ -80,6 +80,25 @@
     position: fixed; left: 12px; bottom: 12px; font-size: 0.8rem; font-family: monospace;
     opacity: 0.55; z-index: 5;
   }
+  /* Facilitator broadcast (added 5 October 2026). A strip between the header
+     and the inject — in the page flow, never on top of the inject — that
+     hides itself after BANNER_SECONDS, or as soon as the inject changes.
+     The bar along the bottom shows how long it has left. */
+  .broadcast-banner {
+    display: none; position: relative; overflow: hidden;
+    background: var(--pp-amber); color: var(--pp-navy);
+    padding: 14px 32px 18px; text-align: center;
+  }
+  .broadcast-banner.show { display: block; }
+  .broadcast-banner .label {
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; opacity: 0.75;
+  }
+  .broadcast-banner .text { font-size: 1.8rem; font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; }
+  .broadcast-banner .timebar {
+    position: absolute; left: 0; bottom: 0; height: 5px; width: 100%;
+    background: rgba(11,31,58,0.45); transform-origin: left center;
+  }
+  @keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 </style>
 </head>
 <body>
@@ -95,6 +114,12 @@
   </div>
   <div class="brand powered">Powered by PlanProof</div>
 </header>
+
+<div class="broadcast-banner" id="broadcastBanner" role="status" aria-live="polite">
+  <div class="label">Message from the facilitator</div>
+  <div class="text" id="broadcastText"></div>
+  <div class="timebar" id="broadcastTimebar"></div>
+</div>
 
 <main id="main">
   <div class="lobby">Waiting for the facilitator to start the exercise…</div>
@@ -133,6 +158,8 @@
   } else {
     document.getElementById("startBtn").addEventListener("click", () => {
       document.getElementById("soundGate").style.display = "none";
+      // Same gesture unlocks the broadcast chime (Web Audio).
+      unlockChime();
       // This click is the user gesture that unlocks audio playback for the
       // rest of the session in most browsers. Priming one real clip here
       // (played muted, immediately stopped) also satisfies stricter browsers
@@ -161,11 +188,20 @@
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    fetchSession(sessionId).then(render).catch((err) => {
-      mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
-    });
+    fetchSession(sessionId)
+      .then((row) => {
+        render(row);
+        return catchUpBroadcast(row);
+      })
+      .catch((err) => {
+        mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
+      });
 
     subscribeToSession(supabaseClient, sessionId, render);
+    subscribeToMessages(supabaseClient, sessionId, (m) => {
+      // A live message: full display time, plus the chime if sound is on.
+      if (showBroadcast(m, BANNER_SECONDS * 1000) && audioUnlocked) playChime();
+    });
 
     // After a WiFi drop or the tab being backgrounded, don't just trust
     // that the realtime subscription caught everything it missed — pull
@@ -174,14 +210,85 @@
     // hoping no update was missed while this screen was offline.
     onReconnect(() => {
       fetchSession(sessionId)
-        .then(render)
+        .then((row) => {
+          render(row);
+          return catchUpBroadcast(row);
+        })
         .catch((err) => console.warn("Resync after reconnect failed:", err.message));
     });
+  }
+
+  // ---- Facilitator broadcast banner (added 5 October 2026) ----------------
+  // Shown for BANNER_SECONDS, then hidden, so it never stays in the way of
+  // the inject. Also hidden straight away when the inject changes.
+  // Room screens only show messages for everyone (department null);
+  // department messages (roadmap item 4) go to that department's phones.
+  const BANNER_SECONDS = 30;
+  const bannerEl = document.getElementById("broadcastBanner");
+  const bannerTextEl = document.getElementById("broadcastText");
+  const bannerBarEl = document.getElementById("broadcastTimebar");
+  let bannerTimer = null;
+  let bannerMsg = null;
+  let bannerShownId = null;
+
+  function showBroadcast(m, durationMs) {
+    if (!m || m.department) return false;
+    if (m.id && m.id === bannerShownId && bannerMsg) return false; // already up
+    if (durationMs <= 0) return false;
+    clearTimeout(bannerTimer);
+    bannerMsg = m;
+    bannerShownId = m.id || null;
+    bannerTextEl.textContent = m.body;
+    // Restart the countdown bar's animation from full.
+    bannerBarEl.style.animation = "none";
+    void bannerBarEl.offsetWidth;
+    bannerBarEl.style.animation = `shrink ${durationMs}ms linear forwards`;
+    bannerEl.classList.add("show");
+    bannerTimer = setTimeout(hideBroadcast, durationMs);
+    return true;
+  }
+
+  function hideBroadcast() {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+    bannerMsg = null;
+    bannerEl.classList.remove("show");
+  }
+
+  // The inject context a message belongs to: the inject index while
+  // running, null before the start.
+  function rowContext(row) {
+    return row && row.status === "running" ? row.current_inject_index : null;
+  }
+
+  // On load or reconnect: if the latest message for everyone was sent for
+  // what's showing now and its 30 seconds aren't up, show it for the time
+  // it has left (no chime — it isn't new).
+  async function catchUpBroadcast(row) {
+    if (!row || row.status === "ended") return;
+    try {
+      const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+      const latest = msgs[msgs.length - 1];
+      if (!latest) return;
+      const msgContext = latest.inject_index === undefined ? null : latest.inject_index;
+      if (msgContext !== rowContext(row)) return;
+      const ageMs = Math.max(0, Date.now() - new Date(latest.created_at).getTime());
+      showBroadcast(latest, BANNER_SECONDS * 1000 - ageMs);
+    } catch (err) {
+      console.warn("Couldn't load messages:", err.message);
+    }
   }
 
   function render(row) {
     if (!row) return;
     clientLabelEl.textContent = row.label || "PlanProof";
+
+    // A banner belongs to the inject (or the lobby) it was sent during:
+    // once the screen has moved on, it goes, even if its 30 seconds aren't up.
+    if (bannerMsg) {
+      const msgContext = bannerMsg.inject_index === undefined ? null : bannerMsg.inject_index;
+      if (row.status === "ended" || msgContext !== rowContext(row)) hideBroadcast();
+    }
 
     if (row.status === "lobby") {
       clearInjectTimer();

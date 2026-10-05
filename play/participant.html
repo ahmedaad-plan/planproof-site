@@ -80,6 +80,32 @@
     background: #fde4e1; color: #a3271f; font-size: 0.9rem;
   }
   .center-note { text-align: center; opacity: 0.85; padding: 60px 20px; font-size: 1.1rem; }
+
+  /* Facilitator messages (added 5 October 2026). The banner and the list sit
+     outside <main>, which is redrawn on every update. */
+  .msg-banner { display: none; background: var(--pp-amber); color: var(--pp-navy); }
+  .msg-banner.show { display: block; }
+  .msg-banner-inner {
+    max-width: 640px; margin: 0 auto; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .msg-banner-inner > div { flex: 1; min-width: 0; }
+  .msg-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; opacity: 0.75; }
+  .msg-text { font-size: 1.05rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+  .msg-banner button {
+    flex: 0 0 auto; border: 1px solid var(--pp-navy); background: transparent; color: var(--pp-navy);
+    border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+  }
+  .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
+  .msg-history summary { cursor: pointer; font-size: 0.9rem; opacity: 0.85; padding: 8px 0; }
+  .msg-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
+    background: var(--pp-amber); color: var(--pp-navy); font-size: 0.75rem; font-weight: 700;
+  }
+  .msg-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.9rem; }
+  .msg-list li { padding: 8px 0; border-top: 1px solid rgba(244,241,234,0.15); overflow-wrap: anywhere; }
+  .msg-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; }
+  .msg-list li.unread { font-weight: 600; }
 </style>
 </head>
 <body>
@@ -87,7 +113,22 @@
     <div class="brand" id="clientLabel">PlanProof</div>
     <div class="brand" id="whoLabel" style="opacity:0.7; font-size:0.85rem; text-align:right;"></div>
   </header>
+  <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
+    <div class="msg-banner-inner">
+      <div>
+        <div class="msg-label">Message from the facilitator <span id="msgBannerTime"></span></div>
+        <div class="msg-text" id="msgBannerText"></div>
+      </div>
+      <button id="msgBannerOk">Got it</button>
+    </div>
+  </div>
   <main id="main">Loading…</main>
+  <section class="msg-history" id="msgHistory" hidden>
+    <details id="msgHistoryDetails">
+      <summary>Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></summary>
+      <ul class="msg-list" id="msgList"></ul>
+    </details>
+  </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./shared.js"></script>
@@ -162,11 +203,125 @@
       mainEl.innerHTML = `<div class="center-note">Couldn't load session: ${escapeHtml(err.message)}</div>`;
     });
     subscribeToSession(supabaseClient, sessionId, render);
+    loadMessages();
+    subscribeToMessages(supabaseClient, sessionId, onNewMessage);
     onReconnect(() => {
       fetchSession(sessionId)
         .then(render)
         .catch((err) => console.warn("Resync after reconnect failed:", err.message));
+      loadMessages();
     });
+  }
+
+  // ---- Messages from the facilitator (added 5 October 2026) -------------
+  // A banner for the newest unread message, a list of every message, and an
+  // unread count. Phones stay silent (in-room devices don't play sound — the
+  // room display chimes); a short vibration is tried where the phone
+  // supports it. The banner goes when the person taps "Got it" or the
+  // inject changes; the message stays in the list.
+  const msgBannerEl = document.getElementById("msgBanner");
+  const msgBannerTextEl = document.getElementById("msgBannerText");
+  const msgBannerTimeEl = document.getElementById("msgBannerTime");
+  const msgHistoryEl = document.getElementById("msgHistory");
+  const msgBadgeEl = document.getElementById("msgBadge");
+  const msgListEl = document.getElementById("msgList");
+  const baseTitle = document.title;
+  let messages = [];
+  const readKey = `pp_msgread_${sessionId}`;
+  let lastReadAt = null; // created_at (ms) of the newest message this person has acknowledged
+  try {
+    const stored = localStorage.getItem(readKey);
+    lastReadAt = stored ? Number(stored) : null;
+  } catch {
+    lastReadAt = null;
+  }
+
+  document.getElementById("msgBannerOk").addEventListener("click", markAllRead);
+  document.getElementById("msgHistoryDetails").addEventListener("toggle", (e) => {
+    if (e.target.open) markAllRead();
+  });
+
+  // Messages for everyone, plus (from roadmap item 4) ones for this person's
+  // own department.
+  function isForMe(m) {
+    if (!m.department) return true;
+    return (
+      String(m.department).trim().toLowerCase() ===
+      String(identity.department || "").trim().toLowerCase()
+    );
+  }
+  const msgTime = (m) => new Date(m.created_at).getTime();
+  const msgContext = (m) => (m.inject_index === undefined ? null : m.inject_index);
+  function currentContext() {
+    return latestRow && latestRow.status === "running" ? latestRow.current_inject_index : null;
+  }
+  // With no saved read marker (first visit, or storage blocked), only
+  // messages sent for what's showing now count as new — older ones are
+  // treated as already read rather than all lighting up at once.
+  function isUnread(m) {
+    if (lastReadAt !== null) return msgTime(m) > lastReadAt;
+    return msgContext(m) === currentContext();
+  }
+
+  async function loadMessages() {
+    try {
+      messages = (await fetchMessages(sessionId)).filter(isForMe);
+      renderMessages();
+    } catch (err) {
+      console.warn("Couldn't load messages:", err.message);
+    }
+  }
+
+  function onNewMessage(m) {
+    if (!isForMe(m) || messages.some((x) => x.id === m.id)) return;
+    messages.push(m);
+    messages.sort((a, b) => msgTime(a) - msgTime(b));
+    renderMessages();
+    try {
+      if (navigator.vibrate) navigator.vibrate(200);
+    } catch {
+      /* not supported — the banner is enough */
+    }
+  }
+
+  function markAllRead() {
+    if (messages.length) {
+      lastReadAt = Math.max(...messages.map(msgTime));
+      try {
+        localStorage.setItem(readKey, String(lastReadAt));
+      } catch {
+        /* storage blocked — still marked read for this page */
+      }
+    }
+    renderMessages();
+  }
+
+  function renderMessages() {
+    msgHistoryEl.hidden = messages.length === 0;
+    const unread = messages.filter(isUnread);
+    msgBadgeEl.hidden = unread.length === 0;
+    msgBadgeEl.textContent = unread.length === 1 ? "1 new" : `${unread.length} new`;
+    document.title = unread.length ? `(${unread.length}) ${baseTitle}` : baseTitle;
+
+    msgListEl.innerHTML = messages
+      .slice()
+      .reverse()
+      .map(
+        (m) => `<li class="${isUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))}</span>${escapeHtml(m.body)}</li>`
+      )
+      .join("");
+
+    // Banner: the newest unread message, only while its inject is still
+    // the one showing (and never after the exercise has ended).
+    const ended = latestRow && latestRow.status === "ended";
+    const newestUnread = unread[unread.length - 1];
+    if (!ended && newestUnread && msgContext(newestUnread) === currentContext()) {
+      msgBannerTextEl.textContent = newestUnread.body;
+      msgBannerTimeEl.textContent = `· ${formatMessageTime(newestUnread.created_at)}`;
+      msgBannerEl.classList.add("show");
+    } else {
+      msgBannerEl.classList.remove("show");
+    }
   }
 
   function isIndividual(inject) {
@@ -189,6 +344,8 @@
     if (!row) return;
     latestRow = row;
     clientLabelEl.textContent = row.label || "PlanProof";
+    // The message banner follows what's showing (hides on inject change).
+    renderMessages();
 
     if (row.status === "ended") {
       clearInjectTimer();

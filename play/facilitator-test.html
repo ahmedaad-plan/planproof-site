@@ -79,6 +79,24 @@
   .history thead th { font-weight: 600; opacity: 0.75; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; opacity: 0.85; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Broadcast to everyone (added 5 October 2026). */
+  .broadcast-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
+  .broadcast-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  .broadcast-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .broadcast-section select, .broadcast-section textarea {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 0.95rem; font-family: inherit; box-sizing: border-box;
+  }
+  .broadcast-section textarea { min-height: 64px; resize: vertical; margin-top: 8px; }
+  .broadcast-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .broadcast-row .count { font-size: 0.8rem; opacity: 0.6; }
+  .broadcast-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
+  .broadcast-feedback.ok { color: #1e5c28; }
+  .broadcast-feedback.err { color: #b00020; }
+  .broadcast-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.85rem; max-height: 180px; overflow-y: auto; }
+  .broadcast-log li { padding: 5px 0; border-top: 1px solid #f0f0f0; }
+  .broadcast-log .meta { opacity: 0.6; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -111,6 +129,26 @@
 
   <div class="current-inject" id="currentInject">—</div>
   <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+
+  <div class="broadcast-section" id="broadcastSection">
+    <h2>Message everyone</h2>
+    <div class="sub">
+      Shows on every participant's page and as a banner on every room display
+      (for 30 seconds there, or until you move to the next inject). Choose a
+      ready-made message, or type your own.
+    </div>
+    <label for="msgPreset" style="font-size:0.85rem; font-weight:600;">Ready-made messages (optional)</label>
+    <select id="msgPreset">
+      <option value="">— Choose a ready-made message —</option>
+    </select>
+    <textarea id="msgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <div class="broadcast-row">
+      <span class="count" id="msgCount">0 / 280</span>
+      <button class="primary" id="msgSendBtn" disabled>Send to everyone</button>
+    </div>
+    <div class="broadcast-feedback" id="msgFeedback"></div>
+    <ul class="broadcast-log" id="msgLog"></ul>
+  </div>
 
   <div class="status-section">
     <h2>Response status</h2>
@@ -284,6 +322,8 @@
       roomCountNoteEl.style.display = canSetRoomCount ? "block" : "none";
       roomCountSelectEl.style.display = canSetRoomCount ? "" : "none";
       roomCountSelectEl.disabled = !canSetRoomCount;
+
+      updateMsgControls();
     }
 
     addDeptBtn.addEventListener("click", async () => {
@@ -343,6 +383,99 @@
         roomCountSelectEl.disabled = !(!currentRow || currentRow.status === "lobby");
       }
     });
+
+    // ---- Message everyone (broadcast, added 5 October 2026) ---------------
+    // The dropdown only fills the text box; the facilitator can edit it or
+    // type anything. preset_key is recorded only if the preset is sent
+    // exactly as offered.
+    const msgPresetEl = document.getElementById("msgPreset");
+    const msgTextEl = document.getElementById("msgText");
+    const msgCountEl = document.getElementById("msgCount");
+    const msgSendBtn = document.getElementById("msgSendBtn");
+    const msgFeedbackEl = document.getElementById("msgFeedback");
+    const msgLogEl = document.getElementById("msgLog");
+    let msgSending = false;
+
+    BROADCAST_PRESETS.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.key;
+      opt.textContent = p.text;
+      msgPresetEl.appendChild(opt);
+    });
+
+    function updateMsgControls() {
+      const len = msgTextEl.value.trim().length;
+      msgCountEl.textContent = `${msgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+      const ended = currentRow && currentRow.status === "ended";
+      msgSendBtn.disabled = msgSending || len === 0 || ended || !currentRow;
+      msgPresetEl.disabled = ended;
+      msgTextEl.disabled = ended;
+      if (ended) msgFeedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+    }
+
+    msgPresetEl.addEventListener("change", () => {
+      const preset = BROADCAST_PRESETS.find((p) => p.key === msgPresetEl.value);
+      if (preset) msgTextEl.value = preset.text;
+      msgFeedbackEl.textContent = "";
+      msgFeedbackEl.className = "broadcast-feedback";
+      updateMsgControls();
+      msgTextEl.focus();
+    });
+    msgTextEl.addEventListener("input", () => {
+      msgFeedbackEl.textContent = "";
+      msgFeedbackEl.className = "broadcast-feedback";
+      updateMsgControls();
+    });
+
+    msgSendBtn.addEventListener("click", async () => {
+      const body = msgTextEl.value.trim();
+      if (!body) return;
+      const preset = BROADCAST_PRESETS.find((p) => p.key === msgPresetEl.value);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      msgSending = true;
+      updateMsgControls();
+      msgFeedbackEl.className = "broadcast-feedback";
+      msgFeedbackEl.textContent = "Sending…";
+      try {
+        await sendBroadcast(sessionId, { body, presetKey });
+        msgTextEl.value = "";
+        msgPresetEl.value = "";
+        msgFeedbackEl.className = "broadcast-feedback ok";
+        msgFeedbackEl.textContent = `Sent to everyone at ${formatMessageTime(new Date().toISOString())} ✓`;
+        await refreshMessageLog();
+      } catch (err) {
+        // Keep the text so nothing typed is lost if the send failed.
+        msgFeedbackEl.className = "broadcast-feedback err";
+        msgFeedbackEl.textContent = err.message;
+      } finally {
+        msgSending = false;
+        updateMsgControls();
+      }
+    });
+
+    function messageContextLabel(m) {
+      if (m.inject_index === null || m.inject_index === undefined) return "before start";
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      const inj = injects[m.inject_index];
+      return inj ? `during "${inj.title}"` : `during inject ${m.inject_index}`;
+    }
+
+    async function refreshMessageLog() {
+      try {
+        const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+        msgLogEl.innerHTML = msgs.length
+          ? msgs
+              .slice()
+              .reverse()
+              .map(
+                (m) => `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+              )
+              .join("")
+          : `<li style="opacity:0.6;">No messages sent yet.</li>`;
+      } catch (err) {
+        msgLogEl.innerHTML = `<li style="color:#b00020;">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+      }
+    }
 
     // The attendee roster isn't on Realtime (see design-notes.md — a
     // header-gated RLS policy like this one can't be evaluated for a
@@ -593,11 +726,14 @@
 
     refresh();
     refreshRoster();
+    refreshMessageLog();
     setInterval(refreshRoster, 5000);
+    setInterval(refreshMessageLog, 5000);
     // Re-draw (no network) every second so the countdown and the switch to
     // "time's up" happen on time, between the 5-second data polls.
     setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
+    onReconnect(refreshMessageLog);
 
     // Same reasoning as the room display: a dropped connection or a
     // backgrounded tab can leave the facilitator looking at a stale status
