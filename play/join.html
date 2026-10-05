@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Join Exercise (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    --pp-navy: #0b1f3a;
+    --pp-amber: #e8a33d;
+    --pp-paper: #f4f1ea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--pp-navy);
+    color: var(--pp-paper);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .card {
+    background: var(--pp-paper);
+    color: var(--pp-navy);
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 460px;
+    width: 100%;
+  }
+  h1 { font-size: 1.3rem; margin-top: 0; }
+  .sub { font-size: 0.9rem; opacity: 0.75; margin-top: -8px; margin-bottom: 20px; }
+  label { display: block; font-weight: 600; font-size: 0.85rem; margin: 16px 0 6px; }
+  .name-row { display: flex; gap: 10px; }
+  .name-row > div { flex: 1; min-width: 0; }
+  input[type="text"], select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 1rem; background: white; color: var(--pp-navy);
+  }
+  .invalid { border-color: #c0392b !important; background: #fff6f5; }
+  .role-options { display: flex; gap: 10px; }
+  .role-options label {
+    flex: 1; margin: 0; font-weight: 500; text-align: center; padding: 10px;
+    border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: block;
+  }
+  .role-options input { display: none; }
+  .role-options label.checked { background: var(--pp-navy); color: white; border-color: var(--pp-navy); }
+  button {
+    font-size: 1.05rem; padding: 12px 18px;
+    border-radius: 8px; border: none; background: var(--pp-navy); color: white;
+    cursor: pointer;
+  }
+  button.full { width: 100%; margin-top: 24px; }
+  button.secondary { background: white; color: var(--pp-navy); border: 1px solid var(--pp-navy); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error {
+    display: none; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+    background: #fde4e1; color: #a3271f; font-size: 0.9rem;
+  }
+  .note {
+    background: #fff3d6; border: 1px solid var(--pp-amber); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px; font-size: 0.85rem;
+  }
+  .nofault {
+    background: #e9f1fb; border: 1px solid #9db8dc; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 4px; font-size: 0.85rem;
+  }
+  /* Confirmation step (Ahmed, 4 October 2026): restate name and department
+     before anything is registered, with Proceed / Cancel. */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(11,31,58,0.75);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--pp-paper); color: var(--pp-navy); border-radius: 12px;
+    padding: 24px; max-width: 420px; width: 100%;
+  }
+  .confirm-box h2 { font-size: 1.15rem; margin: 0 0 14px; }
+  .confirm-box dl { margin: 0 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.95rem; }
+  .confirm-box dt { font-weight: 600; opacity: 0.7; }
+  .confirm-box dd { margin: 0; overflow-wrap: anywhere; }
+  .confirm-box .question { font-weight: 600; margin-bottom: 16px; }
+  .confirm-buttons { display: flex; gap: 10px; }
+  .confirm-buttons button { flex: 1; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">Loading…</div>
+
+  <div class="overlay" id="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-box">
+      <h2 id="confirmTitle">Please confirm your details</h2>
+      <dl id="confirmDetails"></dl>
+      <div class="question" id="confirmQuestion"></div>
+      <div class="confirm-buttons">
+        <button class="secondary" id="cancelBtn">Cancel</button>
+        <button id="proceedBtn">Proceed</button>
+      </div>
+      <div class="error" id="confirmError"></div>
+    </div>
+  </div>
+
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const cardEl = document.getElementById("card");
+  const overlayEl = document.getElementById("confirmOverlay");
+  const confirmDetailsEl = document.getElementById("confirmDetails");
+  const confirmQuestionEl = document.getElementById("confirmQuestion");
+  const confirmErrorEl = document.getElementById("confirmError");
+  const proceedBtn = document.getElementById("proceedBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+
+  if (!sessionId) {
+    cardEl.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+  } else {
+    init();
+  }
+
+  async function init() {
+    let session;
+    try {
+      session = await fetchSession(sessionId);
+    } catch (err) {
+      cardEl.innerHTML = `<p>Couldn't load this exercise: ${escapeHtml(err.message)}</p>`;
+      return;
+    }
+    if (!session) {
+      cardEl.innerHTML = "<p>No exercise found for this link.</p>";
+      return;
+    }
+    if (session.status === "ended") {
+      cardEl.innerHTML =
+        "<p>This exercise has already ended — joining is no longer possible.</p>";
+      return;
+    }
+    renderForm(session);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
+  }
+
+  function renderForm(session) {
+    // Departments come only from a fixed list — the scenario's own, plus any
+    // the Facilitator added before starting — never free text, so every
+    // department is spelled the same way across registrations, submissions
+    // and the report. De-duplicated case-insensitively.
+    const baseDepartments = scenarioDepartments(session);
+    const extraDepartments = session.extra_departments || [];
+    const seen = new Set();
+    const departments = [...baseDepartments, ...extraDepartments].filter((d) => {
+      const key = String(d).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const roomCount = session.room_count || 1;
+
+    if (departments.length === 0) {
+      cardEl.innerHTML = `
+        <h1>Join: ${escapeHtml(session.label || "Exercise")}</h1>
+        <p>The department list for this exercise hasn't been set up yet, so
+        registration isn't open. Please let the facilitator know.</p>`;
+      return;
+    }
+
+    const roomField = roomCount > 1
+      ? `<label for="room">Which room are you in?</label>
+         <select id="room">
+           <option value="" disabled selected>Choose your room</option>
+           ${Array.from({ length: roomCount }, (_, i) => i + 1)
+             .map((n) => `<option value="${n}">Room ${n}${n === 1 ? " (facilitator's room)" : ""}</option>`)
+             .join("")}
+         </select>`
+      : "";
+
+    cardEl.innerHTML = `
+      <h1>Join: ${escapeHtml(session.label || "Exercise")}</h1>
+      <p class="sub">Enter your details to join as a participant or observer.</p>
+      <div class="nofault">
+        <strong>This exercise tests the plan, not individuals.</strong>
+        Findings are reported at team level.
+      </div>
+      <div class="name-row">
+        <div>
+          <label for="firstName">First name</label>
+          <input type="text" id="firstName" placeholder="First name" autocomplete="given-name" />
+        </div>
+        <div>
+          <label for="familyName">Family name</label>
+          <input type="text" id="familyName" placeholder="Family name" autocomplete="family-name" />
+        </div>
+      </div>
+      <label for="jobTitle">Job title</label>
+      <input type="text" id="jobTitle" placeholder="e.g. Finance Manager" autocomplete="organization-title" />
+      <label for="department">Department</label>
+      <select id="department">
+        <option value="" disabled selected>Choose your department</option>
+        ${departments.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("")}
+      </select>
+      <label>Role</label>
+      <div class="role-options">
+        <label id="roleParticipantLabel" class="checked">
+          <input type="radio" name="role" value="participant" checked /> Participant
+        </label>
+        <label id="roleObserverLabel">
+          <input type="radio" name="role" value="observer" /> Observer
+        </label>
+      </div>
+      ${roomField}
+      <button class="full" id="registerBtn">Register</button>
+      <div class="error" id="errorBox"></div>
+    `;
+
+    const roleRadios = cardEl.querySelectorAll('input[name="role"]');
+    const roleLabels = {
+      participant: document.getElementById("roleParticipantLabel"),
+      observer: document.getElementById("roleObserverLabel"),
+    };
+    roleRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        Object.values(roleLabels).forEach((l) => l.classList.remove("checked"));
+        roleLabels[radio.value].classList.add("checked");
+      });
+    });
+
+    const firstNameEl = document.getElementById("firstName");
+    const familyNameEl = document.getElementById("familyName");
+    const jobTitleEl = document.getElementById("jobTitle");
+    const departmentEl = document.getElementById("department");
+    const roomEl = document.getElementById("room");
+    const registerBtn = document.getElementById("registerBtn");
+    const errorBoxEl = document.getElementById("errorBox");
+
+    // Clear a field's red outline as soon as the person starts fixing it.
+    [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => {
+      if (!el) return;
+      el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => el.classList.remove("invalid"));
+    });
+
+    let pending = null; // the details shown in the confirmation step
+
+    registerBtn.addEventListener("click", () => {
+      const firstName = firstNameEl.value.trim();
+      const familyName = familyNameEl.value.trim();
+      const title = jobTitleEl.value.trim();
+      const department = departmentEl.value;
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      const room = roomEl ? Number(roomEl.value) : null;
+
+      // Nobody is registered until first name, family name, job title and
+      // department are all filled in (Ahmed, 4 October 2026).
+      const problems = [];
+      [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => el && el.classList.remove("invalid"));
+      if (!firstName || !familyName) {
+        problems.push("Please complete both your first name and family name.");
+        if (!firstName) firstNameEl.classList.add("invalid");
+        if (!familyName) familyNameEl.classList.add("invalid");
+      }
+      if (!title) {
+        problems.push("Please enter your job title.");
+        jobTitleEl.classList.add("invalid");
+      }
+      if (!department) {
+        problems.push("Please choose your department.");
+        departmentEl.classList.add("invalid");
+      }
+      if (roomEl && !roomEl.value) {
+        problems.push("Please choose your room.");
+        roomEl.classList.add("invalid");
+      }
+      if (problems.length) {
+        errorBoxEl.innerHTML = problems.map(escapeHtml).join("<br/>");
+        errorBoxEl.style.display = "block";
+        return;
+      }
+      errorBoxEl.style.display = "none";
+
+      pending = { firstName, familyName, title, department, role, room };
+      confirmDetailsEl.innerHTML = `
+        <dt>Name</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
+        <dt>Job title</dt><dd>${escapeHtml(title)}</dd>
+        <dt>Department</dt><dd><strong>${escapeHtml(department)}</strong></dd>
+        <dt>Role</dt><dd>${role === "participant" ? "Participant" : "Observer"}</dd>
+        ${room ? `<dt>Room</dt><dd>Room ${room}</dd>` : ""}`;
+      confirmQuestionEl.textContent =
+        `You have selected the ${department} department. Is this correct?`;
+      confirmErrorEl.style.display = "none";
+      proceedBtn.disabled = false;
+      proceedBtn.textContent = "Proceed";
+      overlayEl.classList.add("open");
+      proceedBtn.focus();
+    });
+
+    // Cancel: nothing has been registered — back to the form to correct it.
+    cancelBtn.onclick = () => {
+      overlayEl.classList.remove("open");
+      pending = null;
+      departmentEl.focus();
+    };
+
+    proceedBtn.onclick = async () => {
+      if (!pending) return;
+      proceedBtn.disabled = true;
+      cancelBtn.disabled = true;
+      proceedBtn.textContent = "Registering…";
+      confirmErrorEl.style.display = "none";
+      const attendeeId = crypto.randomUUID();
+      try {
+        await joinSession(sessionId, { id: attendeeId, ...pending });
+        // No login exists, so this is how the next page knows who just
+        // joined — including the attendee id that individual answers are
+        // filed under. A same-browser handoff, not the reload-proof
+        // "recognize me" identity persistence that's roadmap item 9.
+        try {
+          localStorage.setItem(
+            `pp_identity_${sessionId}`,
+            JSON.stringify({
+              attendeeId,
+              firstName: pending.firstName,
+              familyName: pending.familyName,
+              name: `${pending.firstName} ${pending.familyName}`,
+              title: pending.title,
+              department: pending.department,
+              role: pending.role,
+              room: pending.room,
+            })
+          );
+        } catch {
+          /* localStorage unavailable (private mode, etc.) — the participant
+             page will ask them to join again. */
+        }
+        const dest = pending.role === "participant" ? "./participant.html" : "./room-display.html";
+        location.href = `${dest}?session=${encodeURIComponent(sessionId)}`;
+      } catch (err) {
+        confirmErrorEl.textContent = err.message;
+        confirmErrorEl.style.display = "block";
+        proceedBtn.disabled = false;
+        cancelBtn.disabled = false;
+        proceedBtn.textContent = "Proceed";
+      }
+    };
+  }
+</script>
+</body>
+</html>

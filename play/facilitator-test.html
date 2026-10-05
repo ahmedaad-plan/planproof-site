@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Facilitator Test Controls (prototype)</title>
+<meta name="robots" content="noindex" />
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: #f4f1ea;
+    color: #0b1f3a;
+    padding: 32px;
+  }
+  h1 { font-size: 1.3rem; }
+  .note {
+    background: #fff3d6; border: 1px solid #e8a33d; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem;
+  }
+  .status { margin-bottom: 20px; font-size: 1rem; }
+  .status b { font-family: monospace; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  button {
+    font-size: 1rem; padding: 10px 18px; border-radius: 8px; border: 1px solid #0b1f3a;
+    background: white; cursor: pointer;
+  }
+  button.primary { background: #0b1f3a; color: white; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .current-inject { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 600px; }
+  .link-row { margin-top: 24px; font-size: 0.9rem; }
+  .link-row input { width: 100%; padding: 6px; font-family: monospace; }
+  .roster-section { margin-top: 28px; max-width: 600px; }
+  .roster-section h2 { font-size: 1.05rem; margin-bottom: 4px; }
+  .add-dept-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-dept-row input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.95rem; }
+  .add-dept-row button { padding: 8px 14px; font-size: 0.95rem; }
+  .roster-dept {
+    background: white; border: 1px solid #ddd; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 10px;
+  }
+  .roster-dept h3 { font-size: 0.95rem; margin: 0 0 6px; }
+  .roster-dept ul { list-style: none; margin: 0; padding: 0; }
+  .roster-dept li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 0; font-size: 0.9rem; border-top: 1px solid #f0f0f0;
+  }
+  .roster-dept li:first-child { border-top: none; }
+  .roster-dept li button {
+    font-size: 0.8rem; padding: 4px 10px; border-color: #b00020; color: #b00020;
+  }
+  .roster-dept .title { opacity: 0.65; }
+  @media (max-width: 600px) { body { padding: 16px; } }
+
+  /* Response status (Ahmed, 4 October 2026): four states per department,
+     only for the departments the inject names as responsible. */
+  .status-section { margin-top: 28px; max-width: 760px; }
+  .status-section h2 { font-size: 1.05rem; margin-bottom: 6px; }
+  .status-current { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .status-head { font-weight: 700; margin-bottom: 2px; }
+  .status-sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .status-list { list-style: none; margin: 0; padding: 0; }
+  .status-list li {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-top: 1px solid #f0f0f0; font-size: 0.92rem;
+  }
+  .status-list li:first-child { border-top: none; }
+  .status-list .dept { flex: 0 0 40%; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+  .status-list .st-label { flex: 1; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; display: inline-block; border: 1px solid rgba(0,0,0,0.15); }
+  .dot.grey { background: #c9ced6; }
+  .dot.amber { background: #e8a33d; }
+  .dot.green { background: #2e9d4f; }
+  .dot.red { background: #c0392b; }
+  .history-wrap { overflow-x: auto; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+  .history { border-collapse: collapse; font-size: 0.85rem; }
+  .history th, .history td { padding: 5px 8px; text-align: center; white-space: nowrap; }
+  .history th:first-child, .history td:first-child { text-align: left; position: sticky; left: 0; background: white; }
+  .history thead th { font-weight: 600; opacity: 0.75; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; opacity: 0.85; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+  <h1>Facilitator test controls (prototype)</h1>
+  <div class="note">
+    This page drives the demo session directly — it stands in for the real
+    facilitator view (lobby/roster, criteria capture, submissions feed) which
+    isn't built yet. Its only job here is to prove that an action taken here
+    shows up instantly on the room display.
+  </div>
+
+  <div class="status">Status: <b id="statusVal">loading…</b> · Inject index: <b id="indexVal">—</b></div>
+
+  <div class="controls">
+    <button class="primary" id="startBtn">Start exercise</button>
+    <button id="prevBtn">&larr; Previous inject</button>
+    <button id="nextBtn">Next inject &rarr;</button>
+    <button id="extendBtn">+5 min for this inject</button>
+    <button id="unlockBtn">Unlock this inject</button>
+    <button id="endBtn">End exercise</button>
+    <button id="resetBtn">Reset to lobby</button>
+  </div>
+  <div class="note" style="margin-top:4px; margin-bottom:0;">
+    "Unlock this inject" re-opens participant submissions for whichever inject
+    is current right now — including one they already submitted, or one that
+    timed out — until you click "Lock this inject" again or move on. To
+    revisit and unlock an <em>earlier</em> inject, use Previous to make it
+    current again, then Unlock.
+  </div>
+
+  <div class="current-inject" id="currentInject">—</div>
+  <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+
+  <div class="status-section">
+    <h2>Response status</h2>
+    <div id="statusSection">Loading…</div>
+    <div class="legend">
+      <span><i class="dot grey"></i> Waiting, or not required</span>
+      <span><i class="dot amber"></i> Some have submitted (individual task)</span>
+      <span><i class="dot green"></i> Complete, on time</span>
+      <span><i class="dot red"></i> Time's up, not complete</span>
+    </div>
+  </div>
+
+  <div class="roster-section">
+    <h2>Session setup</h2>
+    <div class="note" id="roomCountNote" style="margin-bottom:10px;">
+      How many rooms are running this exercise? Room 1 is always your own
+      (the facilitator's) room, so "3" means your room plus 2 more. You can
+      change this as many times as you like before clicking "Start
+      exercise" — it locks once the exercise is running.
+    </div>
+    <div class="add-dept-row">
+      <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;">Rooms:</label>
+      <select id="roomCountSelect" style="flex:0 0 auto; padding:8px 10px; border-radius:8px; border:1px solid #ccc; font-size:0.95rem;">
+        <option value="1">1 (no room question at check-in)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+    </div>
+    <div id="roomCountError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+
+    <h2>Registered participants &amp; observers</h2>
+    <div class="note" id="addDeptNote" style="margin-bottom:10px;">
+      Add any department missing from the list below — do this before
+      clicking "Start exercise". Departments can't be added once the
+      exercise is running.
+    </div>
+    <div class="add-dept-row">
+      <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
+      <button id="addDeptBtn">Add department</button>
+    </div>
+    <div id="rosterError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+    <div id="roster">Loading…</div>
+  </div>
+
+  <div class="link-row">
+    Participant/Observer join link for this session (share this one — it has no facilitator token):
+    <input id="joinLink" readonly />
+  </div>
+  <div class="link-row">
+    Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):
+    <input id="displayLink" readonly />
+  </div>
+
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const facilitatorToken = getFacilitatorToken();
+  const statusVal = document.getElementById("statusVal");
+  const indexVal = document.getElementById("indexVal");
+  const currentInjectEl = document.getElementById("currentInject");
+  const displayLinkEl = document.getElementById("displayLink");
+  const joinLinkEl = document.getElementById("joinLink");
+  const errorBoxEl = document.getElementById("errorBox");
+
+  if (!sessionId) {
+    document.body.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+  } else if (!facilitatorToken) {
+    // This page writes to the session (Start/Next/Prev/End/Reset), so without
+    // the facilitator token every action below would be silently rejected by
+    // the database (see shared.js's patchSession). Stop here with a clear
+    // explanation instead of letting someone discover that one click at a
+    // time — this is exactly the "plain session link used where the private
+    // Facilitator link was needed" mistake the roadmap's three-QR design
+    // (Facilitator / Participant-Observer / Room-display) exists to prevent.
+    document.body.innerHTML =
+      "<p>This link is missing its facilitator token (<code>&amp;token=...</code> " +
+      "after the session ID). Use the private Facilitator link for this session, " +
+      "not a room-display or participant link — this page can't control the " +
+      "exercise without it.</p>";
+  } else {
+    displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
+    joinLinkEl.value = `${location.origin}/play/join.html?session=${sessionId}`;
+
+    let currentRow = null;
+    const startBtn = document.getElementById("startBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const extendBtn = document.getElementById("extendBtn");
+    const unlockBtn = document.getElementById("unlockBtn");
+    const endBtn = document.getElementById("endBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const actionButtons = [startBtn, nextBtn, prevBtn, extendBtn, unlockBtn, endBtn, resetBtn];
+
+    const addDeptNoteEl = document.getElementById("addDeptNote");
+    const newDeptInputEl = document.getElementById("newDeptInput");
+    const addDeptBtn = document.getElementById("addDeptBtn");
+    const rosterErrorEl = document.getElementById("rosterError");
+    const rosterEl = document.getElementById("roster");
+    const roomCountNoteEl = document.getElementById("roomCountNote");
+    const roomCountSelectEl = document.getElementById("roomCountSelect");
+    const roomCountErrorEl = document.getElementById("roomCountError");
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[c]);
+    }
+
+    // Wraps a button's click handler so that: (1) every click fully finishes
+    // — including the follow-up refresh() — before another click is read,
+    // which was the actual bug behind "Next doesn't work": clicking twice
+    // quickly made the second click read the same not-yet-updated row and
+    // send the same "current + 1" as the first, so it looked stuck; and
+    // (2) a failed request shows an on-screen error instead of silently
+    // doing nothing.
+    function onClick(button, action) {
+      button.addEventListener("click", async () => {
+        actionButtons.forEach((b) => (b.disabled = true));
+        errorBoxEl.style.display = "none";
+        try {
+          await action();
+          await refresh();
+        } catch (err) {
+          errorBoxEl.textContent = `Action failed: ${err.message}`;
+          errorBoxEl.style.display = "block";
+        } finally {
+          updateButtonAvailability();
+        }
+      });
+    }
+
+    // Next/Prev being clamped at the ends of the inject list is correct —
+    // there's nothing before inject 0 or after the last one — but with no
+    // visual cue it just looks frozen (that's exactly what "stuck at the
+    // last inject" turned out to be). Disabling them at the ends makes that
+    // state visible instead of silent.
+    function updateButtonAvailability() {
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      const atStart = !currentRow || currentRow.current_inject_index <= 0;
+      const atEnd = !currentRow || currentRow.current_inject_index >= injects.length - 1;
+      const isRunning = currentRow && currentRow.status === "running";
+      startBtn.disabled = false;
+      prevBtn.disabled = !isRunning || atStart;
+      nextBtn.disabled = !isRunning || atEnd;
+      extendBtn.disabled = !isRunning;
+      unlockBtn.disabled = !isRunning;
+      unlockBtn.textContent = currentRow && currentRow.inject_force_unlocked
+        ? "Lock this inject"
+        : "Unlock this inject";
+      endBtn.disabled = false;
+      resetBtn.disabled = false;
+
+      // Departments are only ever added before the exercise starts (per
+      // Ahmed: someone claiming a late-added department mid-exercise
+      // shouldn't be accepted) — hide the control the moment it's running,
+      // rather than relying on people not to click it.
+      const canAddDept = !currentRow || currentRow.status === "lobby";
+      addDeptNoteEl.style.display = canAddDept ? "block" : "none";
+      newDeptInputEl.style.display = canAddDept ? "" : "none";
+      addDeptBtn.style.display = canAddDept ? "" : "none";
+
+      // Room count: same lobby-only convention as "Add department" above —
+      // can be changed as many times as the facilitator likes (e.g. 3, then
+      // 5) right up until Start, then locks. Once attendees are mid-exercise
+      // their room assignments are fixed, so changing the count afterwards
+      // would be confusing rather than useful.
+      const canSetRoomCount = !currentRow || currentRow.status === "lobby";
+      roomCountNoteEl.style.display = canSetRoomCount ? "block" : "none";
+      roomCountSelectEl.style.display = canSetRoomCount ? "" : "none";
+      roomCountSelectEl.disabled = !canSetRoomCount;
+    }
+
+    addDeptBtn.addEventListener("click", async () => {
+      const name = newDeptInputEl.value.trim();
+      rosterErrorEl.style.display = "none";
+      if (!name) return;
+      if (!currentRow) {
+        rosterErrorEl.textContent = "Add department failed: session not loaded yet.";
+        rosterErrorEl.style.display = "block";
+        return;
+      }
+      const existing = [
+        ...scenarioDepartments(currentRow),
+        ...(currentRow.extra_departments || []),
+      ].map((d) => d.toLowerCase());
+      if (existing.includes(name.toLowerCase())) {
+        rosterErrorEl.textContent = `"${name}" is already in the department list.`;
+        rosterErrorEl.style.display = "block";
+        return;
+      }
+      addDeptBtn.disabled = true;
+      try {
+        const updated = [...(currentRow.extra_departments || []), name];
+        await patchSession(sessionId, { extra_departments: updated });
+        newDeptInputEl.value = "";
+        await refresh();
+      } catch (err) {
+        rosterErrorEl.textContent = `Add department failed: ${err.message}`;
+        rosterErrorEl.style.display = "block";
+      } finally {
+        addDeptBtn.disabled = false;
+      }
+    });
+
+    roomCountSelectEl.addEventListener("change", async () => {
+      roomCountErrorEl.style.display = "none";
+      if (!currentRow) {
+        roomCountErrorEl.textContent = "Set rooms failed: session not loaded yet.";
+        roomCountErrorEl.style.display = "block";
+        // Nothing to revert to yet — leave the selector as the facilitator
+        // left it rather than guessing a value.
+        return;
+      }
+      const value = Number(roomCountSelectEl.value);
+      const previous = currentRow.room_count || 1;
+      roomCountSelectEl.disabled = true;
+      try {
+        await patchSession(sessionId, { room_count: value });
+        await refresh();
+      } catch (err) {
+        roomCountErrorEl.textContent = `Set rooms failed: ${err.message}`;
+        roomCountErrorEl.style.display = "block";
+        // Roll the dropdown back to what's actually saved, so it never
+        // silently shows a count that didn't take.
+        roomCountSelectEl.value = String(previous);
+      } finally {
+        roomCountSelectEl.disabled = !(!currentRow || currentRow.status === "lobby");
+      }
+    });
+
+    // The attendee roster isn't on Realtime (see design-notes.md — a
+    // header-gated RLS policy like this one can't be evaluated for a
+    // realtime payload, since those have no HTTP headers to check), so new
+    // joiners are picked up by polling instead of an instant push. Every 5
+    // seconds is frequent enough to reconcile a room's headcount against the
+    // dashboard without hammering the database.
+    async function refreshRoster() {
+      try {
+        const [attendees, submissions] = await Promise.all([
+          fetchAttendees(sessionId, facilitatorToken),
+          fetchSubmissionStatus(sessionId, facilitatorToken),
+        ]);
+        lastAttendees = attendees;
+        lastSubmissions = submissions;
+        rosterErrorEl.style.display = "none";
+        renderRoster(attendees);
+        renderStatus();
+      } catch (err) {
+        rosterErrorEl.textContent = `Couldn't load roster/status: ${err.message}`;
+        rosterErrorEl.style.display = "block";
+      }
+    }
+
+    // ---- Response status -------------------------------------------------
+    // Rules agreed with Ahmed, 4 October 2026:
+    //  1. Only departments the inject names as responsible are coloured;
+    //     everyone else is grey "Not required" (matches the report's gap
+    //     rule: a blank from a non-responsible team is not a gap).
+    //  2. Four states: grey (waiting / not required), amber (individual task,
+    //     some but not all submitted), green (complete within time, incl.
+    //     any extension), red (time's up, not complete).
+    //  3. An answer only auto-saved at timeout is NOT green — red, labelled
+    //     "draft captured, not submitted".
+    //  4. Group task: one on-time submission from the department = green.
+    //     Individual task: every eligible participant must submit on time.
+    //  5. Late joiners don't hold a department back: for an individual task,
+    //     only participants registered before that inject started count.
+    //     Observers never count.
+    // "On time" is decided by the database at the moment of Submit (see
+    // exercise_submissions.on_time), not by this page's clock.
+    const statusSectionEl = document.getElementById("statusSection");
+    let lastAttendees = null;
+    let lastSubmissions = null;
+
+    const sameDept = (a, b) =>
+      String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+    function allDepartments() {
+      const list = [
+        ...scenarioDepartments(currentRow),
+        ...((currentRow && currentRow.extra_departments) || []),
+        ...((lastAttendees || []).map((a) => a.department)),
+      ];
+      const seen = new Set();
+      return list.filter((d) => {
+        const key = String(d || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function injectStartMs(idx) {
+      const log = (currentRow && currentRow.inject_started_log) || {};
+      return log[String(idx)] ? Date.parse(log[String(idx)]) : null;
+    }
+
+    function isTimeUp(idx, inject) {
+      const isCurrent = currentRow && currentRow.status === "running" && currentRow.current_inject_index === idx;
+      if (!isCurrent) return true; // already moved past it, or the exercise has ended
+      if (currentRow.inject_force_unlocked) return false;
+      const deadline = injectDeadlineMs(currentRow, inject);
+      return deadline !== null && Date.now() > deadline;
+    }
+
+    function departmentStatus(idx, inject, dept) {
+      const subs = (lastSubmissions || []).filter(
+        (s) => s.inject_index === idx && sameDept(s.department, dept)
+      );
+      const timeUp = isTimeUp(idx, inject);
+
+      if (!isDepartmentResponsible(inject, dept)) {
+        const contributed = subs.some((s) => s.status === "submitted" || s.has_content);
+        return { state: "grey", label: contributed ? "Not required (input received)" : "Not required" };
+      }
+
+      if (injectOutput(inject) === "group") {
+        const row = subs.find((s) => !s.attendee_id);
+        if (row && row.status === "submitted") {
+          return row.on_time
+            ? { state: "green", label: "Submitted on time" }
+            : { state: "red", label: "Submitted after the time" };
+        }
+        const draft = !!(row && row.has_content);
+        if (!timeUp) return { state: "grey", label: draft ? "Waiting — drafting" : "Waiting" };
+        return { state: "red", label: draft ? "Draft captured, not submitted" : "No response" };
+      }
+
+      // Individual task
+      const start = injectStartMs(idx);
+      const eligible = (lastAttendees || []).filter(
+        (a) =>
+          a.role === "participant" &&
+          sameDept(a.department, dept) &&
+          (start === null || Date.parse(a.joined_at) <= start)
+      );
+      const ids = new Set(eligible.map((a) => a.id));
+      const mine = subs.filter((s) => s.attendee_id && ids.has(s.attendee_id));
+      const onTime = mine.filter((s) => s.status === "submitted" && s.on_time).length;
+      const drafts = mine.filter((s) => s.status !== "submitted" && s.has_content).length;
+      const n = eligible.length;
+      if (n === 0) return { state: "grey", label: "No participants registered before this inject" };
+      if (onTime === n) return { state: "green", label: `All ${n} submitted on time` };
+      if (!timeUp) {
+        return onTime === 0
+          ? { state: "grey", label: `Waiting — 0 of ${n} submitted` }
+          : { state: "amber", label: `${onTime} of ${n} submitted` };
+      }
+      const draftText = drafts ? ` · ${drafts} draft${drafts > 1 ? "s" : ""} not submitted` : "";
+      return { state: "red", label: `${onTime} of ${n} submitted on time${draftText}` };
+    }
+
+    function responsibleText(inject) {
+      const list = injectResponsible(inject);
+      return list.some((d) => String(d).toLowerCase() === "all") ? "All departments" : list.join(", ");
+    }
+
+    function renderStatus() {
+      if (!currentRow || !lastSubmissions || !lastAttendees) return;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const depts = allDepartments();
+      const played = Object.keys(currentRow.inject_started_log || {})
+        .map(Number)
+        .filter((i) => injects[i])
+        .sort((a, b) => a - b);
+      if (played.length === 0 || depts.length === 0) {
+        statusSectionEl.innerHTML = `<p style="opacity:0.7; font-size:0.9rem;">Statuses appear here once the exercise starts.</p>`;
+        return;
+      }
+
+      const curIdx = currentRow.status === "running" ? currentRow.current_inject_index : null;
+      let html = "";
+      if (curIdx !== null && injects[curIdx]) {
+        const inj = injects[curIdx];
+        const deadline = injectDeadlineMs(currentRow, inj);
+        let timeText = "";
+        if (currentRow.inject_force_unlocked) timeText = " · Unlocked — no deadline";
+        else if (deadline) {
+          const left = deadline - Date.now();
+          timeText = left > 0
+            ? ` · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left`
+            : " · Time's up";
+        }
+        html += `
+          <div class="status-current">
+            <div class="status-head">Inject ${curIdx} — ${escapeHtml(inj.title)}</div>
+            <div class="status-sub">${injectOutput(inj) === "individual" ? "Individual task" : "Group task"} · Responsible: ${escapeHtml(responsibleText(inj))}${timeText}</div>
+            <ul class="status-list">
+              ${depts
+                .map((d) => {
+                  const st = departmentStatus(curIdx, inj, d);
+                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span></li>`;
+                })
+                .join("")}
+            </ul>
+          </div>`;
+      }
+
+      const past = played.filter((i) => i !== curIdx);
+      if (past.length) {
+        html += `
+          <div style="font-size:0.85rem; font-weight:600; margin:4px 0 6px;">Earlier injects</div>
+          <div class="history-wrap">
+            <table class="history">
+              <thead><tr><th>Department</th>${past
+                .map((i) => `<th title="${escapeHtml(injects[i].title)} — ${injectOutput(injects[i])}">#${i}${injectOutput(injects[i]) === "individual" ? " (ind.)" : ""}</th>`)
+                .join("")}</tr></thead>
+              <tbody>
+                ${depts
+                  .map(
+                    (d) => `<tr><td>${escapeHtml(d)}</td>${past
+                      .map((i) => {
+                        const st = departmentStatus(i, injects[i], d);
+                        return `<td title="${escapeHtml(st.label)}"><i class="dot ${st.state}"></i></td>`;
+                      })
+                      .join("")}</tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+      statusSectionEl.innerHTML = html;
+    }
+
+    function renderRoster(attendees) {
+      if (attendees.length === 0) {
+        rosterEl.innerHTML = "<p>No one has joined yet.</p>";
+        return;
+      }
+      // Grouped by department (not one alphabetical list of names) so the
+      // facilitator can compare headcount per department against the room —
+      // that comparison is the whole point of this view.
+      const byDept = {};
+      attendees.forEach((a) => {
+        (byDept[a.department] = byDept[a.department] || []).push(a);
+      });
+      const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
+      rosterEl.innerHTML = depts
+        .map((dept) => `
+          <div class="roster-dept">
+            <h3>${escapeHtml(dept)} (${byDept[dept].length})</h3>
+            <ul>
+              ${byDept[dept]
+                .map(
+                  (a) => `
+                <li>
+                  <span>
+                    ${escapeHtml(a.name)}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${a.role === "observer" ? " — observer" : ""}${a.room ? ` — Room ${a.room}` : ""}
+                  </span>
+                  <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
+                </li>`
+                )
+                .join("")}
+            </ul>
+          </div>`)
+        .join("");
+      rosterEl.querySelectorAll(".removeAttendeeBtn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ok = confirm(
+            `Remove ${btn.dataset.name} from the roster? They'll need to rejoin with the correct department.`
+          );
+          if (!ok) return;
+          btn.disabled = true;
+          rosterErrorEl.style.display = "none";
+          try {
+            await deleteAttendee(btn.dataset.id, facilitatorToken);
+            await refreshRoster();
+          } catch (err) {
+            rosterErrorEl.textContent = `Remove failed: ${err.message}`;
+            rosterErrorEl.style.display = "block";
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    refresh();
+    refreshRoster();
+    setInterval(refreshRoster, 5000);
+    // Re-draw (no network) every second so the countdown and the switch to
+    // "time's up" happen on time, between the 5-second data polls.
+    setInterval(renderStatus, 1000);
+    onReconnect(refreshRoster);
+
+    // Same reasoning as the room display: a dropped connection or a
+    // backgrounded tab can leave the facilitator looking at a stale status
+    // (e.g. still showing "running" after someone else ended it, or an
+    // old inject index) without any visible error. Force a real refetch
+    // the moment this device looks like it's back.
+    onReconnect(refresh);
+
+    // inject_extra_minutes and inject_force_unlocked always reset whenever
+    // current_inject_index actually changes — both only ever mean "about the
+    // inject showing right now." Leaving either one stuck on from a previous
+    // inject would otherwise affect the WRONG inject's form the next time
+    // either value changes.
+    onClick(document.getElementById("startBtn"), () =>
+      patchSession(sessionId, {
+        status: "running",
+        current_inject_index: 0,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      })
+    );
+    onClick(document.getElementById("nextBtn"), () => {
+      if (!currentRow) return;
+      const max = (currentRow.scenario.injects || []).length - 1;
+      const next = Math.min(currentRow.current_inject_index + 1, max);
+      return patchSession(sessionId, {
+        current_inject_index: next,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      });
+    });
+    onClick(document.getElementById("prevBtn"), () => {
+      if (!currentRow) return;
+      const prev = Math.max(currentRow.current_inject_index - 1, 0);
+      return patchSession(sessionId, {
+        current_inject_index: prev,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      });
+    });
+    onClick(document.getElementById("extendBtn"), () => {
+      if (!currentRow) return;
+      // Participants should never need to be told "the facilitator added
+      // time" out of band — the same realtime row update that already
+      // syncs status/current_inject_index everywhere carries this too, so
+      // participant.html picks it up and extends (and un-locks, if it had
+      // already timed out but not been submitted) automatically.
+      const extended = (currentRow.inject_extra_minutes || 0) + 5;
+      return patchSession(sessionId, { inject_extra_minutes: extended });
+    });
+    onClick(document.getElementById("unlockBtn"), () => {
+      if (!currentRow) return;
+      // Toggle: re-opens the CURRENT inject's submission for every
+      // participant even if they already submitted or timed out, until
+      // clicked again (re-locks immediately) or the Facilitator moves on
+      // (which resets this to false anyway, per the comment above). To
+      // revisit an earlier inject, use Previous to make it current first —
+      // this button only ever acts on whichever inject is current right now.
+      return patchSession(sessionId, { inject_force_unlocked: !currentRow.inject_force_unlocked });
+    });
+    onClick(document.getElementById("endBtn"), () =>
+      patchSession(sessionId, { status: "ended" })
+    );
+    onClick(document.getElementById("resetBtn"), () =>
+      patchSession(sessionId, {
+        status: "lobby",
+        current_inject_index: -1,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      })
+    );
+
+    async function refresh() {
+      currentRow = await fetchSession(sessionId);
+      updateButtonAvailability();
+      if (!currentRow) return;
+      // Reflect the session's real room_count in the selector. refresh()
+      // only ever runs after an action settles (a button click, reconnect,
+      // or right after this control's own change event below) — never on
+      // the roster's 5-second poll — so this can't clobber a selection the
+      // facilitator is still making.
+      roomCountSelectEl.value = String(currentRow.room_count || 1);
+      statusVal.textContent = currentRow.status;
+      const injects = currentRow.scenario.injects || [];
+      const isLast = currentRow.current_inject_index === injects.length - 1;
+      indexVal.textContent = `${currentRow.current_inject_index} of ${injects.length - 1}${isLast ? " — last inject" : ""}`;
+      const inject = injects[currentRow.current_inject_index];
+      const extra = currentRow.inject_extra_minutes || 0;
+      const durationText = extra > 0
+        ? `${inject && inject.durationMinutes} + ${extra} extended = ${(inject && inject.durationMinutes || 0) + extra} min`
+        : `${inject && inject.durationMinutes} min`;
+      const unlockText = currentRow.inject_force_unlocked ? " — UNLOCKED for participants" : "";
+      currentInjectEl.textContent = inject
+        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
+        : "No current inject.";
+      renderStatus();
+    }
+
+    updateButtonAvailability();
+  }
+</script>
+</body>
+</html>
