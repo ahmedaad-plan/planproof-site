@@ -112,27 +112,33 @@ async function patchSession(sessionId, fields) {
         "&token=... after the session ID), not the room-display link."
     );
   }
-  await withRetry(async () => {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          "Content-Type": "application/json",
-          // return=minimal would make a wrong/stale token fail *silently*:
-          // PostgREST still answers 204 even when the RLS policy filters the
-          // row out of the update entirely (zero rows actually touched), so
-          // return=representation is needed to tell "updated" apart from
-          // "token didn't match, nothing happened" — the response body is
-          // the updated row(s), empty when the token was rejected.
-          Prefer: "return=representation",
-          "x-facilitator-token": facilitatorToken,
-        },
-        body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
-      }
-    );
+  await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        // return=minimal would make a wrong/stale token fail *silently*:
+        // PostgREST still answers 204 even when the RLS policy filters the
+        // row out of the update entirely (zero rows actually touched), so
+        // return=representation is needed to tell "updated" apart from
+        // "token didn't match, nothing happened" — the response body is
+        // the updated row(s), empty when the token was rejected.
+        Prefer: "return=representation",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
+    })
+  ).then(async (res) => {
+    // withRetry wraps only fetch() itself — a dropped packet or connection
+    // reset is worth retrying, but a rejection below (bad token) will fail
+    // the exact same way every time, so it's checked outside withRetry and
+    // reported once immediately, the same pattern joinSession and
+    // fetchSubmissionStatus already use. (Previously this whole check lived
+    // inside withRetry, so a rejected action silently retried 3 times with
+    // backoff — up to ~1.5s — before finally showing the error; fixed
+    // 5 October 2026.)
     if (!res.ok) throw new Error(`Update session failed: HTTP ${res.status}`);
     const rows = await res.json();
     if (rows.length === 0) {
