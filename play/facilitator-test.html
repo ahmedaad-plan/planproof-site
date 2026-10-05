@@ -124,6 +124,26 @@
   </div>
 
   <div class="roster-section">
+    <h2>Session setup</h2>
+    <div class="note" id="roomCountNote" style="margin-bottom:10px;">
+      How many rooms are running this exercise? Room 1 is always your own
+      (the facilitator's) room, so "3" means your room plus 2 more. You can
+      change this as many times as you like before clicking "Start
+      exercise" — it locks once the exercise is running.
+    </div>
+    <div class="add-dept-row">
+      <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;">Rooms:</label>
+      <select id="roomCountSelect" style="flex:0 0 auto; padding:8px 10px; border-radius:8px; border:1px solid #ccc; font-size:0.95rem;">
+        <option value="1">1 (no room question at check-in)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+    </div>
+    <div id="roomCountError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+
     <h2>Registered participants &amp; observers</h2>
     <div class="note" id="addDeptNote" style="margin-bottom:10px;">
       Add any department missing from the list below — do this before
@@ -192,6 +212,9 @@
     const addDeptBtn = document.getElementById("addDeptBtn");
     const rosterErrorEl = document.getElementById("rosterError");
     const rosterEl = document.getElementById("roster");
+    const roomCountNoteEl = document.getElementById("roomCountNote");
+    const roomCountSelectEl = document.getElementById("roomCountSelect");
+    const roomCountErrorEl = document.getElementById("roomCountError");
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (c) => ({
@@ -251,6 +274,16 @@
       addDeptNoteEl.style.display = canAddDept ? "block" : "none";
       newDeptInputEl.style.display = canAddDept ? "" : "none";
       addDeptBtn.style.display = canAddDept ? "" : "none";
+
+      // Room count: same lobby-only convention as "Add department" above —
+      // can be changed as many times as the facilitator likes (e.g. 3, then
+      // 5) right up until Start, then locks. Once attendees are mid-exercise
+      // their room assignments are fixed, so changing the count afterwards
+      // would be confusing rather than useful.
+      const canSetRoomCount = !currentRow || currentRow.status === "lobby";
+      roomCountNoteEl.style.display = canSetRoomCount ? "block" : "none";
+      roomCountSelectEl.style.display = canSetRoomCount ? "" : "none";
+      roomCountSelectEl.disabled = !canSetRoomCount;
     }
 
     addDeptBtn.addEventListener("click", async () => {
@@ -282,6 +315,32 @@
         rosterErrorEl.style.display = "block";
       } finally {
         addDeptBtn.disabled = false;
+      }
+    });
+
+    roomCountSelectEl.addEventListener("change", async () => {
+      roomCountErrorEl.style.display = "none";
+      if (!currentRow) {
+        roomCountErrorEl.textContent = "Set rooms failed: session not loaded yet.";
+        roomCountErrorEl.style.display = "block";
+        // Nothing to revert to yet — leave the selector as the facilitator
+        // left it rather than guessing a value.
+        return;
+      }
+      const value = Number(roomCountSelectEl.value);
+      const previous = currentRow.room_count || 1;
+      roomCountSelectEl.disabled = true;
+      try {
+        await patchSession(sessionId, { room_count: value });
+        await refresh();
+      } catch (err) {
+        roomCountErrorEl.textContent = `Set rooms failed: ${err.message}`;
+        roomCountErrorEl.style.display = "block";
+        // Roll the dropdown back to what's actually saved, so it never
+        // silently shows a count that didn't take.
+        roomCountSelectEl.value = String(previous);
+      } finally {
+        roomCountSelectEl.disabled = !(!currentRow || currentRow.status === "lobby");
       }
     });
 
@@ -615,6 +674,12 @@
       currentRow = await fetchSession(sessionId);
       updateButtonAvailability();
       if (!currentRow) return;
+      // Reflect the session's real room_count in the selector. refresh()
+      // only ever runs after an action settles (a button click, reconnect,
+      // or right after this control's own change event below) — never on
+      // the roster's 5-second poll — so this can't clobber a selection the
+      // facilitator is still making.
+      roomCountSelectEl.value = String(currentRow.room_count || 1);
       statusVal.textContent = currentRow.status;
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;
