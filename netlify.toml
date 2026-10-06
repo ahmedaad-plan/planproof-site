@@ -1,6 +1,14 @@
 [functions]
   directory = "netlify/functions"
 
+# The Supabase publishable (anon) key is public by design: browser pages need it,
+# and Row Level Security — not the key — protects every table (insert-only for
+# visitors; MFA-signed-in admin for client records). Netlify's secret scanner
+# flags it because the same value is also set as an environment variable for the
+# form function. Skip ONLY this key; any other secret still blocks the build.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
+
 # Private admin page (client records). Never indexed, framed or cached.
 [[headers]]
   for = "/admin/*"
