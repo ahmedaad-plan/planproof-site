@@ -660,6 +660,25 @@
   .risk-note{ font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; min-height: 0; }
   .risk-note:empty{ display: none; }
 
+  /* Returning clients (client history) */
+  .intake-card .choice-row{ display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid transparent; border-radius: 8px; padding: 2px; }
+  .intake-card .choice-row label{
+    display: inline-flex; align-items: center; gap: 8px; margin: 0;
+    padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--panel-raised); color: var(--text); font-size: 14px; cursor: pointer;
+  }
+  .intake-card .choice-row label:has(input:checked){ border-color: var(--amber); }
+  .intake-card .choice-row input, .intake-card .optout input{ width: auto; margin: 0; accent-color: #d84a3a; }
+  .intake-card .returning{ border-top: 1px solid var(--border); margin-top: 22px; padding-top: 6px; }
+  .intake-card .returning-q{ font-size: 14px; color: var(--text); margin: 14px 0 8px; }
+  .intake-card .returning-q .opt{ font-style: italic; opacity: 0.8; color: var(--text-muted); font-size: 13px; }
+  .intake-card .returning-panel{ border-left: 2px solid var(--amber); padding-left: 14px; margin-top: 6px; }
+  .intake-card .returning-note{ font-size: 13.5px; color: var(--text-muted); margin: 10px 0 0; }
+  .intake-card label.optout{ display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 14px; margin: 20px 0 4px; cursor: pointer; }
+  .intake-card .optout-note{ margin-top: 0; }
+  .intake-card .optout-note a{ color: inherit; }
+  @media (max-width: 480px){ .intake-card .choice-row.stack-mobile label{ width: 100%; } }
+
   .field-error{
     border-color: #d84a3a !important;
     background: rgba(216,74,58,0.08) !important;
@@ -1210,6 +1229,15 @@
   <textarea name="incidents"></textarea>
   <input type="text" name="peak_periods">
   <textarea name="remarks"></textarea>
+  <input type="text" name="org_unit">
+  <input type="text" name="used_before">
+  <input type="text" name="client_ref">
+  <input type="text" name="last_exercise_when">
+  <input type="text" name="retest_or_new">
+  <textarea name="what_changed"></textarea>
+  <textarea name="actions_done"></textarea>
+  <input type="text" name="plan_updated">
+  <input type="checkbox" name="history_opt_out">
   <textarea name="formatted_summary"></textarea>
   <input name="bot-field">
 </form>
@@ -1236,6 +1264,15 @@
   <input type="text" name="peak_periods">
   <textarea name="remarks"></textarea>
   <input type="file" name="plan_document">
+  <input type="text" name="org_unit">
+  <input type="text" name="used_before">
+  <input type="text" name="client_ref">
+  <input type="text" name="last_exercise_when">
+  <input type="text" name="retest_or_new">
+  <textarea name="what_changed"></textarea>
+  <textarea name="actions_done"></textarea>
+  <input type="text" name="plan_updated">
+  <input type="checkbox" name="history_opt_out">
   <textarea name="formatted_summary"></textarea>
   <input name="bot-field">
 </form>
@@ -1643,6 +1680,7 @@ function renderGenericForm(){
 
       <label for="f_organization">Organization name <span class="opt">(required)</span></label>
       <input type="text" name="organization" id="f_organization" placeholder="Your company or organization" required>
+${orgUnitHTML("f")}
 
       <label for="f_name">Your name <span class="opt">(required)</span></label>
       <input type="text" name="name" id="f_name" placeholder="Full name" required>
@@ -1728,6 +1766,7 @@ function renderGenericForm(){
       <label for="f_remarks">Remarks or anything else you'd like us to know <span class="opt">(optional)</span></label>
       <textarea name="remarks" id="f_remarks" rows="2" placeholder="Anything else that would help us design this exercise"></textarea>
 
+${returningHTML("f")}
       <button type="submit" class="btn-primary" id="submitGeneric" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="genericMsg"></p>
     </form>
@@ -1739,6 +1778,7 @@ function renderGenericForm(){
   });
   initRiskPicker("f", "riskOtherWrap");
   initDeptPicker("f");
+  initReturning("f");
   let genericSummaryText = "";
   document.getElementById("genericFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1772,9 +1812,10 @@ function renderGenericForm(){
     if(/(^|, )Other( \(main\))?(,|$)/.test(riskEl.value) && !riskOtherEl.value.trim()) markInvalid(riskOtherEl);
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
+    checkReturning("f", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
+      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before.";
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1785,6 +1826,7 @@ function renderGenericForm(){
     try{
       const fieldPairs = [
         ["Organization", document.getElementById("f_organization").value],
+        ["Exercise is for", document.getElementById("f_org_unit").value],
         ["Name", document.getElementById("f_name").value],
         ["Mobile", document.getElementById("f_mobile").value],
         ["Email", email],
@@ -1800,7 +1842,8 @@ function renderGenericForm(){
         ["Specific focus areas", document.getElementById("f_focus").value],
         ["Recent incidents/near-misses", document.getElementById("f_incidents").value],
         ["Peak/critical periods", document.getElementById("f_peak").value],
-        ["Remarks", document.getElementById("f_remarks").value]
+        ["Remarks", document.getElementById("f_remarks").value],
+        ...returningPairs("f")
       ];
       const summaryLines = [
         "New generic scenario request",
@@ -1824,6 +1867,93 @@ function renderGenericForm(){
   });
 }
 
+// ===== Returning clients (client history) — shared by both intake forms =====
+function orgUnitHTML(p){ return `
+      <label for="${p}_org_scope">Which part of your organization is this exercise for? <span class="opt">(required)</span></label>
+      <select id="${p}_org_scope">
+        <option value="whole">The whole organization</option>
+        <option value="unit">A business unit, department or site</option>
+      </select>
+      <div id="${p}_orgUnitWrap" style="display:none;">
+        <label for="${p}_org_unit_name">Which one?</label>
+        <input type="text" id="${p}_org_unit_name" placeholder="e.g. Dubai warehouse, retail division" maxlength="200">
+      </div>
+      <input type="hidden" name="org_unit" id="${p}_org_unit">`; }
+
+function returningHTML(p){ return `
+      <div class="returning">
+        <p class="returning-q" id="${p}_usedLabel">Have you done a PlanProof exercise before? <span class="opt">(required)</span></p>
+        <div class="choice-row" role="radiogroup" aria-labelledby="${p}_usedLabel" id="${p}_usedGroup">
+          <label><input type="radio" name="used_before" value="yes"> Yes</label>
+          <label><input type="radio" name="used_before" value="no"> No</label>
+          <label><input type="radio" name="used_before" value="not_sure"> Not sure</label>
+        </div>
+        <div class="returning-panel" id="${p}_returningYes" hidden>
+          <label for="${p}_client_ref">Your client reference <span class="opt">(optional — on the first page of your last report, e.g. PP-2026-0007)</span></label>
+          <input type="text" name="client_ref" id="${p}_client_ref" placeholder="PP-YYYY-NNNN" autocomplete="off" maxlength="20">
+          <label for="${p}_last_when">Roughly when was your last exercise?</label>
+          <input type="text" name="last_exercise_when" id="${p}_last_when" placeholder="e.g. March 2026" maxlength="60">
+          <p class="returning-q" id="${p}_retestLabel">This time, would you like to…</p>
+          <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_retestLabel">
+            <label><input type="radio" name="retest_or_new" value="retest"> Re-test the same risk</label>
+            <label><input type="radio" name="retest_or_new" value="new"> Test a new risk</label>
+            <label><input type="radio" name="retest_or_new" value="unsure"> Not sure yet</label>
+          </div>
+          <label for="${p}_changed">What has changed since? <span class="opt">(structure, key people, systems, plan)</span></label>
+          <textarea name="what_changed" id="${p}_changed" rows="2" maxlength="3000"></textarea>
+          <label for="${p}_actions_done">Which actions from your last report are done?</label>
+          <textarea name="actions_done" id="${p}_actions_done" rows="2" maxlength="3000" placeholder="e.g. call tree updated, backup supplier contracted"></textarea>
+          <label for="${p}_plan_updated">Has your continuity plan changed since? <span class="opt">(if so, which version)</span></label>
+          <input type="text" name="plan_updated" id="${p}_plan_updated" placeholder="e.g. Yes, version 3 (June 2026)" maxlength="200">
+          ${p === "f" ? '<p class="empty-note">If your plan has changed, you can email the new version to exercises@plan-proof.com.</p>' : ''}
+        </div>
+        <p class="returning-note" id="${p}_returningUnsure" hidden>Thank you — we'll check our records and let you know if your organization has exercised with us before.</p>
+        <label class="optout"><input type="checkbox" name="history_opt_out" value="yes"> Don't keep our exercise history</label>
+        <p class="empty-note optout-note">We keep a short summary of each exercise — scores, findings and actions, not your plan document — for 5 years from your latest exercise, so your next exercise can show your progress. Tick to opt out, or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
+      </div>`; }
+
+function initReturning(p){
+  const scope = document.getElementById(p + "_org_scope");
+  scope.addEventListener("change", ()=>{
+    document.getElementById(p + "_orgUnitWrap").style.display = scope.value === "unit" ? "block" : "none";
+  });
+  document.querySelectorAll("#" + p + "_usedGroup input").forEach((r)=>r.addEventListener("change", ()=>{
+    const v = (document.querySelector("#" + p + "_usedGroup input:checked") || {}).value;
+    document.getElementById(p + "_returningYes").hidden = v !== "yes";
+    document.getElementById(p + "_returningUnsure").hidden = v !== "not_sure";
+    document.getElementById(p + "_usedGroup").classList.remove("field-error");
+  }));
+}
+
+function checkReturning(p, markInvalid){
+  const scope = document.getElementById(p + "_org_scope");
+  const unitName = document.getElementById(p + "_org_unit_name");
+  if(scope.value === "unit" && !unitName.value.trim()) markInvalid(unitName);
+  document.getElementById(p + "_org_unit").value = scope.value === "unit" ? unitName.value.trim() : "Whole organization";
+  const used = document.querySelector("#" + p + "_usedGroup input:checked");
+  if(!used) markInvalid(document.getElementById(p + "_usedGroup"));
+  if(used && used.value !== "yes"){
+    // Only "Yes" answers are kept, so a changed mind never sends stale returning-client details.
+    document.querySelectorAll("#" + p + "_returningYes input[type=text], #" + p + "_returningYes textarea").forEach((el)=>{ el.value = ""; });
+    document.querySelectorAll("#" + p + "_returningYes input[type=radio]").forEach((el)=>{ el.checked = false; });
+  }
+}
+
+function returningPairs(p){
+  const val = (id)=>{ const el = document.getElementById(p + id); return el ? el.value.trim() : ""; };
+  const used = (document.querySelector("#" + p + "_usedGroup input:checked") || {}).value;
+  const retest = (document.querySelector("#" + p + "_returningYes input[name=retest_or_new]:checked") || {}).value;
+  const optOut = document.querySelector("#" + p + "_usedGroup").closest(".returning").querySelector("input[name=history_opt_out]").checked;
+  const pairs = [["Done a PlanProof exercise before", { yes: "Yes", no: "No", not_sure: "Not sure — check our records" }[used] || ""]];
+  if(used === "yes"){
+    pairs.push(["Client reference", val("_client_ref")], ["Last exercise", val("_last_when")],
+      ["This time", { retest: "Re-test the same risk", new: "Test a new risk", unsure: "Not sure yet" }[retest] || ""],
+      ["What has changed", val("_changed")], ["Actions done since", val("_actions_done")], ["Plan changed", val("_plan_updated")]);
+  }
+  pairs.push(["Exercise history", optOut ? "Don't keep (client opted out)" : "Keep for 5 years (default)"]);
+  return pairs;
+}
+
 function renderPlanForm(){
   requestStage.innerHTML = `
     <form class="intake-card" id="planFormEl" name="plan-review" method="POST" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field" novalidate>
@@ -1836,6 +1966,7 @@ function renderPlanForm(){
 
       <label for="p_organization">Organization name <span class="opt">(required)</span></label>
       <input type="text" name="organization" id="p_organization" placeholder="Your company or organization" required>
+${orgUnitHTML("p")}
 
       <label for="p_name">Your name <span class="opt">(required)</span></label>
       <input type="text" name="name" id="p_name" placeholder="Full name" required>
@@ -1925,6 +2056,7 @@ function renderPlanForm(){
       <input type="file" name="plan_document" id="p_file" accept=".pdf,.doc,.docx" required>
       <p class="empty-note" style="margin-top:6px;color:#d84a3a;">Maximum file size 8MB. Please redact sensitive details before attaching the file.</p>
 
+${returningHTML("p")}
       <button type="submit" class="btn-primary" id="submitPlan" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="planMsg"></p>
     </form>
@@ -1940,6 +2072,7 @@ function renderPlanForm(){
   });
   initRiskPicker("p", "planRiskOtherWrap");
   initDeptPicker("p");
+  initReturning("p");
   let planSummaryText = "";
   document.getElementById("planFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1972,9 +2105,10 @@ function renderPlanForm(){
     if(/(^|, )Other( \(main\))?(,|$)/.test(document.getElementById("p_risk").value) && !document.getElementById("p_risk_other").value.trim()) markInvalid(document.getElementById("p_risk_other"));
     if(!fileInput.files.length) markInvalid(fileInput);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
+    checkReturning("p", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
+      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before.";
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1990,6 +2124,7 @@ function renderPlanForm(){
     try{
       const fieldPairs = [
         ["Organization", document.getElementById("p_organization").value],
+        ["Exercise is for", document.getElementById("p_org_unit").value],
         ["Name", document.getElementById("p_name").value],
         ["Mobile", document.getElementById("p_mobile").value],
         ["Email", document.getElementById("p_email").value],
@@ -2006,7 +2141,8 @@ function renderPlanForm(){
         ["Recent incidents/near-misses", document.getElementById("p_incidents").value],
         ["Peak/critical periods", document.getElementById("p_peak").value],
         ["Remarks", document.getElementById("p_remarks").value],
-        ["Plan document attached", fileInput.files[0].name]
+        ["Plan document attached", fileInput.files[0].name],
+        ...returningPairs("p")
       ];
       const summaryLines = [
         "Plan review request",

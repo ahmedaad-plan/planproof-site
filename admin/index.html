@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Client records — PlanProof admin</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10151b; --panel:#1a222c; --panel-2:#212b37; --border:#2b3642;
+    --text:#e7eaee; --text-muted:#8b96a3; --red:#d84a3a;
+    --green:#3fa66b; --amber:#d9a23a; --focus:#6aa8ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f3f4f6; --panel:#ffffff; --panel-2:#f7f8fa; --border:#dde1e6;
+      --text:#1a222c; --text-muted:#5c6672; --green:#2c8655; --amber:#a8740f; --focus:#1f5fd1;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif; }
+  h1,h2,h3{ font-family:"Space Grotesk",sans-serif; margin:0; line-height:1.25; }
+  h1{ font-size:24px; } h2{ font-size:18px; } h3{ font-size:15px; }
+  a{ color:var(--text); }
+  button,input,select,textarea{ font:inherit; color:inherit; }
+  :focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  /* Top bar */
+  .bar{ position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:22px; padding:12px 24px; flex-wrap:wrap; }
+  .mark{ font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:18px; text-decoration:none; }
+  .mark span{ color:var(--red); }
+  .mark small{ font-family:"IBM Plex Sans",sans-serif; font-weight:500; font-size:13px; color:var(--text-muted); margin-left:6px; }
+  nav.views{ display:flex; gap:4px; }
+  nav.views button{ background:none; border:0; padding:8px 12px; border-radius:6px; color:var(--text-muted); cursor:pointer; font-weight:500; }
+  nav.views button[aria-current="page"]{ color:var(--text); background:var(--panel); }
+  .count{ display:inline-block; min-width:20px; padding:0 6px; margin-left:6px; border-radius:10px; background:var(--red); color:#fff; font-size:12px; text-align:center; }
+  .bar .who{ margin-left:auto; font-size:13px; color:var(--text-muted); display:flex; gap:12px; align-items:center; }
+
+  main{ max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
+  .muted{ color:var(--text-muted); }
+  .small{ font-size:13px; }
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spread{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  .stack > * + *{ margin-top:14px; }
+
+  /* Controls */
+  .btn{ border:1px solid var(--border); background:var(--panel); padding:7px 14px; border-radius:6px; cursor:pointer; font-weight:500; font-size:14px; }
+  .btn:hover{ border-color:var(--text-muted); }
+  .btn.primary{ background:var(--red); border-color:var(--red); color:#fff; }
+  .btn.quiet{ background:none; }
+  .btn.danger{ color:var(--red); border-color:var(--red); background:none; }
+  .btn[disabled]{ opacity:.5; cursor:default; }
+  input[type=text],input[type=email],input[type=password],input[type=tel],input[type=search],input[type=date],select,textarea{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; width:100%; }
+  textarea{ min-height:70px; resize:vertical; }
+  label.f{ display:block; font-size:13px; color:var(--text-muted); }
+  label.f > input, label.f > select, label.f > textarea{ margin-top:4px; color:var(--text); }
+  .grid2{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px 16px; }
+
+  /* Blocks */
+  .block{ background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .block + .block{ margin-top:16px; }
+  section.part{ margin-top:30px; }
+  section.part > h2{ margin-bottom:12px; }
+  dl.facts{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:12px 0 0; font-size:14px; }
+  dl.facts dt{ color:var(--text-muted); }
+  dl.facts dd{ margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{ text-align:left; font-weight:500; color:var(--text-muted); font-size:13px; padding:6px 8px; border-bottom:1px solid var(--border); }
+  td{ padding:8px; border-bottom:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
+  .table-wrap{ overflow-x:auto; }
+
+  /* Match confidence — same colour logic as the report's readiness bands */
+  .label{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:3px 10px; border-radius:999px; border:1.5px solid; white-space:nowrap; }
+  .label.reference{ color:var(--green); border-color:var(--green); }
+  .label.likely{ color:var(--amber); border-color:var(--amber); }
+  .label.possible{ color:var(--text-muted); border-color:var(--text-muted); border-style:dashed; }
+  .label.new{ color:var(--text); border-color:var(--border); }
+  .label::before{ content:""; width:8px; height:8px; border-radius:50%; background:currentColor; }
+  .label.new::before{ background:none; border:1.5px solid currentColor; width:6px; height:6px; }
+  ul.reasons{ margin:8px 0 0; padding-left:18px; font-size:14px; color:var(--text-muted); }
+  .cand{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; margin-top:8px; flex-wrap:wrap; }
+  .band{ font-weight:600; }
+  .band.green{ color:var(--green); } .band.amber{ color:var(--amber); } .band.red{ color:var(--red); }
+  .tag{ font-size:12px; padding:1px 8px; border-radius:4px; background:var(--panel-2); border:1px solid var(--border); color:var(--text-muted); }
+  .warn{ border-left:3px solid var(--amber); background:var(--panel-2); padding:10px 14px; border-radius:6px; font-size:14px; }
+  .danger-zone{ border-color:var(--red); }
+
+  /* Sign-in */
+  .gate{ max-width:400px; margin:9vh auto; }
+  .gate .block{ padding:28px; }
+  .gate h1{ margin-bottom:6px; }
+  .qr{ background:#fff; padding:10px; border-radius:8px; width:200px; height:200px; margin:14px 0; }
+  .qr img{ width:100%; height:100%; }
+  code{ font-size:13px; background:var(--panel-2); padding:2px 6px; border-radius:4px; overflow-wrap:anywhere; }
+
+  #toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg);
+          padding:10px 18px; border-radius:8px; font-size:14px; z-index:20; max-width:90vw; }
+  #toast.err{ background:var(--red); color:#fff; }
+  dialog{ background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:10px; max-width:460px; width:92vw; padding:22px; }
+  dialog::backdrop{ background:rgba(0,0,0,.55); }
+  @media (max-width:640px){ main{ padding:20px 16px 60px; } .bar{ padding:10px 16px; gap:12px; } dl.facts{ grid-template-columns:1fr; } dl.facts dt{ margin-top:6px; } }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header class="bar" id="bar" hidden>
+  <a class="mark" href="./">Plan<span>Proof</span><small>Client records</small></a>
+  <nav class="views" aria-label="Views">
+    <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
+    <button data-view="clients">Clients</button>
+  </nav>
+  <div class="who"><span id="whoEmail"></span><button class="btn quiet" id="signOut">Sign out</button></div>
+</header>
+
+<main id="main">
+  <div class="gate" id="gate">
+    <div class="block stack">
+      <h1>PlanProof client records</h1>
+      <p class="muted small">Private. Signed-in access only.</p>
+      <div id="gateBody"></div>
+    </div>
+  </div>
+  <div id="app" hidden></div>
+</main>
+
+<dialog id="confirmDlg">
+  <form method="dialog" class="stack">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmText" class="muted"></p>
+    <label class="f" id="confirmTypeWrap" hidden>Type <strong id="confirmTypeWord"></strong> to confirm<input type="text" id="confirmType" autocomplete="off"></label>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn quiet" value="cancel">Cancel</button>
+      <button class="btn primary" value="ok" id="confirmOk"></button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"
+        integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
+        crossorigin="anonymous"></script>
+<script>
+"use strict";
+// PlanProof admin — client history (returning clients).
+// Security: this page holds no secret. Everything it shows is protected in the
+// database by Row Level Security: only a user listed in private.admins who has
+// signed in WITH a second factor (MFA, aal2) can read or change anything.
+// The key below is the same public key the website forms use.
+const SUPABASE_URL = "https://qryfayienxrngavhwfgw.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeWZheWllbnhybmdhdmh3Zmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTQ3MTcsImV4cCI6MjEwNjUzMDcxN30.AeLL04BiZwqwjNqEvV9dwCKK07Wf7HUN149L0k0fXGQ";
+const IDLE_MINUTES = 30;
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, storage: window.sessionStorage, autoRefreshToken: true }
+});
+
+// ---------- tiny DOM helpers (never inserts data as HTML) ----------
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "value") el.value = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  return el;
+}
+const $ = (id) => document.getElementById(id);
+const dt = (s) => s ? new Date(s).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+const dd = (s) => s ? new Date(s + (s.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+const LABEL_TEXT = { reference: "Matched by reference", likely: "Likely match", possible: "Possible match", new: "New client" };
+const USED_TEXT = { yes: "Yes", no: "No", not_sure: "Not sure" };
+const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", unsure: "Not sure yet" };
+const STATUS = ["new", "contacted", "scenario_sent", "exercise_scheduled", "delivered"];
+const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
+const ACTION_STATUS = { open: "Open", done: "Done (not yet exercised)", verified: "Verified at a later exercise", not_verified: "Not verified — gap remained" };
+const RATING_TEXT = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
+
+function labelPill(label) { return h("span", { class: "label " + (label || "new") }, LABEL_TEXT[label] || "Not checked"); }
+function toast(msg, isErr) {
+  const t = $("toast"); t.textContent = msg; t.className = isErr ? "err" : ""; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), isErr ? 7000 : 3000);
+}
+function fail(err) { console.error(err); toast(err && err.message ? err.message : String(err), true); }
+async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
+
+function confirmBox({ title, text, ok, typeWord }) {
+  return new Promise((resolve) => {
+    const d = $("confirmDlg");
+    $("confirmTitle").textContent = title; $("confirmText").textContent = text || "";
+    $("confirmOk").textContent = ok || "Confirm";
+    $("confirmTypeWrap").hidden = !typeWord; $("confirmType").value = "";
+    $("confirmTypeWord").textContent = typeWord || "";
+    $("confirmOk").disabled = !!typeWord;
+    $("confirmType").oninput = () => { $("confirmOk").disabled = $("confirmType").value.trim() !== typeWord; };
+    d.onclose = () => resolve(d.returnValue === "ok");
+    d.showModal();
+  });
+}
+
+// ---------- idle sign-out ----------
+let idleTimer;
+function bumpIdle() { clearTimeout(idleTimer); idleTimer = setTimeout(async () => { await sb.auth.signOut(); location.reload(); }, IDLE_MINUTES * 60000); }
+["click", "keydown", "scroll"].forEach((e) => window.addEventListener(e, bumpIdle, { passive: true }));
+
+// ================= Sign-in, MFA =================
+function gate(...nodes) { $("gateBody").replaceChildren(...nodes); $("gate").hidden = false; $("app").hidden = true; $("bar").hidden = true; }
+
+function showSignIn(msg) {
+  const email = h("input", { type: "email", autocomplete: "username", required: true });
+  const pw = h("input", { type: "password", autocomplete: "current-password", required: true });
+  const form = h("form", { class: "stack", onsubmit: async (e) => {
+    e.preventDefault(); btn.disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
+    btn.disabled = false;
+    if (error) return showSignIn("Sign-in failed: " + error.message);
+    afterSignIn();
+  } },
+    msg ? h("p", { class: "warn" }, msg) : null,
+    h("label", { class: "f" }, "Email", email),
+    h("label", { class: "f" }, "Password", pw));
+  const btn = h("button", { class: "btn primary", type: "submit" }, "Sign in");
+  form.append(btn);
+  gate(form); email.focus();
+}
+
+async function afterSignIn() {
+  const { data: aal, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) return showSignIn(error.message);
+  if (aal.currentLevel === "aal2") return enterApp();
+  const { data: f } = await sb.auth.mfa.listFactors();
+  const totp = (f && f.totp || []).find((x) => x.status === "verified");
+  if (totp) return showMfaChallenge(totp.id);
+  return showMfaEnrol();
+}
+
+function codeForm(factorId, intro) {
+  const code = h("input", { type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "6", pattern: "[0-9]{6}", required: true });
+  const btn = h("button", { class: "btn primary", type: "submit" }, "Verify");
+  const err = h("p", { class: "warn", hidden: true });
+  const form = h("form", { class: "stack", onsubmit: async (e) => {
+    e.preventDefault(); btn.disabled = true;
+    const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code: code.value.trim() });
+    btn.disabled = false;
+    if (error) { err.hidden = false; err.textContent = "That code didn't work: " + error.message + ". Use the current 6-digit code."; code.select(); return; }
+    enterApp();
+  } }, intro, err, h("label", { class: "f" }, "6-digit code from your authenticator app", code), btn);
+  setTimeout(() => code.focus(), 0);
+  return form;
+}
+
+function showMfaChallenge(factorId) {
+  gate(codeForm(factorId, h("p", { class: "muted" }, "Enter the code from your authenticator app to open client records.")));
+}
+
+async function showMfaEnrol() {
+  // Clear any half-finished enrolment first, so a retry doesn't hit a duplicate name.
+  const { data: f } = await sb.auth.mfa.listFactors();
+  for (const x of (f && f.all || [])) if (x.status !== "verified") await sb.auth.mfa.unenroll({ factorId: x.id });
+  const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "PlanProof admin" });
+  if (error) return showSignIn("Couldn't start two-step sign-in setup: " + error.message);
+  gate(codeForm(data.id, h("div", { class: "stack" },
+    h("p", {}, "Set up two-step sign-in once. Client records are confidential, so the database refuses access without it."),
+    h("p", { class: "muted small" }, "Scan this with Microsoft Authenticator, Google Authenticator or 1Password, then enter the code it shows."),
+    h("div", { class: "qr" }, h("img", { src: data.totp.qr_code, alt: "Authenticator QR code" })),
+    h("p", { class: "muted small" }, "Can't scan? Enter this key: ", h("code", {}, data.totp.secret)))));
+}
+
+async function enterApp() {
+  const ok = await q(sb.rpc("admin_whoami")).catch(() => false);
+  const { data: { user } } = await sb.auth.getUser();
+  if (!ok) {
+    gate(h("p", { class: "warn" }, "Signed in as " + (user && user.email) + ", but this account isn't on the admin list. Ask Claude to add it."),
+         h("button", { class: "btn", onclick: async () => { await sb.auth.signOut(); showSignIn(); } }, "Sign out"));
+    return;
+  }
+  $("whoEmail").textContent = user.email;
+  $("gate").hidden = true; $("app").hidden = false; $("bar").hidden = false;
+  bumpIdle();
+  show(location.hash.startsWith("#client/") ? "client" : (location.hash === "#clients" ? "clients" : "requests"));
+}
+
+$("signOut").onclick = async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); };
+document.querySelectorAll("nav.views button").forEach((b) => b.onclick = () => { location.hash = b.dataset.view === "clients" ? "#clients" : ""; show(b.dataset.view); });
+window.addEventListener("hashchange", () => { if (!$("app").hidden && location.hash.startsWith("#client/")) show("client"); });
+
+function show(view) {
+  document.querySelectorAll("nav.views button").forEach((b) => b.setAttribute("aria-current", (b.dataset.view === view || (view === "client" && b.dataset.view === "clients")) ? "page" : "false"));
+  const app = $("app"); app.replaceChildren(h("p", { class: "muted" }, "Loading…"));
+  const run = view === "clients" ? renderClients : view === "client" ? () => renderClient(location.hash.slice(8)) : renderRequests;
+  run().catch(fail);
+  refreshPendingCount();
+}
+
+async function refreshPendingCount() {
+  const { count } = await sb.from("submissions").select("id", { count: "exact", head: true }).eq("match_status", "pending");
+  const c = $("pendingCount"); c.hidden = !count; c.textContent = count || "";
+}
+
+// ================= Requests =================
+let requestFilter = "pending";
+async function renderRequests() {
+  const app = $("app");
+  let query = sb.from("submissions")
+    .select("*, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, phone, record_status, client_ref, sector, size_band, location)")
+    .order("created_at", { ascending: false }).limit(100);
+  if (requestFilter === "pending") query = query.eq("match_status", "pending");
+  else if (requestFilter === "open") query = query.neq("status", "delivered");
+  const rows = await q(query);
+
+  const filters = h("div", { class: "row" }, ...[["pending", "Waiting for you to confirm"], ["open", "All open requests"], ["all", "Everything"]].map(([k, t]) =>
+    h("button", { class: "btn" + (requestFilter === k ? " primary" : " quiet"), onclick: () => { requestFilter = k; renderRequests().catch(fail); } }, t)));
+
+  app.replaceChildren(
+    h("div", { class: "spread" }, h("h1", {}, "Requests"), filters),
+    h("p", { class: "muted small" }, "Every website request is checked against your client records. Nothing is linked until you confirm it."),
+    rows.length ? h("div", {}, ...rows.map(requestBlock)) :
+      h("div", { class: "block" }, h("p", { class: "muted" }, requestFilter === "pending" ? "No requests are waiting. New website requests will appear here with any likely matches." : "No requests yet.")));
+}
+
+function requestBlock(s) {
+  const c = s.client || {};
+  const facts = [
+    ["Received", dt(s.created_at) + " · " + (s.source === "website" ? "website, " + (s.form_name || "form") : s.source)],
+    ["Contact", [c.contact_name, c.email, c.phone].filter(Boolean).join(" · ")],
+    ["For which part", s.org_unit],
+    ["Organisation", [c.sector, c.size_band, c.location].filter(Boolean).join(" · ")],
+    ["Service", s.service_type],
+    ["Risk concerns", [s.risk_concern_1 && s.risk_concern_1 + " (main)", s.risk_concern_2, s.risk_concern_3].filter(Boolean).join(", ")],
+    ["Exercised before?", USED_TEXT[s.used_before]],
+    ["Reference given", s.reference_given],
+    ["Last exercise", s.last_exercise_when],
+    ["Re-test or new", RETEST_TEXT[s.retest_or_new]],
+    ["What has changed", s.what_changed],
+    ["Actions done", s.actions_done],
+    ["Plan updated", s.plan_updated],
+    ["History", s.history_opt_out ? "Client opted out — don't keep history" : null],
+  ].filter(([, v]) => v);
+
+  const block = h("article", { class: "block" });
+  const head = h("div", { class: "spread" },
+    h("div", {}, h("h2", {}, c.company_name || "(no organisation name)"),
+      c.record_status === "active" ? h("a", { class: "small muted", href: "#client/" + c.id }, "Client record" + (c.client_ref ? " " + c.client_ref : "")) : null),
+    s.match_status === "pending" ? labelPill(s.match_label) :
+      h("span", { class: "tag" }, s.match_status === "linked" ? "Linked to existing client" : "Confirmed new client"));
+  block.append(head, h("dl", { class: "facts" }, ...facts.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
+
+  if (s.match_status === "pending") {
+    const reasons = s.match_reasons || [];
+    if (reasons.length) block.append(h("ul", { class: "reasons" }, ...reasons.map((r) => h("li", {}, r))));
+    const cands = s.match_candidates || [];
+    const box = h("div", { class: "stack", style: "margin-top:14px" });
+    if (cands.length) {
+      box.append(h("h3", {}, cands.length === 1 ? "Possible existing client" : "Possible existing clients"));
+      cands.forEach((m) => box.append(h("div", { class: "cand" },
+        h("div", {}, h("strong", {}, m.company_name), m.business_unit ? h("span", { class: "muted" }, " — " + m.business_unit) : null,
+          m.client_ref ? h("span", { class: "muted small", style: "margin:0 8px" }, m.client_ref) : null, " ", labelPill(m.label),
+          h("div", { class: "small muted" }, (m.reasons || []).join(" · "))),
+        h("div", { class: "row" },
+          h("a", { class: "btn quiet", href: "#client/" + m.client_id }, "View"),
+          h("button", { class: "btn primary", onclick: () => linkTo(s, m.client_id, m.company_name) }, "Link to this client")))));
+    }
+    // Manual search, for "Not sure" / phone-style lookups
+    const sq = h("input", { type: "search", placeholder: "Search by name, email, domain, phone or PP- reference" });
+    const results = h("div", {});
+    const form = h("form", { class: "row", onsubmit: async (e) => {
+      e.preventDefault();
+      const rows = await q(sb.rpc("admin_search_clients", { p_q: sq.value })).catch(fail) || [];
+      results.replaceChildren(...(rows.length ? rows.map((r) => h("div", { class: "cand" },
+        h("div", {}, h("strong", {}, r.company_name), r.business_unit ? " — " + r.business_unit : "", h("div", { class: "small muted" },
+          [r.client_ref, "matched on " + r.matched_on, r.exercise_count + " exercise(s)"].filter(Boolean).join(" · "))),
+        h("button", { class: "btn primary", onclick: () => linkTo(s, r.client_id, r.company_name) }, "Link to this client")))
+        : [h("p", { class: "muted small" }, "No client found for that search.")]));
+    } }, h("div", { style: "flex:1;min-width:220px" }, sq), h("button", { class: "btn", type: "submit" }, "Search"));
+    box.append(h("details", {}, h("summary", { class: "small" }, "Search your clients yourself"), form, results));
+    box.append(h("div", { class: "row", style: "justify-content:flex-end" },
+      h("button", { class: "btn", onclick: () => confirmNew(s, c.company_name) }, cands.length ? "None of these — confirm as a new client" : "Confirm as a new client")));
+    block.append(box);
+  }
+
+  const status = h("select", { "aria-label": "Pipeline status", onchange: async () => {
+    await q(sb.from("submissions").update({ status: status.value }).eq("id", s.id)).then(() => toast("Status saved")).catch(fail);
+  } }, ...STATUS.map((x) => h("option", { value: x, selected: x === s.status }, STATUS_TEXT[x])));
+  const notes = h("details", {}, h("summary", { class: "small muted" }, "Full form summary and notes"),
+    h("pre", { class: "small", style: "white-space:pre-wrap;margin-top:8px" }, s.notes || ""));
+  block.append(h("div", { class: "spread", style: "margin-top:14px" }, notes, h("label", { class: "f", style: "min-width:200px" }, "Pipeline", status)));
+  return block;
+}
+
+async function linkTo(s, clientId, name) {
+  const ok = await confirmBox({ title: "Link this request to " + name + "?",
+    text: "The request joins that client and its history becomes available for this exercise. The contact is added to the client's contact list.",
+    ok: "Link request" });
+  if (!ok) return;
+  await q(sb.rpc("admin_link_submission", { p_submission: s.id, p_client: clientId })).then(() => { toast("Linked to " + name); renderRequests(); refreshPendingCount(); }).catch(fail);
+}
+async function confirmNew(s, name) {
+  const ok = await confirmBox({ title: "Confirm " + (name || "this organisation") + " as a new client?",
+    text: "A new client record is created from this request. You can still add other names, a group or contacts afterwards.", ok: "Confirm new client" });
+  if (!ok) return;
+  const id = await q(sb.rpc("admin_confirm_new_client", { p_submission: s.id })).catch(fail);
+  if (id) { toast("New client confirmed"); refreshPendingCount(); location.hash = "#client/" + id; }
+}
+
+// ================= Clients =================
+async function renderClients() {
+  const app = $("app");
+  const sq = h("input", { type: "search", placeholder: "Name, other name, contact, email, phone, domain or PP- reference", "aria-label": "Search clients" });
+  const list = h("div", {});
+  async function run() {
+    if (sq.value.trim().length >= 2) {
+      const rows = await q(sb.rpc("admin_search_clients", { p_q: sq.value }));
+      list.replaceChildren(clientTable(rows.map((r) => ({ ...r, id: r.client_id })), true));
+    } else {
+      const rows = await q(sb.from("clients").select("id, company_name, business_unit, client_ref, history_opt_out, updated_at, group:client_groups(name)")
+        .eq("record_status", "active").order("updated_at", { ascending: false }).limit(50));
+      list.replaceChildren(rows.length ? clientTable(rows.map((r) => ({ ...r, group_name: r.group && r.group.name })), false) :
+        h("div", { class: "block" }, h("p", { class: "muted" }, "No confirmed clients yet. Confirm a website request, or add a client who called or emailed.")));
+    }
+  }
+  app.replaceChildren(
+    h("div", { class: "spread" }, h("h1", {}, "Clients"), h("button", { class: "btn", onclick: newClientForm }, "Add a client who called or emailed")),
+    h("form", { class: "row", style: "margin:16px 0", onsubmit: (e) => { e.preventDefault(); run().catch(fail); } },
+      h("div", { style: "flex:1;min-width:240px" }, sq), h("button", { class: "btn primary", type: "submit" }, "Search")),
+    list);
+  sq.focus();
+  await run();
+}
+
+function clientTable(rows, searched) {
+  if (!rows.length) return h("p", { class: "muted" }, "No client matches that search. Try another name, the email domain or the reference.");
+  return h("div", { class: "block table-wrap" }, h("table", {},
+    h("thead", {}, h("tr", {}, h("th", {}, "Client"), h("th", {}, "Group"), h("th", {}, "Reference"),
+      searched ? h("th", {}, "Last exercise") : null, searched ? h("th", {}, "Open actions") : null, searched ? h("th", {}, "Matched on") : null)),
+    h("tbody", {}, ...rows.map((r) => h("tr", {},
+      h("td", {}, h("a", { href: "#client/" + r.id }, r.company_name), r.business_unit ? h("div", { class: "small muted" }, r.business_unit) : null,
+        r.history_opt_out ? h("div", { class: "small muted" }, "History opted out") : null),
+      h("td", {}, r.group_name || ""), h("td", {}, r.client_ref || h("span", { class: "muted small" }, "not issued")),
+      searched ? h("td", {}, dd(r.last_exercise) || "—") : null, searched ? h("td", {}, String(r.open_actions)) : null,
+      searched ? h("td", { class: "small muted" }, r.matched_on) : null)))));
+}
+
+function newClientForm() {
+  const f = { company_name: h("input", { type: "text", required: true }), business_unit: h("input", { type: "text" }),
+    sector: h("input", { type: "text" }), location: h("input", { type: "text" }) };
+  $("app").replaceChildren(h("h1", {}, "Add a client"),
+    h("p", { class: "muted small" }, "First search the client list — the caller's organisation may already be there under another name. Then record the request from the client's page."),
+    h("form", { class: "block stack", style: "margin-top:16px", onsubmit: async (e) => {
+      e.preventDefault();
+      const row = Object.fromEntries(Object.entries(f).map(([k, el]) => [k, el.value.trim() || null]));
+      const id = crypto.randomUUID();
+      await q(sb.from("clients").insert({ id, ...row, record_status: "active" }));
+      toast("Client added"); location.hash = "#client/" + id;
+    } },
+      h("div", { class: "grid2" }, h("label", { class: "f" }, "Organisation name", f.company_name), h("label", { class: "f" }, "Business unit or site", f.business_unit),
+        h("label", { class: "f" }, "Sector", f.sector), h("label", { class: "f" }, "Location", f.location)),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Add client"), h("a", { class: "btn quiet", href: "#clients", onclick: () => show("clients") }, "Cancel"))));
+}
+
+// ================= One client =================
+async function renderClient(id) {
+  const app = $("app");
+  const [client, contacts, names, exercises, actions, requests, events, groups, profile] = await Promise.all([
+    q(sb.from("clients").select("*").eq("id", id).maybeSingle()),
+    q(sb.from("client_contacts").select("*").eq("client_id", id).order("is_active", { ascending: false }).order("created_at")),
+    q(sb.from("client_names").select("*").eq("client_id", id).order("created_at")),
+    q(sb.from("exercises").select("*, findings:exercise_findings(*)").eq("client_id", id).order("exercise_date", { ascending: false })),
+    q(sb.from("corrective_actions").select("*").eq("client_id", id).order("due_date", { nullsFirst: false })),
+    q(sb.from("submissions").select("id, created_at, source, form_name, status, service_type, risk_concern_1, org_unit, retest_or_new").eq("client_id", id).order("created_at", { ascending: false })),
+    q(sb.from("client_events").select("*").eq("client_id", id).order("at", { ascending: false }).limit(50)),
+    q(sb.from("client_groups").select("id, name").order("name")),
+    q(sb.from("organisation_profiles").select("*").eq("client_id", id).maybeSingle()),
+  ]);
+  if (!client) { app.replaceChildren(h("p", {}, "This client record doesn't exist (it may have been deleted). "), h("a", { href: "#clients" }, "Back to clients")); return; }
+  const reload = () => renderClient(id).catch(fail);
+
+  // --- Identity ---
+  const ed = {
+    company_name: h("input", { type: "text", value: client.company_name }), business_unit: h("input", { type: "text", value: client.business_unit || "" }),
+    sector: h("input", { type: "text", value: client.sector || "" }), size_band: h("input", { type: "text", value: client.size_band || "" }),
+    location: h("input", { type: "text", value: client.location || "" }), admin_notes: h("textarea", { value: client.admin_notes || "" }),
+  };
+  const groupSel = h("select", {}, h("option", { value: "" }, "No group"), ...groups.map((g) => h("option", { value: g.id, selected: g.id === client.group_id }, g.name)),
+    h("option", { value: "__new" }, "New group…"));
+  const identity = h("form", { class: "block stack", onsubmit: async (e) => {
+    e.preventDefault();
+    let group_id = groupSel.value || null;
+    if (group_id === "__new") {
+      const name = prompt("Name of the parent group");
+      if (!name) return;
+      const gid = crypto.randomUUID();
+      await q(sb.from("client_groups").insert({ id: gid, name: name.trim() })).catch(fail);
+      group_id = gid;
+    }
+    const row = Object.fromEntries(Object.entries(ed).map(([k, el]) => [k, el.value.trim() || null]));
+    await q(sb.from("clients").update({ ...row, company_name: row.company_name || client.company_name, group_id }).eq("id", id)).then(() => { toast("Client details saved"); reload(); }).catch(fail);
+  } },
+    h("div", { class: "grid2" },
+      h("label", { class: "f" }, "Organisation name", ed.company_name), h("label", { class: "f" }, "Business unit or site", ed.business_unit),
+      h("label", { class: "f" }, "Parent group", groupSel), h("label", { class: "f" }, "Sector", ed.sector),
+      h("label", { class: "f" }, "Size", ed.size_band), h("label", { class: "f" }, "Location", ed.location)),
+    h("label", { class: "f" }, "Private notes", ed.admin_notes),
+    h("div", {}, h("button", { class: "btn primary", type: "submit" }, "Save client details")));
+
+  const refBox = client.client_ref ? h("span", { class: "tag", style: "font-size:14px" }, client.client_ref) :
+    h("button", { class: "btn", onclick: async () => {
+      const ok = await confirmBox({ title: "Issue a client reference?", text: "Do this at the first delivery. The reference goes on the report's document control page and in the delivery email, and can't be changed.", ok: "Issue reference" });
+      if (ok) await q(sb.rpc("admin_issue_client_ref", { p_client: id })).then((r) => { toast("Reference " + r + " issued"); reload(); }).catch(fail);
+    } }, "Issue client reference");
+
+  // --- Contacts ---
+  const cn = { name: h("input", { type: "text" }), email: h("input", { type: "email" }), phone: h("input", { type: "tel" }), role: h("input", { type: "text" }) };
+  const contactsBlock = h("div", { class: "block stack" },
+    contacts.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Name", "Email", "Phone", "Role", ""].map((x) => h("th", {}, x)))),
+      h("tbody", {}, ...contacts.map((p) => h("tr", { style: p.is_active ? "" : "opacity:.55" },
+        h("td", {}, p.name || ""), h("td", {}, p.email || ""), h("td", {}, p.phone || ""), h("td", {}, p.role || ""),
+        h("td", {}, h("button", { class: "btn quiet small", onclick: async () => {
+          await q(sb.from("client_contacts").update({ is_active: !p.is_active }).eq("id", p.id)).then(reload).catch(fail);
+        } }, p.is_active ? "Mark as left" : "Mark as active"))))))) : h("p", { class: "muted" }, "No contacts yet."),
+    h("details", {}, h("summary", { class: "small" }, "Add a contact"),
+      h("form", { class: "stack", style: "margin-top:10px", onsubmit: async (e) => {
+        e.preventDefault();
+        const row = Object.fromEntries(Object.entries(cn).map(([k, el]) => [k, el.value.trim() || null]));
+        if (row.email) row.email = row.email.toLowerCase();
+        if (!row.name && !row.email && !row.phone) return toast("Enter at least a name, email or phone", true);
+        await q(sb.from("client_contacts").insert({ client_id: id, ...row })).then(() => { toast("Contact added"); reload(); }).catch(fail);
+      } }, h("div", { class: "grid2" }, h("label", { class: "f" }, "Name", cn.name), h("label", { class: "f" }, "Email", cn.email),
+        h("label", { class: "f" }, "Phone", cn.phone), h("label", { class: "f" }, "Role", cn.role)), h("div", {}, h("button", { class: "btn", type: "submit" }, "Add contact")))));
+
+  // --- Other names ---
+  const nn = h("input", { type: "text", placeholder: "e.g. brand name, Arabic name, former name" });
+  const nk = h("select", {}, ...[["brand", "Brand"], ["arabic", "Arabic"], ["former", "Former"], ["legal", "Legal"], ["other", "Other"]].map(([v, t]) => h("option", { value: v }, t)));
+  const namesBlock = h("div", { class: "block stack" },
+    names.length ? h("div", { class: "row" }, ...names.map((n) => h("span", { class: "tag" }, h("bdi", {}, n.name), " (" + n.kind + ") ",
+      h("button", { class: "btn quiet small", "aria-label": "Remove " + n.name, style: "padding:0 4px;border:0", onclick: async () => {
+        await q(sb.from("client_names").delete().eq("id", n.id)).then(reload).catch(fail);
+      } }, "×")))) : h("p", { class: "muted small" }, "Other names help match future requests (brand, Arabic, former names)."),
+    h("form", { class: "row", onsubmit: async (e) => {
+      e.preventDefault(); if (!nn.value.trim()) return;
+      await q(sb.from("client_names").insert({ client_id: id, name: nn.value.trim(), kind: nk.value })).then(() => { toast("Name added"); reload(); }).catch(fail);
+    } }, h("div", { style: "flex:1;min-width:200px" }, nn), h("div", { style: "width:130px" }, nk), h("button", { class: "btn", type: "submit" }, "Add name")));
+
+  // --- History ---
+  const actionsByEx = {}; actions.forEach((a) => (actionsByEx[a.exercise_id] = actionsByEx[a.exercise_id] || []).push(a));
+  const historyBlock = exercises.length ? h("div", {}, ...exercises.map((x) => h("div", { class: "block" },
+    h("div", { class: "spread" },
+      h("div", {}, h("h3", {}, dd(x.exercise_date) + (x.main_risk ? " — " + x.main_risk : "")),
+        h("div", { class: "small muted" }, [x.service_type, x.is_retest ? "re-test" : null, x.delivery_mode && x.delivery_mode.replace("_", " "), x.plan_title && "plan: " + x.plan_title + (x.plan_version ? " v" + x.plan_version : "")].filter(Boolean).join(" · "))),
+      x.overall_score != null ? h("div", { class: "band " + (x.band || "") }, Math.round(x.overall_score) + "% " + (x.band ? x.band[0].toUpperCase() + x.band.slice(1) : "")) : null),
+    Object.keys(x.capability_scores || {}).length ? h("dl", { class: "facts" }, ...Object.entries(x.capability_scores).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v == null ? "Not tested" : Math.round(v) + "%")])) : null,
+    (x.findings || []).length ? h("details", { style: "margin-top:10px" }, h("summary", { class: "small" }, x.findings.length + (x.findings.length === 1 ? " finding" : " findings")),
+      h("div", { class: "table-wrap" }, h("table", {}, h("tbody", {}, ...x.findings.sort((a, b) => a.sort_order - b.sort_order).map((f) => h("tr", {},
+        h("td", {}, f.criterion, f.plan_cause ? h("div", { class: "small muted" }, "Plan-level cause: " + f.plan_cause) : null),
+        h("td", { class: "small" }, RATING_TEXT[f.rating]), h("td", { class: "small muted" }, [f.ncema_clause && "NCEMA " + f.ncema_clause, f.iso_clause && "ISO " + f.iso_clause].filter(Boolean).join(" · ")))))))) : null,
+    (actionsByEx[x.id] || []).length ? h("div", { style: "margin-top:12px" }, h("h3", { style: "margin-bottom:6px" }, "Corrective actions"),
+      h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Action"), h("th", {}, "Owner"), h("th", {}, "Due"), h("th", {}, "Status"))),
+        h("tbody", {}, ...actionsByEx[x.id].map((a) => {
+          const sel = h("select", { "aria-label": "Status", onchange: async () => {
+            await q(sb.from("corrective_actions").update({ status: sel.value }).eq("id", a.id)).then(() => toast("Action status saved")).catch(fail);
+          } }, ...Object.entries(ACTION_STATUS).map(([k, t]) => h("option", { value: k, selected: k === a.status }, t)));
+          return h("tr", {}, h("td", {}, a.action), h("td", {}, a.owner_department || ""), h("td", {}, dd(a.due_date)), h("td", { style: "min-width:190px" }, sel));
+        }))))) : null)))
+    : h("div", { class: "block" }, h("p", { class: "muted" }, client.history_opt_out ? "This client opted out — no exercise history is kept." :
+        "No exercises recorded yet. At delivery, the report skill saves the exercise here (score, findings and corrective actions)."));
+
+  const profileBlock = profile ? h("div", { class: "block" }, h("dl", { class: "facts" },
+    ...[["Departments", (profile.departments || []).join(", ")], ["Key operations", profile.key_operations], ["Dependencies", profile.dependencies],
+        ["Plan tested", [profile.plan_title, profile.plan_version && "v" + profile.plan_version].filter(Boolean).join(" ")], ["Updated", dt(profile.updated_at)]]
+      .filter(([, v]) => v).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))) : null;
+
+  // --- Requests + record a phone/email request ---
+  const requestsBlock = h("div", { class: "block stack" },
+    requests.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Received", "How", "For", "Main risk", "Status"].map((x) => h("th", {}, x)))),
+      h("tbody", {}, ...requests.map((r) => h("tr", {}, h("td", {}, dt(r.created_at)), h("td", {}, r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1)),
+        h("td", {}, r.org_unit || ""), h("td", {}, r.risk_concern_1 || ""), h("td", {}, STATUS_TEXT[r.status])))))) : h("p", { class: "muted" }, "No requests yet."),
+    h("details", {}, h("summary", { class: "small" }, "Record a phone or email request"), phoneRequestForm(client, contacts, reload)));
+
+  // --- Activity ---
+  const eventsBlock = h("details", { class: "block" }, h("summary", {}, "Activity log (" + events.length + ")"),
+    events.length ? h("ul", { class: "small", style: "margin-top:10px" }, ...events.map((ev) => h("li", {}, dt(ev.at) + " — " + ev.event.replace(/_/g, " ") + (ev.detail ? ": " + ev.detail : "")))) : h("p", { class: "muted small" }, "Nothing recorded yet."));
+
+  // --- History choices ---
+  const optBtn = h("button", { class: "btn", onclick: async () => {
+    const turningOff = !client.history_opt_out;
+    const ok = await confirmBox({ title: turningOff ? "Record that this client opted out?" : "Keep history again for this client?",
+      text: turningOff ? "No new exercise history will be saved. Existing history stays until you delete it below." : "Only do this if the client has asked for their history to be kept again.",
+      ok: turningOff ? "Record opt-out" : "Keep history again" });
+    if (ok) await q(sb.rpc("admin_set_history_opt_out", { p_client: id, p_opt_out: turningOff, p_note: "Recorded on the admin page" })).then(reload).catch(fail);
+  } }, client.history_opt_out ? "Keep history again" : "Record opt-out");
+  const word = client.company_name.split(/\s+/)[0];
+  const dangerBlock = h("div", { class: "block danger-zone stack" },
+    h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Delete exercise history"), h("p", { class: "small muted" }, "Removes exercises, findings, actions and the organisation profile, and records the opt-out. Contacts and requests stay.")),
+      h("button", { class: "btn danger", onclick: async () => {
+        const ok = await confirmBox({ title: "Delete all exercise history for " + client.company_name + "?", text: "This can't be undone. The activity log keeps a note that it was deleted on request.", ok: "Delete history", typeWord: word });
+        if (ok) await q(sb.rpc("admin_delete_history", { p_client: id, p_reason: "Client request (admin page)" })).then(() => { toast("History deleted"); reload(); }).catch(fail);
+      } }, "Delete history")),
+    h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Erase this client completely"), h("p", { class: "small muted" }, "Removes the client, contacts, other names, requests and history. Only the reference and a dated note remain in the log.")),
+      h("button", { class: "btn danger", onclick: async () => {
+        const ok = await confirmBox({ title: "Erase " + client.company_name + " completely?", text: "Everything about this client is removed. This can't be undone.", ok: "Erase client", typeWord: word });
+        if (ok) await q(sb.rpc("admin_erase_client", { p_client: id, p_reason: "Client request (admin page)" })).then(() => { toast("Client erased"); location.hash = "#clients"; show("clients"); }).catch(fail);
+      } }, "Erase client")));
+
+  const openActions = actions.filter((a) => a.status === "open" || a.status === "done").length;
+  app.replaceChildren(
+    h("a", { href: "#clients", class: "small muted", onclick: () => show("clients") }, "← All clients"),
+    h("div", { class: "spread", style: "margin-top:10px" },
+      h("div", {}, h("h1", { dir: "auto" }, client.company_name), h("p", { class: "muted small", style: "margin:4px 0 0" },
+        [client.business_unit, plural(exercises.length, "exercise"), plural(openActions, "open action"),
+         client.history_opt_out ? "history opted out" : (client.retain_until ? "history kept until " + dd(client.retain_until) : null)].filter(Boolean).join(" · "))),
+      h("div", { class: "row" }, refBox, optBtn)),
+    exercises.length ? h("p", { class: "warn", style: "margin-top:16px" }, "Before discussing this history, check who you're speaking to: a contact listed below, or someone writing from the company's own email domain. Send summaries only to those addresses.") : null,
+    h("section", { class: "part" }, h("h2", {}, "Exercise history"), historyBlock),
+    profileBlock ? h("section", { class: "part" }, h("h2", {}, "Organisation profile"), profileBlock) : null,
+    h("section", { class: "part" }, h("h2", {}, "Requests"), requestsBlock),
+    h("section", { class: "part" }, h("h2", {}, "Contacts"), contactsBlock),
+    h("section", { class: "part" }, h("h2", {}, "Other names"), namesBlock),
+    h("section", { class: "part" }, h("h2", {}, "Client details"), identity),
+    h("section", { class: "part" }, eventsBlock),
+    h("section", { class: "part" }, h("h2", {}, "Delete or erase"), dangerBlock));
+}
+
+function phoneRequestForm(client, contacts, reload) {
+  const src = h("select", {}, h("option", { value: "phone" }, "Phone call"), h("option", { value: "email" }, "Email"), h("option", { value: "referral" }, "Referral"));
+  const who = h("select", {}, h("option", { value: "" }, "A new person (enter below)"), ...contacts.filter((c) => c.is_active).map((c) => h("option", { value: c.id }, [c.name, c.email].filter(Boolean).join(" — "))));
+  const nn = h("input", { type: "text" }), ne = h("input", { type: "email" }), np = h("input", { type: "tel" });
+  const f = { org_unit: h("input", { type: "text", value: client.business_unit || "" }), service_type: h("input", { type: "text", placeholder: "e.g. Test my plan" }),
+    risk_concern_1: h("input", { type: "text" }), risk_concern_2: h("input", { type: "text" }),
+    retest_or_new: h("select", {}, h("option", { value: "" }, "—"), ...Object.entries(RETEST_TEXT).map(([k, t]) => h("option", { value: k }, t))),
+    what_changed: h("textarea", {}), actions_done: h("textarea", {}), plan_updated: h("input", { type: "text", placeholder: "e.g. v3, March 2027" }), notes: h("textarea", {}) };
+  return h("form", { class: "stack", style: "margin-top:12px", onsubmit: async (e) => {
+    e.preventDefault();
+    let contactLine = "";
+    if (!who.value && (nn.value.trim() || ne.value.trim() || np.value.trim())) {
+      await q(sb.from("client_contacts").insert({ client_id: client.id, name: nn.value.trim() || null, email: ne.value.trim().toLowerCase() || null, phone: np.value.trim() || null })).catch(fail);
+      contactLine = [nn.value, ne.value, np.value].filter((x) => x.trim()).join(" · ");
+    } else if (who.value) {
+      const c = contacts.find((x) => x.id === who.value); contactLine = [c.name, c.email, c.phone].filter(Boolean).join(" · ");
+    }
+    const row = Object.fromEntries(Object.entries(f).map(([k, el]) => [k, el.value.trim() || null]));
+    row.notes = "Recorded by Ahmed (" + src.value + ")" + (contactLine ? "\nContact: " + contactLine : "") + (row.notes ? "\n\n" + row.notes : "");
+    await q(sb.from("submissions").insert({ client_id: client.id, source: src.value, form_name: src.value, used_before: "yes", ...row }))
+      .then(() => { toast("Request recorded"); reload(); }).catch(fail);
+  } },
+    h("p", { class: "warn" }, "Verify the caller first: a listed contact, or someone writing from the company's own domain."),
+    h("div", { class: "grid2" }, h("label", { class: "f" }, "How it came in", src), h("label", { class: "f" }, "Who", who),
+      h("label", { class: "f" }, "New person's name", nn), h("label", { class: "f" }, "Their email", ne), h("label", { class: "f" }, "Their phone", np),
+      h("label", { class: "f" }, "Which part of the organisation", f.org_unit), h("label", { class: "f" }, "Service", f.service_type),
+      h("label", { class: "f" }, "Main risk concern", f.risk_concern_1), h("label", { class: "f" }, "Second risk concern", f.risk_concern_2),
+      h("label", { class: "f" }, "Re-test or new risk", f.retest_or_new), h("label", { class: "f" }, "Plan updated since", f.plan_updated)),
+    h("label", { class: "f" }, "What has changed since the last exercise (structure, key people, systems, plan)", f.what_changed),
+    h("label", { class: "f" }, "Which actions from the last report are done", f.actions_done),
+    h("label", { class: "f" }, "Notes", f.notes),
+    h("div", {}, h("button", { class: "btn primary", type: "submit" }, "Record request")));
+}
+
+// ---------- start ----------
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) afterSignIn(); else showSignIn();
+})();
+</script>
+</body>
+</html>

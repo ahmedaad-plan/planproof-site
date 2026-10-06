@@ -48,25 +48,59 @@ async function supabaseInsert(table, rows) {
   }
 }
 
+// Trim a form value to a short clean string (or null).
+function clean(v, max = 2000) {
+  if (v == null) return null;
+  const s = String(Array.isArray(v) ? v.join(", ") : v).trim();
+  return s ? s.slice(0, max) : null;
+}
+function oneOf(v, allowed) {
+  const s = clean(v, 40);
+  return s && allowed.includes(s) ? s : null;
+}
+
+// Client history (returning clients): every request still creates its own
+// client row here, marked "unconfirmed" by the database. A database trigger
+// then compares it with existing clients (reference, email, email domain,
+// organisation name) and labels the request: matched by reference / likely /
+// possible / new. Ahmed confirms every link on the admin page — nothing is
+// merged automatically, and this public key can never read client records.
 async function saveToSupabase(formName, data, humanFields, summary) {
   const [riskMain, risk2, risk3] = parseRiskConcerns(data.risk);
   const clientId = crypto.randomUUID();
+  const industry = data.industry === "__other__" || /^other$/i.test(data.industry || "") ? data.industry_other || data.industry : data.industry;
   await supabaseInsert("clients", [
     {
       id: clientId,
-      company_name: data.organization || humanFields.Organization || humanFields.organization || null,
-      contact_name: data.name || null,
-      email: data.email || null,
-      phone: data.mobile || null,
+      company_name: clean(data.organization || humanFields.Organization || humanFields.organization, 300) || "(not given)",
+      contact_name: clean(data.name, 200),
+      email: clean(data.email, 320),
+      phone: clean(data.mobile, 60),
+      sector: clean(industry, 200),
+      size_band: clean(data.size, 100),
+      location: clean(data.location, 200),
     },
   ]);
+  const usedBefore = oneOf(data.used_before, ["yes", "no", "not_sure"]);
+  const returning = usedBefore === "yes"; // returning-client answers only count when "Yes" was chosen
   await supabaseInsert("submissions", [
     {
       client_id: clientId,
+      form_name: clean(formName, 60),
+      service_type: clean(data.service_type, 200),
       risk_concern_1: riskMain,
       risk_concern_2: risk2,
       risk_concern_3: risk3,
-      key_operations: data.operations || null,
+      key_operations: clean(data.operations, 4000),
+      org_unit: clean(data.org_unit, 300),
+      used_before: usedBefore,
+      reference_given: returning ? clean(data.client_ref, 40) : null,
+      last_exercise_when: returning ? clean(data.last_exercise_when, 100) : null,
+      retest_or_new: returning ? oneOf(data.retest_or_new, ["retest", "new", "unsure"]) : null,
+      what_changed: returning ? clean(data.what_changed, 4000) : null,
+      actions_done: returning ? clean(data.actions_done, 4000) : null,
+      plan_updated: returning ? clean(data.plan_updated, 300) : null,
+      history_opt_out: !!clean(data.history_opt_out, 10),
       notes: `Form: ${formName}\n\n${summary}`,
     },
   ]);
