@@ -136,7 +136,6 @@
   const clientLabelEl = document.getElementById("clientLabel");
   const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
-  let injectTimerEnd = null;
   let injectTimerInterval = null;
   // Audio can only play after a user gesture. If this page loads (or
   // reloads) while an inject is already showing — not starting fresh from
@@ -323,42 +322,62 @@
       <div class="inject-title">${escapeHtml(inject.title)}</div>
       <div class="inject-desc">${escapeHtml(inject.desc)}</div>
       <div class="timer-row">
-        <div><span class="label">This inject</span><span class="value" id="injectTimerValue">--:--</span></div>
+        <div>
+          <span class="label">This inject</span>
+          <span class="value" id="injectTimerValue">--:--</span>
+          <span class="label" id="injectTimerNote" style="margin-top:4px;"></span>
+        </div>
       </div>
     `;
 
-    if (isNewInject) {
-      if (inject.sfx) {
-        if (audioUnlocked) {
-          playSfx(inject.sfx);
-        } else {
-          // Don't attempt a doomed play() before the gate is tapped — queue
-          // it so the unlock handler above can play it the moment it can.
-          pendingSfx = inject.sfx;
-          sfxStatusEl.textContent = `sound: ⏸ waiting for "Tap to begin" to play ${inject.sfx}`;
-        }
+    if (isNewInject && inject.sfx) {
+      if (audioUnlocked) {
+        playSfx(inject.sfx);
+      } else {
+        // Don't attempt a doomed play() before the gate is tapped — queue
+        // it so the unlock handler above can play it the moment it can.
+        pendingSfx = inject.sfx;
+        sfxStatusEl.textContent = `sound: ⏸ waiting for "Tap to begin" to play ${inject.sfx}`;
       }
-      startInjectTimer(inject.durationMinutes || 0);
     }
+
+    // Same deadline as the participants' phones and the database's on-time
+    // check: the server's start time for this inject + its duration + any
+    // "+5 min". Recalculated on every update (not only when the inject
+    // changes), so a reload mid-inject resumes at the real time left and an
+    // extension shows straight away. (Fixed 6 October 2026 — the room screen
+    // used to start its own stopwatch when it first showed the inject.)
+    startInjectTimer(injectDeadlineMs(row, inject), row.inject_extra_minutes || 0);
   }
 
-  function startInjectTimer(minutes) {
+  function startInjectTimer(deadlineMs, extraMinutes) {
     clearInjectTimer();
-    injectTimerEnd = Date.now() + minutes * 60 * 1000;
-    const valueEl = () => document.getElementById("injectTimerValue");
+    const noteEl = document.getElementById("injectTimerNote");
+    if (noteEl) noteEl.textContent = extraMinutes > 0 ? `includes +${extraMinutes} min extra time` : "";
     function tick() {
-      const el = valueEl();
+      const el = document.getElementById("injectTimerValue");
       if (!el) return;
-      const remainingMs = injectTimerEnd - Date.now();
-      const sign = remainingMs < 0 ? "-" : "";
-      const abs = Math.abs(remainingMs);
-      const m = Math.floor(abs / 60000);
-      const s = Math.floor((abs % 60000) / 1000);
-      el.textContent = `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-      el.classList.toggle("warn", remainingMs < 0);
+      if (!deadlineMs) {
+        el.textContent = "No time limit";
+        el.classList.remove("warn");
+        return;
+      }
+      const remainingMs = deadlineMs - Date.now();
+      if (remainingMs <= 0) {
+        // Phones lock at this point; the room screen says so rather than
+        // counting into negative time.
+        el.textContent = "Time's up";
+        el.classList.add("warn");
+        return;
+      }
+      const m = Math.floor(remainingMs / 60000);
+      const s = Math.floor((remainingMs % 60000) / 1000);
+      el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      // Amber in the last minute, as on the phones.
+      el.classList.toggle("warn", remainingMs < 60000);
     }
     tick();
-    injectTimerInterval = setInterval(tick, 1000);
+    if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
   }
 
   function clearInjectTimer() {
