@@ -200,7 +200,10 @@ exports.handler = async (event) => {
       "onboarding@resend.dev",
     ].filter((v, i, arr) => v && arr.indexOf(v) === i);
 
-    const subject = `New ${formName} submission \u2014 ${data.organization || humanFields.Organization || humanFields.organization || "PlanProof"}`;
+    // Returning-client answer in the subject, so it shows in the inbox list (client history, 7 Oct 2026)
+    const usedBeforeText = { yes: "Yes", no: "No", not_sure: "Not sure" }[String(data.used_before || "").trim()];
+    const subject = `New ${formName} submission \u2014 ${data.organization || humanFields.Organization || humanFields.organization || "PlanProof"}`
+      + (usedBeforeText ? ` (exercised before: ${usedBeforeText})` : "");
 
     let sentOk = false;
     let lastError = "";
