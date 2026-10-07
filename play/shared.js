@@ -532,7 +532,27 @@ const BROADCAST_PRESETS = [
 ];
 const MESSAGE_MAX_LENGTH = 280;
 
-async function sendBroadcast(sessionId, { body, presetKey }) {
+// ---- Facilitator <-> Department messaging (roadmap item 4, 5 Oct 2026) ----
+// Ready-made messages for each direction's dropdown. Choosing one only fills
+// the text box — either side can edit it or type anything else, same as the
+// broadcast presets above. preset_key is recorded only when a preset is sent
+// unedited.
+const FACILITATOR_TO_DEPARTMENT_PRESETS = [
+  { key: "need_more_time", text: "Do you need more time?" },
+  { key: "submit_when_ready", text: "Please submit when ready" },
+  { key: "finalise_soon", text: "Moving on shortly — please finalise" },
+];
+const DEPARTMENT_TO_FACILITATOR_PRESETS = [
+  { key: "few_more_minutes", text: "Yes, a few more minutes" },
+  { key: "submitting_now", text: "No, submitting now" },
+  { key: "technical_issue", text: "Technical issue — please wait" },
+];
+
+// Facilitator -> participants: everyone (department omitted/null) or one
+// department. Same endpoint and rejection handling either way — the
+// database checks the facilitator token and, since item 4, allows either
+// target for direction=to_participants.
+async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
   assertValidSessionId(sessionId);
   const facilitatorToken = getFacilitatorToken();
   if (!facilitatorToken) {
@@ -556,6 +576,7 @@ async function sendBroadcast(sessionId, { body, presetKey }) {
       body: JSON.stringify({
         session_id: sessionId,
         direction: "to_participants",
+        department: department || null,
         body,
         preset_key: presetKey || null,
       }),
@@ -574,6 +595,49 @@ async function sendBroadcast(sessionId, { body, presetKey }) {
         "the facilitator token in this link doesn't match this session. " +
         "Use the exact Facilitator link that was issued for it.";
     } else if (/check constraint/i.test(detail)) {
+      detail = `the message must be between 1 and ${MESSAGE_MAX_LENGTH} characters.`;
+    }
+    throw new Error(`Message not sent: ${detail}`);
+  }
+}
+
+// Department -> facilitator. No facilitator token exists for a participant,
+// so — like a group answer — anyone who joined under this department can
+// send on its behalf; no individual is recorded, not even hidden. The
+// database refuses this direction without a department (see migration
+// item4_on_time_rule_department_messaging).
+async function sendDepartmentRequest(sessionId, { body, presetKey, department }) {
+  assertValidSessionId(sessionId);
+  if (!department) {
+    throw new Error("No department on this identity — please rejoin the exercise.");
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/session_messages`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        direction: "to_facilitator",
+        department,
+        body,
+        preset_key: presetKey || null,
+      }),
+    })
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      if (err && err.message) detail = err.message;
+    } catch {
+      /* not JSON — keep the HTTP status */
+    }
+    if (/check constraint/i.test(detail)) {
       detail = `the message must be between 1 and ${MESSAGE_MAX_LENGTH} characters.`;
     }
     throw new Error(`Message not sent: ${detail}`);
@@ -602,6 +666,29 @@ async function fetchMessages(sessionId) {
   return res.json();
 }
 
+// Messages addressed to the facilitator (department requests), oldest
+// first. Same open read as fetchMessages above, for the same reason
+// (Realtime can't check a header) — accepted, closed at item 6.
+async function fetchFacilitatorMessages(sessionId) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(
+      `${SUPABASE_URL}/rest/v1/session_messages?session_id=eq.${sessionId}` +
+        `&direction=eq.to_facilitator` +
+        `&select=id,department,inject_index,preset_key,body,created_at&order=created_at.asc`,
+      {
+        cache: "no-store",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      }
+    )
+  );
+  if (!res.ok) throw new Error(`Fetch facilitator messages failed: HTTP ${res.status}`);
+  return res.json();
+}
+
 // Calls onMessage(row) for every new message in this session, live.
 function subscribeToMessages(supabaseClient, sessionId, onMessage) {
   return supabaseClient
@@ -616,6 +703,25 @@ function subscribeToMessages(supabaseClient, sessionId, onMessage) {
       },
       (payload) => {
         if (payload.new && payload.new.direction === "to_participants") onMessage(payload.new);
+      }
+    )
+    .subscribe();
+}
+
+// Calls onMessage(row) for every new department->facilitator message, live.
+function subscribeToFacilitatorMessages(supabaseClient, sessionId, onMessage) {
+  return supabaseClient
+    .channel(`facilitator-messages-${sessionId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "session_messages",
+        filter: `session_id=eq.${sessionId}`,
+      },
+      (payload) => {
+        if (payload.new && payload.new.direction === "to_facilitator") onMessage(payload.new);
       }
     )
     .subscribe();

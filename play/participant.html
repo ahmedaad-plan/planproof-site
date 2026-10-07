@@ -106,6 +106,30 @@
   .msg-list li { padding: 8px 0; border-top: 1px solid rgba(244,241,234,0.15); overflow-wrap: anywhere; }
   .msg-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; }
   .msg-list li.unread { font-weight: 600; }
+
+  /* Message the facilitator (roadmap item 4, added 7 October 2026). */
+  .msg-reply { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
+  .msg-reply-card {
+    background: rgba(244,241,234,0.06); border: 1px solid rgba(244,241,234,0.15);
+    border-radius: 12px; padding: 16px;
+  }
+  .msg-reply-label { font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; }
+  .msg-reply select, .msg-reply textarea {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 0.95rem; font-family: inherit; box-sizing: border-box; margin-top: 6px;
+    background: var(--pp-paper); color: var(--pp-navy);
+  }
+  .msg-reply textarea { min-height: 56px; resize: vertical; }
+  .msg-reply-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .msg-reply-row .count { font-size: 0.8rem; opacity: 0.6; }
+  .msg-reply-row button {
+    border: none; border-radius: 8px; padding: 10px 18px; font-size: 1rem; font-weight: 600;
+    background: var(--pp-amber); color: var(--pp-navy); cursor: pointer;
+  }
+  .msg-reply-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .msg-reply-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
+  .msg-reply-feedback.ok { color: #9be3a8; }
+  .msg-reply-feedback.err { color: #ffb3a8; }
 </style>
 </head>
 <body>
@@ -128,6 +152,18 @@
       <summary>Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></summary>
       <ul class="msg-list" id="msgList"></ul>
     </details>
+  </section>
+  <section class="msg-reply" id="msgReply" hidden>
+    <div class="msg-reply-card">
+      <div class="msg-reply-label">Message the facilitator</div>
+      <select id="replyPreset"><option value="">— Choose a ready-made message —</option></select>
+      <textarea id="replyText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+      <div class="msg-reply-row">
+        <span class="count" id="replyCount">0 / 280</span>
+        <button id="replySendBtn" disabled>Send &rarr;</button>
+      </div>
+      <div class="msg-reply-feedback" id="replyFeedback"></div>
+    </div>
   </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -205,6 +241,7 @@
     subscribeToSession(supabaseClient, sessionId, render);
     loadMessages();
     subscribeToMessages(supabaseClient, sessionId, onNewMessage);
+    initReply();
     onReconnect(() => {
       fetchSession(sessionId)
         .then(render)
@@ -322,6 +359,84 @@
     } else {
       msgBannerEl.classList.remove("show");
     }
+  }
+
+  // ---- Message the facilitator (roadmap item 4, added 7 October 2026) ---
+  // Same editable-dropdown pattern as the facilitator's own message boxes.
+  // Sent as this person's department (self-declared, no individual stored —
+  // the same trust model a group answer already uses), so it reaches the
+  // facilitator as "Finance" or whichever department, never this person's
+  // name.
+  function initReply() {
+    const sectionEl = document.getElementById("msgReply");
+    const presetEl = document.getElementById("replyPreset");
+    const textEl = document.getElementById("replyText");
+    const countEl = document.getElementById("replyCount");
+    const sendBtn = document.getElementById("replySendBtn");
+    const feedbackEl = document.getElementById("replyFeedback");
+    let sending = false;
+
+    DEPARTMENT_TO_FACILITATOR_PRESETS.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.key;
+      opt.textContent = p.text;
+      presetEl.appendChild(opt);
+    });
+
+    function updateControls() {
+      const len = textEl.value.trim().length;
+      countEl.textContent = `${textEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+      const ended = latestRow && latestRow.status === "ended";
+      sendBtn.disabled = sending || len === 0 || ended;
+      presetEl.disabled = ended;
+      textEl.disabled = ended;
+      if (ended) feedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+    }
+
+    presetEl.addEventListener("change", () => {
+      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetEl.value);
+      if (preset) textEl.value = preset.text;
+      feedbackEl.textContent = "";
+      feedbackEl.className = "msg-reply-feedback";
+      updateControls();
+      textEl.focus();
+    });
+    textEl.addEventListener("input", () => {
+      feedbackEl.textContent = "";
+      feedbackEl.className = "msg-reply-feedback";
+      updateControls();
+    });
+
+    sendBtn.addEventListener("click", async () => {
+      const body = textEl.value.trim();
+      if (!body) return;
+      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetEl.value);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      sending = true;
+      updateControls();
+      feedbackEl.className = "msg-reply-feedback";
+      feedbackEl.textContent = "Sending…";
+      try {
+        await sendDepartmentRequest(sessionId, { body, presetKey, department: identity.department });
+        textEl.value = "";
+        presetEl.value = "";
+        feedbackEl.className = "msg-reply-feedback ok";
+        feedbackEl.textContent = `Sent to the facilitator at ${formatMessageTime(new Date().toISOString())} ✓`;
+      } catch (err) {
+        feedbackEl.className = "msg-reply-feedback err";
+        feedbackEl.textContent = err.message;
+      } finally {
+        sending = false;
+        updateControls();
+      }
+    });
+
+    sectionEl.hidden = false;
+    updateControls();
+    // Re-checked on every session row update (render() calls renderMessages,
+    // which doesn't touch this section) — status changing to "ended" should
+    // disable sending even without the person touching the form.
+    setInterval(updateControls, 5000);
   }
 
   function isIndividual(inject) {

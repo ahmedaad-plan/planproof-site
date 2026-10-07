@@ -97,6 +97,39 @@
   .broadcast-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.85rem; max-height: 180px; overflow-y: auto; }
   .broadcast-log li { padding: 5px 0; border-top: 1px solid #f0f0f0; }
   .broadcast-log .meta { opacity: 0.6; margin-right: 6px; }
+
+  /* Department messaging (roadmap item 4, added 7 October 2026). */
+  .dept-msg-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
+  .dept-msg-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  .dept-msg-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .dept-msg-section select, .dept-msg-section textarea {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
+    font-size: 0.95rem; font-family: inherit; box-sizing: border-box; margin-top: 6px;
+  }
+  .dept-msg-section textarea { min-height: 56px; resize: vertical; }
+  .dept-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .dept-msg-row .count { font-size: 0.8rem; opacity: 0.6; }
+  .dept-msg-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
+  .dept-msg-feedback.ok { color: #1e5c28; }
+  .dept-msg-feedback.err { color: #b00020; }
+  .dept-msg-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.85rem; max-height: 180px; overflow-y: auto; }
+  .dept-msg-log li { padding: 5px 0; border-top: 1px solid #f0f0f0; }
+  .dept-msg-log .meta { opacity: 0.6; margin-right: 6px; }
+  .msg-dept-btn {
+    font-size: 0.78rem; padding: 2px 8px; border-radius: 999px; border: 1px solid #0b1f3a;
+    background: white; cursor: pointer; opacity: 0.85;
+  }
+  .inbox-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
+  .inbox-section h2 { font-size: 1.05rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .inbox-badge {
+    display: inline-block; padding: 1px 8px; border-radius: 999px;
+    background: #e8a33d; color: #0b1f3a; font-size: 0.75rem; font-weight: 700;
+  }
+  .inbox-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.9rem; max-height: 220px; overflow-y: auto; }
+  .inbox-list li { padding: 7px 0; border-top: 1px solid #f0f0f0; overflow-wrap: anywhere; }
+  .inbox-list li:first-child { border-top: none; }
+  .inbox-list li.unread { font-weight: 600; background: #fff8ec; }
+  .inbox-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; font-weight: 400; }
 </style>
 </head>
 <body>
@@ -148,6 +181,33 @@
     </div>
     <div class="broadcast-feedback" id="msgFeedback"></div>
     <ul class="broadcast-log" id="msgLog"></ul>
+  </div>
+
+  <div class="dept-msg-section" id="deptMsgSection">
+    <h2>Message a department</h2>
+    <div class="sub">
+      Reaches everyone registered in that department's phones — not the
+      shared room screen. Choose a ready-made message, or type your own.
+    </div>
+    <label for="deptMsgDept" style="font-size:0.85rem; font-weight:600;">Department</label>
+    <select id="deptMsgDept"><option value="">— Choose a department —</option></select>
+    <label for="deptMsgPreset" style="font-size:0.85rem; font-weight:600; margin-top:8px; display:block;">Ready-made messages (optional)</label>
+    <select id="deptMsgPreset">
+      <option value="">— Choose a ready-made message —</option>
+    </select>
+    <textarea id="deptMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <div class="dept-msg-row">
+      <span class="count" id="deptMsgCount">0 / 280</span>
+      <button class="primary" id="deptMsgSendBtn" disabled>Send &rarr;</button>
+    </div>
+    <div class="dept-msg-feedback" id="deptMsgFeedback"></div>
+    <ul class="dept-msg-log" id="deptMsgLog"></ul>
+  </div>
+
+  <div class="inbox-section" id="inboxSection">
+    <h2>Messages from departments <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
+    <div class="sub">Requests and replies from participants, newest first.</div>
+    <ul class="inbox-list" id="inboxList"><li style="opacity:0.6;">No messages yet.</li></ul>
   </div>
 
   <div class="status-section">
@@ -205,6 +265,7 @@
     <input id="displayLink" readonly />
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -324,6 +385,7 @@
       roomCountSelectEl.disabled = !canSetRoomCount;
 
       updateMsgControls();
+      updateDeptMsgControls();
     }
 
     addDeptBtn.addEventListener("click", async () => {
@@ -477,6 +539,206 @@
       }
     }
 
+    // ---- Message a department (roadmap item 4, added 7 October 2026) ------
+    // Same editable-dropdown pattern as "Message everyone", plus a department
+    // selector. Uses sendBroadcast with a department — the database checks
+    // the facilitator token the same way either way.
+    const deptMsgDeptEl = document.getElementById("deptMsgDept");
+    const deptMsgPresetEl = document.getElementById("deptMsgPreset");
+    const deptMsgTextEl = document.getElementById("deptMsgText");
+    const deptMsgCountEl = document.getElementById("deptMsgCount");
+    const deptMsgSendBtn = document.getElementById("deptMsgSendBtn");
+    const deptMsgFeedbackEl = document.getElementById("deptMsgFeedback");
+    const deptMsgLogEl = document.getElementById("deptMsgLog");
+    let deptMsgSending = false;
+
+    FACILITATOR_TO_DEPARTMENT_PRESETS.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.key;
+      opt.textContent = p.text;
+      deptMsgPresetEl.appendChild(opt);
+    });
+
+    // Keeps the department dropdown in sync with the same department list
+    // the response-status panel uses (scenario + extra_departments +
+    // anyone who's actually joined). Preserves the current selection when
+    // possible, rather than resetting it on every 5-second roster poll.
+    function updateDeptMsgOptions() {
+      const prev = deptMsgDeptEl.value;
+      const depts = allDepartments();
+      deptMsgDeptEl.innerHTML =
+        `<option value="">— Choose a department —</option>` +
+        depts.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+      if (depts.includes(prev)) deptMsgDeptEl.value = prev;
+    }
+
+    function updateDeptMsgControls() {
+      const len = deptMsgTextEl.value.trim().length;
+      deptMsgCountEl.textContent = `${deptMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+      const ended = currentRow && currentRow.status === "ended";
+      deptMsgSendBtn.disabled = deptMsgSending || len === 0 || ended || !currentRow || !deptMsgDeptEl.value;
+      deptMsgPresetEl.disabled = ended;
+      deptMsgTextEl.disabled = ended;
+      deptMsgDeptEl.disabled = ended;
+      if (ended) deptMsgFeedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+    }
+
+    deptMsgDeptEl.addEventListener("change", () => {
+      deptMsgFeedbackEl.textContent = "";
+      deptMsgFeedbackEl.className = "dept-msg-feedback";
+      updateDeptMsgControls();
+    });
+    deptMsgPresetEl.addEventListener("change", () => {
+      const preset = FACILITATOR_TO_DEPARTMENT_PRESETS.find((p) => p.key === deptMsgPresetEl.value);
+      if (preset) deptMsgTextEl.value = preset.text;
+      deptMsgFeedbackEl.textContent = "";
+      deptMsgFeedbackEl.className = "dept-msg-feedback";
+      updateDeptMsgControls();
+      deptMsgTextEl.focus();
+    });
+    deptMsgTextEl.addEventListener("input", () => {
+      deptMsgFeedbackEl.textContent = "";
+      deptMsgFeedbackEl.className = "dept-msg-feedback";
+      updateDeptMsgControls();
+    });
+
+    deptMsgSendBtn.addEventListener("click", async () => {
+      const body = deptMsgTextEl.value.trim();
+      const department = deptMsgDeptEl.value;
+      if (!body || !department) return;
+      const preset = FACILITATOR_TO_DEPARTMENT_PRESETS.find((p) => p.key === deptMsgPresetEl.value);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      deptMsgSending = true;
+      updateDeptMsgControls();
+      deptMsgFeedbackEl.className = "dept-msg-feedback";
+      deptMsgFeedbackEl.textContent = "Sending…";
+      try {
+        await sendBroadcast(sessionId, { body, presetKey, department });
+        deptMsgTextEl.value = "";
+        deptMsgPresetEl.value = "";
+        deptMsgFeedbackEl.className = "dept-msg-feedback ok";
+        deptMsgFeedbackEl.textContent = `Sent to ${department} at ${formatMessageTime(new Date().toISOString())} ✓`;
+        await refreshDeptMsgLog();
+      } catch (err) {
+        deptMsgFeedbackEl.className = "dept-msg-feedback err";
+        deptMsgFeedbackEl.textContent = err.message;
+      } finally {
+        deptMsgSending = false;
+        updateDeptMsgControls();
+      }
+    });
+
+    // Clicking "Message" on an amber/red department row scrolls to this
+    // section and pre-selects that department, ready to type or pick a
+    // preset. Delegated on the stable section container, since the status
+    // list's innerHTML is rebuilt every second.
+    document.getElementById("statusSection").addEventListener("click", (e) => {
+      const btn = e.target.closest(".msg-dept-btn");
+      if (!btn) return;
+      updateDeptMsgOptions();
+      deptMsgDeptEl.value = btn.dataset.dept;
+      updateDeptMsgControls();
+      document.getElementById("deptMsgSection").scrollIntoView({ behavior: "smooth", block: "center" });
+      deptMsgTextEl.focus();
+    });
+
+    async function refreshDeptMsgLog() {
+      try {
+        const msgs = (await fetchMessages(sessionId)).filter((m) => !!m.department);
+        deptMsgLogEl.innerHTML = msgs.length
+          ? msgs
+              .slice()
+              .reverse()
+              .map(
+                (m) =>
+                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · to ${escapeHtml(m.department)} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+              )
+              .join("")
+          : `<li style="opacity:0.6;">No department messages sent yet.</li>`;
+      } catch (err) {
+        deptMsgLogEl.innerHTML = `<li style="color:#b00020;">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+      }
+    }
+
+    // ---- Messages from departments (incoming, item 4) ----------------------
+    // Unread tracking follows the same localStorage pattern participant.html
+    // uses: the newest acknowledged created_at, so a reload doesn't re-light
+    // everything already seen. A chime plays on live arrival (unlocked by
+    // the first click anywhere on this page, same as the room display's
+    // "tap to begin" gesture, since the facilitator clicks things
+    // immediately — see unlockChime() call below).
+    const inboxListEl = document.getElementById("inboxList");
+    const inboxBadgeEl = document.getElementById("inboxBadge");
+    const inboxReadKey = `pp_facinbox_read_${sessionId}`;
+    let inboxMessages = [];
+    let inboxLastReadAt = null;
+    try {
+      const stored = localStorage.getItem(inboxReadKey);
+      inboxLastReadAt = stored ? Number(stored) : null;
+    } catch {
+      inboxLastReadAt = null;
+    }
+    const inboxMsgTime = (m) => new Date(m.created_at).getTime();
+    function isInboxUnread(m) {
+      return inboxLastReadAt === null || inboxMsgTime(m) > inboxLastReadAt;
+    }
+    function markInboxRead() {
+      if (inboxMessages.length) {
+        inboxLastReadAt = Math.max(...inboxMessages.map(inboxMsgTime));
+        try {
+          localStorage.setItem(inboxReadKey, String(inboxLastReadAt));
+        } catch {
+          /* storage blocked — still marked read for this page */
+        }
+      }
+      renderInbox();
+    }
+    document.getElementById("inboxSection").addEventListener("click", () => {
+      // Any click in the panel counts as having seen the current list —
+      // simplest "mark read" gesture for a page the facilitator is actively
+      // watching, matching the participant page's "tap the history" pattern.
+      markInboxRead();
+    });
+
+    function renderInbox() {
+      const unread = inboxMessages.filter(isInboxUnread);
+      inboxBadgeEl.hidden = unread.length === 0;
+      inboxBadgeEl.textContent = unread.length === 1 ? "1 new" : `${unread.length} new`;
+      inboxListEl.innerHTML = inboxMessages.length
+        ? inboxMessages
+            .slice()
+            .reverse()
+            .map(
+              (m) =>
+                `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || "unknown department")} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+            )
+            .join("")
+        : `<li style="opacity:0.6;">No messages yet.</li>`;
+    }
+
+    async function refreshInbox() {
+      try {
+        inboxMessages = await fetchFacilitatorMessages(sessionId);
+        renderInbox();
+      } catch (err) {
+        inboxListEl.innerHTML = `<li style="color:#b00020;">Couldn't load messages: ${escapeHtml(err.message)}</li>`;
+      }
+    }
+
+    // First click anywhere unlocks the chime (browsers block audio without
+    // a user gesture) — the facilitator clicks a control almost immediately,
+    // so this is a near-invisible "tap to begin" equivalent.
+    document.body.addEventListener("click", unlockChime, { once: true });
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    subscribeToFacilitatorMessages(supabaseClient, sessionId, (m) => {
+      if (inboxMessages.some((x) => x.id === m.id)) return;
+      inboxMessages.push(m);
+      inboxMessages.sort((a, b) => inboxMsgTime(a) - inboxMsgTime(b));
+      renderInbox();
+      playChime();
+    });
+
     // The attendee roster isn't on Realtime (see design-notes.md — a
     // header-gated RLS policy like this one can't be evaluated for a
     // realtime payload, since those have no HTTP headers to check), so new
@@ -494,6 +756,11 @@
         rosterErrorEl.style.display = "none";
         renderRoster(attendees);
         renderStatus();
+        // The department picker depends on currentRow (scenario
+        // departments) and lastAttendees — refresh() and refreshRoster()
+        // both start at page load with no guaranteed order, so update it
+        // here too rather than waiting for the next 5-second interval tick.
+        updateDeptMsgOptions();
       } catch (err) {
         rosterErrorEl.textContent = `Couldn't load roster/status: ${err.message}`;
         rosterErrorEl.style.display = "block";
@@ -638,7 +905,8 @@
               ${depts
                 .map((d) => {
                   const st = departmentStatus(curIdx, inj, d);
-                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span></li>`;
+                  const canMessage = st.state === "amber" || st.state === "red";
+                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span>${canMessage ? `<button class="msg-dept-btn" data-dept="${escapeHtml(d)}">Message</button>` : ""}</li>`;
                 })
                 .join("")}
             </ul>
@@ -727,13 +995,23 @@
     refresh();
     refreshRoster();
     refreshMessageLog();
+    refreshDeptMsgLog();
+    refreshInbox();
+    updateDeptMsgOptions();
     setInterval(refreshRoster, 5000);
     setInterval(refreshMessageLog, 5000);
+    setInterval(refreshDeptMsgLog, 5000);
+    setInterval(updateDeptMsgOptions, 5000);
+    // Inbox arrives live over Realtime (subscribeToFacilitatorMessages
+    // above) — this poll is just a safety net for the rare missed event.
+    setInterval(refreshInbox, 15000);
     // Re-draw (no network) every second so the countdown and the switch to
     // "time's up" happen on time, between the 5-second data polls.
     setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
     onReconnect(refreshMessageLog);
+    onReconnect(refreshDeptMsgLog);
+    onReconnect(refreshInbox);
 
     // Same reasoning as the room display: a dropped connection or a
     // backgrounded tab can leave the facilitator looking at a stale status
@@ -830,6 +1108,7 @@
         ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
         : "No current inject.";
       renderStatus();
+      updateDeptMsgOptions();
     }
 
     updateButtonAvailability();
