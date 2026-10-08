@@ -1,0 +1,11 @@
+{
+  "name": "planproof-site",
+  "private": true,
+  "description": "PlanProof website (static) and its Netlify functions.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.1.4"
+  }
+}
