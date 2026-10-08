@@ -1,5 +1,6 @@
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 # The Supabase publishable (anon) key is public by design: browser pages need it,
 # and Row Level Security — not the key — protects every table (insert-only for

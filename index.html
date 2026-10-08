@@ -1190,94 +1190,6 @@
 </head>
 <body>
 
-<form name="contact-request" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="demo-walkthrough" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="name">
-  <input type="text" name="organization">
-  <input type="email" name="email">
-  <input type="tel" name="mobile">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="generic-scenario" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <input type="text" name="industry">
-  <input type="text" name="industry_other">
-  <input type="text" name="location">
-  <input type="text" name="size">
-  <input type="text" name="risk">
-  <input type="text" name="risk_other">
-  <input type="text" name="operations">
-  <input type="text" name="framework">
-  <input type="text" name="audience">
-  <input type="text" name="audience_other">
-  <input type="text" name="duration">
-  <input type="text" name="service_type">
-  <textarea name="focus"></textarea>
-  <textarea name="incidents"></textarea>
-  <input type="text" name="peak_periods">
-  <textarea name="remarks"></textarea>
-  <input type="text" name="org_unit">
-  <input type="text" name="used_before">
-  <input type="text" name="client_ref">
-  <input type="text" name="last_exercise_when">
-  <input type="text" name="retest_or_new">
-  <textarea name="what_changed"></textarea>
-  <textarea name="actions_done"></textarea>
-  <input type="text" name="plan_updated">
-  <input type="checkbox" name="history_opt_out">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="plan-review" data-netlify="true" enctype="multipart/form-data" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <input type="text" name="industry">
-  <input type="text" name="industry_other">
-  <input type="text" name="location">
-  <input type="text" name="size">
-  <input type="text" name="risk">
-  <input type="text" name="risk_other">
-  <input type="text" name="operations">
-  <input type="text" name="framework">
-  <input type="text" name="audience">
-  <input type="text" name="audience_other">
-  <input type="text" name="duration">
-  <input type="text" name="service_type">
-  <textarea name="focus"></textarea>
-  <textarea name="incidents"></textarea>
-  <input type="text" name="peak_periods">
-  <textarea name="remarks"></textarea>
-  <input type="file" name="plan_document">
-  <input type="text" name="org_unit">
-  <input type="text" name="used_before">
-  <input type="text" name="client_ref">
-  <input type="text" name="last_exercise_when">
-  <input type="text" name="retest_or_new">
-  <textarea name="what_changed"></textarea>
-  <textarea name="actions_done"></textarea>
-  <input type="text" name="plan_updated">
-  <input type="checkbox" name="history_opt_out">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-
 <nav class="sitenav">
   <div class="nav-inner">
     <a href="#home" class="brand">
@@ -1431,7 +1343,7 @@
     <h2>Get in touch</h2>
     <p class="section-lead">Leave your details and we'll get back to you — or email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
 
-    <form class="intake-card" id="contactFormEl" name="contact-request" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate style="max-width:480px;margin:0 auto;">
+    <form class="intake-card" id="contactFormEl" name="contact-request" method="POST" novalidate style="max-width:480px;margin:0 auto;">
       <input type="hidden" name="form-name" value="contact-request">
       <input name="bot-field" style="display:none;">
 
@@ -1603,20 +1515,71 @@ function renderTimeline(){
 
 const CONTACT_EMAIL = "exercises@plan-proof.com"; // TODO: replace with your real inbox once this address is live
 
-// Send a form to Netlify, retrying automatically so a brief network or server
-// hiccup never reaches the visitor. Throws only if every attempt fails.
-async function submitToNetlify(formData){
+// Send a form to PlanProof's own intake service (netlify/functions/intake.mjs),
+// retrying automatically so a brief network or server hiccup never reaches the
+// visitor. Throws only if every attempt fails (the visitor then gets the email
+// fallback below). Requests no longer go through Netlify Forms, whose spam
+// filter could silently drop a real client request.
+const PAGE_OPENED_AT = Date.now();
+const UPLOAD_PART_BYTES = 2 * 1024 * 1024; // must match CHUNK_BYTES in netlify/lib/intake-core.mjs
+
+async function postWithRetry(url, options){
   const waits = [0, 1500, 4000];
   let lastError = null;
   for(const wait of waits){
     if(wait) await new Promise(r => setTimeout(r, wait));
     try{
-      const res = await fetch("/", { method: "POST", body: formData });
-      if(res.ok) return;
+      const res = await fetch(url, options);
+      if(res.ok) return res;
       lastError = new Error("HTTP " + res.status);
+      if(res.status >= 400 && res.status < 500 && res.status !== 429) break; // a retry won't help
     }catch(err){ lastError = err; }
   }
   throw lastError;
+}
+
+// Plan documents go up in parts of at most 2 MB (a single request is limited to
+// about 4.5 MB; plans may be up to 8 MB).
+async function uploadPlanFile(file){
+  const uploadId = crypto.randomUUID();
+  const parts = Math.max(1, Math.ceil(file.size / UPLOAD_PART_BYTES));
+  for(let i = 0; i < parts; i++){
+    const chunk = file.slice(i * UPLOAD_PART_BYTES, (i + 1) * UPLOAD_PART_BYTES);
+    await postWithRetry("/api/intake-upload?id=" + uploadId + "&part=" + i + "&parts=" + parts, {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: chunk
+    });
+  }
+  return { upload_id: uploadId, name: file.name, type: file.type, size: file.size, parts: parts };
+}
+
+// Returns { fileUploadFailed } so the plan form can tell the visitor to email the file.
+async function submitIntake(formData){
+  const data = {};
+  let formName = null, honeypot = "", fileObj = null;
+  for(const [key, value] of formData.entries()){
+    if(value instanceof File){ if(value.size > 0) fileObj = value; continue; }
+    if(key === "form-name"){ formName = value; continue; }
+    if(key === "bot-field"){ honeypot = value; continue; }
+    if(key in data) data[key] = [].concat(data[key], value); else data[key] = value;
+  }
+  let file = null, fileUploadFailed = false;
+  if(fileObj){
+    try{ file = await uploadPlanFile(fileObj); }
+    catch(err){ fileUploadFailed = true; } // still send the request itself: never lose it over the file
+  }
+  const body = {
+    submission_id: crypto.randomUUID(), // the same id on every retry, so a retry is never a duplicate
+    form_name: formName,
+    data: data,
+    honeypot: honeypot,
+    elapsed_ms: Date.now() - PAGE_OPENED_AT,
+    file: file,
+    file_upload_failed: fileUploadFailed ? { name: fileObj.name, size: fileObj.size } : null
+  };
+  await postWithRetry("/api/intake", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  return { fileUploadFailed: fileUploadFailed };
 }
 
 // Last resort after all retries: keep the visitor's answers on the page and
@@ -1670,7 +1633,7 @@ function renderScenarioChoice(){
 
 function renderGenericForm(){
   requestStage.innerHTML = `
-    <form class="intake-card" id="genericFormEl" name="generic-scenario" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+    <form class="intake-card" id="genericFormEl" name="generic-scenario" method="POST" novalidate>
       <input type="hidden" name="form-name" value="generic-scenario">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
@@ -1856,7 +1819,7 @@ ${returningHTML("f")}
       genericSummaryText = summaryLines.join("\n");
       const formData = new FormData(e.target);
       formData.append("formatted_summary", genericSummaryText);
-      await submitToNetlify(formData);
+      await submitIntake(formData);
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll design your exercise and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
       requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
@@ -1956,7 +1919,7 @@ function returningPairs(p){
 
 function renderPlanForm(){
   requestStage.innerHTML = `
-    <form class="intake-card" id="planFormEl" name="plan-review" method="POST" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+    <form class="intake-card" id="planFormEl" name="plan-review" method="POST" novalidate>
       <input type="hidden" name="form-name" value="plan-review">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
@@ -2155,8 +2118,11 @@ ${returningHTML("p")}
       planSummaryText = summaryLines.join("\n");
       const formData = new FormData(form);
       formData.append("formatted_summary", planSummaryText);
-      await submitToNetlify(formData);
-      requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your plan and details have been received. We'll review it and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
+      const sent = await submitIntake(formData);
+      const planThanks = sent.fileUploadFailed
+        ? `Your details have been received, but your plan document didn't upload. Please email it to <a class="mail-link" href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we'll match it to your request.`
+        : `Your plan and details have been received. We'll review it and be in touch at the email you provided.`;
+      requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>${planThanks}</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
       requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
     }catch(err){
@@ -2522,7 +2488,7 @@ function renderTeaserEnd(){
         <li>${lockIcon}<div><strong>Automatic final report</strong><span>Board-ready Word, sample included</span></div></li>
       </ul>
       <p class="teaser-cta-line">Fill in your details and we'll walk you through it.</p>
-      <form id="walkthroughFormEl" name="demo-walkthrough" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+      <form id="walkthroughFormEl" name="demo-walkthrough" method="POST" novalidate>
         <input type="hidden" name="form-name" value="demo-walkthrough">
         <input name="bot-field" style="display:none;">
         <div class="teaser-form-row">
@@ -2587,7 +2553,7 @@ function renderTeaserEnd(){
       ];
       const formData = new FormData(form);
       formData.append("formatted_summary", summaryLines.join("\n"));
-      await submitToNetlify(formData);
+      await submitIntake(formData);
       form.outerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll be in touch shortly to arrange your walkthrough.</p><p style="margin-top:8px;font-weight:600;">Taking you to your exercise request in <span id="goCountdown">8</span>\u2026</p><button type="button" class="btn-ghost" id="goToRequestBtn" style="margin-top:10px;">Start my exercise request \u2192</button></div>`;
       let jumped = false;
       let secondsLeft = 8;
@@ -2770,7 +2736,7 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
     contactSummaryText = summaryLines.join("\n");
     const formData = new FormData(e.target);
     formData.append("formatted_summary", contactSummaryText);
-    await submitToNetlify(formData);
+    await submitIntake(formData);
     document.getElementById("contact").querySelector(".section-inner").innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your message has been received. We'll be in touch at the details you provided. If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p></div>`;
   }catch(err){
     document.getElementById("submitContact").disabled = false;
