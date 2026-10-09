@@ -3,6 +3,7 @@
 // drop a real client request. All the logic is in ../lib/intake-core.mjs.
 import { getStore } from "@netlify/blobs";
 import { handleIntake, IntakeError, MAX_BODY_CHARS } from "../lib/intake-core.mjs";
+import { serverEnv } from "../lib/env.mjs";
 
 const json = (status, obj) => Response.json(obj, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -21,12 +22,7 @@ export default async (req) => {
       pending: getStore({ name: "intake-pending", consistency: "strong" }),
       uploads: getStore({ name: "intake-uploads", consistency: "strong" }),
       fetchFn: fetch,
-      env: {
-        SUPABASE_URL: Netlify.env.get("SUPABASE_URL"),
-        SUPABASE_PUBLISHABLE_KEY: Netlify.env.get("SUPABASE_PUBLISHABLE_KEY"),
-        RESEND_API_KEY: Netlify.env.get("RESEND_API_KEY"),
-        RESEND_FROM_ADDRESS: Netlify.env.get("RESEND_FROM_ADDRESS"),
-      },
+      env: serverEnv(),
     });
     return json(result.ok ? 200 : 503, { ok: result.ok });
   } catch (err) {
@@ -36,4 +32,11 @@ export default async (req) => {
   }
 };
 
-export const config = { path: "/api/intake", method: "POST" };
+// Rate limit (added 9 October 2026): a person sends one request; 10 a minute
+// from one visitor is a bot. Over the limit, Netlify answers 429 and the page
+// retries a moment later, then offers the one-click email fallback.
+export const config = {
+  path: "/api/intake",
+  method: "POST",
+  rateLimit: { action: "rate_limit", aggregateBy: ["ip", "domain"], windowSize: 60, windowLimit: 10 },
+};

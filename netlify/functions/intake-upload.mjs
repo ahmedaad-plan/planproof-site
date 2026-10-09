@@ -23,4 +23,10 @@ export default async (req) => {
   }
 };
 
-export const config = { path: "/api/intake-upload", method: "POST" };
+// Rate limit (added 9 October 2026): one plan is at most 4 parts (plus browser
+// retries), so 30 parts a minute from one visitor is far above real use.
+export const config = {
+  path: "/api/intake-upload",
+  method: "POST",
+  rateLimit: { action: "rate_limit", aggregateBy: ["ip", "domain"], windowSize: 60, windowLimit: 30 },
+};
