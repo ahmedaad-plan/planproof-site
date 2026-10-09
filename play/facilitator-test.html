@@ -264,8 +264,14 @@
     Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):
     <input id="displayLink" readonly />
   </div>
+  <div class="link-row">
+    Before the exercise (added 9 October 2026):
+    <a id="checkLink" target="_blank" rel="noopener">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
+    <a id="printLink" target="_blank" rel="noopener">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -295,6 +301,8 @@
   } else {
     displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
     joinLinkEl.value = `${location.origin}/play/join.html?session=${sessionId}`;
+    document.getElementById("checkLink").href = `${location.origin}/play/check.html`;
+    document.getElementById("printLink").href = `${location.origin}/play/print.html?session=${sessionId}&token=${encodeURIComponent(facilitatorToken)}`;
 
     let currentRow = null;
     const startBtn = document.getElementById("startBtn");
@@ -731,12 +739,21 @@
     document.body.addEventListener("click", unlockChime, { once: true });
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    // Connection pill (added 9 October 2026): shows when the live inbox
+    // connection drops; a drop or recovery also refetches the inbox at once
+    // (the 15-second poll below stays as the safety net).
+    const liveStatus = createLiveStatus();
+    liveStatus.expect("inbox");
     subscribeToFacilitatorMessages(supabaseClient, sessionId, (m) => {
       if (inboxMessages.some((x) => x.id === m.id)) return;
       inboxMessages.push(m);
       inboxMessages.sort((a, b) => inboxMsgTime(a) - inboxMsgTime(b));
       renderInbox();
       playChime();
+    }, (status) => {
+      const wasDown = liveStatus.isDown("inbox");
+      liveStatus.channel("inbox", status);
+      if ((status === "SUBSCRIBED" && wasDown) || status === "CHANNEL_ERROR" || status === "TIMED_OUT") refreshInbox();
     });
 
     // The attendee roster isn't on Realtime (see design-notes.md — a

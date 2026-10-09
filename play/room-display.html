@@ -128,7 +128,8 @@
 <footer>Exercise room display — prototype (placeholder sound effects &amp; video cards)</footer>
 <div id="sfxStatus">sound: —</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -187,34 +188,31 @@
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+    // Live updates plus the safety net (shared.js keepSessionInSync): a
+    // silently dropped live connection is noticed and the screen refetches
+    // within seconds, with a status pill in the corner.
+    const sync = keepSessionInSync({
+      sessionId,
+      onRow: render,
+      // After a drop or a WiFi change, don't trust that the live stream
+      // caught everything — re-check for a broadcast missed meanwhile.
+      onRecovered: (row) => catchUpBroadcast(row),
+    });
+
     fetchSession(sessionId)
       .then((row) => {
-        render(row);
+        sync.deliver(row);
         return catchUpBroadcast(row);
       })
       .catch((err) => {
         mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
       });
 
-    subscribeToSession(supabaseClient, sessionId, render);
+    subscribeToSession(supabaseClient, sessionId, sync.deliver, sync.channelStatus("session"));
     subscribeToMessages(supabaseClient, sessionId, (m) => {
       // A live message: full display time, plus the chime if sound is on.
       if (showBroadcast(m, BANNER_SECONDS * 1000) && audioUnlocked) playChime();
-    });
-
-    // After a WiFi drop or the tab being backgrounded, don't just trust
-    // that the realtime subscription caught everything it missed — pull
-    // the real current state directly. This is what makes "resume from
-    // where we stopped" actually true after a reconnect, rather than
-    // hoping no update was missed while this screen was offline.
-    onReconnect(() => {
-      fetchSession(sessionId)
-        .then((row) => {
-          render(row);
-          return catchUpBroadcast(row);
-        })
-        .catch((err) => console.warn("Resync after reconnect failed:", err.message));
-    });
+    }, sync.channelStatus("messages"));
   }
 
   // ---- Facilitator broadcast banner (added 5 October 2026) ----------------

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Connection check</title>
+<meta name="robots" content="noindex" />
+<!--
+  Connection check (added 9 October 2026, system review item 7).
+  Sent to the client's IT contact (and opened on each room laptop) about a
+  week before a live exercise, on the same network the exercise will use.
+  Tests everything the exercise player needs: the website, the exercise data
+  service, live updates over WebSocket, the device clock and sound. Results
+  can be copied or emailed to PlanProof in one click. Reads no client data.
+-->
+<style>
+  :root { --navy:#0b1f3a; --amber:#e8a33d; --paper:#f4f1ea; --ok:#2f9e63; --warn:#d99a1e; --bad:#d2453a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--navy); color:var(--paper); font:16px/1.5 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:28px 16px 48px; }
+  h1 { font-size:1.6rem; margin:0 0 6px; }
+  p.lead { opacity:.85; margin:0 0 20px; }
+  .card { background:rgba(244,241,234,.06); border:1px solid rgba(244,241,234,.15); border-radius:12px; padding:14px 16px; margin:10px 0; display:grid; grid-template-columns:28px 1fr; gap:4px 10px; }
+  .dot { width:18px; height:18px; border-radius:50%; margin-top:3px; background:rgba(244,241,234,.25); }
+  .card[data-state="ok"] .dot { background:var(--ok); }
+  .card[data-state="warn"] .dot { background:var(--warn); }
+  .card[data-state="bad"] .dot { background:var(--bad); }
+  .card[data-state="running"] .dot { background:var(--amber); animation:blink 1s infinite; }
+  @keyframes blink { 50% { opacity:.3; } }
+  .card h2 { font-size:1rem; margin:0; }
+  .card .msg { grid-column:2; font-size:.92rem; opacity:.9; }
+  .card .fix { grid-column:2; font-size:.88rem; color:var(--amber); }
+  button { font:inherit; border:0; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--amber); color:var(--navy); font-weight:700; }
+  button.ghost { background:transparent; color:var(--paper); border:1px solid rgba(244,241,234,.4); font-weight:600; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; grid-column:2; }
+  .summary { margin:22px 0 10px; padding:14px 16px; border-radius:12px; font-weight:600; }
+  .summary.ok { background:rgba(47,158,99,.18); border:1px solid var(--ok); }
+  .summary.bad { background:rgba(210,69,58,.18); border:1px solid var(--bad); }
+  .summary.warn { background:rgba(217,154,30,.18); border:1px solid var(--warn); }
+  a { color:var(--amber); }
+  small { opacity:.7; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PlanProof connection check</h1>
+  <p class="lead">Run this on the network and device you will use for the exercise (meeting-room WiFi, room screen laptop, a phone). It takes about 20 seconds and reads no company data.</p>
+
+  <div class="card" id="c-site" data-state="running"><span class="dot"></span><h2>PlanProof website</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-data" data-state="running"><span class="dot"></span><h2>Exercise data service</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-live" data-state="running"><span class="dot"></span><h2>Live updates (WebSocket)</h2><div class="msg">Checking… (up to 12 seconds)</div></div>
+  <div class="card" id="c-clock" data-state="running"><span class="dot"></span><h2>Device clock</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-browser" data-state="running"><span class="dot"></span><h2>Browser</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-sound" data-state="pending"><span class="dot"></span><h2>Sound (room screens only)</h2>
+    <div class="msg">Press the button, then say whether you heard a phone ringing.</div>
+    <div class="row"><button id="soundBtn">Play test sound</button><button class="ghost" id="heardYes" hidden>Yes, I heard it</button><button class="ghost" id="heardNo" hidden>No sound</button></div>
+  </div>
+
+  <div class="summary" id="summary" hidden></div>
+  <div class="row" style="margin-left:0">
+    <button id="copyBtn">Copy results</button>
+    <a id="mailBtn" href="#" style="align-self:center">Email results to PlanProof</a>
+    <button class="ghost" id="againBtn">Run again</button>
+  </div>
+  <p><small>If something fails and the advice below doesn't help, a phone's mobile data hotspot is a quick fallback for the room screen and the facilitator's laptop.</small></p>
+</main>
+
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./shared.js"></script>
+<script>
+  const HOST = new URL(SUPABASE_URL).host;
+  const ALLOW = `Ask your IT team to allow https://plan-proof.com and https://${HOST}, including WebSocket (wss://) connections to ${HOST}, for the exercise devices — or use mobile data.`;
+  const results = {};
+
+  function set(id, state, msg, fix) {
+    const el = document.getElementById(id);
+    el.dataset.state = state;
+    el.querySelector(".msg").textContent = msg;
+    let f = el.querySelector(".fix");
+    if (fix) { if (!f) { f = document.createElement("div"); f.className = "fix"; el.appendChild(f); } f.textContent = fix; }
+    else if (f) f.remove();
+    results[id] = { state, msg, fix: fix || "" };
+    summarise();
+  }
+
+  function summarise() {
+    const auto = ["c-site", "c-data", "c-live", "c-clock", "c-browser"];
+    if (auto.some((k) => !results[k] || results[k].state === "running")) return;
+    const states = Object.values(results).map((r) => r.state);
+    const el = document.getElementById("summary");
+    el.hidden = false;
+    if (states.includes("bad")) { el.className = "summary bad"; el.textContent = "Not ready yet — fix the red items below (the advice under each one says how), then run the check again."; }
+    else if (states.includes("warn")) { el.className = "summary warn"; el.textContent = "Ready, with a warning — see the amber item."; }
+    else { el.className = "summary ok"; el.textContent = "Ready — this device and network can run the exercise."; }
+    document.getElementById("mailBtn").href = "mailto:exercises@plan-proof.com?subject=" + encodeURIComponent("Connection check results") + "&body=" + encodeURIComponent(report());
+  }
+
+  function report() {
+    const names = { "c-site": "Website", "c-data": "Data service", "c-live": "Live updates", "c-clock": "Clock", "c-browser": "Browser", "c-sound": "Sound" };
+    return [`PlanProof connection check — ${new Date().toString()}`, `Device: ${navigator.userAgent}`, "",
+      ...Object.entries(names).map(([k, n]) => `${n}: ${results[k] ? results[k].state.toUpperCase() + " — " + results[k].msg : "not run"}`)].join("\n");
+  }
+
+  async function timed(promise, ms) {
+    return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
+  }
+
+  async function run() {
+    for (const k of Object.keys(results)) if (k !== "c-sound") delete results[k];
+    ["c-site", "c-data", "c-live", "c-clock", "c-browser"].forEach((id) => { const el = document.getElementById(id); el.dataset.state = "running"; el.querySelector(".msg").textContent = "Checking…"; const f = el.querySelector(".fix"); if (f) f.remove(); });
+    document.getElementById("summary").hidden = true;
+
+    // Browser features the player relies on.
+    const missing = [];
+    if (!window.fetch) missing.push("fetch");
+    if (!window.WebSocket) missing.push("WebSocket");
+    if (!(window.crypto && crypto.randomUUID)) missing.push("crypto.randomUUID");
+    if (!window.localStorage) missing.push("localStorage");
+    if (missing.length) set("c-browser", "bad", `This browser is missing: ${missing.join(", ")}.`, "Use an up-to-date Chrome, Edge, Safari or Firefox.");
+    else set("c-browser", "ok", "Up to date.");
+
+    // Website + clock (the site's own Date header).
+    try {
+      const t0 = Date.now();
+      const res = await timed(fetch("/play/shared.js", { method: "HEAD", cache: "no-store" }), 8000);
+      const rtt = Date.now() - t0;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      set("c-site", "ok", `Reachable (${rtt} ms).`);
+      const serverMs = Date.parse(res.headers.get("date") || "");
+      if (!Number.isFinite(serverMs)) set("c-clock", "warn", "Could not read the server time to compare.", "Make sure the device's date and time are set automatically.");
+      else {
+        const off = Math.round((Date.now() - rtt / 2 - serverMs) / 1000);
+        if (Math.abs(off) <= 60) set("c-clock", "ok", `Correct (within ${Math.max(1, Math.abs(off))} s).`);
+        else set("c-clock", "bad", `This device's clock is ${Math.abs(off)} seconds ${off > 0 ? "fast" : "slow"}.`, "Turn on 'Set time automatically' in the device's date and time settings — inject countdowns use the device clock.");
+      }
+    } catch (err) {
+      set("c-site", "bad", `Not reachable (${err.message}).`, ALLOW);
+      set("c-clock", "warn", "Not checked (the website was not reachable).", "Make sure the device's date and time are set automatically.");
+    }
+
+    // Exercise data service (REST).
+    try {
+      const t0 = Date.now();
+      const res = await timed(fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?select=id&limit=1`, {
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }, cache: "no-store",
+      }), 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      set("c-data", "ok", `Reachable (${Date.now() - t0} ms).`);
+    } catch (err) {
+      set("c-data", "bad", `Not reachable (${err.message}).`, ALLOW);
+    }
+
+    // Live updates: join a throwaway channel and wait for SUBSCRIBED.
+    try {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+      const t0 = Date.now();
+      await timed(new Promise((resolve, reject) => {
+        const ch = client.channel(`connection-check-${crypto.randomUUID()}`);
+        ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") { resolve(); setTimeout(() => client.removeChannel(ch), 500); }
+          else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error(status));
+        });
+      }), 12000);
+      set("c-live", "ok", `Working (${Date.now() - t0} ms).`);
+    } catch (err) {
+      set("c-live", "bad", `Live updates are blocked on this network (${err.message}). Screens would only refresh every 15 seconds.`, ALLOW);
+    }
+  }
+
+  document.getElementById("soundBtn").onclick = () => {
+    const a = new Audio("./sfx/phone-ring.mp3");
+    a.play().then(() => {
+      setTimeout(() => a.pause(), 4000);
+      document.getElementById("heardYes").hidden = false;
+      document.getElementById("heardNo").hidden = false;
+    }).catch((err) => set("c-sound", "bad", `The browser refused to play sound (${err.message}).`, "Check the device isn't muted and allow sound for plan-proof.com in the browser."));
+  };
+  document.getElementById("heardYes").onclick = () => set("c-sound", "ok", "Sound works.");
+  document.getElementById("heardNo").onclick = () => set("c-sound", "bad", "No sound was heard.", "Check the volume, the selected speaker/HDMI audio output, and that the browser tab isn't muted.");
+  document.getElementById("copyBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText(report()); document.getElementById("copyBtn").textContent = "Copied"; }
+    catch { prompt("Copy the results:", report()); }
+  };
+  document.getElementById("againBtn").onclick = run;
+  run();
+</script>
+</body>
+</html>

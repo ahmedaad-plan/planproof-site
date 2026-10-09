@@ -496,7 +496,7 @@ function onReconnect(callback) {
 // Subscribes to live changes on one session row. Calls onChange(newRow) every
 // time it changes (facilitator action, or anyone else's update). Uses the
 // Supabase Realtime client, loaded from CDN by the page.
-function subscribeToSession(supabaseClient, sessionId, onChange) {
+function subscribeToSession(supabaseClient, sessionId, onChange, onStatus) {
   return supabaseClient
     .channel(`session-${sessionId}`)
     .on(
@@ -509,7 +509,7 @@ function subscribeToSession(supabaseClient, sessionId, onChange) {
       },
       (payload) => onChange(payload.new)
     )
-    .subscribe();
+    .subscribe((status) => onStatus && onStatus(status));
 }
 
 // ---- Facilitator broadcast messages (added 5 October 2026) ----------------
@@ -690,7 +690,7 @@ async function fetchFacilitatorMessages(sessionId) {
 }
 
 // Calls onMessage(row) for every new message in this session, live.
-function subscribeToMessages(supabaseClient, sessionId, onMessage) {
+function subscribeToMessages(supabaseClient, sessionId, onMessage, onStatus) {
   return supabaseClient
     .channel(`messages-${sessionId}`)
     .on(
@@ -705,11 +705,11 @@ function subscribeToMessages(supabaseClient, sessionId, onMessage) {
         if (payload.new && payload.new.direction === "to_participants") onMessage(payload.new);
       }
     )
-    .subscribe();
+    .subscribe((status) => onStatus && onStatus(status));
 }
 
 // Calls onMessage(row) for every new department->facilitator message, live.
-function subscribeToFacilitatorMessages(supabaseClient, sessionId, onMessage) {
+function subscribeToFacilitatorMessages(supabaseClient, sessionId, onMessage, onStatus) {
   return supabaseClient
     .channel(`facilitator-messages-${sessionId}`)
     .on(
@@ -724,7 +724,7 @@ function subscribeToFacilitatorMessages(supabaseClient, sessionId, onMessage) {
         if (payload.new && payload.new.direction === "to_facilitator") onMessage(payload.new);
       }
     )
-    .subscribe();
+    .subscribe((status) => onStatus && onStatus(status));
 }
 
 function formatMessageTime(iso) {
@@ -904,4 +904,111 @@ function playSfxLayer(name) {
       }
     }, AMBIENCE_PLAY_SECONDS * 1000);
   }
+}
+
+
+// ---- Live-connection safety net (added 9 October 2026) --------------------
+// System review item 5: a live (Realtime) connection can drop silently —
+// a corporate proxy, an idle timeout, a server hiccup — while the browser
+// still says "online" and the tab stays visible, so onReconnect() never
+// fires and a room screen would sit on an old inject with no error. Three
+// layers now prevent that:
+//   1. every live channel reports its status; an error, timeout or close
+//      triggers an immediate refetch, and so does the channel coming back;
+//   2. a light refetch every 15 seconds regardless (only re-renders when
+//      the session row actually changed, so typing is never disturbed);
+//   3. a small status pill in the corner: green "Live", amber
+//      "Reconnecting…", red "Offline" — so a problem is visible at once.
+
+function rowSignature(row) {
+  if (!row) return "";
+  return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
+    row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
+    JSON.stringify(row.extra_departments || [])].join("|");
+}
+
+function createLiveStatus() {
+  const el = document.createElement("div");
+  el.id = "liveStatus";
+  el.setAttribute("role", "status");
+  el.setAttribute("aria-live", "polite");
+  el.style.cssText = "position:fixed;right:10px;bottom:10px;z-index:9999;padding:4px 10px;" +
+    "border-radius:999px;font:600 12px/1.4 system-ui,-apple-system,sans-serif;color:#fff;" +
+    "pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:background .2s";
+  document.body.appendChild(el);
+  const channels = new Map(); // name -> last status
+  let fetchFailures = 0;
+  const DOWN = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
+  function state() {
+    if (!navigator.onLine) return "offline";
+    if (fetchFailures >= 2) return "offline";
+    for (const st of channels.values()) if (DOWN.has(st)) return "reconnecting";
+    if (fetchFailures === 1) return "reconnecting";
+    for (const st of channels.values()) if (st !== "SUBSCRIBED") return "connecting";
+    return "live";
+  }
+  function draw() {
+    const st = state();
+    el.dataset.state = st;
+    if (st === "live") { el.textContent = "\u25CF Live"; el.style.background = "rgba(34,139,84,.85)"; }
+    else if (st === "connecting") { el.textContent = "Connecting\u2026"; el.style.background = "rgba(120,120,120,.85)"; }
+    else if (st === "reconnecting") { el.textContent = "Reconnecting\u2026"; el.style.background = "rgba(200,140,20,.95)"; }
+    else { el.textContent = "Offline \u2014 showing the last known state"; el.style.background = "rgba(200,50,40,.95)"; }
+  }
+  window.addEventListener("online", draw);
+  window.addEventListener("offline", draw);
+  draw();
+  return {
+    el,
+    isDown: (name) => DOWN.has(channels.get(name)),
+    // Register a channel before it reports, so the pill never says "Live"
+    // until every expected channel has actually joined.
+    expect(name) { if (!channels.has(name)) { channels.set(name, "JOINING"); draw(); } },
+    channel(name, status) { channels.set(name, status); draw(); },
+    fetchResult(ok) { fetchFailures = ok ? 0 : fetchFailures + 1; draw(); },
+  };
+}
+
+// opts: { sessionId, onRow(row), onRecovered(row)?, intervalMs? }
+// Returns { deliver, channelStatus(name), resync(reason), live }.
+// Pass `deliver` (not the page's render) to subscribeToSession, so the live
+// stream and the safety-net refetch never double-render the same row.
+function keepSessionInSync(opts) {
+  const live = createLiveStatus();
+  let lastSig = null;
+  function deliver(row) {
+    if (!row) return;
+    const sig = rowSignature(row);
+    if (sig === lastSig) return;
+    lastSig = sig;
+    opts.onRow(row);
+  }
+  let inFlight = false;
+  async function resync(reason) {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const row = await fetchSession(opts.sessionId);
+      live.fetchResult(true);
+      deliver(row);
+      if (reason !== "poll" && opts.onRecovered) opts.onRecovered(row);
+    } catch (err) {
+      live.fetchResult(false);
+      console.warn(`Resync (${reason}) failed:`, err.message);
+    } finally {
+      inFlight = false;
+    }
+  }
+  function channelStatus(name) {
+    live.expect(name);
+    return (status) => {
+      const wasDown = live.isDown(name);
+      live.channel(name, status);
+      if (status === "SUBSCRIBED" && wasDown) resync("recovered");
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") resync(`channel ${status}`);
+    };
+  }
+  setInterval(() => resync("poll"), opts.intervalMs || 15000);
+  onReconnect(() => resync("reconnect"));
+  return { deliver, channelStatus, resync, live };
 }

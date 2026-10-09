@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PlanProof — Printable backup pack</title>
+<meta name="robots" content="noindex" />
+<!--
+  Printable backup pack (added 9 October 2026, system review item 7).
+  Built from the same scenario as the live session, so the exercise can carry
+  on on paper if the network or the screens fail: the facilitator reads each
+  inject aloud, times it on a phone, and teams write on the answer sheets.
+  Opened from the facilitator page (private link). Print it, or save as PDF,
+  before the exercise day.
+-->
+<style>
+  :root { --navy:#0b1f3a; --amber:#c9831f; --ink:#1b2430; --muted:#5d6874; --line:#c9ced6; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); background:#e9ecef; font:11pt/1.45 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  .toolbar { position:sticky; top:0; background:var(--navy); color:#fff; padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; z-index:2; }
+  .toolbar button { font:inherit; font-weight:700; border:0; border-radius:6px; padding:8px 14px; background:#e8a33d; color:var(--navy); cursor:pointer; }
+  .page { background:#fff; width:210mm; min-height:297mm; margin:12px auto; padding:18mm 16mm; box-shadow:0 1px 6px rgba(0,0,0,.15); page-break-after:always; break-after:page; }
+  .page:last-child { page-break-after:auto; break-after:auto; }
+  h1 { font-size:22pt; margin:0 0 4px; color:var(--navy); }
+  h2 { font-size:15pt; margin:0 0 8px; color:var(--navy); }
+  .eyebrow { color:var(--amber); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:9pt; }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:14px 0; font-size:10.5pt; }
+  .meta dt { color:var(--muted); }
+  .meta dd { margin:0; font-weight:600; }
+  .box { border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:10px 0; }
+  .task { border-left:4px solid var(--amber); background:#fbf6ee; }
+  ol.steps li { margin-bottom:4px; }
+  .lines { margin-top:8px; }
+  .lines div { border-bottom:1px solid var(--line); height:9mm; }
+  table { width:100%; border-collapse:collapse; font-size:10pt; }
+  th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
+  th { background:#f2f4f6; }
+  .foot { margin-top:14px; color:var(--muted); font-size:8.5pt; }
+  .err { max-width:640px; margin:40px auto; background:#fff; padding:20px; border-radius:8px; }
+  @page { size:A4; margin:0; }
+  @media print {
+    body { background:#fff; }
+    .toolbar { display:none; }
+    .page { margin:0; box-shadow:none; width:auto; min-height:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar"><strong>Printable backup pack</strong><span id="tbInfo"></span><button id="printBtn">Print / Save as PDF</button></div>
+<div id="out"><p class="err">Loading…</p></div>
+
+<script src="./shared.js"></script>
+<script>
+  const out = document.getElementById("out");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const lines = (n) => `<div class="lines">${"<div></div>".repeat(n)}</div>`;
+  document.getElementById("printBtn").onclick = () => window.print();
+
+  (async () => {
+    const sessionId = getSessionId();
+    if (!sessionId || !getFacilitatorToken()) {
+      out.innerHTML = `<p class="err">Open this pack from the facilitator page (it needs the private facilitator link).</p>`;
+      return;
+    }
+    let row;
+    try { row = await fetchSession(sessionId); } catch (err) { out.innerHTML = `<p class="err">Couldn't load the session: ${esc(err.message)}</p>`; return; }
+    if (!row) { out.innerHTML = `<p class="err">Session not found.</p>`; return; }
+    const sc = row.scenario || {};
+    const injects = sc.injects || [];
+    const depts = [...new Set([...scenarioDepartments(row), ...(row.extra_departments || [])])];
+    const title = sc.title || row.label || "Tabletop exercise";
+    const totalMin = injects.reduce((t, i) => t + (Number(i.durationMinutes) || 0), 0);
+    document.getElementById("tbInfo").textContent = `${injects.length} injects · ${depts.length} departments`;
+    document.title = `Backup pack — ${title}`;
+
+    const pages = [];
+    pages.push(`<section class="page">
+      <div class="eyebrow">PlanProof · Backup pack · Facilitator copy</div>
+      <h1>${esc(title)}</h1>
+      <dl class="meta">
+        <dt>Organisation</dt><dd>${esc(row.label || "")}</dd>
+        <dt>Injects</dt><dd>${injects.length}${totalMin ? ` (about ${totalMin} minutes of answer time)` : ""}</dd>
+        <dt>Departments</dt><dd>${esc(depts.join(", ") || "—")}</dd>
+        <dt>Printed</dt><dd>${esc(new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }))}</dd>
+      </dl>
+      <div class="box">
+        <h2>If the screens or the network fail</h2>
+        <ol class="steps">
+          <li>Tell the room calmly: the exercise continues on paper. Nothing already submitted is lost.</li>
+          <li>Hand each department its answer sheets (last pages — copy as many as needed).</li>
+          <li>Read the current inject aloud from this pack, then the task. Start a phone timer for the time shown.</li>
+          <li>Teams write their answer, the time they finished, and their department on the sheet.</li>
+          <li>At the end of each inject, collect the sheets and note the inject number on the back.</li>
+          <li>When the system is back, carry on from the next inject on screen. Paper answers are typed into the report afterwards — mark them "paper" in the evidence.</li>
+        </ol>
+      </div>
+      <h2>Inject list</h2>
+      <table><thead><tr><th>#</th><th>Inject</th><th>Responsible</th><th>Answer</th><th>Time</th></tr></thead><tbody>
+      ${injects.map((inj, i) => `<tr><td>${i + 1}</td><td>${esc(inj.title || "")}</td><td>${esc(injectResponsible(inj).join(", "))}</td><td>${injectOutput(inj) === "individual" ? "Individual" : "Group"}</td><td>${inj.durationMinutes ? esc(inj.durationMinutes) + " min" : "—"}</td></tr>`).join("")}
+      </tbody></table>
+      <p class="foot">Confidential — prepared by PlanProof for this exercise only. This exercise tests the plan, not individuals.</p>
+    </section>`);
+
+    injects.forEach((inj, i) => {
+      const task = injectTaskText(inj);
+      pages.push(`<section class="page">
+        <div class="eyebrow">Inject ${i + 1} of ${injects.length}${inj.time ? ` · ${esc(inj.time)}` : ""}</div>
+        <h1>${esc(inj.title || `Inject ${i + 1}`)}</h1>
+        <dl class="meta">
+          <dt>Responsible</dt><dd>${esc(injectResponsible(inj).join(", "))}</dd>
+          <dt>Answer</dt><dd>${injectOutput(inj) === "individual" ? "Individual — everyone answers on their own sheet" : "Group — one answer per department"}</dd>
+          <dt>Time allowed</dt><dd>${inj.durationMinutes ? esc(inj.durationMinutes) + " minutes" : "No time limit"}</dd>
+        </dl>
+        <div class="box"><div style="white-space:pre-wrap">${esc(inj.description || inj.body || "")}</div></div>
+        ${task ? `<div class="box task"><strong>Task:</strong> ${esc(task)}</div>` : ""}
+        ${inj.sfx ? `<p class="foot">Sound on the room screen: ${esc(Array.isArray(inj.sfx) ? inj.sfx.join(" + ") : inj.sfx)} (not needed on paper).</p>` : ""}
+        <h2 style="margin-top:14px">Facilitator notes</h2>
+        ${lines(8)}
+      </section>`);
+    });
+
+    pages.push(`<section class="page">
+      <div class="eyebrow">Answer sheet — copy as many as needed</div>
+      <h1>Department answer sheet</h1>
+      <dl class="meta">
+        <dt>Department</dt><dd>__________________________________________</dd>
+        <dt>Inject number</dt><dd>________</dd>
+        <dt>Time finished</dt><dd>________</dd>
+        <dt>Answer type</dt><dd>☐ Group answer &nbsp;&nbsp; ☐ Individual answer (name not required)</dd>
+      </dl>
+      <h2>Your answer</h2>
+      ${lines(18)}
+      <p class="foot">This exercise tests the plan, not individuals. Findings are reported at team level.</p>
+    </section>`);
+    out.innerHTML = pages.join("");
+  })();
+</script>
+</body>
+</html>

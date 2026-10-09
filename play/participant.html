@@ -166,7 +166,8 @@
     </div>
   </section>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -235,19 +236,21 @@
 
   function init() {
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-    fetchSession(sessionId).then(render).catch((err) => {
+    // Live updates plus the safety net (shared.js keepSessionInSync): a
+    // silently dropped live connection is noticed and refetched within
+    // seconds; the form is only re-rendered when the session really changed.
+    const sync = keepSessionInSync({
+      sessionId,
+      onRow: render,
+      onRecovered: () => loadMessages(), // pick up any message missed while disconnected
+    });
+    fetchSession(sessionId).then(sync.deliver).catch((err) => {
       mainEl.innerHTML = `<div class="center-note">Couldn't load session: ${escapeHtml(err.message)}</div>`;
     });
-    subscribeToSession(supabaseClient, sessionId, render);
+    subscribeToSession(supabaseClient, sessionId, sync.deliver, sync.channelStatus("session"));
     loadMessages();
-    subscribeToMessages(supabaseClient, sessionId, onNewMessage);
+    subscribeToMessages(supabaseClient, sessionId, onNewMessage, sync.channelStatus("messages"));
     initReply();
-    onReconnect(() => {
-      fetchSession(sessionId)
-        .then(render)
-        .catch((err) => console.warn("Resync after reconnect failed:", err.message));
-      loadMessages();
-    });
   }
 
   // ---- Messages from the facilitator (added 5 October 2026) -------------
