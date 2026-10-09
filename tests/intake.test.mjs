@@ -303,11 +303,42 @@ test("upload part checks", () => {
   assert.throws(() => checkUploadParams(p(`id=${id}&part=0&parts=1`), CHUNK_BYTES + 1), (e) => e.status === 413);
 });
 
-test("requests stuck for 7 days stop retrying (and are logged)", async () => {
+test("a request is never given up: after a day it is retried hourly until it is delivered", async () => {
   const net = fakeNet(); net.resendMode = "down"; net.supabaseMode = "down";
   const d = deps(net);
   await handleIntake(genericBody(), d);
-  const s = await retryPending({ ...d, nowMs: Date.now() + 8 * 24 * 60 * 60 * 1000 });
-  assert.equal(s.gaveUp, 1);
-  assert.equal(s.retried, 0);
+  const t0 = Date.now() + 8 * 24 * 60 * 60 * 1000;
+  let s = await retryPending({ ...d, nowMs: t0 });
+  assert.equal(s.retried, 1); assert.equal(s.slow, 1); assert.equal(s.stillPending, 1);
+  s = await retryPending({ ...d, nowMs: t0 + 5 * 60 * 1000 }); // 5 minutes later: waits for the hourly slot
+  assert.equal(s.retried, 0); assert.equal(s.waiting, 1);
+  net.resendMode = "ok"; net.supabaseMode = "ok";
+  s = await retryPending({ ...d, nowMs: t0 + 61 * 60 * 1000 }); // an hour later: delivered
+  assert.equal(s.finished, 1);
+  assert.equal(net.emails.length, 1);
+  assert.match(net.emails[0].subject, /delayed delivery/);
+  assert.ok(await d.pending.get("meta/last-retry-run", { type: "json" }), "the retry run leaves a proof-of-life marker");
+});
+
+test("the server-only database secret is sent when set, and only then", async () => {
+  const seen = [];
+  const net = fakeNet(); const base = net.fetchFn;
+  net.fetchFn = async (url, init) => { if (url.startsWith("https://sb.test/")) seen.push(init.headers["x-intake-secret"]); return base(url, init); };
+  await handleIntake(genericBody(), deps(net));
+  await handleIntake(genericBody(), deps(net, { env: { ...ENV, INTAKE_DB_SECRET: "s3cret" } }));
+  assert.deepEqual(seen, [undefined, undefined, "s3cret", "s3cret"]);
+});
+
+test("flood protection: after 5 possible-spam emails in a day the rest are saved but not emailed; real requests always email", async () => {
+  const net = fakeNet(); const d = deps(net);
+  for (let i = 0; i < 8; i++) await handleIntake(genericBody({ honeypot: "bot" }), d);
+  assert.equal(net.emails.length, 5);
+  assert.equal(net.inserts.submissions.length, 8, "every request still reaches the admin page");
+  const st = await d.pending.get(`stats/${new Date().toISOString().slice(0, 10)}`, { type: "json" });
+  assert.equal(st.spamSuppressed, 3); assert.equal(st.receivedSpam, 8);
+  await handleIntake(genericBody(), d); // a real request
+  assert.equal(net.emails.length, 6);
+  net.supabaseMode = "down"; // spam whose database save failed is still emailed, so nothing can vanish
+  await handleIntake(genericBody({ honeypot: "bot" }), d);
+  assert.equal(net.emails.length, 7);
 });

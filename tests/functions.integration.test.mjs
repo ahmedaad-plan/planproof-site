@@ -35,9 +35,15 @@ const upload = () => import("../netlify/functions/intake-upload.mjs");
 const retry = () => import("../netlify/functions/intake-retry.mjs");
 
 test("function routes and methods are as the website expects", async () => {
-  assert.deepEqual((await intake()).config, { path: "/api/intake", method: "POST" });
-  assert.deepEqual((await upload()).config, { path: "/api/intake-upload", method: "POST" });
+  const ic = (await intake()).config, uc = (await upload()).config;
+  assert.equal(ic.path, "/api/intake"); assert.equal(ic.method, "POST");
+  assert.equal(uc.path, "/api/intake-upload"); assert.equal(uc.method, "POST");
+  assert.deepEqual(ic.rateLimit, { action: "rate_limit", aggregateBy: ["ip", "domain"], windowSize: 60, windowLimit: 10 });
+  assert.equal(uc.rateLimit.windowLimit, 30);
   assert.equal((await retry()).config.schedule, "*/5 * * * *");
+  const hc = (await import("../netlify/functions/health.mjs")).config;
+  assert.equal(hc.path, "/api/health"); assert.equal(hc.method, "GET"); assert.ok(hc.rateLimit);
+  assert.equal((await import("../netlify/functions/system-check.mjs")).config.schedule, "7 * * * *");
 });
 
 test("plan review through the real functions: 3 parts uploaded, request sent, file attached intact and deleted", async () => {

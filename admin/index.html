@@ -116,6 +116,11 @@
   dialog::backdrop{ background:rgba(0,0,0,.55); }
   @media (max-width:640px){ main{ padding:20px 16px 60px; } .bar{ padding:10px 16px; gap:12px; } dl.facts{ grid-template-columns:1fr; } dl.facts dt{ margin-top:6px; } }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+  /* System status banner (added 9 October 2026): shown only when /api/health reports a problem */
+  .sysalert{ margin:0 auto; max-width:1100px; padding:12px 16px; border-left:4px solid var(--red); background:var(--panel-2); border-radius:6px; font-size:14px; }
+  .sysalert h2{ font-size:15px; color:var(--red); margin-bottom:4px; }
+  .sysalert ul{ margin:6px 0 0; padding-left:18px; }
+  .sysalert-wrap{ padding:12px 16px 0; }
 </style>
 </head>
 <body>
@@ -128,6 +133,8 @@
   </nav>
   <div class="who"><span id="whoEmail"></span><button class="btn quiet" id="signOut">Sign out</button></div>
 </header>
+
+<div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="sysalert" role="alert" id="sysAlert"></div></div>
 
 <main id="main">
   <div class="gate" id="gate">
@@ -153,7 +160,7 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"
+<script src="/vendor/supabase-js-2.117.2.js"
         integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
         crossorigin="anonymous"></script>
 <script>
@@ -297,12 +304,42 @@ async function enterApp() {
   $("whoEmail").textContent = user.email;
   $("gate").hidden = true; $("app").hidden = false; $("bar").hidden = false;
   bumpIdle();
+  checkSystem(); setInterval(checkSystem, 5 * 60000);
   show(location.hash.startsWith("#client/") ? "client" : (location.hash === "#clients" ? "clients" : "requests"));
 }
 
 $("signOut").onclick = async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); };
 document.querySelectorAll("nav.views button").forEach((b) => b.onclick = () => { location.hash = b.dataset.view === "clients" ? "#clients" : ""; show(b.dataset.view); });
 window.addEventListener("hashchange", () => { if (!$("app").hidden && location.hash.startsWith("#client/")) show("client"); });
+
+// ---------- system status banner (added 9 October 2026) ----------
+// Reads /api/health (the same check that emails alerts). Shows a red banner
+// only when something that handles client requests is not working.
+const SYS_TEXT = {
+  database_unreachable: "The database is not answering. New requests are still emailed, but this page and the exercise player may not work. If Supabase paused the project, open Supabase and press Restore.",
+  db_secret_rejected: "The database refused the website's server key. New requests are emailed but are NOT reaching this page. Check INTAKE_DB_SECRET in Netlify.",
+  email_key_rejected: "The email service refused PlanProof's key. New requests reach this page but are NOT emailed — check the Requests list here.",
+  email_unreachable: "The email service could not be reached. Emails are being retried automatically.",
+  email_domain_unverified: "The email sending domain is no longer verified, so notification emails may be filtered. Re-verify it in Resend.",
+  requests_delayed: "A website request has been waiting more than 30 minutes to be delivered. It is safely stored and is being retried.",
+  retry_job_not_running: "The automatic retry job has stopped running. Check the Functions tab in Netlify.",
+  storage_unreachable: "The website's temporary request store could not be read.",
+};
+async function checkSystem() {
+  const wrap = $("sysAlertWrap"), box = $("sysAlert");
+  let items = [];
+  try {
+    const res = await fetch("/api/health", { cache: "no-store" });
+    if (res.status === 429) return; // rate-limited: keep whatever is shown
+    const body = await res.json();
+    if (body.status !== "ok") items = (body.problems || []).map((c) => SYS_TEXT[c] || c);
+  } catch {
+    items = ["The system status check itself could not be reached. If this lasts, the website's functions may be down."];
+  }
+  if (!items.length) { wrap.hidden = true; return; }
+  box.replaceChildren(h("h2", {}, "System alert — something needs attention"), h("ul", {}, ...items.map((t) => h("li", {}, t))));
+  wrap.hidden = false;
+}
 
 function show(view) {
   document.querySelectorAll("nav.views button").forEach((b) => b.setAttribute("aria-current", (b.dataset.view === view || (view === "client" && b.dataset.view === "clients")) ? "page" : "false"));
