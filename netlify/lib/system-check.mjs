@@ -174,6 +174,19 @@ export async function runSystemCheck(deps) {
     catch (err) { log.error(`system-check: could not send the ${kind} email:`, err.message); }
   };
 
+  // Whenever the alert recipients change (e.g. ALERT_EMAIL set or edited in
+  // Netlify), send one confirmation to the new list, so a mistyped address is
+  // noticed now rather than when a real alert fails to arrive.
+  const recipientsKey = to.join(",");
+  if (state.recipients !== recipientsKey) {
+    await send("recipients", "PlanProof alerts — recipient list confirmed",
+      [`From now on PlanProof system alerts, "resolved" notes, the daily possible-spam digest and the Monday all-clear go to:`,
+        ...to.map((a) => `• ${a}`), "",
+        "No action is needed. If you did not expect this email, tell Claude.", "",
+        `Current status (${uaeDate(nowMs)} UAE time):`, ...statusLines(h)].join("\n"));
+    if (done.sent.includes("recipients")) state.recipients = recipientsKey;
+  }
+
   if (h.problems.length) {
     if (key !== state.key || !state.sentAt || nowMs - state.sentAt > REALERT_AFTER_MS) {
       await send("alert", "⚠ PlanProof system alert — action may be needed",
@@ -186,7 +199,7 @@ export async function runSystemCheck(deps) {
   } else if (state.key) {
     await send("resolved", "✓ PlanProof system alert resolved",
       [`All checks passed at ${uaeDate(nowMs)} (UAE time).`, "", ...statusLines(h)].join("\n"));
-    if (done.sent.includes("resolved")) state = { digestDay: state.digestDay };
+    if (done.sent.includes("resolved")) state = { digestDay: state.digestDay, recipients: state.recipients };
   }
 
   // Once a day at 04:xx UTC (08:xx UAE): digest of possible-spam requests that were not emailed.

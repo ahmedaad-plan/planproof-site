@@ -98,6 +98,7 @@ test("the alarm: sent once, repeated after 6 hours, 'resolved' when it clears; e
   const s = await freshStore(t);
   const w = world({ db: "down" });
   const env = { ...ENV, ALERT_EMAIL: "someone@gmail.example, not-an-email" };
+  await s.setJSON("meta/alert-state", { recipients: "exercises@plan-proof.com,someone@gmail.example" }); // already confirmed
   let r = await runSystemCheck({ pending: s, fetchFn: w.fetchFn, env, nowMs: t, log: quiet });
   assert.deepEqual(r.sent, ["alert"]);
   assert.deepEqual(w.emails[0].to, ["exercises@plan-proof.com", "someone@gmail.example"]);
@@ -130,6 +131,7 @@ test("a different problem alerts at once, even within 6 hours", async () => {
 test("daily digest of unemailed possible-spam at 08:xx UAE, once; Monday heartbeat", async () => {
   const mon = Date.UTC(2026, 9, 12, 4, 7); // Monday 04:07 UTC = 08:07 UAE
   const s = await freshStore(mon);
+  await s.setJSON("meta/alert-state", { recipients: "exercises@plan-proof.com" }); // already confirmed
   await s.setJSON("stats/2026-10-11", { received: 2, receivedSpam: 9, spamEmailed: 5, spamSuppressed: 4 });
   await s.setJSON("stats/2026-10-08", { received: 1 });
   const w = world();
@@ -141,4 +143,19 @@ test("daily digest of unemailed possible-spam at 08:xx UAE, once; Monday heartbe
   await s.setJSON("meta/last-retry-run", { at: mon + 29 * 60e3 });
   const again = await runSystemCheck({ pending: s, fetchFn: w.fetchFn, env: ENV, nowMs: mon + 30 * 60e3, log: quiet });
   assert.deepEqual(again.sent, [], "only once a day");
+});
+
+test("a changed recipient list gets one confirmation email, then nothing until it changes again", async () => {
+  const t = Date.UTC(2026, 9, 10, 5, 7); // Saturday 05:07 UTC: no digest, no heartbeat
+  const s = await freshStore(t); const w = world();
+  let r = await runSystemCheck({ pending: s, fetchFn: w.fetchFn, env: { ...ENV, ALERT_EMAIL: "me@hotmail.example" }, nowMs: t, log: quiet });
+  assert.deepEqual(r.sent, ["recipients"]);
+  assert.deepEqual(w.emails[0].to, ["exercises@plan-proof.com", "me@hotmail.example"]);
+  assert.match(w.emails[0].text, /me@hotmail\.example/);
+  await s.setJSON("meta/last-retry-run", { at: t + 3600e3 });
+  r = await runSystemCheck({ pending: s, fetchFn: w.fetchFn, env: { ...ENV, ALERT_EMAIL: "me@hotmail.example" }, nowMs: t + 3600e3, log: quiet });
+  assert.deepEqual(r.sent, []);
+  await s.setJSON("meta/last-retry-run", { at: t + 7200e3 });
+  r = await runSystemCheck({ pending: s, fetchFn: w.fetchFn, env: { ...ENV, ALERT_EMAIL: "other@hotmail.example" }, nowMs: t + 7200e3, log: quiet });
+  assert.deepEqual(r.sent, ["recipients"]);
 });
