@@ -12,6 +12,7 @@
     --pp-paper: #f4f1ea;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     min-height: 100vh;
@@ -99,6 +100,29 @@
     background: rgba(11,31,58,0.45); transform-origin: left center;
   }
   @keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+  /* Observer mode (roadmap item 5, 11 October 2026): the same live view on
+     an Observer's phone, sized for a phone, plus the notes area underneath.
+     Silent — sound comes from the room's display. */
+  body.observer-mode { min-height: 0; }
+  body.observer-mode header { padding: 12px 16px; flex-wrap: wrap; gap: 4px; }
+  body.observer-mode main { flex: 0 0 auto; padding: 18px 16px 8px; gap: 12px; justify-content: flex-start; }
+  body.observer-mode .inject-title { font-size: 1.35rem; }
+  body.observer-mode .inject-desc { font-size: 1rem; }
+  body.observer-mode .lobby { font-size: 1.05rem; }
+  body.observer-mode .ended { font-size: 1.2rem; }
+  body.observer-mode .timer-row .value { font-size: 1.3rem; }
+  body.observer-mode .video-card { width: 100%; }
+  body.observer-mode .video-card .title { font-size: 1rem; }
+  body.observer-mode .broadcast-banner { padding: 10px 16px 14px; }
+  body.observer-mode .broadcast-banner .text { font-size: 1.15rem; }
+  body.observer-mode #sfxStatus { display: none; }
+  body.observer-mode footer { display: none; }
+  .observer-who { font-size: 0.85rem; opacity: 0.8; }
+  .observer-panel { padding: 8px 16px 64px; max-width: 720px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+  .observer-panel h2 { font-size: 1.05rem; margin: 18px 0 8px; }
+  .observer-panel .mine { background: #fff; color: var(--pp-navy); border-radius: 12px; padding: 6px 16px; }
+  .observer-panel .mine .empty { opacity: 0.6; font-size: 0.9rem; padding: 10px 0; }
 </style>
 </head>
 <body>
@@ -125,14 +149,47 @@
   <div class="lobby">Waiting for the facilitator to start the exercise…</div>
 </main>
 
+<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes">
+  <h2>Your notes</h2>
+  <div id="noteForm"></div>
+  <h2>Notes you've logged</h2>
+  <div class="mine" id="myNotes"><div class="empty">None yet.</div></div>
+</section>
+
 <footer>Exercise room display — prototype (placeholder sound effects &amp; video cards)</footer>
 <div id="sfxStatus">sound: —</div>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./shared.js"></script>
+<script src="./notes.js"></script>
 <script>
   const sessionId = getSessionId();
+  // Observer mode: only when the join page sent this device here as an
+  // Observer (&observer=1) AND it holds that Observer's registration. A plain
+  // room-display link is always the shared room screen, unchanged.
+  const observerMode = new URLSearchParams(location.search).get("observer") === "1";
+  let observer = null;
+  if (observerMode && sessionId) {
+    try {
+      observer = JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null");
+    } catch {
+      observer = null;
+    }
+    if (!observer || observer.role !== "observer" || !observer.attendeeId) {
+      location.replace(`./join.html?session=${encodeURIComponent(sessionId)}`);
+      throw new Error("No Observer registration on this device — sent back to the join page.");
+    }
+    document.body.classList.add("observer-mode");
+    document.getElementById("soundGate").style.display = "none";
+    document.getElementById("clientLabel").insertAdjacentHTML(
+      "afterend",
+      `<span class="observer-who" id="observerWho"></span>`
+    );
+    document.getElementById("observerWho").textContent =
+      ` · Observer: ${observer.name} — ${observer.department}${observer.room ? ` — Room ${observer.room}` : ""}`;
+    document.getElementById("observerPanel").hidden = false;
+  }
   const mainEl = document.getElementById("main");
   const clientLabelEl = document.getElementById("clientLabel");
   const sfxStatusEl = document.getElementById("sfxStatus");
@@ -278,6 +335,8 @@
 
   function render(row) {
     if (!row) return;
+    latestRow = row;
+    if (observerMode) refreshObserverNotes();
     clientLabelEl.textContent = row.label || "PlanProof";
 
     // A banner belongs to the inject (or the lobby) it was sent during:
@@ -328,7 +387,8 @@
       </div>
     `;
 
-    if (isNewInject && inject.sfx) {
+    // An Observer's phone stays silent: the room's display plays the sound.
+    if (isNewInject && inject.sfx && !observerMode) {
       if (audioUnlocked) {
         playSfx(inject.sfx);
       } else {
@@ -387,6 +447,144 @@
     const div = document.createElement("div");
     div.textContent = str || "";
     return div.innerHTML;
+  }
+
+  // ---- Observer notes (roadmap item 5, built 11 October 2026) -------------
+  // The form (notes.js) keeps an unfinished note on this phone and keeps the
+  // inject the note was started on. The list below it is this Observer's own
+  // notes, kept on this phone only — nobody, including this Observer, can
+  // read notes back from the server — and cleared from the phone once notes
+  // close.
+  var latestRow = null;
+  let noteForm = null;
+  const myNotesKey = observer ? `pp_obsnotes_${sessionId}_${observer.attendeeId}` : null;
+  const draftKey = observer ? `pp_obsdraft_${sessionId}_${observer.attendeeId}` : null;
+  let withdrawArmed = null; // note id waiting for the second tap
+
+  function loadMyNotes() {
+    try {
+      const list = JSON.parse(localStorage.getItem(myNotesKey) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+  function storeMyNotes(list) {
+    try {
+      if (list.length) localStorage.setItem(myNotesKey, JSON.stringify(list));
+      else localStorage.removeItem(myNotesKey);
+    } catch { /* storage blocked — the list just won't survive a reload */ }
+  }
+  let myNotes = observer ? loadMyNotes() : [];
+
+  function refreshObserverNotes() {
+    if (!observerMode || !latestRow) return;
+    if (!noteForm) {
+      noteForm = createNoteForm(document.getElementById("noteForm"), {
+        role: "observer",
+        draftKey,
+        getRow: () => latestRow,
+        save: (payload) => saveObserverNote(sessionId, payload, { attendeeId: observer.attendeeId }),
+        onSaved: (result, payload) => {
+          const entry = Object.assign({}, payload, {
+            runNumber: result && result.run_number,
+            injectIndex: result ? result.inject_index : payload.injectIndex,
+            createdAt: result && result.created_at,
+            updatedAt: result && result.updated_at,
+            withdrawn: false,
+          });
+          const i = myNotes.findIndex((n) => n.id === entry.id);
+          if (i >= 0) myNotes[i] = Object.assign({}, myNotes[i], entry, { createdAt: myNotes[i].createdAt || entry.createdAt });
+          else myNotes.push(entry);
+          storeMyNotes(myNotes);
+          renderMyNotes();
+        },
+      });
+    }
+    noteForm.refresh();
+
+    const win = notesWindow(latestRow, "observer");
+    // Keep only this run's notes; once notes close after the end, clear the
+    // phone (the server copy is what the report uses).
+    const before = myNotes.length;
+    myNotes = myNotes.filter((n) => !latestRow.run_number || n.runNumber === latestRow.run_number);
+    if (!win.open && latestRow.status === "ended") {
+      myNotes = [];
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    }
+    if (myNotes.length !== before) storeMyNotes(myNotes);
+    renderMyNotes();
+  }
+
+  function renderMyNotes() {
+    const box = document.getElementById("myNotes");
+    if (!box || !latestRow) return;
+    const win = notesWindow(latestRow, "observer");
+    const visible = myNotes.filter((n) => !n.withdrawn).slice().reverse();
+    if (!visible.length) {
+      box.innerHTML = `<div class="empty">${win.open || latestRow.status === "lobby" ? "None yet." : "Notes are closed — your notes have been sent and cleared from this phone."}</div>`;
+      return;
+    }
+    box.innerHTML = visible
+      .map((n) =>
+        noteItemHtml(
+          {
+            id: n.id, run_number: n.runNumber, inject_index: n.injectIndex,
+            topic: n.topic, topic_other: n.topicOther, note_type: n.noteType,
+            department_scope: n.scope, departments: n.departments, external_party: n.externalParty,
+            body: n.body, created_at: n.createdAt, updated_at: n.updatedAt,
+          },
+          {
+            row: latestRow,
+            actionsHtml: win.open
+              ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">Edit</button>` +
+                `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${withdrawArmed === n.id ? "Tap again to withdraw" : "Withdraw"}</button>`
+              : "",
+          }
+        )
+      )
+      .join("");
+  }
+
+  if (observerMode) {
+    document.getElementById("myNotes").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const note = myNotes.find((n) => n.id === btn.dataset.id);
+      if (!note) return;
+      if (btn.dataset.act === "edit") {
+        withdrawArmed = null;
+        noteForm.edit(note);
+        renderMyNotes();
+        return;
+      }
+      // Withdraw: two taps, so a slip of the finger can't remove a note.
+      if (withdrawArmed !== note.id) {
+        withdrawArmed = note.id;
+        renderMyNotes();
+        setTimeout(() => { if (withdrawArmed === note.id) { withdrawArmed = null; renderMyNotes(); } }, 5000);
+        return;
+      }
+      withdrawArmed = null;
+      btn.disabled = true;
+      btn.textContent = "Withdrawing…";
+      try {
+        await withdrawObserverNote(sessionId, note.id, { attendeeId: observer.attendeeId });
+        note.withdrawn = true;
+        storeMyNotes(myNotes);
+        noteForm.cancelEditIf(note.id);
+      } catch (err) {
+        alertNote(err.message);
+      }
+      renderMyNotes();
+    });
+    // The window closes on the clock, not only on an update from the server.
+    setInterval(refreshObserverNotes, 15000);
+  }
+
+  function alertNote(msg) {
+    const box = document.getElementById("myNotes");
+    box.insertAdjacentHTML("afterbegin", `<div class="empty" style="color:#b00020;opacity:1;">${escapeHtml(msg)}</div>`);
   }
 </script>
 </body>

@@ -98,6 +98,9 @@
   }
   .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
   .msg-history summary { cursor: pointer; font-size: 0.9rem; opacity: 0.85; padding: 8px 0; }
+  /* Marked-hidden elements stay hidden even when a class sets display (fixed
+     11 October 2026: the "new" badge on facilitator messages could never hide). */
+  [hidden] { display: none !important; }
   .msg-badge {
     display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
     background: var(--pp-amber); color: var(--pp-navy); font-size: 0.75rem; font-weight: 700;
@@ -583,7 +586,7 @@
   function renderForm(inject, idx, initial) {
     initial = initial || {};
     const individual = isIndividual(inject);
-    const responsible = isDepartmentResponsible(inject, identity.department);
+    const responsible = isDepartmentResponsible(inject, identity.department, latestRow);
     const responsibleList = injectResponsible(inject);
     const responsibleText = responsibleList.some((d) => String(d).toLowerCase() === "all")
       ? "All departments"

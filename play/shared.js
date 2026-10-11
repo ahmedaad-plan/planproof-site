@@ -357,9 +357,36 @@ function scenarioDepartments(session) {
   return sc.departments || sc.requiredDepartments || [];
 }
 
-function isDepartmentResponsible(inject, department) {
+// Is this department expected to answer this inject? Since item 5 (11 October
+// 2026) the Facilitator can add a department at any time; one added after
+// Start (session.departments_added_late, stamped by the database) is only
+// responsible where an inject names it explicitly — never through "All" —
+// so it doesn't show "No response" for injects it was never part of.
+function isDepartmentResponsible(inject, department, row) {
   const list = injectResponsible(inject).map((d) => String(d).trim().toLowerCase());
-  return list.includes("all") || list.includes(String(department || "").trim().toLowerCase());
+  const key = String(department || "").trim().toLowerCase();
+  if (list.includes(key)) return true;
+  if (!list.includes("all")) return false;
+  return !isDepartmentAddedLate(row, department);
+}
+
+function isDepartmentAddedLate(row, department) {
+  const late = (row && row.departments_added_late) || {};
+  const key = String(department || "").trim().toLowerCase();
+  return Object.keys(late).some((d) => d.trim().toLowerCase() === key);
+}
+
+// The session's own department list: the scenario's plus any the Facilitator
+// added, each once (case-insensitive), in that order. This is the only list
+// department dropdowns offer — departments are never typed freely.
+function sessionDepartments(row) {
+  const seen = new Set();
+  return [...scenarioDepartments(row), ...((row && row.extra_departments) || [])].filter((d) => {
+    const key = String(d || "").trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // The moment the current inject's time runs out, as a millisecond timestamp
@@ -772,6 +799,160 @@ function playChime() {
   }
 }
 
+// ---- Observer notes (roadmap item 5, built 11 October 2026) ---------------
+// Full design: design-notes.md → "Observer notes". The public key has no
+// access to the observer_notes table at all — every write and read goes
+// through a database function that checks who is asking (a registered
+// Observer's attendee id, or the facilitator token), the time window, the
+// inject and the department list. These helpers just call those functions.
+
+const NOTE_TOPICS = [
+  { key: "decision", label: "Decision-making & escalation" },
+  { key: "communication", label: "Communication" },
+  { key: "plan", label: "Plan adherence" },
+  { key: "roles", label: "Roles & responsibility clarity" },
+  { key: "coordination", label: "Coordination between teams" },
+  { key: "other", label: "Other" },
+];
+// Three levels, not five (Ahmed, 11 October 2026).
+const NOTE_TYPES = [
+  { key: "positive", label: "Positive" },
+  { key: "improvement", label: "Needs improvement" },
+  { key: "critical", label: "Critical gap" },
+];
+const NOTE_MAX_LENGTH = 500;
+const NOTE_TOPIC_OTHER_MAX = 60;
+const NOTE_EXTERNAL_MAX = 80;
+// Observers: one hour after End (Ahmed). Facilitator: 48 hours after End,
+// or until "Notes complete", whichever comes first.
+const OBSERVER_NOTES_WINDOW_MS = 60 * 60 * 1000;
+const FACILITATOR_NOTES_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function noteTopicLabel(note) {
+  if (note.topic === "other") return note.topic_other ? `Other: ${note.topic_other}` : "Other";
+  const t = NOTE_TOPICS.find((x) => x.key === note.topic);
+  return t ? t.label : note.topic;
+}
+function noteTypeLabel(key) {
+  const t = NOTE_TYPES.find((x) => x.key === key);
+  return t ? t.label : key;
+}
+function noteAboutLabel(note) {
+  if (note.department_scope === "external") return `External party: ${note.external_party}`;
+  return (note.departments || []).join(", ");
+}
+
+// Mirrors the database's own rule (private.notes_closed_reason) so a screen
+// can say when notes open and close. The database still decides: a note
+// sent a moment too late is refused there with the same reason.
+function notesWindow(row, role, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  if (!row) return { open: false, reason: "Loading…", closesAt: null };
+  if (row.notes_closed_at) return { open: false, reason: "Notes are closed for this exercise.", closesAt: null };
+  if (row.status === "lobby") return { open: false, reason: "Notes open when the exercise starts.", closesAt: null };
+  if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
+  const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
+  const span = role === "facilitator" ? FACILITATOR_NOTES_WINDOW_MS : OBSERVER_NOTES_WINDOW_MS;
+  const closesAt = ended + span;
+  if (now > closesAt) {
+    return {
+      open: false,
+      reason: role === "facilitator"
+        ? "Notes closed 48 hours after the exercise ended."
+        : "Observer notes closed one hour after the exercise ended.",
+      closesAt,
+    };
+  }
+  return { open: true, reason: null, closesAt };
+}
+
+// The injects actually played in this run (keys of inject_started_log), in
+// order — the only injects a note can be about.
+function playedInjects(row) {
+  const injects = (row && row.scenario && row.scenario.injects) || [];
+  return Object.keys((row && row.inject_started_log) || {})
+    .map(Number)
+    .filter((i) => Number.isInteger(i) && injects[i])
+    .sort((a, b) => a - b);
+}
+
+// One RPC call: the network part is retried (a dropped packet), a refusal
+// from the database is reported once, at once, in its own words.
+async function callNotesRpc(name, body, facilitatorToken) {
+  const headers = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (facilitatorToken) headers["x-facilitator-token"] = facilitatorToken;
+  let res;
+  try {
+    res = await withRetry(() =>
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+        method: "POST",
+        cache: "no-store",
+        headers,
+        body: JSON.stringify(body),
+      })
+    );
+  } catch {
+    const err = new Error(
+      "Couldn't reach the server — check the connection and try again. Nothing you wrote has been lost."
+    );
+    err.network = true;
+    throw err;
+  }
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// Log a new note or save changes to one's own. note.id is created on the
+// device when the note is started, so sending it twice (Log pressed twice,
+// or a retry after a dropped connection) saves it once.
+// attendeeId null + facilitatorToken = a Facilitator note.
+function saveObserverNote(sessionId, note, { attendeeId, facilitatorToken } = {}) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc(
+    "save_observer_note",
+    {
+      p_id: note.id,
+      p_session_id: sessionId,
+      p_attendee_id: attendeeId || null,
+      p_inject_index: note.injectIndex === null || note.injectIndex === undefined ? null : note.injectIndex,
+      p_topic: note.topic,
+      p_topic_other: note.topic === "other" ? note.topicOther || null : null,
+      p_note_type: note.noteType,
+      p_department_scope: note.scope,
+      p_departments: note.scope === "external" ? [] : note.departments || [],
+      p_external_party: note.scope === "external" ? note.externalParty || null : null,
+      p_body: note.body,
+    },
+    attendeeId ? null : facilitatorToken
+  );
+}
+
+function withdrawObserverNote(sessionId, noteId, { attendeeId, facilitatorToken } = {}) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc(
+    "withdraw_observer_note",
+    { p_id: noteId, p_session_id: sessionId, p_attendee_id: attendeeId || null },
+    attendeeId ? null : facilitatorToken
+  );
+}
+
+// Every note in the session, for the Facilitator's panel (token only).
+async function fetchObserverNotes(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  return (await callNotesRpc("facilitator_observer_notes", { p_session_id: sessionId }, facilitatorToken)) || [];
+}
+
+// "Notes complete": closes notes for everyone, for good (after End only).
+function closeObserverNotes(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("facilitator_close_notes", { p_session_id: sessionId }, facilitatorToken);
+}
+
 // --- Real sound effects (licensed clips Ahmed sourced from Zapsplat /
 // Smartsound), replacing the earlier synthesized placeholders. Every inject
 // references its effect by this same short name ("sfx"), so adding a new
@@ -924,7 +1105,8 @@ function rowSignature(row) {
   if (!row) return "";
   return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
     row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
-    JSON.stringify(row.extra_departments || [])].join("|");
+    JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
+    row.run_number].join("|");
 }
 
 function createLiveStatus() {

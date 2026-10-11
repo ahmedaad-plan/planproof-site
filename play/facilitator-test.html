@@ -14,6 +14,10 @@
     padding: 32px;
   }
   h1 { font-size: 1.3rem; }
+  /* An element marked hidden stays hidden even when its class sets a display
+     value (fixed 11 October 2026: the inbox "new" badge from item 4 was
+     always visible, showing "0 new", because .inbox-badge set display). */
+  [hidden] { display: none !important; }
   .note {
     background: #fff3d6; border: 1px solid #e8a33d; border-radius: 8px;
     padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem;
@@ -130,6 +134,27 @@
   .inbox-list li:first-child { border-top: none; }
   .inbox-list li.unread { font-weight: 600; background: #fff8ec; }
   .inbox-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; font-weight: 400; }
+
+  /* Observer notes (roadmap item 5, built 11 October 2026). */
+  .notes-section { margin-top: 24px; max-width: 760px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
+  .notes-section h2 { font-size: 1.05rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .notes-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .notes-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e8a33d; color: #0b1f3a; font-size: 0.75rem; font-weight: 700; }
+  .notes-badge.critical { background: #b0261b; color: #fff; }
+  .notes-counts { font-size: 0.82rem; opacity: 0.8; margin-bottom: 6px; }
+  .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 0 12px; }
+  .notes-list .ppn-item.unread { background: #fff8ec; margin: 0 -12px; padding: 9px 12px; }
+  .notes-list .ppn-item.critical { border-left: 4px solid #b0261b; margin-left: -12px; padding-left: 8px; }
+  .notes-list .ppn-item.unread.critical { background: #fdeceb; }
+  .notes-list .empty { opacity: 0.6; font-size: 0.9rem; padding: 10px 0; }
+  .notes-close { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #f6f7f9; font-size: 0.9rem; }
+  .notes-close .confirm { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .notes-close button.danger { border-color: #b00020; color: #b00020; }
+  .notes-own { margin-top: 14px; }
+  .notes-own summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+  .notes-own .ppn { border: 1px solid #e3e3e3; margin-top: 8px; }
+  .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: #0b1f3a; color: #fff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-left: 4px; vertical-align: 1px; }
+  .roster-summary { font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -210,6 +235,22 @@
     <ul class="inbox-list" id="inboxList"><li style="opacity:0.6;">No messages yet.</li></ul>
   </div>
 
+  <div class="notes-section" id="notesSection">
+    <h2>Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
+    <div class="sub">
+      Every note from Observers and from you, newest first — only this
+      facilitator link can read them. Critical gaps are marked in red and
+      chime when they arrive. Click anywhere in this panel to mark notes as seen.
+    </div>
+    <div class="notes-counts" id="notesCounts"></div>
+    <div class="notes-list" id="notesList"><div class="empty">Loading…</div></div>
+    <div class="notes-close" id="notesClose"></div>
+    <details class="notes-own" id="notesOwn">
+      <summary>Add your own note</summary>
+      <div id="facNoteForm"></div>
+    </details>
+  </div>
+
   <div class="status-section">
     <h2>Response status</h2>
     <div id="statusSection">Loading…</div>
@@ -244,9 +285,10 @@
 
     <h2>Registered participants &amp; observers</h2>
     <div class="note" id="addDeptNote" style="margin-bottom:10px;">
-      Add any department missing from the list below — do this before
-      clicking "Start exercise". Departments can't be added once the
-      exercise is running.
+      Add any department missing from the list — at any time, also during
+      the exercise. Only you can add one, so nobody can invent a department.
+      A department added after the start is not counted as responsible for
+      injects meant for all departments (it shows "Not required").
     </div>
     <div class="add-dept-row">
       <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
@@ -273,6 +315,7 @@
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./shared.js"></script>
+<script src="./notes.js"></script>
 <script>
   const sessionId = getSessionId();
   const facilitatorToken = getFacilitatorToken();
@@ -373,14 +416,15 @@
       endBtn.disabled = false;
       resetBtn.disabled = false;
 
-      // Departments are only ever added before the exercise starts (per
-      // Ahmed: someone claiming a late-added department mid-exercise
-      // shouldn't be accepted) — hide the control the moment it's running,
-      // rather than relying on people not to click it.
-      const canAddDept = !currentRow || currentRow.status === "lobby";
-      addDeptNoteEl.style.display = canAddDept ? "block" : "none";
-      newDeptInputEl.style.display = canAddDept ? "" : "none";
-      addDeptBtn.style.display = canAddDept ? "" : "none";
+      // Departments can be added at any time, also mid-exercise (Ahmed,
+      // 11 October 2026 — "it's difficult to cover all the departments from
+      // the beginning"). Only this facilitator link can add one, so a
+      // latecomer still can't invent a department. One added after Start is
+      // recorded by the database (departments_added_late) and isn't counted
+      // as responsible for injects meant for all departments.
+      addDeptNoteEl.style.display = "block";
+      newDeptInputEl.style.display = "";
+      addDeptBtn.style.display = "";
 
       // Room count: same lobby-only convention as "Add department" above —
       // can be changed as many times as the facilitator likes (e.g. 3, then
@@ -480,7 +524,9 @@
       msgSendBtn.disabled = msgSending || len === 0 || ended || !currentRow;
       msgPresetEl.disabled = ended;
       msgTextEl.disabled = ended;
-      if (ended) msgFeedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+      const endedText = "The exercise has ended — messages can no longer be sent.";
+      if (ended) msgFeedbackEl.textContent = endedText;
+      else if (msgFeedbackEl.textContent === endedText) msgFeedbackEl.textContent = ""; // running again after End
     }
 
     msgPresetEl.addEventListener("change", () => {
@@ -588,7 +634,9 @@
       deptMsgPresetEl.disabled = ended;
       deptMsgTextEl.disabled = ended;
       deptMsgDeptEl.disabled = ended;
-      if (ended) deptMsgFeedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+      const endedText = "The exercise has ended — messages can no longer be sent.";
+      if (ended) deptMsgFeedbackEl.textContent = endedText;
+      else if (deptMsgFeedbackEl.textContent === endedText) deptMsgFeedbackEl.textContent = ""; // running again after End
     }
 
     deptMsgDeptEl.addEventListener("change", () => {
@@ -842,9 +890,10 @@
       );
       const timeUp = isTimeUp(idx, inject);
 
-      if (!isDepartmentResponsible(inject, dept)) {
+      if (!isDepartmentResponsible(inject, dept, currentRow)) {
         const contributed = subs.some((s) => s.status === "submitted" || s.has_content);
-        return { state: "grey", label: contributed ? "Not required (input received)" : "Not required" };
+        const late = isDepartmentAddedLate(currentRow, dept) ? " — added during the exercise" : "";
+        return { state: "grey", label: contributed ? `Not required${late} (input received)` : `Not required${late}` };
       }
 
       if (injectOutput(inject) === "group") {
@@ -970,7 +1019,13 @@
         (byDept[a.department] = byDept[a.department] || []).push(a);
       });
       const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
-      rosterEl.innerHTML = depts
+      // Observers are marked clearly (item 5): someone who re-joined as an
+      // Observer but shouldn't be one can be spotted and removed here — the
+      // only check against that, since joining has no login.
+      const nObservers = attendees.filter((a) => a.role === "observer").length;
+      rosterEl.innerHTML =
+        `<div class="roster-summary">${attendees.length - nObservers} participant${attendees.length - nObservers === 1 ? "" : "s"} · ${nObservers} observer${nObservers === 1 ? "" : "s"}</div>` +
+        depts
         .map((dept) => `
           <div class="roster-dept">
             <h3>${escapeHtml(dept)} (${byDept[dept].length})</h3>
@@ -980,7 +1035,7 @@
                   (a) => `
                 <li>
                   <span>
-                    ${escapeHtml(a.name)}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${a.role === "observer" ? " — observer" : ""}${a.room ? ` — Room ${a.room}` : ""}
+                    ${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">OBSERVER</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${a.room ? ` — Room ${a.room}` : ""}
                   </span>
                   <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
                 </li>`
@@ -1008,6 +1063,206 @@
         });
       });
     }
+
+    // ---- Observer notes (roadmap item 5, built 11 October 2026) ----------
+    // Design: design-notes.md → "Observer notes". Notes are read only through
+    // a facilitator-token database function (the public key can't read the
+    // table at all), so — like the roster — they're polled every 5 seconds
+    // rather than pushed. A chime plays for a new Critical gap only
+    // (department messages already chime; a chime per note would be noise).
+    const notesListEl = document.getElementById("notesList");
+    const notesBadgeEl = document.getElementById("notesBadge");
+    const notesCountsEl = document.getElementById("notesCounts");
+    const notesCloseEl = document.getElementById("notesClose");
+    const notesOwnEl = document.getElementById("notesOwn");
+    const notesReadKey = `pp_facnotes_read_${sessionId}`;
+    let allNotes = null;
+    let notesLoadedOnce = false;
+    const seenNoteIds = new Set();
+    let noteWithdrawArmed = null;
+    let closeConfirmOpen = false;
+    let closingNotes = false;
+    let notesLastReadAt = null;
+    try {
+      const stored = localStorage.getItem(notesReadKey);
+      notesLastReadAt = stored ? Number(stored) : null;
+    } catch {
+      notesLastReadAt = null;
+    }
+
+    const facNoteForm = createNoteForm(document.getElementById("facNoteForm"), {
+      role: "facilitator",
+      draftKey: `pp_facdraft_${sessionId}`,
+      getRow: () => currentRow,
+      save: (payload) => saveObserverNote(sessionId, payload, { facilitatorToken }),
+      onSaved: () => refreshNotes(),
+    });
+
+    const noteTime = (n) => Date.parse(n.created_at);
+    function isNoteUnread(n) {
+      if (n.author_role === "facilitator") return false; // your own notes are never "new"
+      return notesLastReadAt === null || noteTime(n) > notesLastReadAt;
+    }
+    function markNotesRead() {
+      if (allNotes && allNotes.length) {
+        notesLastReadAt = Math.max(...allNotes.map(noteTime));
+        try {
+          localStorage.setItem(notesReadKey, String(notesLastReadAt));
+        } catch {
+          /* storage blocked — still marked read for this page */
+        }
+      }
+      renderNotes();
+    }
+    document.getElementById("notesSection").addEventListener("click", (e) => {
+      if (e.target.closest("#notesOwn") || e.target.closest("#notesClose")) return;
+      markNotesRead();
+    });
+
+    async function refreshNotes() {
+      try {
+        const notes = await fetchObserverNotes(sessionId, facilitatorToken);
+        const fresh = notes.filter((n) => !seenNoteIds.has(n.id));
+        notes.forEach((n) => seenNoteIds.add(n.id));
+        if (notesLoadedOnce && fresh.some((n) => n.note_type === "critical" && !n.withdrawn && n.author_role !== "facilitator")) {
+          playChime();
+        }
+        notesLoadedOnce = true;
+        allNotes = notes;
+        renderNotes();
+      } catch (err) {
+        notesListEl.innerHTML = `<div class="empty" style="color:#b00020;opacity:1;">Couldn't load notes: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function renderNotes() {
+      if (!allNotes) return;
+      const run = currentRow ? currentRow.run_number : null;
+      const visible = allNotes.filter((n) => !n.withdrawn).slice().reverse();
+      const thisRun = visible.filter((n) => !run || n.run_number === run);
+      const unread = visible.filter(isNoteUnread);
+      const unreadCritical = unread.filter((n) => n.note_type === "critical").length;
+      notesBadgeEl.hidden = unread.length === 0;
+      notesBadgeEl.className = `notes-badge${unreadCritical ? " critical" : ""}`;
+      notesBadgeEl.textContent = `${unread.length} new${unreadCritical ? ` · ${unreadCritical} critical` : ""}`;
+
+      const count = (k) => thisRun.filter((n) => n.note_type === k).length;
+      const withdrawn = allNotes.filter((n) => n.withdrawn).length;
+      const earlier = visible.length - thisRun.length;
+      notesCountsEl.textContent = thisRun.length || earlier || withdrawn
+        ? `${thisRun.length} note${thisRun.length === 1 ? "" : "s"} · ${count("critical")} critical gap${count("critical") === 1 ? "" : "s"} · ${count("improvement")} needs improvement · ${count("positive")} positive` +
+          (earlier ? ` · ${earlier} from an earlier run` : "") +
+          (withdrawn ? ` · ${withdrawn} withdrawn (hidden)` : "")
+        : "";
+
+      const win = notesWindow(currentRow, "facilitator");
+      notesListEl.innerHTML = visible.length
+        ? visible
+            .map((n) => {
+              const canEdit = win.open && n.author_role === "facilitator" && (!run || n.run_number === run);
+              const actions =
+                (canEdit ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">Edit</button>` : "") +
+                (win.open
+                  ? `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${noteWithdrawArmed === n.id ? "Click again to withdraw" : "Withdraw"}</button>`
+                  : "");
+              return noteItemHtml(n, { row: currentRow, showAuthor: true, unread: isNoteUnread(n), actionsHtml: actions });
+            })
+            .join("")
+        : `<div class="empty">No notes yet.</div>`;
+    }
+
+    notesListEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn || !allNotes) return;
+      const n = allNotes.find((x) => x.id === btn.dataset.id);
+      if (!n) return;
+      if (btn.dataset.act === "edit") {
+        notesOwnEl.open = true;
+        facNoteForm.edit({
+          id: n.id, injectIndex: n.inject_index, topic: n.topic, topicOther: n.topic_other,
+          noteType: n.note_type, scope: n.department_scope, departments: n.departments,
+          externalParty: n.external_party, body: n.body, runNumber: n.run_number,
+        });
+        return;
+      }
+      // Withdraw (hidden from this panel and the export, never erased):
+      // two clicks, so a slip can't remove a note.
+      if (noteWithdrawArmed !== n.id) {
+        noteWithdrawArmed = n.id;
+        renderNotes();
+        setTimeout(() => { if (noteWithdrawArmed === n.id) { noteWithdrawArmed = null; renderNotes(); } }, 5000);
+        return;
+      }
+      noteWithdrawArmed = null;
+      btn.disabled = true;
+      btn.textContent = "Withdrawing…";
+      try {
+        await withdrawObserverNote(sessionId, n.id, { facilitatorToken });
+        facNoteForm.cancelEditIf(n.id);
+        await refreshNotes();
+      } catch (err) {
+        notesCountsEl.textContent = `Withdraw failed: ${err.message}`;
+        renderNotes();
+      }
+    });
+
+    // "Notes complete" (named so with Ahmed, 11 October 2026 — the report
+    // itself is written later). Closes notes for everyone, for good. The
+    // export (item 12) will ask for this first.
+    function renderNotesClose() {
+      if (!currentRow) return;
+      const fac = notesWindow(currentRow, "facilitator");
+      const obs = notesWindow(currentRow, "observer");
+      const fmt = (ms) => new Date(ms).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      let html;
+      if (currentRow.notes_closed_at) {
+        html = `<strong>✓ Notes complete</strong> — closed ${escapeHtml(fmt(Date.parse(currentRow.notes_closed_at)))}. No more notes can be added or changed.`;
+      } else if (currentRow.status !== "ended") {
+        html = `<strong>Notes complete</strong> becomes available once you end the exercise. After the end, Observers can add or edit notes for one hour, and you for 48 hours.`;
+      } else if (!fac.open) {
+        html = `<strong>Notes closed</strong> automatically 48 hours after the exercise ended.`;
+      } else {
+        html =
+          `Notes are open — Observers ${obs.open ? `until ${escapeHtml(fmt(obs.closesAt))}` : "closed (one hour after the end)"}, you until ${escapeHtml(fmt(fac.closesAt))}. ` +
+          `When everyone has finished, press <strong>Notes complete</strong>.` +
+          `<div class="confirm">` +
+          (closeConfirmOpen
+            ? `<span>Are you sure? This closes notes for everyone, for good.</span>` +
+              `<button type="button" class="danger" data-act="close-yes"${closingNotes ? " disabled" : ""}>${closingNotes ? "Closing…" : "Yes, close notes"}</button>` +
+              `<button type="button" data-act="close-cancel"${closingNotes ? " disabled" : ""}>Cancel</button>`
+            : `<button type="button" class="primary" data-act="close">Notes complete</button>`) +
+          `</div>`;
+      }
+      notesCloseEl.innerHTML = html;
+    }
+
+    notesCloseEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      if (btn.dataset.act === "close") { closeConfirmOpen = true; renderNotesClose(); return; }
+      if (btn.dataset.act === "close-cancel") { closeConfirmOpen = false; renderNotesClose(); return; }
+      if (btn.dataset.act === "close-yes") {
+        closingNotes = true;
+        renderNotesClose();
+        try {
+          await closeObserverNotes(sessionId, facilitatorToken);
+          closeConfirmOpen = false;
+          await refresh();
+        } catch (err) {
+          errorBoxEl.textContent = `Notes complete failed: ${err.message}`;
+          errorBoxEl.style.display = "block";
+        } finally {
+          closingNotes = false;
+          renderNotesClose();
+        }
+      }
+    });
+
+    refreshNotes();
+    setInterval(refreshNotes, 5000);
+    // The windows close on the clock, not only after an action here.
+    setInterval(() => { facNoteForm.refresh(); renderNotesClose(); renderNotes(); }, 15000);
+    onReconnect(refreshNotes);
 
     refresh();
     refreshRoster();
@@ -1126,6 +1381,9 @@
         : "No current inject.";
       renderStatus();
       updateDeptMsgOptions();
+      facNoteForm.refresh();
+      renderNotesClose();
+      renderNotes();
     }
 
     updateButtonAvailability();

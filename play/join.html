@@ -337,8 +337,13 @@
           /* localStorage unavailable (private mode, etc.) — the participant
              page will ask them to join again. */
         }
-        const dest = pending.role === "participant" ? "./participant.html" : "./room-display.html";
-        location.href = `${dest}?session=${encodeURIComponent(sessionId)}`;
+        // Observers go to the room view in Observer mode (&observer=1): the
+        // live view plus their notes area (roadmap item 5). A plain
+        // room-display link stays the shared room screen.
+        const dest = pending.role === "participant"
+          ? `./participant.html?session=${encodeURIComponent(sessionId)}`
+          : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1`;
+        location.href = dest;
       } catch (err) {
         confirmErrorEl.textContent = err.message;
         confirmErrorEl.style.display = "block";
