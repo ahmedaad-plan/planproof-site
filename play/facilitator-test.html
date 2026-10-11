@@ -158,6 +158,10 @@
   /* Control tower (roadmap item 6, 11 October 2026): who is connected right
      now. Visual only — it never chimes. */
   [hidden] { display: none !important; }
+  .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 8px; background: #fff3d6; border: 2px solid #e8a33d; }
+  .start-check .t { font-weight: 700; margin-bottom: 4px; }
+  .start-check ul { margin: 6px 0 10px; padding-left: 20px; font-size: 0.95rem; }
+  .start-check .b { display: flex; gap: 10px; flex-wrap: wrap; }
   .tower-section { margin-top: 24px; max-width: 760px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
   .tower-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
   .tower-section h3 { font-size: 0.92rem; margin: 14px 0 6px; }
@@ -210,6 +214,15 @@
     timed out — until you click "Lock this inject" again or move on. To
     revisit and unlock an <em>earlier</em> inject, use Previous to make it
     current again, then Unlock.
+  </div>
+
+  <div class="start-check" id="startCheck" hidden role="alertdialog" aria-labelledby="startCheckTitle">
+    <div class="t" id="startCheckTitle">Not everything is ready</div>
+    <ul id="startCheckList"></ul>
+    <div class="b">
+      <button id="startBackBtn" class="primary">Go back</button>
+      <button id="startAnywayBtn">Start anyway</button>
+    </div>
   </div>
 
   <div class="current-inject" id="currentInject">—</div>
@@ -437,22 +450,23 @@
     // send the same "current + 1" as the first, so it looked stuck; and
     // (2) a failed request shows an on-screen error instead of silently
     // doing nothing.
+    async function runAction(action) {
+      actionButtons.forEach((b) => (b.disabled = true));
+      errorBoxEl.style.display = "none";
+      actionBusy = true;
+      try {
+        await action();
+        await refresh();
+      } catch (err) {
+        errorBoxEl.textContent = `Action failed: ${err.message}`;
+        errorBoxEl.style.display = "block";
+      } finally {
+        actionBusy = false;
+        updateButtonAvailability();
+      }
+    }
     function onClick(button, action) {
-      button.addEventListener("click", async () => {
-        actionButtons.forEach((b) => (b.disabled = true));
-        errorBoxEl.style.display = "none";
-        actionBusy = true;
-        try {
-          await action();
-          await refresh();
-        } catch (err) {
-          errorBoxEl.textContent = `Action failed: ${err.message}`;
-          errorBoxEl.style.display = "block";
-        } finally {
-          actionBusy = false;
-          updateButtonAvailability();
-        }
-      });
+      button.addEventListener("click", () => runAction(action));
     }
 
     // Next/Prev being clamped at the ends of the inject list is correct —
@@ -1628,14 +1642,75 @@
     // inject showing right now." Leaving either one stuck on from a previous
     // inject would otherwise affect the WRONG inject's form the next time
     // either value changes.
-    onClick(document.getElementById("startBtn"), () =>
+    // ---- Start, with a readiness check (Ahmed, 11 October 2026) ----------
+    // Pressing Start first looks at the control tower. If every room screen
+    // is connected with sound on and able to stay awake, and every
+    // department has someone online, it starts at once. Otherwise it lists
+    // what is missing and offers "Start anyway" or "Go back" — it never
+    // blocks the facilitator.
+    const startCheckEl = document.getElementById("startCheck");
+    const startCheckListEl = document.getElementById("startCheckList");
+    const startExercise = () =>
       patchSession(sessionId, {
         status: "running",
         current_inject_index: 0,
         inject_extra_minutes: 0,
         inject_force_unlocked: false,
-      })
-    );
+      });
+    function startReadinessIssues() {
+      const issues = [];
+      if (!lastPresence || !lastAttendees) {
+        issues.push("Who is online could not be checked just now (no answer from the server).");
+        return issues;
+      }
+      const now = towerNowMs();
+      const rooms = (currentRow && currentRow.room_count) || 1;
+      const screens = lastPresence.devices.filter((d) => d.kind === "room_screen" && now - Date.parse(d.last_seen) <= SCREEN_RECENT_MS);
+      const roomLabel = (r) => (rooms > 1 ? `Room ${r} screen` : "Room screen");
+      for (let r = 1; r <= rooms; r++) {
+        const inRoom = rooms > 1 ? screens.filter((d) => d.room === r) : screens;
+        const live = inRoom.filter((d) => presenceState(d.last_seen, now) === "green");
+        if (!inRoom.length) issues.push(`${roomLabel(r)}: no screen connected.`);
+        else if (!live.length) issues.push(`${roomLabel(r)}: not responding.`);
+        else {
+          if (!live.some((d) => d.sound === "on")) issues.push(`${roomLabel(r)}: sound off — someone needs to tap "Tap to begin".`);
+          if (live.some((d) => d.awake === "off")) issues.push(`${roomLabel(r)}: may go to sleep — plug it in and switch off battery saver.`);
+        }
+      }
+      if (rooms > 1 && screens.some((d) => !d.room)) issues.push("A room screen has not chosen its room yet.");
+      const participants = lastAttendees.filter((a) => a.role !== "observer");
+      if (!participants.length) issues.push("No participants have joined yet.");
+      const byDept = {};
+      participants.forEach((a) => {
+        const d = personPresence(a.id);
+        (byDept[a.department] = byDept[a.department] || []).push(d ? presenceState(d.last_seen, now) : "never");
+      });
+      Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
+        if (!byDept[dept].includes("green")) issues.push(`${dept}: nobody online.`);
+      });
+      const offline = participants.filter((a) => { const d = personPresence(a.id); return !d || presenceState(d.last_seen, now) !== "green"; }).length;
+      if (offline && participants.length) issues.push(`${offline} of ${participants.length} registered participant${participants.length === 1 ? "" : "s"} ${offline === 1 ? "is" : "are"} not online.`);
+      return issues;
+    }
+    document.getElementById("startBtn").addEventListener("click", async () => {
+      startCheckEl.hidden = true;
+      // Only before a start: a running exercise is never interrupted by this.
+      if (currentRow && currentRow.status === "running") return runAction(startExercise);
+      startBtn.disabled = true;
+      try { await refreshRoster(); } catch { /* the check below says it couldn't look */ }
+      const issues = startReadinessIssues();
+      if (!issues.length) return runAction(startExercise);
+      startCheckListEl.innerHTML = issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+      startCheckEl.hidden = false;
+      startBtn.disabled = false;
+    });
+    document.getElementById("startAnywayBtn").addEventListener("click", () => {
+      startCheckEl.hidden = true;
+      runAction(startExercise);
+    });
+    document.getElementById("startBackBtn").addEventListener("click", () => {
+      startCheckEl.hidden = true;
+    });
     onClick(document.getElementById("nextBtn"), () => {
       if (!currentRow) return;
       const max = (currentRow.scenario.injects || []).length - 1;
