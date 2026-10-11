@@ -287,8 +287,9 @@
     <div class="note" id="addDeptNote" style="margin-bottom:10px;">
       Add any department missing from the list — at any time, also during
       the exercise. Only you can add one, so nobody can invent a department.
-      A department added after the start is not counted as responsible for
-      injects meant for all departments (it shows "Not required").
+      A department added during the exercise shows "Not required" for the
+      injects it missed (including the one running when you add it), and
+      is counted like every other department from the next inject on.
     </div>
     <div class="add-dept-row">
       <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
@@ -420,8 +421,8 @@
       // 11 October 2026 — "it's difficult to cover all the departments from
       // the beginning"). Only this facilitator link can add one, so a
       // latecomer still can't invent a department. One added after Start is
-      // recorded by the database (departments_added_late) and isn't counted
-      // as responsible for injects meant for all departments.
+      // recorded by the database (departments_added_late): it isn't counted
+      // for the injects it missed, and counts normally from the next inject.
       addDeptNoteEl.style.display = "block";
       newDeptInputEl.style.display = "";
       addDeptBtn.style.display = "";
@@ -890,9 +891,9 @@
       );
       const timeUp = isTimeUp(idx, inject);
 
-      if (!isDepartmentResponsible(inject, dept, currentRow)) {
+      if (!isDepartmentResponsible(inject, dept, currentRow, idx)) {
         const contributed = subs.some((s) => s.status === "submitted" || s.has_content);
-        const late = isDepartmentAddedLate(currentRow, dept) ? " — added during the exercise" : "";
+        const late = departmentMissedInject(currentRow, dept, idx) ? " — added after this inject started" : "";
         return { state: "grey", label: contributed ? `Not required${late} (input received)` : `Not required${late}` };
       }
 

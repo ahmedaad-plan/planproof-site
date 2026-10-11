@@ -358,22 +358,38 @@ function scenarioDepartments(session) {
 }
 
 // Is this department expected to answer this inject? Since item 5 (11 October
-// 2026) the Facilitator can add a department at any time; one added after
-// Start (session.departments_added_late, stamped by the database) is only
-// responsible where an inject names it explicitly — never through "All" —
-// so it doesn't show "No response" for injects it was never part of.
-function isDepartmentResponsible(inject, department, row) {
+// 2026) the Facilitator can add a department at any time. Rule (Ahmed,
+// 11 October 2026): a department added during the exercise is not
+// responsible for the injects it MISSED — any inject that started before it
+// was added, including the one running at that moment. Injects that start
+// after it was added count it exactly like every other department, whether
+// they're addressed to all departments or name it. (Going back to an earlier
+// inject with Previous restarts it, so it then counts too.) The database
+// records when each such department was added (departments_added_late).
+function isDepartmentResponsible(inject, department, row, injectIndex) {
+  if (departmentMissedInject(row, department, injectIndex)) return false;
   const list = injectResponsible(inject).map((d) => String(d).trim().toLowerCase());
   const key = String(department || "").trim().toLowerCase();
-  if (list.includes(key)) return true;
-  if (!list.includes("all")) return false;
-  return !isDepartmentAddedLate(row, department);
+  return list.includes("all") || list.includes(key);
 }
 
-function isDepartmentAddedLate(row, department) {
+// When this department was added during the exercise (ms), or null.
+function departmentAddedLateAt(row, department) {
   const late = (row && row.departments_added_late) || {};
   const key = String(department || "").trim().toLowerCase();
-  return Object.keys(late).some((d) => d.trim().toLowerCase() === key);
+  const found = Object.keys(late).find((d) => d.trim().toLowerCase() === key);
+  return found ? Date.parse(late[found]) : null;
+}
+
+// True when the department was added during the exercise after this inject
+// had already started (it missed the inject). An inject that hasn't started
+// can't have been missed.
+function departmentMissedInject(row, department, injectIndex) {
+  const addedAt = departmentAddedLateAt(row, department);
+  if (addedAt === null || injectIndex === null || injectIndex === undefined) return false;
+  const log = (row && row.inject_started_log) || {};
+  const started = log[String(injectIndex)] ? Date.parse(log[String(injectIndex)]) : null;
+  return started !== null && started <= addedAt;
 }
 
 // The session's own department list: the scenario's plus any the Facilitator

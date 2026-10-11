@@ -586,7 +586,7 @@
   function renderForm(inject, idx, initial) {
     initial = initial || {};
     const individual = isIndividual(inject);
-    const responsible = isDepartmentResponsible(inject, identity.department, latestRow);
+    const responsible = isDepartmentResponsible(inject, identity.department, latestRow, idx);
     const responsibleList = injectResponsible(inject);
     const responsibleText = responsibleList.some((d) => String(d).toLowerCase() === "all")
       ? "All departments"
