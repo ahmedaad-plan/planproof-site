@@ -113,6 +113,51 @@
   .observer-panel h2 { font-size: 1.1rem; margin: 18px 0 8px; }
   .observer-panel .mine { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 6px 16px; }
   .observer-panel .mine .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
+
+  /* Observer <-> Facilitator messages (roadmap item 7, 11 October 2026).
+     A reply from the facilitator must be impossible to miss on a silent
+     phone: a banner that stays at the top of the screen until "Got it", a
+     count on the link to the messages, and a count in the tab title. */
+  .obs-banner {
+    position: sticky; top: 0; z-index: 6; background: var(--amber); color: var(--amber-ink);
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+  .obs-banner-inner { max-width: 720px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .obs-banner-inner > div { flex: 1; min-width: 0; }
+  .obs-banner .label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
+  .obs-banner .text { font-size: 1.08rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+  .obs-banner button {
+    flex: 0 0 auto; font: inherit; font-weight: 700; padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    background: var(--amber-ink); color: var(--amber); border: none;
+  }
+  .obs-jump {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 0;
+    padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--panel);
+    color: var(--text); text-decoration: none; font-weight: 600; font-size: 0.95rem;
+  }
+  .obs-jump .arrow { color: var(--amber); }
+  .obs-badge {
+    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+    background: var(--amber); color: var(--amber-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
+  }
+  .obs-thread { list-style: none; margin: 0; padding: 2px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+  .obs-thread li { padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+  .obs-thread li:first-child { border-top: none; }
+  .obs-thread .meta { display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); }
+  .obs-thread li.from-fac { border-left: 3px solid var(--amber); margin-left: -16px; padding-left: 13px; }
+  .obs-thread li.unread { font-weight: 600; }
+  .obs-thread li.mine-sent { color: var(--text-muted); }
+  .obs-thread .empty { color: var(--text-muted); font-size: 0.9rem; }
+  .obs-msg-card { margin-top: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 18px; }
+  .obs-msg-card h3 { font-size: 1.02rem; margin: 0 0 4px; }
+  .obs-msg-card .pp-hint { margin: 0 0 12px; }
+  .obs-msg-card label { margin-top: 12px; }
+  .obs-msg-card textarea { min-height: 76px; resize: vertical; border-width: 2px; }
+  .obs-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .obs-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .obs-msg-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
+  .obs-msg-feedback.ok { color: var(--teal-soft); }
+  .obs-msg-feedback.err { color: var(--red-soft); }
 </style>
 </head>
 <body>
@@ -135,6 +180,16 @@
   </div>
 </header>
 
+<div class="obs-banner" id="obsBanner" role="status" aria-live="polite" hidden>
+  <div class="obs-banner-inner">
+    <div>
+      <div class="label">Message from the facilitator <span id="obsBannerTime"></span></div>
+      <div class="text" id="obsBannerText"></div>
+    </div>
+    <button type="button" id="obsBannerOk">Got it</button>
+  </div>
+</div>
+
 <div class="broadcast-banner" id="broadcastBanner" role="status" aria-live="polite">
   <div class="label">Message from the facilitator</div>
   <div class="text" id="broadcastText"></div>
@@ -145,11 +200,31 @@
   <div class="lobby">Waiting for the facilitator to start the exercise…</div>
 </main>
 
-<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes">
+<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes and messages">
+  <a class="obs-jump" id="obsJump" href="#obsMessages">
+    <span>Message the facilitator<span class="obs-badge" id="obsJumpBadge" hidden></span></span>
+    <span class="arrow" aria-hidden="true">&darr;</span>
+  </a>
   <h2>Your notes</h2>
   <div id="noteForm"></div>
   <h2>Notes you've logged</h2>
   <div class="mine" id="myNotes"><div class="empty">None yet.</div></div>
+
+  <h2 id="obsMessages">Messages with the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
+  <ul class="obs-thread" id="obsThread"><li class="empty">No messages yet.</li></ul>
+  <div class="obs-msg-card pp-form">
+    <h3>Message the facilitator</h3>
+    <p class="pp-hint" id="obsMsgHint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
+    <label for="obsMsgPreset">Choose a ready-made message</label>
+    <select id="obsMsgPreset"><option value="">— Choose a ready-made message —</option></select>
+    <label for="obsMsgText">Or type your own message</label>
+    <textarea id="obsMsgText" maxlength="280" placeholder="Tap here and type your message"></textarea>
+    <div class="obs-msg-row">
+      <span class="count" id="obsMsgCount">0 / 280</span>
+      <button type="button" class="pp-btn" id="obsMsgSendBtn" disabled>Send &rarr;</button>
+    </div>
+    <div class="obs-msg-feedback" id="obsMsgFeedback"></div>
+  </div>
 </section>
 
 <footer>Exercise room display</footer>
@@ -347,9 +422,16 @@
       },
       // After a drop or a WiFi change, don't trust that the live stream
       // caught everything — re-check for a broadcast missed meanwhile.
-      onRecovered: (row) => catchUpBroadcast(row, false),
+      onRecovered: (row) => {
+        catchUpBroadcast(row, false);
+        if (observerMode) loadObserverMessages(false);
+      },
       // A new message for participants: fetch it; chime if it really is new.
-      onRing: (kind) => { if (kind === "message") catchUpBroadcast(latestRow, true); },
+      // "observer" (item 7): the facilitator has written to Observers.
+      onRing: (kind) => {
+        if (kind === "message") catchUpBroadcast(latestRow, true);
+        else if (kind === "observer" && observerMode) loadObserverMessages(true);
+      },
     });
 
     // Keep the screen awake: a room screen until the exercise ends; an
@@ -403,6 +485,7 @@
         onBack: async (ms) => {
           await sync.resync("back");
           showToast(awayText(ms, latestRow));
+          loadObserverMessages(false); // a reply may have arrived while the phone was locked
         },
       });
     }
@@ -502,7 +585,10 @@
   function render(row) {
     if (!row) return;
     latestRow = row;
-    if (observerMode) refreshObserverNotes();
+    if (observerMode) {
+      refreshObserverNotes();
+      updateObserverMessageControls();
+    }
     clientLabelEl.textContent = row.label || "PlanProof";
 
     // A banner belongs to the inject (or the lobby) it was sent during:
@@ -746,6 +832,230 @@
     });
     // The window closes on the clock, not only on an update from the server.
     setInterval(refreshObserverNotes, 15000);
+  }
+
+  // ---- Observer <-> Facilitator messages (roadmap item 7, 11 October 2026) --
+  // Design: design-notes.md → "Observer ↔ Facilitator — design". The thread
+  // is this Observer's room: what the facilitator sent to all Observers or to
+  // this room, and what this room's Observers sent. Messages are room-level —
+  // no name is attached. The phone stays silent (the room's display has the
+  // sound): a reply shows as a banner that stays until "Got it", with a count
+  // and a short vibration where the phone supports it. Besides the doorbell,
+  // the thread is checked every 15 seconds, so a lost ring can't hide a reply.
+  // The channel stays open after End until the Observers' notes hour closes.
+  const obsBannerEl = document.getElementById("obsBanner");
+  const obsBannerTextEl = document.getElementById("obsBannerText");
+  const obsBannerTimeEl = document.getElementById("obsBannerTime");
+  const obsThreadEl = document.getElementById("obsThread");
+  const obsBadgeEl = document.getElementById("obsBadge");
+  const obsJumpBadgeEl = document.getElementById("obsJumpBadge");
+  const obsMsgPresetEl = document.getElementById("obsMsgPreset");
+  const obsMsgTextEl = document.getElementById("obsMsgText");
+  const obsMsgCountEl = document.getElementById("obsMsgCount");
+  const obsMsgSendBtn = document.getElementById("obsMsgSendBtn");
+  const obsMsgFeedbackEl = document.getElementById("obsMsgFeedback");
+  const obsBaseTitle = document.title;
+  const obsReadKey = observer ? `pp_obsmsgread_${sessionId}_${observer.attendeeId}` : null;
+  const obsDraftKey = observer ? `pp_obsmsgdraft_${sessionId}_${observer.attendeeId}` : null;
+  let obsMessages = [];
+  let obsLoadedOnce = false;
+  let obsLoading = false;
+  let obsAgain = null;
+  let obsSending = false;
+  let obsLastReadAt = null; // created_at (ms) of the newest facilitator message acknowledged
+  let obsDraft = { id: null, text: "", presetKey: "" };
+  if (observer) {
+    try {
+      const stored = localStorage.getItem(obsReadKey);
+      obsLastReadAt = stored ? Number(stored) : null;
+    } catch { obsLastReadAt = null; }
+    try {
+      const d = JSON.parse(localStorage.getItem(obsDraftKey) || "null");
+      if (d && typeof d.text === "string") obsDraft = { id: d.id || null, text: d.text, presetKey: d.presetKey || "" };
+    } catch { /* no draft */ }
+  }
+  const obsMsgTime = (m) => new Date(m.created_at).getTime();
+  const obsFromFacilitator = (m) => m.direction === "to_observers";
+  function obsIsUnread(m) {
+    return obsFromFacilitator(m) && (obsLastReadAt === null || obsMsgTime(m) > obsLastReadAt);
+  }
+  function storeObsDraft() {
+    try {
+      if (obsDraft.text) localStorage.setItem(obsDraftKey, JSON.stringify(obsDraft));
+      else localStorage.removeItem(obsDraftKey);
+    } catch { /* storage blocked — the text just won't survive a reload */ }
+  }
+
+  async function loadObserverMessages(fromRing) {
+    if (!observerMode) return;
+    if (obsLoading) {
+      // A ring that arrives mid-fetch is never dropped: fetch once more after.
+      obsAgain = obsAgain || !!fromRing;
+      return;
+    }
+    obsLoading = true;
+    try {
+      const fresh = await fetchObserverMessages(sessionId, observer.attendeeId);
+      const known = new Set(obsMessages.map((m) => m.id));
+      const gotNew = fresh.some((m) => obsFromFacilitator(m) && !known.has(m.id));
+      obsMessages = fresh;
+      renderObserverMessages();
+      if (gotNew && obsLoadedOnce) {
+        try { if (navigator.vibrate) navigator.vibrate(200); } catch { /* the banner is enough */ }
+      }
+      obsLoadedOnce = true;
+    } catch (err) {
+      console.warn("Couldn't load Observer messages:", err.message);
+    } finally {
+      obsLoading = false;
+      if (obsAgain !== null) {
+        const again = obsAgain;
+        obsAgain = null;
+        loadObserverMessages(again);
+      }
+    }
+  }
+
+  function markObserverMessagesRead() {
+    const fromFac = obsMessages.filter(obsFromFacilitator);
+    if (fromFac.length) {
+      obsLastReadAt = Math.max(...fromFac.map(obsMsgTime));
+      try { localStorage.setItem(obsReadKey, String(obsLastReadAt)); } catch { /* still read for this page */ }
+    }
+    renderObserverMessages();
+  }
+
+  function renderObserverMessages() {
+    const unread = obsMessages.filter(obsIsUnread);
+    const badge = unread.length === 1 ? "1 new" : `${unread.length} new`;
+    obsBadgeEl.hidden = unread.length === 0;
+    obsBadgeEl.textContent = badge;
+    obsJumpBadgeEl.hidden = unread.length === 0;
+    obsJumpBadgeEl.textContent = badge;
+    document.title = unread.length ? `(${unread.length}) ${obsBaseTitle}` : obsBaseTitle;
+
+    obsThreadEl.innerHTML = obsMessages.length
+      ? obsMessages
+          .slice()
+          .reverse()
+          .map((m) => {
+            const fromFac = obsFromFacilitator(m);
+            const who = fromFac
+              ? `From the facilitator${m.room ? ` · to Room ${m.room} Observers` : " · to all Observers"}`
+              : observer.room ? `Sent from Room ${observer.room}` : "Sent to the facilitator";
+            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}</li>`;
+          })
+          .join("")
+      : `<li class="empty">No messages yet.</li>`;
+
+    // The banner: the newest reply not yet acknowledged. It stays until
+    // "Got it" — it does not hide by itself.
+    const newest = unread[unread.length - 1];
+    if (newest) {
+      obsBannerTextEl.textContent = newest.body;
+      obsBannerTimeEl.textContent = `· ${formatMessageTime(newest.created_at)}${unread.length > 1 ? ` · ${unread.length} new` : ""}`;
+      obsBannerEl.hidden = false;
+    } else {
+      obsBannerEl.hidden = true;
+    }
+  }
+
+  function updateObserverMessageControls() {
+    if (!observerMode) return;
+    const chan = observerChannel(latestRow);
+    const closed = !!latestRow && !chan.open;
+    const len = obsMsgTextEl.value.trim().length;
+    obsMsgCountEl.textContent = `${obsMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+    obsMsgPresetEl.disabled = closed;
+    obsMsgTextEl.disabled = closed;
+    obsMsgSendBtn.disabled = obsSending || len === 0 || closed || !latestRow;
+    if (closed) {
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+      obsMsgFeedbackEl.textContent = chan.reason;
+      obsMsgFeedbackEl.dataset.closed = "1";
+      // Nothing unsent is kept on the phone once the channel has closed.
+      if (obsDraft.text) { obsDraft = { id: null, text: "", presetKey: "" }; storeObsDraft(); obsMsgTextEl.value = ""; }
+    } else if (obsMsgFeedbackEl.dataset.closed) {
+      // Open again (a new run after Reset).
+      delete obsMsgFeedbackEl.dataset.closed;
+      obsMsgFeedbackEl.textContent = "";
+    }
+  }
+
+  if (observerMode) {
+    OBSERVER_TO_FACILITATOR_PRESETS.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.key;
+      opt.textContent = p.text;
+      obsMsgPresetEl.appendChild(opt);
+    });
+    // An unsent message comes back after a reload.
+    if (obsDraft.text) {
+      obsMsgTextEl.value = obsDraft.text;
+      obsMsgPresetEl.value = obsDraft.presetKey || "";
+    }
+    const clearFeedback = () => {
+      if (obsMsgFeedbackEl.dataset.closed) return;
+      obsMsgFeedbackEl.textContent = "";
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+    };
+    function keepDraft() {
+      const text = obsMsgTextEl.value;
+      // A changed text is a new message: it gets a new id. The same text
+      // sent again (a retry) keeps its id, so it is saved once.
+      if (text !== obsDraft.text || !obsDraft.id) obsDraft.id = crypto.randomUUID();
+      obsDraft.text = text;
+      obsDraft.presetKey = obsMsgPresetEl.value;
+      storeObsDraft();
+    }
+    obsMsgPresetEl.addEventListener("change", () => {
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
+      if (preset) obsMsgTextEl.value = preset.text;
+      clearFeedback();
+      keepDraft();
+      updateObserverMessageControls();
+      obsMsgTextEl.focus();
+    });
+    obsMsgTextEl.addEventListener("input", () => {
+      clearFeedback();
+      keepDraft();
+      updateObserverMessageControls();
+    });
+    obsMsgSendBtn.addEventListener("click", async () => {
+      const body = obsMsgTextEl.value.trim();
+      if (!body || obsSending) return;
+      if (!obsDraft.id || obsDraft.text !== obsMsgTextEl.value) keepDraft();
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      obsSending = true;
+      updateObserverMessageControls();
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+      obsMsgFeedbackEl.textContent = "Sending…";
+      try {
+        await sendObserverMessage(sessionId, { id: obsDraft.id, body, presetKey, attendeeId: observer.attendeeId });
+        obsDraft = { id: null, text: "", presetKey: "" };
+        storeObsDraft();
+        obsMsgTextEl.value = "";
+        obsMsgPresetEl.value = "";
+        obsMsgFeedbackEl.className = "obs-msg-feedback ok";
+        obsMsgFeedbackEl.textContent = `Sent to the facilitator at ${formatMessageTime(new Date().toISOString())} ✓`;
+        loadObserverMessages(false);
+      } catch (err) {
+        // Whatever went wrong, the text stays in the box and on the phone.
+        obsMsgFeedbackEl.className = "obs-msg-feedback err";
+        obsMsgFeedbackEl.textContent = err.network
+          ? "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again."
+          : `Not sent: ${err.message}`;
+      } finally {
+        obsSending = false;
+        updateObserverMessageControls();
+      }
+    });
+    document.getElementById("obsBannerOk").addEventListener("click", markObserverMessagesRead);
+    loadObserverMessages(false);
+    // The safety net for a lost ring, and the clock closing the channel.
+    setInterval(() => loadObserverMessages(false), 15000);
+    setInterval(updateObserverMessageControls, 5000);
   }
 
   function alertNote(msg) {

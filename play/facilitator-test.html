@@ -86,12 +86,12 @@
 
   /* The panels: message everyone, message a department, the inbox, Observer
      notes, the control tower. One card style for all. */
-  .broadcast-section, .dept-msg-section, .inbox-section, .notes-section, .tower-section {
+  .broadcast-section, .dept-msg-section, .obs-msg-section, .inbox-section, .notes-section, .tower-section {
     margin-top: 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
   }
-  .broadcast-section, .dept-msg-section, .inbox-section { max-width: 760px; }
+  .broadcast-section, .dept-msg-section, .obs-msg-section, .inbox-section { max-width: 760px; }
   .notes-section, .tower-section { max-width: 760px; }
-  .broadcast-section h2, .dept-msg-section h2, .inbox-section h2, .notes-section h2, .tower-section h2 { margin: 0 0 4px; }
+  .broadcast-section h2, .dept-msg-section h2, .obs-msg-section h2, .inbox-section h2, .notes-section h2, .tower-section h2 { margin: 0 0 4px; }
   .inbox-section h2, .notes-section h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .sub { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 10px; }
   .field-label { display: block; font-size: 0.86rem; font-weight: 600; margin: 8px 0 0; }
@@ -111,6 +111,18 @@
 
   /* Department messaging (roadmap item 4, added 7 October 2026). */
   .dept-msg-section textarea { min-height: 56px; resize: vertical; }
+
+  /* Message Observers (roadmap item 7, 11 October 2026): the same pattern as
+     "Message a department", for Observers' phones only. */
+  .obs-msg-section select, .obs-msg-section textarea { width: 100%; margin-top: 6px; }
+  .obs-msg-section textarea { min-height: 56px; resize: vertical; }
+  .obs-msg-warn { font-size: 0.86rem; color: var(--amber); margin-top: 8px; }
+  .inbox-list .from-tag {
+    display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.02em; border: 1px solid var(--blue); color: var(--blue-soft); background: var(--blue-dim);
+  }
+  .inbox-list .earlier { color: var(--text-muted); font-style: italic; }
+  .inbox-list .msg-obs-btn { margin-left: 8px; }
   .msg-dept-btn {
     font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong);
     background: transparent; color: var(--text); cursor: pointer;
@@ -278,9 +290,33 @@
     <ul class="dept-msg-log" id="deptMsgLog"></ul>
   </div>
 
+  <div class="obs-msg-section" id="obsMsgSection">
+    <h2>Message Observers</h2>
+    <div class="sub">
+      Reaches Observers' phones only — never participants or the room
+      screen. Observers can write to you too; their messages arrive in the
+      inbox below, marked with their room. This channel stays open after
+      End until the Observers' notes window closes.
+    </div>
+    <label for="obsMsgRoom" class="field-label">Send to</label>
+    <select id="obsMsgRoom"><option value="">All Observers</option></select>
+    <label for="obsMsgPreset" class="field-label">Ready-made messages (optional)</label>
+    <select id="obsMsgPreset">
+      <option value="">— Choose a ready-made message —</option>
+    </select>
+    <textarea id="obsMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <div class="dept-msg-row">
+      <span class="count" id="obsMsgCount">0 / 280</span>
+      <button class="primary" id="obsMsgSendBtn" disabled>Send &rarr;</button>
+    </div>
+    <div class="obs-msg-warn" id="obsMsgWarn" hidden></div>
+    <div class="dept-msg-feedback" id="obsMsgFeedback"></div>
+    <ul class="dept-msg-log" id="obsMsgLog"></ul>
+  </div>
+
   <div class="inbox-section" id="inboxSection">
-    <h2>Messages from departments <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
-    <div class="sub">Requests and replies from participants, newest first.</div>
+    <h2>Messages from departments and Observers <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
+    <div class="sub">Requests and replies from participants and from Observers (marked with their room), newest first.</div>
     <ul class="inbox-list" id="inboxList"><li class="muted-line">No messages yet.</li></ul>
   </div>
 
@@ -500,6 +536,8 @@
 
       updateMsgControls();
       updateDeptMsgControls();
+      updateObsMsgRooms();
+      updateObsMsgControls();
     }
 
     addDeptBtn.addEventListener("click", async () => {
@@ -632,7 +670,12 @@
     });
 
     function messageContextLabel(m) {
-      if (m.inject_index === null || m.inject_index === undefined) return "before start";
+      if (m.inject_index === null || m.inject_index === undefined) {
+        // Observer messages can also arrive after End (item 7).
+        const ended = currentRow && currentRow.status === "ended" && currentRow.ended_at;
+        if (ended && new Date(m.created_at).getTime() >= Date.parse(currentRow.ended_at)) return "after the end";
+        return "before start";
+      }
       const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
       const inj = injects[m.inject_index];
       return inj ? `during "${inj.title}"` : `during inject ${m.inject_index}`;
@@ -778,7 +821,160 @@
       }
     }
 
-    // ---- Messages from departments (incoming, item 4) ----------------------
+    // ---- Message Observers (roadmap item 7, 11 October 2026) ---------------
+    // Design: design-notes.md → "Observer ↔ Facilitator — design". The same
+    // editable-dropdown pattern as "Message a department". Goes to all
+    // Observers or to one room's; it never reaches participants or the room
+    // screen. Unlike every other message box, it stays usable after End,
+    // until the Observers' notes window closes (rule 2).
+    const obsMsgRoomEl = document.getElementById("obsMsgRoom");
+    const obsMsgPresetEl = document.getElementById("obsMsgPreset");
+    const obsMsgTextEl = document.getElementById("obsMsgText");
+    const obsMsgCountEl = document.getElementById("obsMsgCount");
+    const obsMsgSendBtn = document.getElementById("obsMsgSendBtn");
+    const obsMsgWarnEl = document.getElementById("obsMsgWarn");
+    const obsMsgFeedbackEl = document.getElementById("obsMsgFeedback");
+    const obsMsgLogEl = document.getElementById("obsMsgLog");
+    let obsMsgSending = false;
+    // The id of the message being written: the same text sent again (a
+    // retry after a dropped connection) keeps it, so it is saved once.
+    let obsMsgPending = { id: null, key: "" };
+
+    FACILITATOR_TO_OBSERVER_PRESETS.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.key;
+      opt.textContent = p.text;
+      obsMsgPresetEl.appendChild(opt);
+    });
+
+    // "All Observers", plus one entry per room when there is more than one.
+    function updateObsMsgRooms() {
+      const rooms = (currentRow && currentRow.room_count) || 1;
+      const want = rooms > 1 ? rooms : 0;
+      if (obsMsgRoomEl.options.length === want + 1) return;
+      const prev = obsMsgRoomEl.value;
+      obsMsgRoomEl.innerHTML =
+        `<option value="">All Observers</option>` +
+        Array.from({ length: want }, (_, i) => i + 1)
+          .map((n) => `<option value="${n}">Room ${n} Observers${n === 1 ? " (your room)" : ""}</option>`)
+          .join("");
+      if (prev && Number(prev) <= want) obsMsgRoomEl.value = prev;
+    }
+
+    function updateObsMsgControls() {
+      const chan = observerChannel(currentRow);
+      const closed = !!currentRow && !chan.open;
+      const len = obsMsgTextEl.value.trim().length;
+      obsMsgCountEl.textContent = `${obsMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+      obsMsgSendBtn.disabled = obsMsgSending || len === 0 || closed || !currentRow;
+      obsMsgRoomEl.disabled = closed;
+      obsMsgPresetEl.disabled = closed;
+      obsMsgTextEl.disabled = closed;
+      if (closed) {
+        obsMsgFeedbackEl.className = "dept-msg-feedback";
+        obsMsgFeedbackEl.textContent = chan.reason;
+        obsMsgFeedbackEl.dataset.closed = "1";
+      } else if (obsMsgFeedbackEl.dataset.closed) {
+        delete obsMsgFeedbackEl.dataset.closed; // open again (a new run)
+        obsMsgFeedbackEl.textContent = "";
+      }
+      // Nobody to receive it? Say so (it can still be sent: an Observer who
+      // joins later sees it).
+      let warn = "";
+      if (!closed && lastAttendees) {
+        const observers = lastAttendees.filter((a) => a.role === "observer");
+        const room = obsMsgRoomEl.value ? Number(obsMsgRoomEl.value) : null;
+        if (!observers.length) warn = "No Observer has joined this exercise yet.";
+        else if (room && !observers.some((a) => a.room === room)) warn = `No Observer has joined in Room ${room} yet.`;
+      }
+      obsMsgWarnEl.hidden = !warn;
+      obsMsgWarnEl.textContent = warn;
+    }
+
+    function clearObsMsgFeedback() {
+      if (obsMsgFeedbackEl.dataset.closed) return;
+      obsMsgFeedbackEl.textContent = "";
+      obsMsgFeedbackEl.className = "dept-msg-feedback";
+    }
+    obsMsgRoomEl.addEventListener("change", () => { clearObsMsgFeedback(); updateObsMsgControls(); });
+    obsMsgPresetEl.addEventListener("change", () => {
+      const preset = FACILITATOR_TO_OBSERVER_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
+      if (preset) obsMsgTextEl.value = preset.text;
+      clearObsMsgFeedback();
+      updateObsMsgControls();
+      obsMsgTextEl.focus();
+    });
+    obsMsgTextEl.addEventListener("input", () => { clearObsMsgFeedback(); updateObsMsgControls(); });
+
+    obsMsgSendBtn.addEventListener("click", async () => {
+      const body = obsMsgTextEl.value.trim();
+      if (!body || obsMsgSending) return;
+      const room = obsMsgRoomEl.value ? Number(obsMsgRoomEl.value) : null;
+      const preset = FACILITATOR_TO_OBSERVER_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      const key = `${room || "all"}|${body}`;
+      if (!obsMsgPending.id || obsMsgPending.key !== key) obsMsgPending = { id: crypto.randomUUID(), key };
+      obsMsgSending = true;
+      updateObsMsgControls();
+      obsMsgFeedbackEl.className = "dept-msg-feedback";
+      obsMsgFeedbackEl.textContent = "Sending…";
+      try {
+        await sendToObservers(sessionId, { id: obsMsgPending.id, body, presetKey, room });
+        obsMsgPending = { id: null, key: "" };
+        obsMsgTextEl.value = "";
+        obsMsgPresetEl.value = "";
+        obsMsgFeedbackEl.className = "dept-msg-feedback ok";
+        obsMsgFeedbackEl.textContent = `Sent to ${observerTargetLabel(room)} at ${formatMessageTime(new Date().toISOString())} ✓`;
+        await refreshObsMsgLog();
+      } catch (err) {
+        obsMsgFeedbackEl.className = "dept-msg-feedback err";
+        obsMsgFeedbackEl.textContent = err.network
+          ? "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again."
+          : `Not sent: ${err.message}`;
+      } finally {
+        obsMsgSending = false;
+        updateObsMsgControls();
+      }
+    });
+
+    async function refreshObsMsgLog() {
+      try {
+        const msgs = await fetchSentObserverMessages(sessionId);
+        obsMsgLogEl.innerHTML = msgs.length
+          ? msgs
+              .slice()
+              .reverse()
+              .map(
+                (m) =>
+                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · to ${escapeHtml(observerTargetLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? " · earlier run" : ""}</span>${escapeHtml(m.body)}</li>`
+              )
+              .join("")
+          : `<li class="muted-line">No messages sent to Observers yet.</li>`;
+      } catch (err) {
+        obsMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+      }
+    }
+
+    // A message from before the latest Reset (same label as Observer notes).
+    function isEarlierRun(m) {
+      return !!(currentRow && m.run_number && currentRow.run_number && m.run_number < currentRow.run_number);
+    }
+
+    // "Reply" on an Observer's message in the inbox: jumps to the box above
+    // with that room chosen.
+    document.getElementById("inboxList").addEventListener("click", (e) => {
+      const btn = e.target.closest(".msg-obs-btn");
+      if (!btn) return;
+      updateObsMsgRooms();
+      obsMsgRoomEl.value = btn.dataset.room && obsMsgRoomEl.querySelector(`option[value="${btn.dataset.room}"]`) ? btn.dataset.room : "";
+      updateObsMsgControls();
+      document.getElementById("obsMsgSection").scrollIntoView({ behavior: "smooth", block: "center" });
+      obsMsgTextEl.focus();
+    });
+
+    // ---- Messages from departments and Observers (incoming, items 4 and 7) --
+    // An Observer's message is shown by its room ("Room 2 Observer"), never by
+    // a name — none is stored.
     // Unread tracking follows the same localStorage pattern participant.html
     // uses: the newest acknowledged created_at, so a reload doesn't re-light
     // everything already seen. A chime plays on live arrival (unlocked by
@@ -828,13 +1024,15 @@
             .reverse()
             .map(
               (m) =>
-                `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || "unknown department")} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+                m.direction === "from_observer"
+                  ? `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="observer"><span class="meta"><span class="from-tag">OBSERVER</span>${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(observerRoomLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · <span class="earlier">Earlier run</span>` : ""}</span>${escapeHtml(m.body)}${isEarlierRun(m) || !observerChannel(currentRow).open ? "" : `<button type="button" class="msg-dept-btn msg-obs-btn" data-room="${m.room || ""}">Reply</button>`}</li>`
+                  : `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || "unknown department")} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
             )
             .join("")
         : `<li class="muted-line">No messages yet.</li>`;
     }
 
-    // fromRing = the doorbell said a department has just sent something:
+    // fromRing = the doorbell said a department or an Observer has just sent something:
     // chime if a message really is new (as the live inbox always did).
     let inboxLoadedOnce = false;
     async function refreshInbox(fromRing) {
@@ -1596,11 +1794,14 @@
     refreshRoster();
     refreshMessageLog();
     refreshDeptMsgLog();
+    refreshObsMsgLog();
     refreshInbox();
     updateDeptMsgOptions();
     setInterval(refreshRoster, 5000);
     setInterval(refreshMessageLog, 5000);
     setInterval(refreshDeptMsgLog, 5000);
+    setInterval(refreshObsMsgLog, 5000);
+    setInterval(updateObsMsgControls, 5000); // the channel closes on the clock
     setInterval(updateDeptMsgOptions, 5000);
     // The inbox is refreshed at once by the doorbell (above) — this poll is
     // the safety net for a missed ring.
@@ -1616,6 +1817,7 @@
     onReconnect(refreshRoster);
     onReconnect(refreshMessageLog);
     onReconnect(refreshDeptMsgLog);
+    onReconnect(refreshObsMsgLog);
     onReconnect(() => refreshInbox());
 
     // Same reasoning as the room display: a dropped connection or a

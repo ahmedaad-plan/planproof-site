@@ -520,13 +520,14 @@ function onReconnect(callback) {
 // message is added; each page then fetches the latest through the checked
 // functions. A false ring (the channel is open to anyone who knows the
 // session id) can only cause a re-fetch. onRing(kind): "session", "message"
-// (to participants) or "inbox" (to the facilitator).
+// (to participants), "inbox" (to the facilitator — from a department or,
+// since item 7, from an Observer) or "observer" (to Observers, item 7).
 function subscribeToDoorbell(supabaseClient, sessionId, onRing, onStatus) {
   return supabaseClient
     .channel(`pp-${sessionId}`, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "ring" }, (msg) => {
       const kind = msg && msg.payload && msg.payload.kind;
-      onRing(kind === "message" || kind === "inbox" ? kind : "session");
+      onRing(kind === "message" || kind === "inbox" || kind === "observer" ? kind : "session");
     })
     .subscribe((status) => onStatus && onStatus(status));
 }
@@ -697,12 +698,14 @@ async function fetchMessages(sessionId, department) {
   return res.json();
 }
 
-// Every message of the session, both directions — facilitator token only
-// (item 6: department requests are no longer readable without it).
+// Every message of the session, every direction — facilitator token only
+// (item 6: department requests are no longer readable without it). Since
+// item 7 this is the function facilitator_message_log, which also gives each
+// message's room and run (Observer messages are room-level).
 async function fetchAllMessages(sessionId) {
   assertValidSessionId(sessionId);
   const res = await withRetry(() =>
-    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_messages`, {
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_message_log`, {
       method: "POST",
       cache: "no-store",
       headers: rpcHeaders(getFacilitatorToken()),
@@ -713,14 +716,117 @@ async function fetchAllMessages(sessionId) {
   return res.json();
 }
 
-// Messages addressed to the facilitator (department requests), oldest first.
+// Messages addressed to the facilitator — from departments and (item 7) from
+// Observers — oldest first.
 async function fetchFacilitatorMessages(sessionId) {
-  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_facilitator");
+  return (await fetchAllMessages(sessionId)).filter(
+    (m) => m.direction === "to_facilitator" || m.direction === "from_observer"
+  );
+}
+
+// What the facilitator has sent to Observers (item 7), oldest first.
+async function fetchSentObserverMessages(sessionId) {
+  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_observers");
 }
 
 // What the facilitator has sent (to everyone and to departments), oldest first.
 async function fetchSentMessages(sessionId) {
   return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_participants");
+}
+
+// ---- Observer <-> Facilitator messaging (roadmap item 7, 11 October 2026) --
+// Full design: design-notes.md → "Observer ↔ Facilitator — design". Two rules
+// (Ahmed, 11 October 2026):
+//   1. Room-level, never a person: an Observer's message is recorded as
+//      "the Observer(s) in Room 2". The writer's attendee id is sent only so
+//      the database can check the Observer registration; it is not stored on
+//      the message.
+//   2. This channel stays open after End until the Observers' notes window
+//      closes (one hour after End, or "Notes complete"). Every other message
+//      channel still stops at End.
+// The public key cannot read or write these messages in the table: every
+// call goes through a checked database function. Operational traffic only —
+// it stays out of the report; anything evaluative belongs in a note.
+const OBSERVER_TO_FACILITATOR_PRESETS = [
+  { key: "obs_need_more_time", text: "Need more time" },
+  { key: "obs_ready", text: "Ready to continue" },
+  { key: "obs_technical_issue", text: "Technical issue" },
+  { key: "obs_question", text: "Question" },
+];
+const FACILITATOR_TO_OBSERVER_PRESETS = [
+  { key: "obs_advancing_1min", text: "Advancing in 1 min" },
+  { key: "obs_noted_hold", text: "Noted, hold" },
+  { key: "obs_please_proceed", text: "Please proceed" },
+];
+
+// Mirrors the database's own rule (private.observer_channel_closed_reason),
+// so a screen can say when the channel closes. The database still decides.
+function observerChannel(row, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  if (!row) return { open: false, reason: "Loading…", closesAt: null };
+  if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
+  if (row.notes_closed_at) {
+    return { open: false, reason: "Messages are closed: notes are complete for this exercise.", closesAt: null };
+  }
+  const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
+  const closesAt = ended + OBSERVER_NOTES_WINDOW_MS;
+  if (now > closesAt) {
+    return {
+      open: false,
+      reason: "Messages between Observers and the facilitator closed one hour after the exercise ended.",
+      closesAt,
+    };
+  }
+  return { open: true, reason: null, closesAt };
+}
+
+// "Room 2 Observer" — or just "Observer" in a one-room exercise. Never a name.
+function observerRoomLabel(room) {
+  return room ? `Room ${room} Observer` : "Observer";
+}
+// Who a facilitator's message to Observers was for.
+function observerTargetLabel(room) {
+  return room ? `Room ${room} Observers` : "all Observers";
+}
+
+// Observer -> facilitator. message.id is created on the phone when the
+// message is started, so sending it twice (Send pressed twice, or a retry
+// after a dropped connection) saves it once.
+function sendObserverMessage(sessionId, { id, body, presetKey, attendeeId }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("send_observer_message", {
+    p_id: id,
+    p_session_id: sessionId,
+    p_attendee_id: attendeeId,
+    p_body: body,
+    p_preset_key: presetKey || null,
+  });
+}
+
+// Facilitator -> Observers: all of them (room null) or one room's.
+async function sendToObservers(sessionId, { id, body, presetKey, room }) {
+  assertValidSessionId(sessionId);
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(
+      "No facilitator token in this link. Use the Facilitator link (with " +
+        "&token=... after the session ID), not the room-display link."
+    );
+  }
+  const result = await callNotesRpc(
+    "facilitator_message_observers",
+    { p_id: id, p_session_id: sessionId, p_room: room || null, p_body: body, p_preset_key: presetKey || null },
+    facilitatorToken
+  );
+  ringDoorbell(writerDoorbell, "observer");
+  return result;
+}
+
+// What this Observer may read: this run's messages to all Observers or to
+// their room, and what their own room's Observers sent. Oldest first.
+async function fetchObserverMessages(sessionId, attendeeId) {
+  assertValidSessionId(sessionId);
+  return (await callNotesRpc("observer_messages", { p_session_id: sessionId, p_attendee_id: attendeeId })) || [];
 }
 
 function formatMessageTime(iso) {
