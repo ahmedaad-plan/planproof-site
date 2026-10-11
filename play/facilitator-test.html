@@ -231,6 +231,15 @@
     </div>
   </div>
 
+  <div class="start-check" id="resumeCheck" hidden role="alertdialog" aria-labelledby="resumeCheckTitle">
+    <div class="t" id="resumeCheckTitle">Resume the exercise?</div>
+    <div class="why" id="resumeCheckBody"></div>
+    <div class="b">
+      <button id="resumeBackBtn">Go back</button>
+      <button id="resumeConfirmBtn" class="primary">Resume exercise</button>
+    </div>
+  </div>
+
   <div class="start-check end-check" id="endCheck" hidden role="alertdialog" aria-labelledby="endCheckTitle">
     <div class="t" id="endCheckTitle">End the exercise?</div>
     <div class="why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.</div>
@@ -524,6 +533,8 @@
       const atEnd = !currentRow || currentRow.current_inject_index >= injects.length - 1;
       const isRunning = currentRow && currentRow.status === "running";
       startBtn.disabled = false;
+      // After End the same button brings the exercise back (Resume).
+      startBtn.textContent = canResume() ? "Resume exercise" : "Start exercise";
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
@@ -1902,9 +1913,57 @@
       if (offline && participants.length) issues.push(`${offline} of ${participants.length} registered participant${participants.length === 1 ? "" : "s"} ${offline === 1 ? "is" : "are"} not online.`);
       return issues;
     }
+    // ---- Resume after End (Ahmed, 11 October 2026) ------------------------
+    // An ended exercise that had reached an inject is not started again
+    // from inject 1: the button reads "Resume exercise" and puts every
+    // device back on the inject that was showing at End. The inject's clock
+    // carries on from where it stood (the database moves its start forward
+    // by the time spent ended) — no fresh window, so the late rule holds.
+    // Only the status is sent: added minutes and an unlock stay as they were.
+    const resumeCheckEl = document.getElementById("resumeCheck");
+    const resumeCheckBodyEl = document.getElementById("resumeCheckBody");
+    function canResume() {
+      if (!currentRow || currentRow.status !== "ended") return false;
+      const idx = currentRow.current_inject_index;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      return idx >= 0 && !!injects[idx] && String(idx) in (currentRow.inject_started_log || {});
+    }
+    // How much of the inject's time was left when End was pressed (ms), or
+    // null when the inject has no time limit.
+    function timeLeftAtEnd() {
+      const inj = currentRow.scenario.injects[currentRow.current_inject_index];
+      const deadline = injectDeadlineMs(currentRow, inj);
+      const ended = currentRow.ended_at ? Date.parse(currentRow.ended_at) : NaN;
+      if (deadline === null || isNaN(ended) || !currentRow.inject_started_at) return null;
+      return deadline - ended;
+    }
+    function showResumeCheck() {
+      const injects = currentRow.scenario.injects;
+      const idx = currentRow.current_inject_index;
+      const left = timeLeftAtEnd();
+      let clock;
+      if (currentRow.inject_force_unlocked) clock = "The inject is unlocked, so it has no deadline until you lock it or move on.";
+      else if (left === null) clock = "This inject has no time limit.";
+      else if (left <= 0) clock = "Its time had already run out when you ended, so it comes back as \"Time's up\". Press \"+5 min for this inject\" if teams need more time; answers sent then count as after the time.";
+      else clock = `Its countdown carries on from where it stopped: ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left. It is not given its full time again.`;
+      const notes = currentRow.notes_closed_at ? " Notes were marked complete and stay closed." : "";
+      resumeCheckBodyEl.textContent =
+        `The thank-you screens go and every device returns to inject ${idx + 1} of ${injects.length} — "${injects[idx].title}". Earlier injects are not replayed. ${clock}${notes}`;
+      resumeCheckEl.hidden = false;
+      document.getElementById("resumeConfirmBtn").focus();
+    }
+    document.getElementById("resumeBackBtn").addEventListener("click", () => { resumeCheckEl.hidden = true; });
+    document.getElementById("resumeConfirmBtn").addEventListener("click", () => {
+      resumeCheckEl.hidden = true;
+      if (!canResume()) return;
+      runAction(() => patchSession(sessionId, { status: "running" }));
+    });
+
     document.getElementById("startBtn").addEventListener("click", async () => {
       startCheckEl.hidden = true;
       document.getElementById("endCheck").hidden = true;
+      if (canResume()) { showResumeCheck(); return; }
+      resumeCheckEl.hidden = true;
       // Only before a start: a running exercise is never interrupted by this.
       if (currentRow && currentRow.status === "running") return runAction(startExercise);
       startBtn.disabled = true;
@@ -1988,6 +2047,7 @@
     function hideEndCheck() { endCheckEl.hidden = true; }
     document.getElementById("endBtn").addEventListener("click", () => {
       document.getElementById("startCheck").hidden = true;
+      document.getElementById("resumeCheck").hidden = true;
       if (!currentRow || currentRow.status === "ended") { hideEndCheck(); return; } // nothing to end
       const issues = endCheckIssues();
       endCheckBodyEl.innerHTML = currentRow.status === "lobby"
@@ -2027,6 +2087,7 @@
           : "Your own notes closed 48 hours after the end.");
       }
       lines.push("Every panel on this page stays live: control tower, response status, Observer notes, messages and the attendee list.");
+      if (canResume()) lines.push("Ended by mistake? Press \"Resume exercise\" to return everyone to the inject that was showing, with the time that was left.");
       const html =
         `<span class="t">Exercise ended${isNaN(endedMs) ? "" : ` at ${escapeHtml(clockTimeText(endedMs))}`}. Every device now shows the thank-you screen.</span>` +
         `<ul>${lines.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`;
@@ -2079,6 +2140,7 @@
       renderTower();
       renderEndStrip();
       if (currentRow.status !== "running" && currentRow.status !== "lobby") hideEndCheck();
+      if (!canResume()) document.getElementById("resumeCheck").hidden = true;
       awake.update();
       updateDeptMsgOptions();
       facNoteForm.refresh();
