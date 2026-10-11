@@ -194,6 +194,8 @@
   // State used by init(), which runs just below — declared here, before it.
   let storedRun = null;          // which run of the exercise the answers kept on this phone belong to
   let restoredFromPhone = {};    // inject index -> true: brought back from this phone after a reload
+  let replyReady = false;        // the "Message the facilitator" box has been set up
+  let refreshReplyControls = null; // re-checks whether the box may be used (set by initReply)
   let messagesLoading = false;
   let messagesAgain = null;
   let currentAnswerEl = null;
@@ -336,6 +338,25 @@
     Object.keys(answersCache).forEach((k) => delete answersCache[k]);
     restoredFromPhone = {};
     try { localStorage.removeItem(answersKey()); } catch { /* ignore */ }
+  }
+
+  // After End the answers stay on this device for one hour (item 8), so an
+  // End pressed by mistake costs nobody their text. Then they are removed —
+  // at once if the page is open, or the next time it is opened.
+  let answersCleanupTimer = null;
+  function cancelAnswersCleanup() {
+    if (answersCleanupTimer) { clearTimeout(answersCleanupTimer); answersCleanupTimer = null; }
+  }
+  function scheduleAnswersCleanup(row) {
+    cancelAnswersCleanup();
+    const endedMs = row && row.ended_at ? Date.parse(row.ended_at) : NaN;
+    // No end time to count from: remove now, as before.
+    const left = isNaN(endedMs) ? 0 : endedMs + ANSWERS_KEEP_AFTER_END_MS - Date.now();
+    if (left <= 0) { clearStoredAnswers(); return; }
+    answersCleanupTimer = setTimeout(() => {
+      answersCleanupTimer = null;
+      if (latestRow && latestRow.status === "ended") clearStoredAnswers();
+    }, Math.min(left, 2147000000));
   }
 
   // ---- Messages from the facilitator (added 5 October 2026) -------------
@@ -534,7 +555,9 @@
       }
     });
 
-    sectionEl.hidden = false;
+    replyReady = true;
+    refreshReplyControls = updateControls;
+    sectionEl.hidden = !!(latestRow && latestRow.status === "ended");
     updateControls();
     // Re-checked on every session row update (render() calls renderMessages,
     // which doesn't touch this section) — status changing to "ended" should
@@ -581,20 +604,33 @@
     // The message banner follows what's showing (hides on inject change).
     renderMessages();
 
+    // The "Message the facilitator" box belongs to a running exercise or the
+    // lobby; under the thank-you screen it would only be a greyed-out box.
+    const replySectionEl = document.getElementById("msgReply");
+    if (replySectionEl && replyReady) replySectionEl.hidden = row.status === "ended";
+    if (refreshReplyControls) refreshReplyControls(); // open again at once if the exercise carries on after End
+
     if (row.status === "ended") {
       clearInjectTimer();
-      mainEl.innerHTML = `<div class="center-note">Exercise complete. Thank you for participating.</div>`;
+      // Item 8 (11 October 2026): keep what is on screen on this device
+      // first — if End was pressed by mistake and the exercise carries on,
+      // the answer boxes come back with their text instead of blank.
+      if (formIdx !== null) storeAnswers();
+      mainEl.innerHTML = endScreenHtml({ name: greetingName(identity) });
       formIdx = null;
       formInject = null;
       editingSubmitted = false;
       editBaseline = null;
-      // The exercise is over: nothing of the answers stays on this phone.
-      clearStoredAnswers();
+      // The copy of the answers on this device is kept for one hour after
+      // End, then removed (it used to be removed at once). The server copy
+      // is what the report uses either way.
+      scheduleAnswersCleanup(row);
       return;
     }
+    cancelAnswersCleanup();
     if (row.status === "lobby") {
       clearInjectTimer();
-      mainEl.innerHTML = `<div class="center-note">Waiting for the facilitator to start the exercise…</div>`;
+      mainEl.innerHTML = welcomeScreenHtml({ name: greetingName(identity) });
       formIdx = null;
       formInject = null;
       editingSubmitted = false;

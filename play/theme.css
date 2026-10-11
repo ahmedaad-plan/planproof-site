@@ -175,3 +175,48 @@ a { color: var(--amber); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
+
+/* Welcome and thank-you screens (roadmap item 8, 11 October 2026). One
+   flexible layout: a phone gets a full-width card, a laptop a centred one.
+   Nothing here is fixed-width, so it never scrolls sideways. */
+.pp-thanks {
+  width: 100%; max-width: 620px; margin: 40px auto 24px; padding: 34px 28px 30px;
+  background: var(--panel); border: 1px solid var(--border); border-top: 4px solid var(--amber);
+  border-radius: 14px; text-align: center; box-shadow: 0 12px 40px var(--shadow);
+  overflow-wrap: anywhere;
+}
+.pp-thanks-title {
+  font-family: var(--font-display); font-weight: 700; line-height: 1.15; margin: 0 0 10px;
+  font-size: clamp(1.7rem, 6vw, 2.5rem); color: var(--text); text-wrap: balance;
+}
+.pp-thanks-name { color: var(--amber); }
+.pp-thanks-lead { font-size: clamp(1.05rem, 3.4vw, 1.25rem); font-weight: 500; margin: 0 0 14px; color: var(--text); }
+.pp-thanks-label { font-size: 0.95rem; color: var(--text-muted); margin: -6px 0 14px; }
+.pp-thanks-nofault {
+  margin: 0 auto 14px; max-width: 30em; padding: 12px 14px; border-radius: 10px;
+  background: var(--amber-dim); border: 1px solid rgba(226,166,59,0.45);
+  font-size: 1rem; color: var(--text); text-wrap: balance;
+}
+.pp-thanks-wait, .pp-thanks-close { margin: 0; color: var(--text-muted); font-size: 0.98rem; text-wrap: balance; }
+.pp-thanks-window {
+  margin: 0 auto; max-width: 32em; padding: 12px 14px; border-radius: 10px; text-align: left;
+  background: var(--field); border: 2px solid var(--amber); color: var(--text);
+  font-size: 1rem; font-weight: 500; text-wrap: pretty;
+}
+.pp-thanks-window.closed { border-color: var(--border-strong); color: var(--text-muted); font-weight: 400; text-align: center; }
+/* Compact: the Observer's card, which leaves the notes area in view under it. */
+.pp-thanks.compact { margin: 6px auto 4px; padding: 20px 18px 18px; max-width: 720px; }
+.pp-thanks.compact .pp-thanks-title { font-size: clamp(1.35rem, 4.6vw, 1.8rem); margin-bottom: 6px; }
+.pp-thanks.compact .pp-thanks-lead { font-size: 1.02rem; margin-bottom: 10px; }
+.pp-thanks.compact .pp-thanks-nofault { font-size: 0.95rem; padding: 9px 12px; margin-bottom: 10px; }
+/* The shared room screen: read from across a room. */
+.pp-thanks.everyone { max-width: 1000px; padding: 56px 40px 50px; }
+.pp-thanks.everyone .pp-thanks-title { font-size: clamp(2.2rem, 6vw, 4.4rem); }
+.pp-thanks.everyone .pp-thanks-lead { font-size: clamp(1.3rem, 2.8vw, 2.1rem); }
+.pp-thanks.everyone .pp-thanks-label { font-size: clamp(1rem, 1.8vw, 1.4rem); }
+.pp-thanks.everyone .pp-thanks-nofault { font-size: clamp(1.05rem, 2vw, 1.5rem); max-width: 34em; padding: 16px 20px; }
+@media (max-width: 520px) {
+  .pp-thanks { margin-top: 20px; padding: 26px 18px 24px; }
+  .pp-thanks.everyone { padding: 30px 18px 28px; }
+}
+

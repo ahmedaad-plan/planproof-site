@@ -600,13 +600,33 @@
 
     if (row.status === "lobby") {
       clearInjectTimer();
-      mainEl.innerHTML = `<div class="lobby">Waiting for the facilitator to start the exercise…</div>`;
+      // An Observer is greeted by name on their own device (item 8); the
+      // shared room screen never shows a person's name.
+      mainEl.innerHTML = observerMode
+        ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
+        : `<div class="lobby">Waiting for the facilitator to start the exercise…</div>`;
       lastRenderedIndex = null;
       return;
     }
     if (row.status === "ended") {
       clearInjectTimer();
-      mainEl.innerHTML = `<div class="ended">Exercise complete.<br/><span style="color:var(--text-muted); font-size:1.1rem; font-weight:400; font-family:var(--font-body);">Thank you for participating.</span></div>`;
+      // Item 8 (11 October 2026). Room screen: "Thank you, everyone", and
+      // any inject sound still playing stops. Observer: a compact card by
+      // name, with how long the notes area and the message box under it
+      // stay usable — they are not covered or moved.
+      if (!observerMode) {
+        stopSfx();
+        pendingSfx = null;
+        mainEl.innerHTML = endScreenHtml({ everyone: true, label: row.label || "", close: false });
+      } else {
+        mainEl.innerHTML = endScreenHtml({
+          name: greetingName(observer),
+          compact: true,
+          close: false,
+          extraHtml: `<p class="pp-thanks-window" id="obsEndWindow" role="status"></p>`,
+        });
+        updateObserverEndWindow();
+      }
       lastRenderedIndex = null;
       return;
     }
@@ -768,6 +788,16 @@
     renderMyNotes();
   }
 
+  // The Observer's line under the thank-you card: how long the notes area
+  // and the message box stay usable, counted down; then "now closed".
+  function updateObserverEndWindow() {
+    const el = document.getElementById("obsEndWindow");
+    if (!el || !latestRow || latestRow.status !== "ended") return;
+    const line = observerAfterEndLine(latestRow);
+    if (el.textContent !== line.text) el.textContent = line.text;
+    el.classList.toggle("closed", !line.open);
+  }
+
   function renderMyNotes() {
     const box = document.getElementById("myNotes");
     if (!box || !latestRow) return;
@@ -832,6 +862,19 @@
     });
     // The window closes on the clock, not only on an update from the server.
     setInterval(refreshObserverNotes, 15000);
+    // The thank-you card's "until 15:32 (52 minutes left)" line; when the
+    // hour is up it also closes the notes area and the message box at once.
+    let obsEndWasOpen = null;
+    setInterval(() => {
+      if (!latestRow || latestRow.status !== "ended") { obsEndWasOpen = null; return; }
+      updateObserverEndWindow();
+      const open = observerAfterEndLine(latestRow).open;
+      if (obsEndWasOpen === true && !open) {
+        refreshObserverNotes();
+        updateObserverMessageControls();
+      }
+      obsEndWasOpen = open;
+    }, 5000);
   }
 
   // ---- Observer <-> Facilitator messages (roadmap item 7, 11 October 2026) --

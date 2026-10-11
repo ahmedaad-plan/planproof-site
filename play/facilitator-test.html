@@ -160,6 +160,14 @@
   .start-check .t { font-family: var(--font-display); font-weight: 600; margin-bottom: 4px; }
   .start-check ul { margin: 6px 0 10px; padding-left: 20px; font-size: 0.95rem; }
   .start-check .b { display: flex; gap: 10px; flex-wrap: wrap; }
+  /* End of the exercise (item 8, 11 October 2026): the "End the exercise?"
+     check and the strip that says what stays open afterwards. */
+  .start-check.end-check { background: var(--red-dim); border-color: var(--red); }
+  .start-check .why { font-size: 0.95rem; margin: 2px 0 6px; }
+  .start-check .none { font-size: 0.95rem; color: var(--teal-soft); margin: 6px 0 10px; }
+  .end-strip { margin: 12px 0 0; max-width: 900px; padding: 12px 16px; border-radius: 10px; background: var(--teal-dim); border: 1px solid var(--teal); border-left: 5px solid var(--teal); font-size: 0.97rem; line-height: 1.5; }
+  .end-strip .t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 2px; }
+  .end-strip ul { margin: 6px 0 0; padding-left: 20px; }
   .tower-section h3 { font-size: 0.95rem; margin: 14px 0 6px; }
   .tower-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
   .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
@@ -222,6 +230,18 @@
       <button id="startAnywayBtn">Start anyway</button>
     </div>
   </div>
+
+  <div class="start-check end-check" id="endCheck" hidden role="alertdialog" aria-labelledby="endCheckTitle">
+    <div class="t" id="endCheckTitle">End the exercise?</div>
+    <div class="why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.</div>
+    <div id="endCheckBody"></div>
+    <div class="b">
+      <button id="endBackBtn" class="primary">Go back</button>
+      <button id="endConfirmBtn" class="danger">End exercise</button>
+    </div>
+  </div>
+
+  <div class="end-strip" id="endStrip" hidden role="status"></div>
 
   <div class="current-inject" id="currentInject">—</div>
   <div id="errorBox" style="display:none; margin-top:12px; color:var(--red-soft); font-size:0.9rem;"></div>
@@ -1884,6 +1904,7 @@
     }
     document.getElementById("startBtn").addEventListener("click", async () => {
       startCheckEl.hidden = true;
+      document.getElementById("endCheck").hidden = true;
       // Only before a start: a running exercise is never interrupted by this.
       if (currentRow && currentRow.status === "running") return runAction(startExercise);
       startBtn.disabled = true;
@@ -1940,9 +1961,79 @@
       // this button only ever acts on whichever inject is current right now.
       return patchSession(sessionId, { inject_force_unlocked: !currentRow.inject_force_unlocked });
     });
-    onClick(document.getElementById("endBtn"), () =>
-      patchSession(sessionId, { status: "ended" })
-    );
+    // ---- End, with a confirmation (item 8; Ahmed, 11 October 2026) --------
+    // End used to act on one click, on every screen at once. It now asks
+    // first, and lists what is still unfinished on the current inject — it
+    // never blocks the facilitator.
+    const endCheckEl = document.getElementById("endCheck");
+    const endCheckBodyEl = document.getElementById("endCheckBody");
+    function endCheckIssues() {
+      const issues = [];
+      if (!currentRow || currentRow.status !== "running") return issues;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const idx = currentRow.current_inject_index;
+      const inj = injects[idx];
+      const left = injects.length - 1 - idx;
+      if (left > 0) issues.push(`You are on inject ${idx + 1} of ${injects.length}: ${left} inject${left === 1 ? " has" : "s have"} not been played.`);
+      if (inj && lastSubmissions && lastAttendees) {
+        allDepartments().forEach((d) => {
+          if (!isDepartmentResponsible(inj, d, currentRow, idx)) return;
+          const st = departmentStatus(idx, inj, d);
+          if (st.state === "green" || /^Submitted/.test(st.label) || /^No participants/.test(st.label)) return;
+          issues.push(`${d}: ${st.label.replace(/^Waiting — /, "").replace(/^Waiting$/, "nothing submitted yet")} (current inject).`);
+        });
+      }
+      return issues;
+    }
+    function hideEndCheck() { endCheckEl.hidden = true; }
+    document.getElementById("endBtn").addEventListener("click", () => {
+      document.getElementById("startCheck").hidden = true;
+      if (!currentRow || currentRow.status === "ended") { hideEndCheck(); return; } // nothing to end
+      const issues = endCheckIssues();
+      endCheckBodyEl.innerHTML = currentRow.status === "lobby"
+        ? `<ul><li>The exercise has not started yet. Ending now closes it without any inject played.</li></ul>`
+        : issues.length
+          ? `<ul>${issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`
+          : `<div class="none">Every responsible department has submitted the current inject.</div>`;
+      endCheckEl.hidden = false;
+      document.getElementById("endBackBtn").focus();
+    });
+    document.getElementById("endBackBtn").addEventListener("click", hideEndCheck);
+    document.getElementById("endConfirmBtn").addEventListener("click", () => {
+      hideEndCheck();
+      runAction(() => patchSession(sessionId, { status: "ended" }));
+    });
+
+    // The strip under the controls once the exercise has ended: when it
+    // ended, and how long Observers and the facilitator still have. It hides
+    // nothing — every panel below stays live.
+    const endStripEl = document.getElementById("endStrip");
+    function renderEndStrip() {
+      if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; return; }
+      hideEndCheck();
+      const fmtDay = (ms) => new Date(ms).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const endedMs = currentRow.ended_at ? Date.parse(currentRow.ended_at) : NaN;
+      const obs = notesWindow(currentRow, "observer");
+      const fac = notesWindow(currentRow, "facilitator");
+      const lines = [];
+      if (currentRow.notes_closed_at) {
+        lines.push("Notes complete: notes and Observer messages are closed for everyone.");
+      } else {
+        lines.push(obs.open && obs.closesAt
+          ? `Observers can add or edit notes and message you until ${clockTimeText(obs.closesAt)} (${minutesLeftText(obs.closesAt - Date.now())}).`
+          : "Observers' hour is over: their notes and message box are closed.");
+        lines.push(fac.open && fac.closesAt
+          ? `Your own notes stay open until ${fmtDay(fac.closesAt)}, or until you press "Notes complete".`
+          : "Your own notes closed 48 hours after the end.");
+      }
+      lines.push("Every panel on this page stays live: control tower, response status, Observer notes, messages and the attendee list.");
+      const html =
+        `<span class="t">Exercise ended${isNaN(endedMs) ? "" : ` at ${escapeHtml(clockTimeText(endedMs))}`}. Every device now shows the thank-you screen.</span>` +
+        `<ul>${lines.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`;
+      if (endStripEl.innerHTML !== html) endStripEl.innerHTML = html;
+      endStripEl.hidden = false;
+    }
+    setInterval(renderEndStrip, 10000);
     onClick(document.getElementById("resetBtn"), () =>
       patchSession(sessionId, {
         status: "lobby",
@@ -1986,6 +2077,8 @@
         : "No current inject.";
       renderStatus();
       renderTower();
+      renderEndStrip();
+      if (currentRow.status !== "running" && currentRow.status !== "lobby") hideEndCheck();
       awake.update();
       updateDeptMsgOptions();
       facNoteForm.refresh();

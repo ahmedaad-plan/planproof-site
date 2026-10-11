@@ -1123,6 +1123,15 @@ function playSfx(name) {
   layerNames.forEach((layerName) => playSfxLayer(layerName));
 }
 
+// Stops whatever inject sound is playing (the end of the exercise: a looping
+// siren must not carry on over the thank-you screen).
+function stopSfx() {
+  currentSfxAudios.forEach((audio) => {
+    try { audio.pause(); audio.currentTime = 0; } catch { /* nothing to stop */ }
+  });
+  currentSfxAudios = [];
+}
+
 function playSfxLayer(name) {
   const path = SFX_FILES[name];
   if (!path) {
@@ -1612,3 +1621,94 @@ function awayText(ms, row) {
   const total = ((row.scenario && row.scenario.injects) || []).length;
   return `${away} The exercise is now on inject ${row.current_inject_index + 1}${total ? ` of ${total}` : ""}.`;
 }
+
+
+// ---- Welcome and thank-you screens (roadmap item 8, 11 October 2026) ------
+// Before the exercise the wording is in the present ("tests the plan"); at
+// the end it is in the past ("tested the plan") — Ahmed, 11 October 2026.
+// The first name comes from the registration kept on the person's own
+// device (join.html). It is never fetched, and never shown on a shared
+// room screen. One layout for phones and laptops.
+const ANSWERS_KEEP_AFTER_END_MS = 60 * 60 * 1000; // a phone keeps its copy of the answers this long after End
+
+function ppEscape(text) {
+  return String(text === null || text === undefined ? "" : text)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// The first name to greet someone by, or "" when the device has none (then
+// the screens simply say "Thank you"). An older registration that only has
+// the full name gives its first word. Kept to a sensible length.
+function greetingName(identity) {
+  if (!identity) return "";
+  let n = typeof identity.firstName === "string" ? identity.firstName : "";
+  if (!n.trim() && typeof identity.name === "string") n = identity.name.trim().split(/\s+/)[0] || "";
+  n = n.replace(/\s+/g, " ").trim();
+  if (n.length > 40) n = n.slice(0, 40).trim() + "…";
+  return n;
+}
+
+// "Thank you, Ahmed" — the name in its own direction-isolated span, so an
+// Arabic name sits correctly inside the English line.
+function thanksLine(name) {
+  return name ? `Thank you, <bdi class="pp-thanks-name">${ppEscape(name)}</bdi>` : "Thank you";
+}
+
+// After registering, while waiting for the start.
+//   observer: true  -> "registered as an Observer"
+function welcomeScreenHtml({ name, observer } = {}) {
+  return `
+    <section class="pp-thanks pp-thanks-welcome" aria-live="polite">
+      <h1 class="pp-thanks-title">${thanksLine(name)}</h1>
+      <p class="pp-thanks-lead">You are registered${observer ? " as an Observer" : ""}.</p>
+      <p class="pp-thanks-nofault">Kindly note that this exercise tests the plan, not individuals.</p>
+      <p class="pp-thanks-wait">Waiting for the facilitator to start the exercise…</p>
+    </section>`;
+}
+
+// At the end.
+//   everyone: true -> the shared room screen ("Thank you, everyone"), never a name
+//   compact: true  -> a card that leaves room for what stays usable under it (Observers)
+//   label          -> the exercise's name (room screen)
+//   extraHtml      -> an extra block inside the card (the Observer's time line)
+//   close: false   -> leave out "You can now close this page."
+function endScreenHtml({ name, everyone, compact, label, extraHtml, close } = {}) {
+  const title = everyone ? "Thank you, everyone" : thanksLine(name);
+  return `
+    <section class="pp-thanks pp-thanks-end${compact ? " compact" : ""}${everyone ? " everyone" : ""}" aria-live="polite">
+      <h1 class="pp-thanks-title">${title}</h1>
+      <p class="pp-thanks-lead">This exercise has ended.</p>
+      ${label ? `<p class="pp-thanks-label">${ppEscape(label)}</p>` : ""}
+      <p class="pp-thanks-nofault">As mentioned at the start, this exercise tested the plan, not individuals.</p>
+      ${extraHtml || ""}
+      ${close === false ? "" : `<p class="pp-thanks-close">You can now close this page.</p>`}
+    </section>`;
+}
+
+// "52 minutes left" / "1 minute left" / "less than a minute left".
+function minutesLeftText(ms) {
+  if (ms < 60000) return "less than a minute left";
+  const m = Math.floor(ms / 60000);
+  return `${m} minute${m === 1 ? "" : "s"} left`;
+}
+function clockTimeText(ms) {
+  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// The Observer's line under the thank-you: how long the notes area and the
+// message box stay usable. Follows the same two rules as the pages
+// themselves (notesWindow, observerChannel); the database still decides.
+function observerAfterEndLine(row, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  const notes = notesWindow(row, "observer", now);
+  const chan = observerChannel(row, now);
+  if (notes.open && notes.closesAt) {
+    return {
+      open: true,
+      text: `You can still add or edit your notes${chan.open ? " and message the facilitator" : ""} until ${clockTimeText(notes.closesAt)} (${minutesLeftText(notes.closesAt - now)}).`,
+    };
+  }
+  return { open: false, text: "Notes and messages are now closed. You can close this page." };
+}
+
