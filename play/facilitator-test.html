@@ -5,190 +5,176 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>PlanProof — Facilitator Test Controls (prototype)</title>
 <meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
 <style>
-  body {
-    margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    background: #f4f1ea;
-    color: #0b1f3a;
-    padding: 32px;
-  }
-  h1 { font-size: 1.3rem; }
-  /* An element marked hidden stays hidden even when its class sets a display
-     value (fixed 11 October 2026: the inbox "new" badge from item 4 was
-     always visible, showing "0 new", because .inbox-badge set display). */
-  [hidden] { display: none !important; }
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css.
+     Same dark theme as the website and the other player pages. */
+  .fac-main { padding: 24px 32px 48px; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 600px) { .fac-main { padding: 16px 16px 40px; } }
+  h1 { font-size: 1.35rem; margin: 0 0 14px; }
+  h2 { font-size: 1.1rem; }
   .note {
-    background: #fff3d6; border: 1px solid #e8a33d; border-radius: 8px;
-    padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem;
+    background: var(--amber-dim); border: 1px solid var(--border); border-left: 3px solid var(--amber); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem; max-width: 760px;
   }
-  .status { margin-bottom: 20px; font-size: 1rem; }
-  .status b { font-family: monospace; }
+  .status { margin-bottom: 16px; font-size: 1.05rem; color: var(--text-muted); }
+  .status b { font-family: var(--font-mono); font-weight: 500; color: var(--text); }
   .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
   button {
-    font-size: 1rem; padding: 10px 18px; border-radius: 8px; border: 1px solid #0b1f3a;
-    background: white; cursor: pointer;
+    font-family: inherit; font-size: 1rem; font-weight: 600; padding: 10px 18px; border-radius: 8px;
+    border: 1.5px solid var(--border-strong); background: var(--panel-raised); color: var(--text); cursor: pointer;
   }
-  button.primary { background: #0b1f3a; color: white; }
+  button:hover:not(:disabled) { border-color: var(--amber); }
+  button.primary { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .current-inject { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 600px; }
-  .link-row { margin-top: 24px; font-size: 0.9rem; }
-  .link-row input { width: 100%; padding: 6px; font-family: monospace; }
-  .roster-section { margin-top: 28px; max-width: 600px; }
-  .roster-section h2 { font-size: 1.05rem; margin-bottom: 4px; }
+  button.danger { border-color: var(--red); color: var(--red-soft); background: transparent; }
+  input[type="text"], select, textarea {
+    padding: 9px 11px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+    background: var(--field); color: var(--text); font-family: inherit; font-size: 0.95rem;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-dim); }
+  input::placeholder, textarea::placeholder { color: #77828f; opacity: 1; }
+  .err-line { color: var(--red-soft); font-size: 0.9rem; }
+  .current-inject { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 760px; }
+  .link-row { margin-top: 24px; font-size: 0.9rem; max-width: 760px; color: var(--text-muted); }
+  .link-row input { width: 100%; padding: 8px 10px; font-family: var(--font-mono); font-size: 0.82rem; margin-top: 6px;
+    border-radius: 8px; border: 1.5px solid var(--border-strong); background: var(--field); color: var(--text); }
+  .roster-section { margin-top: 28px; max-width: 760px; }
+  .roster-section h2 { margin-bottom: 6px; }
   .add-dept-row { display: flex; gap: 8px; margin-bottom: 14px; }
-  .add-dept-row input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.95rem; }
+  .add-dept-row input { flex: 1; }
   .add-dept-row button { padding: 8px 14px; font-size: 0.95rem; }
   .roster-dept {
-    background: white; border: 1px solid #ddd; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 10px 14px; margin-bottom: 10px;
   }
-  .roster-dept h3 { font-size: 0.95rem; margin: 0 0 6px; }
+  .roster-dept h3 { font-size: 0.98rem; margin: 0 0 6px; }
   .roster-dept ul { list-style: none; margin: 0; padding: 0; }
   .roster-dept li {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 0; font-size: 0.9rem; border-top: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 5px 0; font-size: 0.9rem; border-top: 1px solid var(--border);
   }
   .roster-dept li:first-child { border-top: none; }
   .roster-dept li button {
-    font-size: 0.8rem; padding: 4px 10px; border-color: #b00020; color: #b00020;
+    font-size: 0.8rem; padding: 4px 10px; border-color: var(--red); color: var(--red-soft); background: transparent;
   }
-  .roster-dept .title { opacity: 0.65; }
-  @media (max-width: 600px) { body { padding: 16px; } }
+  .roster-dept .title { color: var(--text-muted); }
 
   /* Response status (Ahmed, 4 October 2026): four states per department,
      only for the departments the inject names as responsible. */
   .status-section { margin-top: 28px; max-width: 760px; }
-  .status-section h2 { font-size: 1.05rem; margin-bottom: 6px; }
-  .status-current { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
-  .status-head { font-weight: 700; margin-bottom: 2px; }
-  .status-sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .status-section h2 { margin-bottom: 6px; }
+  .status-current { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .status-head { font-family: var(--font-display); font-weight: 600; margin-bottom: 2px; }
+  .status-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
   .status-list { list-style: none; margin: 0; padding: 0; }
   .status-list li {
-    display: flex; align-items: center; gap: 10px; padding: 6px 0;
-    border-top: 1px solid #f0f0f0; font-size: 0.92rem;
+    display: flex; align-items: center; gap: 10px; padding: 7px 0;
+    border-top: 1px solid var(--border); font-size: 0.92rem;
   }
   .status-list li:first-child { border-top: none; }
   .status-list .dept { flex: 0 0 40%; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
   .status-list .st-label { flex: 1; }
-  .dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; display: inline-block; border: 1px solid rgba(0,0,0,0.15); }
-  .dot.grey { background: #c9ced6; }
-  .dot.amber { background: #e8a33d; }
-  .dot.green { background: #2e9d4f; }
-  .dot.red { background: #c0392b; }
-  .history-wrap { overflow-x: auto; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+  .history-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
   .history { border-collapse: collapse; font-size: 0.85rem; }
   .history th, .history td { padding: 5px 8px; text-align: center; white-space: nowrap; }
-  .history th:first-child, .history td:first-child { text-align: left; position: sticky; left: 0; background: white; }
-  .history thead th { font-weight: 600; opacity: 0.75; }
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; opacity: 0.85; }
+  .history th:first-child, .history td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }
+  .history thead th { font-weight: 600; color: var(--text-muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; color: var(--text-muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
 
-  /* Broadcast to everyone (added 5 October 2026). */
-  .broadcast-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
-  .broadcast-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
-  .broadcast-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
-  .broadcast-section select, .broadcast-section textarea {
-    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
-    font-size: 0.95rem; font-family: inherit; box-sizing: border-box;
+  /* The panels: message everyone, message a department, the inbox, Observer
+     notes, the control tower. One card style for all. */
+  .broadcast-section, .dept-msg-section, .inbox-section, .notes-section, .tower-section {
+    margin-top: 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
   }
+  .broadcast-section, .dept-msg-section, .inbox-section { max-width: 760px; }
+  .notes-section, .tower-section { max-width: 760px; }
+  .broadcast-section h2, .dept-msg-section h2, .inbox-section h2, .notes-section h2, .tower-section h2 { margin: 0 0 4px; }
+  .inbox-section h2, .notes-section h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sub { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 10px; }
+  .field-label { display: block; font-size: 0.86rem; font-weight: 600; margin: 8px 0 0; }
+
+  /* Broadcast to everyone (added 5 October 2026). */
+  .broadcast-section select, .broadcast-section textarea,
+  .dept-msg-section select, .dept-msg-section textarea { width: 100%; margin-top: 6px; }
   .broadcast-section textarea { min-height: 64px; resize: vertical; margin-top: 8px; }
-  .broadcast-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-  .broadcast-row .count { font-size: 0.8rem; opacity: 0.6; }
-  .broadcast-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
-  .broadcast-feedback.ok { color: #1e5c28; }
-  .broadcast-feedback.err { color: #b00020; }
-  .broadcast-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.85rem; max-height: 180px; overflow-y: auto; }
-  .broadcast-log li { padding: 5px 0; border-top: 1px solid #f0f0f0; }
-  .broadcast-log .meta { opacity: 0.6; margin-right: 6px; }
+  .broadcast-row, .dept-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .broadcast-row .count, .dept-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .broadcast-feedback, .dept-msg-feedback { font-size: 0.86rem; margin-top: 8px; min-height: 1.1em; }
+  .broadcast-feedback.ok, .dept-msg-feedback.ok { color: var(--teal-soft); }
+  .broadcast-feedback.err, .dept-msg-feedback.err { color: var(--red-soft); }
+  .broadcast-log, .dept-msg-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.86rem; max-height: 180px; overflow-y: auto; }
+  .broadcast-log li, .dept-msg-log li { padding: 6px 0; border-top: 1px solid var(--border); }
+  .broadcast-log .meta, .dept-msg-log .meta { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.78rem; margin-right: 6px; }
 
   /* Department messaging (roadmap item 4, added 7 October 2026). */
-  .dept-msg-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
-  .dept-msg-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
-  .dept-msg-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
-  .dept-msg-section select, .dept-msg-section textarea {
-    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
-    font-size: 0.95rem; font-family: inherit; box-sizing: border-box; margin-top: 6px;
-  }
   .dept-msg-section textarea { min-height: 56px; resize: vertical; }
-  .dept-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-  .dept-msg-row .count { font-size: 0.8rem; opacity: 0.6; }
-  .dept-msg-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
-  .dept-msg-feedback.ok { color: #1e5c28; }
-  .dept-msg-feedback.err { color: #b00020; }
-  .dept-msg-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.85rem; max-height: 180px; overflow-y: auto; }
-  .dept-msg-log li { padding: 5px 0; border-top: 1px solid #f0f0f0; }
-  .dept-msg-log .meta { opacity: 0.6; margin-right: 6px; }
   .msg-dept-btn {
-    font-size: 0.78rem; padding: 2px 8px; border-radius: 999px; border: 1px solid #0b1f3a;
-    background: white; cursor: pointer; opacity: 0.85;
+    font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong);
+    background: transparent; color: var(--text); cursor: pointer;
   }
-  .inbox-section { margin-top: 24px; max-width: 600px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
-  .inbox-section h2 { font-size: 1.05rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
-  .inbox-badge {
-    display: inline-block; padding: 1px 8px; border-radius: 999px;
-    background: #e8a33d; color: #0b1f3a; font-size: 0.75rem; font-weight: 700;
+  .inbox-badge, .notes-badge {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-family: var(--font-body);
+    background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
   }
   .inbox-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.9rem; max-height: 220px; overflow-y: auto; }
-  .inbox-list li { padding: 7px 0; border-top: 1px solid #f0f0f0; overflow-wrap: anywhere; }
+  .inbox-list li { padding: 7px 8px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
   .inbox-list li:first-child { border-top: none; }
-  .inbox-list li.unread { font-weight: 600; background: #fff8ec; }
-  .inbox-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; font-weight: 400; }
+  .inbox-list li.unread { font-weight: 600; background: var(--amber-dim); }
+  .inbox-list .meta { color: var(--text-muted); font-size: 0.8rem; display: block; font-weight: 400; }
+  .muted-line { color: var(--text-muted); }
 
   /* Observer notes (roadmap item 5, built 11 October 2026). */
-  .notes-section { margin-top: 24px; max-width: 760px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
-  .notes-section h2 { font-size: 1.05rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .notes-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
-  .notes-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e8a33d; color: #0b1f3a; font-size: 0.75rem; font-weight: 700; }
-  .notes-badge.critical { background: #b0261b; color: #fff; }
-  .notes-counts { font-size: 0.82rem; opacity: 0.8; margin-bottom: 6px; }
-  .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 0 12px; }
-  .notes-list .ppn-item.unread { background: #fff8ec; margin: 0 -12px; padding: 9px 12px; }
-  .notes-list .ppn-item.critical { border-left: 4px solid #b0261b; margin-left: -12px; padding-left: 8px; }
-  .notes-list .ppn-item.unread.critical { background: #fdeceb; }
-  .notes-list .empty { opacity: 0.6; font-size: 0.9rem; padding: 10px 0; }
-  .notes-close { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #f6f7f9; font-size: 0.9rem; }
+  .notes-badge.critical { background: var(--red); color: #fff; }
+  .notes-counts { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
+  .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; background: var(--bg); }
+  .notes-list .ppn-item.unread { background: var(--amber-dim); margin: 0 -12px; padding: 9px 12px; }
+  .notes-list .ppn-item.critical { border-left: 4px solid var(--red); margin-left: -12px; padding-left: 8px; }
+  .notes-list .ppn-item.unread.critical { background: var(--red-dim); }
+  .notes-list .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
+  .notes-close { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-raised); font-size: 0.9rem; }
   .notes-close .confirm { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .notes-close button.danger { border-color: #b00020; color: #b00020; }
   .notes-own { margin-top: 14px; }
   .notes-own summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
-  .notes-own .ppn { border: 1px solid #e3e3e3; margin-top: 8px; }
-  .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: #0b1f3a; color: #fff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-left: 4px; vertical-align: 1px; }
-  .roster-summary { font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px; }
+  .notes-own .ppn { margin-top: 8px; background: var(--bg); }
+  .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue-soft); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-left: 4px; vertical-align: 1px; }
+  .roster-summary { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 8px; }
+
   /* Control tower (roadmap item 6, 11 October 2026): who is connected right
      now. Visual only — it never chimes. */
-  [hidden] { display: none !important; }
-  .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 8px; background: #fff3d6; border: 2px solid #e8a33d; }
-  .start-check .t { font-weight: 700; margin-bottom: 4px; }
+  .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 10px; background: var(--amber-dim); border: 2px solid var(--amber); }
+  .start-check .t { font-family: var(--font-display); font-weight: 600; margin-bottom: 4px; }
   .start-check ul { margin: 6px 0 10px; padding-left: 20px; font-size: 0.95rem; }
   .start-check .b { display: flex; gap: 10px; flex-wrap: wrap; }
-  .tower-section { margin-top: 24px; max-width: 760px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
-  .tower-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
-  .tower-section h3 { font-size: 0.92rem; margin: 14px 0 6px; }
-  .tower-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
-  .tower-headline { font-size: 1.25rem; font-weight: 700; }
-  .tower-headline small { font-size: 0.85rem; font-weight: 500; opacity: 0.75; margin-left: 8px; }
-  .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff3d6; border: 1px solid #e8a33d; font-size: 0.9rem; }
-  .tower-warn.red { background: #fde4e1; border-color: #c0392b; color: #7d1f16; font-weight: 600; }
-  .tower-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eee; font-size: 0.92rem; flex-wrap: wrap; }
+  .tower-section h3 { font-size: 0.95rem; margin: 14px 0 6px; }
+  .tower-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
+  .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+  .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--amber-dim); border: 1px solid var(--amber); font-size: 0.9rem; }
+  .tower-warn.red { background: var(--red-dim); border-color: var(--red); color: #ffd3cb; font-weight: 600; }
+  .tower-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.92rem; flex-wrap: wrap; }
   .tower-row:first-of-type { border-top: none; }
   .tower-row .what { flex: 1 1 260px; min-width: 0; }
   .tower-row .what b { font-weight: 600; }
-  .tower-row .what .bad { color: #b00020; font-weight: 600; }
-  .tower-row .what .soft { opacity: 0.7; }
-  .tower-row button { font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #0b1f3a; background: white; color: #0b1f3a; cursor: pointer; }
-  .tower-row button.danger { border-color: #b00020; color: #b00020; }
-  .tower-row button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .tower-legend { margin-top: 10px; font-size: 0.8rem; opacity: 0.8; display: flex; gap: 14px; flex-wrap: wrap; }
+  .tower-row .what .bad { color: var(--red-soft); font-weight: 600; }
+  .tower-row .what .soft { color: var(--text-muted); }
+  .tower-row button { font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; }
+  .tower-legend { margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 14px; flex-wrap: wrap; }
   .tower-legend span { display: inline-flex; align-items: center; gap: 5px; }
   .tower-legend .dot, .roster-dept .dot, .tower-row .dot { width: 11px; height: 11px; flex: 0 0 11px; }
-  .roster-dept .seen { opacity: 0.6; font-size: 0.82rem; }
-  .roster-group { margin: 6px 0 10px; font-size: 0.85rem; }
-  .roster-group button { font-size: 0.82rem; padding: 3px 10px; border-radius: 6px; border: 1px solid #0b1f3a; background: white; color: #0b1f3a; cursor: pointer; }
-  .roster-group button.on { background: #0b1f3a; color: white; }
+  .roster-dept .seen { color: var(--text-muted); font-size: 0.82rem; }
+  .roster-group { margin: 6px 0 10px; font-size: 0.86rem; color: var(--text-muted); }
+  .roster-group button { font-size: 0.82rem; padding: 3px 10px; border-radius: 6px; }
+  .roster-group button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 </style>
 </head>
 <body>
+  <header class="pp-top">
+    <span class="pp-brand"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+    <div class="pp-context"><strong id="facLabel">Facilitator</strong><div>Facilitator page. Private link, do not share it.</div></div>
+  </header>
+  <div class="fac-main">
   <h1>Facilitator test controls (prototype)</h1>
   <div class="note">
     This page drives the demo session directly — it stands in for the real
@@ -226,7 +212,7 @@
   </div>
 
   <div class="current-inject" id="currentInject">—</div>
-  <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+  <div id="errorBox" style="display:none; margin-top:12px; color:var(--red-soft); font-size:0.9rem;"></div>
 
   <div class="tower-section" id="towerSection">
     <h2>Control tower</h2>
@@ -242,7 +228,7 @@
       <h3>Observers</h3>
       <div id="towerObservers"></div>
     </div>
-    <div id="towerError" style="display:none; margin-top:8px; color:#b00020; font-size:0.9rem;"></div>
+    <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
     <div class="tower-legend">
       <span><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
       <span><i class="dot amber"></i> Not seen for up to 2 minutes</span>
@@ -258,7 +244,7 @@
       (for 30 seconds there, or until you move to the next inject). Choose a
       ready-made message, or type your own.
     </div>
-    <label for="msgPreset" style="font-size:0.85rem; font-weight:600;">Ready-made messages (optional)</label>
+    <label for="msgPreset" class="field-label">Ready-made messages (optional)</label>
     <select id="msgPreset">
       <option value="">— Choose a ready-made message —</option>
     </select>
@@ -277,9 +263,9 @@
       Reaches everyone registered in that department's phones — not the
       shared room screen. Choose a ready-made message, or type your own.
     </div>
-    <label for="deptMsgDept" style="font-size:0.85rem; font-weight:600;">Department</label>
+    <label for="deptMsgDept" class="field-label">Department</label>
     <select id="deptMsgDept"><option value="">— Choose a department —</option></select>
-    <label for="deptMsgPreset" style="font-size:0.85rem; font-weight:600; margin-top:8px; display:block;">Ready-made messages (optional)</label>
+    <label for="deptMsgPreset" class="field-label">Ready-made messages (optional)</label>
     <select id="deptMsgPreset">
       <option value="">— Choose a ready-made message —</option>
     </select>
@@ -295,7 +281,7 @@
   <div class="inbox-section" id="inboxSection">
     <h2>Messages from departments <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
     <div class="sub">Requests and replies from participants, newest first.</div>
-    <ul class="inbox-list" id="inboxList"><li style="opacity:0.6;">No messages yet.</li></ul>
+    <ul class="inbox-list" id="inboxList"><li class="muted-line">No messages yet.</li></ul>
   </div>
 
   <div class="notes-section" id="notesSection">
@@ -335,7 +321,7 @@
     </div>
     <div class="add-dept-row">
       <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;">Rooms:</label>
-      <select id="roomCountSelect" style="flex:0 0 auto; padding:8px 10px; border-radius:8px; border:1px solid #ccc; font-size:0.95rem;">
+      <select id="roomCountSelect" style="flex:0 0 auto;">
         <option value="1">1 (no room question at check-in)</option>
         <option value="2">2</option>
         <option value="3">3</option>
@@ -344,7 +330,7 @@
         <option value="6">6</option>
       </select>
     </div>
-    <div id="roomCountError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+    <div id="roomCountError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
 
     <h2>Registered participants &amp; observers</h2>
     <div class="note" id="addDeptNote" style="margin-bottom:10px;">
@@ -358,7 +344,7 @@
       <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
       <button id="addDeptBtn">Add department</button>
     </div>
-    <div id="rosterError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+    <div id="rosterError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
     <div class="roster-group" id="rosterGroup" hidden>
       Group by:
       <button type="button" data-group="department" class="on">Department</button>
@@ -379,6 +365,8 @@
     Before the exercise (added 9 October 2026):
     <a id="checkLink" target="_blank" rel="noopener">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
     <a id="printLink" target="_blank" rel="noopener">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
+  </div>
+
   </div>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
@@ -661,9 +649,9 @@
                 (m) => `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
               )
               .join("")
-          : `<li style="opacity:0.6;">No messages sent yet.</li>`;
+          : `<li class="muted-line">No messages sent yet.</li>`;
       } catch (err) {
-        msgLogEl.innerHTML = `<li style="color:#b00020;">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+        msgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
       }
     }
 
@@ -784,9 +772,9 @@
                   `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · to ${escapeHtml(m.department)} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
               )
               .join("")
-          : `<li style="opacity:0.6;">No department messages sent yet.</li>`;
+          : `<li class="muted-line">No department messages sent yet.</li>`;
       } catch (err) {
-        deptMsgLogEl.innerHTML = `<li style="color:#b00020;">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+        deptMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
       }
     }
 
@@ -843,7 +831,7 @@
                 `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || "unknown department")} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
             )
             .join("")
-        : `<li style="opacity:0.6;">No messages yet.</li>`;
+        : `<li class="muted-line">No messages yet.</li>`;
     }
 
     // fromRing = the doorbell said a department has just sent something:
@@ -859,7 +847,7 @@
         if (gotNew && inboxLoadedOnce) playChime();
         inboxLoadedOnce = true;
       } catch (err) {
-        inboxListEl.innerHTML = `<li style="color:#b00020;">Couldn't load messages: ${escapeHtml(err.message)}</li>`;
+        inboxListEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load messages: ${escapeHtml(err.message)}</li>`;
       }
     }
 
@@ -1054,7 +1042,7 @@
         .filter((i) => injects[i])
         .sort((a, b) => a - b);
       if (played.length === 0 || depts.length === 0) {
-        statusSectionEl.innerHTML = `<p style="opacity:0.7; font-size:0.9rem;">Statuses appear here once the exercise starts.</p>`;
+        statusSectionEl.innerHTML = `<p class="muted-line" style="font-size:0.9rem;">Statuses appear here once the exercise starts.</p>`;
         return;
       }
 
@@ -1471,7 +1459,7 @@
         allNotes = notes;
         renderNotes();
       } catch (err) {
-        notesListEl.innerHTML = `<div class="empty" style="color:#b00020;opacity:1;">Couldn't load notes: ${escapeHtml(err.message)}</div>`;
+        notesListEl.innerHTML = `<div class="empty" style="color:var(--red-soft);opacity:1;">Couldn't load notes: ${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -1779,6 +1767,7 @@
       // facilitator is still making.
       if (document.activeElement !== roomCountSelectEl) roomCountSelectEl.value = String(currentRow.room_count || 1);
       statusVal.textContent = currentRow.status;
+      document.getElementById("facLabel").textContent = currentRow.label || "Facilitator";
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;
       indexVal.textContent = currentRow.current_inject_index >= 0

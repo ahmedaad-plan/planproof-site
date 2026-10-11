@@ -13,35 +13,40 @@
   service, live updates over WebSocket, the device clock and sound. Results
   can be copied or emailed to PlanProof in one click. Reads no client data.
 -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
 <style>
-  :root { --navy:#0b1f3a; --amber:#e8a33d; --paper:#f4f1ea; --ok:#2f9e63; --warn:#d99a1e; --bad:#d2453a; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--navy); color:var(--paper); font:16px/1.5 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-  main { max-width:760px; margin:0 auto; padding:28px 16px 48px; }
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css. */
+  :root { --ok:#3fae6c; --warn:var(--amber); --bad:var(--red); }
+  body { font-size:16px; }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
   h1 { font-size:1.6rem; margin:0 0 6px; }
-  p.lead { opacity:.85; margin:0 0 20px; }
-  .card { background:rgba(244,241,234,.06); border:1px solid rgba(244,241,234,.15); border-radius:12px; padding:14px 16px; margin:10px 0; display:grid; grid-template-columns:28px 1fr; gap:4px 10px; }
-  .dot { width:18px; height:18px; border-radius:50%; margin-top:3px; background:rgba(244,241,234,.25); }
+  p.lead { color:var(--text-muted); margin:0 0 20px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin:10px 0; display:grid; grid-template-columns:28px 1fr; gap:4px 10px; }
+  .card .dot { width:18px; height:18px; flex:none; margin-top:3px; background:#5a6673; border:0; }
   .card[data-state="ok"] .dot { background:var(--ok); }
   .card[data-state="warn"] .dot { background:var(--warn); }
   .card[data-state="bad"] .dot { background:var(--bad); }
   .card[data-state="running"] .dot { background:var(--amber); animation:blink 1s infinite; }
   @keyframes blink { 50% { opacity:.3; } }
-  .card h2 { font-size:1rem; margin:0; }
-  .card .msg { grid-column:2; font-size:.92rem; opacity:.9; }
+  .card h2 { font-size:1.02rem; margin:0; }
+  .card .msg { grid-column:2; font-size:.92rem; }
   .card .fix { grid-column:2; font-size:.88rem; color:var(--amber); }
-  button { font:inherit; border:0; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--amber); color:var(--navy); font-weight:700; }
-  button.ghost { background:transparent; color:var(--paper); border:1px solid rgba(244,241,234,.4); font-weight:600; }
+  button { font:inherit; border:1.5px solid transparent; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--amber); color:var(--amber-ink); font-weight:600; }
+  button.ghost { background:transparent; color:var(--text); border-color:var(--border-strong); }
   .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; grid-column:2; }
   .summary { margin:22px 0 10px; padding:14px 16px; border-radius:12px; font-weight:600; }
-  .summary.ok { background:rgba(47,158,99,.18); border:1px solid var(--ok); }
-  .summary.bad { background:rgba(210,69,58,.18); border:1px solid var(--bad); }
-  .summary.warn { background:rgba(217,154,30,.18); border:1px solid var(--warn); }
-  a { color:var(--amber); }
-  small { opacity:.7; }
+  .summary.ok { background:rgba(63,174,108,.16); border:1px solid var(--ok); }
+  .summary.bad { background:var(--red-dim); border:1px solid var(--bad); }
+  .summary.warn { background:var(--amber-dim); border:1px solid var(--warn); }
+  small { color:var(--text-muted); }
 </style>
 </head>
 <body>
+<header class="pp-top">
+  <span class="pp-brand"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <div class="pp-context"><strong>Connection check</strong></div>
+</header>
 <main>
   <h1>PlanProof connection check</h1>
   <p class="lead">Run this on the network and device you will use for the exercise (meeting-room WiFi, room screen laptop, a phone). It takes about 20 seconds and reads no company data.</p>

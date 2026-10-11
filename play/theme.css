@@ -1,0 +1,177 @@
+/* PlanProof exercise player — shared theme (player polish, 11 October 2026).
+   One look for the join, participant, Observer, room display, Facilitator and
+   connection-check pages, taken from plan-proof.com (index.html on main):
+   the same colours, the same three typefaces, the same shield mark.
+
+   The fonts are served from plan-proof.com itself (play/fonts), not from a
+   font service: a meeting-room network that blocks outside sites can then
+   never hold a page up or change how it looks. If a font file fails, the
+   device's own font is used and nothing else changes. */
+
+@font-face {
+  font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("./fonts/space-grotesk-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600 700; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url("./fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+}
+
+:root {
+  /* The website's own palette. */
+  --bg: #10151b;
+  --panel: #1a222c;
+  --panel-raised: #212b36;
+  --border: #2b3642;
+  --border-strong: #46566a;
+  --text: #e7eaee;
+  --text-muted: #9aa5b1;
+  --amber: #e2a63b;
+  --amber-ink: #201404;
+  --amber-dim: rgba(226,166,59,0.14);
+  --red: #d84a3a;
+  --red-soft: #f0907f;
+  --red-dim: rgba(216,74,58,0.16);
+  --teal: #4f9c82;
+  --teal-soft: #8fd0b8;
+  --teal-dim: rgba(79,156,130,0.16);
+  --blue: #5b8db8;
+  --blue-soft: #9cc3e4;
+  --blue-dim: rgba(91,141,184,0.14);
+  --field: #0c1116;
+  --shadow: rgba(0,0,0,0.35);
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+/* Marked-hidden elements stay hidden even when a class sets display. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+a { color: var(--amber); }
+
+/* ---- Brand: the shield and the two-colour name, as on the website ------ */
+.pp-brand {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1;
+  color: #f2f3f5; text-decoration: none; white-space: nowrap;
+}
+.pp-brand svg { width: 30px; height: 30px; flex: 0 0 auto; color: #f2f3f5; }
+.pp-brand .proof { color: var(--red); }
+.pp-brand.small { font-size: 16px; gap: 7px; }
+.pp-brand.small svg { width: 24px; height: 24px; }
+.pp-brand.large { font-size: 30px; gap: 12px; }
+.pp-brand.large svg { width: 46px; height: 46px; }
+
+/* The top bar every page shares: brand on the left, context on the right. */
+.pp-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap;
+  padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--bg);
+}
+.pp-top .pp-context { min-width: 0; text-align: right; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.pp-top .pp-context strong { color: var(--text); font-weight: 600; }
+@media (max-width: 520px) { .pp-top { padding: 12px 16px; } }
+
+/* ---- Form controls ----------------------------------------------------- */
+/* A typing box always looks like one: a darker well, a clear edge, and an
+   amber edge when it is the one being typed in. */
+.pp-field, .pp-form input[type="text"], .pp-form select, .pp-form textarea {
+  width: 100%; padding: 11px 12px; border-radius: 8px;
+  border: 1.5px solid var(--border-strong); background: var(--field); color: var(--text);
+  font-family: inherit; font-size: 16px; line-height: 1.4;
+}
+.pp-field::placeholder, .pp-form input::placeholder, .pp-form textarea::placeholder { color: #77828f; opacity: 1; }
+.pp-field:focus, .pp-form input[type="text"]:focus, .pp-form select:focus, .pp-form textarea:focus {
+  outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-dim);
+}
+.pp-field:disabled, .pp-form input:disabled, .pp-form select:disabled, .pp-form textarea:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+.pp-form select, select.pp-field { appearance: auto; }
+.pp-form label, .pp-label { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+.pp-hint { font-size: 13px; color: var(--text-muted); }
+
+/* ---- Buttons ------------------------------------------------------------ */
+.pp-btn {
+  font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.2;
+  padding: 12px 18px; border-radius: 8px; border: 1.5px solid transparent; cursor: pointer;
+  background: var(--amber); color: var(--amber-ink);
+}
+.pp-btn.ghost { background: transparent; color: var(--text); border-color: var(--border-strong); }
+.pp-btn.ghost:hover:not(:disabled) { border-color: var(--amber); }
+.pp-btn.danger { background: transparent; color: var(--red-soft); border-color: var(--red); }
+.pp-btn:disabled { background: var(--panel-raised); color: var(--text-muted); border-color: transparent; cursor: not-allowed; }
+.pp-btn.ghost:disabled, .pp-btn.danger:disabled { background: transparent; border-color: var(--border); opacity: 0.6; }
+.pp-btn:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--amber); outline-offset: 2px;
+}
+
+/* ---- Panels and notes --------------------------------------------------- */
+.pp-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.pp-note {
+  border: 1px solid var(--border); border-left: 3px solid var(--blue); border-radius: 8px;
+  background: var(--blue-dim); padding: 12px 14px; font-size: 14px;
+}
+.pp-note.amber { border-left-color: var(--amber); background: var(--amber-dim); }
+.pp-error {
+  display: none; margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: var(--red-dim); border: 1px solid var(--red); color: #ffd3cb; font-size: 14px;
+}
+
+/* ---- The countdown ------------------------------------------------------ */
+/* The one thing on a participant's phone that must be impossible to miss.
+   Large figures, a bar that empties, amber in the last minute, red at zero. */
+.pp-clock {
+  background: var(--panel-raised); border: 1px solid var(--border-strong); border-radius: 12px;
+  padding: 10px 16px 12px; text-align: center; position: relative; overflow: hidden;
+}
+.pp-clock-label { font-size: 13px; color: var(--text-muted); }
+.pp-clock-value {
+  font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: clamp(2.6rem, 13vw, 3.6rem); line-height: 1.05; letter-spacing: 0.01em; color: var(--text);
+}
+.pp-clock-note { font-size: 13px; color: var(--text-muted); min-height: 1.3em; }
+.pp-clock-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--border); }
+.pp-clock-bar i { display: block; height: 100%; width: 100%; background: var(--teal); transform-origin: left center; }
+.pp-clock[data-state="warn"] { border-color: var(--amber); background: #2a2415; }
+.pp-clock[data-state="warn"] .pp-clock-value { color: var(--amber); }
+.pp-clock[data-state="warn"] .pp-clock-bar i { background: var(--amber); }
+.pp-clock[data-state="up"] { border-color: var(--red); background: #2b1a19; }
+.pp-clock[data-state="up"] .pp-clock-value { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 10vw, 2.8rem); line-height: 1.3; }
+.pp-clock[data-state="up"] .pp-clock-bar i { background: var(--red); }
+.pp-clock[data-state="none"] .pp-clock-value { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; line-height: 1.6; color: var(--text-muted); }
+.pp-clock[data-state="none"] .pp-clock-bar { display: none; }
+
+/* ---- Status dots (Facilitator page, connection check) ------------------- */
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; display: inline-block; border: 1px solid rgba(255,255,255,0.18); }
+.dot.grey { background: #5a6673; }
+.dot.amber { background: var(--amber); }
+.dot.green { background: #3fae6c; }
+.dot.red { background: var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}

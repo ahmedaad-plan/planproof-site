@@ -3,85 +3,70 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Join Exercise (prototype)</title>
+<title>PlanProof — Join the exercise</title>
 <meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
 <style>
-  :root {
-    --pp-navy: #0b1f3a;
-    --pp-amber: #e8a33d;
-    --pp-paper: #f4f1ea;
-  }
-  * { box-sizing: border-box; }
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css. */
   body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--pp-navy);
-    color: var(--pp-paper);
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 16px;
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 16px 40px;
   }
+  .join-brand { margin: 4px 0 22px; }
   .card {
-    background: var(--pp-paper);
-    color: var(--pp-navy);
-    border-radius: 12px;
-    padding: 28px;
-    max-width: 460px;
-    width: 100%;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 26px 24px 28px; max-width: 460px; width: 100%;
+    box-shadow: 0 8px 24px var(--shadow);
   }
-  h1 { font-size: 1.3rem; margin-top: 0; }
-  .sub { font-size: 0.9rem; opacity: 0.75; margin-top: -8px; margin-bottom: 20px; }
-  label { display: block; font-weight: 600; font-size: 0.85rem; margin: 16px 0 6px; }
+  h1 { font-size: 1.45rem; margin: 0 0 6px; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
+  .sub { font-size: 0.95rem; color: var(--text-muted); margin: 0 0 18px; text-align: center; text-wrap: balance; }
+  .card label { display: block; font-weight: 600; font-size: 0.9rem; margin: 16px 0 6px; }
   .name-row { display: flex; gap: 10px; }
   .name-row > div { flex: 1; min-width: 0; }
-  input[type="text"], select {
-    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
-    font-size: 1rem; background: white; color: var(--pp-navy);
-  }
-  .invalid { border-color: #c0392b !important; background: #fff6f5; }
+  .invalid { border-color: var(--red) !important; background: #241615 !important; }
   .role-options { display: flex; gap: 10px; }
   .role-options label {
-    flex: 1; margin: 0; font-weight: 500; text-align: center; padding: 10px;
-    border: 1px solid #ccc; border-radius: 8px; cursor: pointer; display: block;
+    flex: 1; margin: 0; font-weight: 600; text-align: center; padding: 11px 10px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px; cursor: pointer; display: block;
+    background: var(--field); color: var(--text);
   }
-  .role-options input { display: none; }
-  .role-options label.checked { background: var(--pp-navy); color: white; border-color: var(--pp-navy); }
-  button {
-    font-size: 1.05rem; padding: 12px 18px;
-    border-radius: 8px; border: none; background: var(--pp-navy); color: white;
-    cursor: pointer;
-  }
+  .role-options input { position: absolute; opacity: 0; pointer-events: none; }
+  .role-options label.checked { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+  .role-options label:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
   button.full { width: 100%; margin-top: 24px; }
-  button.secondary { background: white; color: var(--pp-navy); border: 1px solid var(--pp-navy); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .error {
-    display: none; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
-    background: #fde4e1; color: #a3271f; font-size: 0.9rem;
+  .error { text-align: left; }
+  /* The two briefing boxes (Ahmed, 11 October 2026): centred, with lines of
+     even length on a phone — "balance" stops one short word being left on a
+     line of its own. Same shape for both so they read as a pair. */
+  .brief {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--panel-raised);
+    padding: 12px 16px; margin: 0 0 10px; font-size: 0.9rem; color: var(--text-muted);
+    text-align: center; text-wrap: balance;
   }
-  .note {
-    background: #fff3d6; border: 1px solid var(--pp-amber); border-radius: 8px;
-    padding: 12px 16px; margin-bottom: 8px; font-size: 0.85rem;
-  }
-  .nofault {
-    background: #e9f1fb; border: 1px solid #9db8dc; border-radius: 8px;
-    padding: 10px 14px; margin-bottom: 4px; font-size: 0.85rem;
-  }
+  .brief strong { display: block; color: var(--text); font-weight: 600; text-wrap: balance; margin-bottom: 2px; }
+  .brief.nofault { border-top: 3px solid var(--teal); }
+  .brief.phone { border-top: 3px solid var(--amber); }
+  /* Department list: fixed, never typed. With more than 10 departments a
+     search box narrows the list; the list itself stays the only way to pick. */
+  .dept-search { margin-bottom: 8px; }
+  .dept-count { font-size: 0.8rem; color: var(--text-muted); margin: -2px 0 8px; min-height: 1.2em; }
+  .dept-missing { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
   /* Confirmation step (Ahmed, 4 October 2026): restate name and department
      before anything is registered, with Proceed / Cancel. */
   .overlay {
-    position: fixed; inset: 0; background: rgba(11,31,58,0.75);
+    position: fixed; inset: 0; background: rgba(8,11,15,0.82);
     display: none; align-items: center; justify-content: center; padding: 16px;
   }
   .overlay.open { display: flex; }
   .confirm-box {
-    background: var(--pp-paper); color: var(--pp-navy); border-radius: 12px;
-    padding: 24px; max-width: 420px; width: 100%;
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 14px;
+    padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   }
-  .confirm-box h2 { font-size: 1.15rem; margin: 0 0 14px; }
+  .confirm-box h2 { font-size: 1.2rem; margin: 0 0 14px; }
   .confirm-box dl { margin: 0 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.95rem; }
-  .confirm-box dt { font-weight: 600; opacity: 0.7; }
+  .confirm-box dt { color: var(--text-muted); }
   .confirm-box dd { margin: 0; overflow-wrap: anywhere; }
   .confirm-box .question { font-weight: 600; margin-bottom: 16px; }
   .confirm-buttons { display: flex; gap: 10px; }
@@ -89,18 +74,19 @@
 </style>
 </head>
 <body>
-  <div class="card" id="card">Loading…</div>
+  <div class="join-brand"><span class="pp-brand large"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span></div>
+  <div class="card pp-form" id="card">Loading…</div>
 
   <div class="overlay" id="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-    <div class="confirm-box">
+    <div class="confirm-box pp-form">
       <h2 id="confirmTitle">Please confirm your details</h2>
       <dl id="confirmDetails"></dl>
       <div class="question" id="confirmQuestion"></div>
       <div class="confirm-buttons">
-        <button class="secondary" id="cancelBtn">Cancel</button>
-        <button id="proceedBtn">Proceed</button>
+        <button class="pp-btn ghost" id="cancelBtn">Cancel</button>
+        <button class="pp-btn" id="proceedBtn">Proceed</button>
       </div>
-      <div class="error" id="confirmError"></div>
+      <div class="pp-error error" id="confirmError"></div>
     </div>
   </div>
 
@@ -147,6 +133,9 @@
     })[c]);
   }
 
+  // The department search box appears only above this many departments.
+  const DEPT_SEARCH_ABOVE = 10;
+
   function renderForm(session) {
     // Departments come only from a fixed list — the scenario's own, plus any
     // the Facilitator added before starting — never free text, so every
@@ -165,7 +154,7 @@
 
     if (departments.length === 0) {
       cardEl.innerHTML = `
-        <h1>Join: ${escapeHtml(session.label || "Exercise")}</h1>
+        <h1>${escapeHtml(session.label || "Exercise")}</h1>
         <p>The department list for this exercise hasn't been set up yet, so
         registration isn't open. Please let the facilitator know.</p>`;
       return;
@@ -182,13 +171,13 @@
       : "";
 
     cardEl.innerHTML = `
-      <h1>Join: ${escapeHtml(session.label || "Exercise")}</h1>
+      <h1>${escapeHtml(session.label || "Exercise")}</h1>
       <p class="sub">Enter your details to join as a participant or observer.</p>
-      <div class="nofault">
+      <div class="brief nofault">
         <strong>This exercise tests the plan, not individuals.</strong>
         Findings are reported at team level.
       </div>
-      <div class="nofault" id="phoneNote">
+      <div class="brief phone" id="phoneNote">
         <strong>Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.</strong>
         Keep your device plugged in if you can.
       </div>
@@ -205,10 +194,15 @@
       <label for="jobTitle">Job title</label>
       <input type="text" id="jobTitle" placeholder="e.g. Finance Manager" autocomplete="organization-title" />
       <label for="department">Department</label>
+      ${departments.length > DEPT_SEARCH_ABOVE
+        ? `<input type="text" id="deptSearch" class="dept-search" placeholder="Type to find your department" autocomplete="off" aria-label="Find your department in the list below" />
+           <div class="dept-count" id="deptCount" aria-live="polite"></div>`
+        : ""}
       <select id="department">
         <option value="" disabled selected>Choose your department</option>
         ${departments.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("")}
       </select>
+      <div class="dept-missing">Department missing? Ask the facilitator to add it.</div>
       <label>Role</label>
       <div class="role-options">
         <label id="roleParticipantLabel" class="checked">
@@ -219,8 +213,8 @@
         </label>
       </div>
       ${roomField}
-      <button class="full" id="registerBtn">Register</button>
-      <div class="error" id="errorBox"></div>
+      <button class="pp-btn full" id="registerBtn">Register</button>
+      <div class="pp-error error" id="errorBox"></div>
     `;
 
     const roleRadios = cardEl.querySelectorAll('input[name="role"]');
@@ -242,6 +236,32 @@
     const roomEl = document.getElementById("room");
     const registerBtn = document.getElementById("registerBtn");
     const errorBoxEl = document.getElementById("errorBox");
+
+    // Department search (Ahmed, 11 October 2026): only with more than 10
+    // departments. It narrows the fixed list — it never adds to it, and the
+    // department is still chosen from the list, so spelling stays the same
+    // everywhere. One match left = chosen for them.
+    const deptSearchEl = document.getElementById("deptSearch");
+    const deptCountEl = document.getElementById("deptCount");
+    if (deptSearchEl) {
+      deptSearchEl.addEventListener("input", () => {
+        const q = deptSearchEl.value.trim().toLowerCase();
+        const chosen = departmentEl.value;
+        const matches = departments.filter((d) => String(d).toLowerCase().includes(q));
+        const keep = matches.includes(chosen) ? chosen : matches.length === 1 && q ? matches[0] : "";
+        departmentEl.innerHTML =
+          `<option value="" disabled ${keep ? "" : "selected"}>${matches.length ? "Choose your department" : "No department matches"}</option>` +
+          matches.map((d) => `<option value="${escapeHtml(d)}" ${d === keep ? "selected" : ""}>${escapeHtml(d)}</option>`).join("");
+        if (keep) departmentEl.classList.remove("invalid");
+        deptCountEl.textContent = !q
+          ? ""
+          : matches.length === 0
+            ? "No department matches. Clear the box to see the whole list."
+            : matches.length === 1
+              ? `1 match — ${matches[0]} is selected.`
+              : `${matches.length} of ${departments.length} departments shown.`;
+      });
+    }
 
     // Clear a field's red outline as soon as the person starts fixing it.
     [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => {

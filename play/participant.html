@@ -3,142 +3,114 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Participant (prototype)</title>
+<title>PlanProof — Participant</title>
 <meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
 <style>
-  :root {
-    --pp-navy: #0b1f3a;
-    --pp-amber: #e8a33d;
-    --pp-paper: #f4f1ea;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--pp-navy);
-    color: var(--pp-paper);
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  }
-  header {
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    padding: 16px 24px; border-bottom: 1px solid rgba(244,241,234,0.15);
-  }
-  .brand { font-weight: 600; letter-spacing: 0.02em; }
-  main { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css. */
+  body { min-height: 100vh; }
+  main { max-width: 640px; margin: 0 auto; padding: 0 16px 24px; }
+  /* The countdown stays at the top of the screen while the person scrolls
+     down to type, so the time left is always in sight. */
+  .clock-wrap { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 10px; }
   .inject-card {
-    background: rgba(244,241,234,0.06); border: 1px solid rgba(244,241,234,0.15);
-    border-radius: 12px; padding: 20px; margin-bottom: 20px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 18px 20px; margin-bottom: 16px;
   }
-  .inject-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
-  .inject-desc { opacity: 0.9; margin-bottom: 14px; }
+  .inject-title { font-family: var(--font-display); font-size: 1.45rem; font-weight: 600; line-height: 1.25; margin-bottom: 8px; }
+  .inject-desc { color: var(--text); margin-bottom: 14px; }
   .inject-task {
-    background: rgba(232,163,61,0.15); border-left: 3px solid var(--pp-amber);
-    padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 0.95rem;
+    background: var(--amber-dim); border-left: 3px solid var(--amber);
+    padding: 9px 12px; border-radius: 4px; font-size: 0.95rem;
   }
   .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .tag {
-    font-size: 0.75rem; padding: 3px 9px; border-radius: 999px;
-    border: 1px solid rgba(244,241,234,0.35); opacity: 0.9;
+    font-size: 0.78rem; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border-strong); color: var(--text-muted);
   }
-  .tag.individual { border-color: var(--pp-amber); color: var(--pp-amber); }
-  .timer { font-size: 0.85rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
-  .timer.warn { color: var(--pp-amber); opacity: 1; }
+  .tag.individual { border-color: var(--amber); color: var(--amber); }
   .answer-card {
-    background: var(--pp-paper); color: var(--pp-navy); border-radius: 12px; padding: 20px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
   }
   .not-required {
-    background: #eef1f5; color: #3b4a5e; border-radius: 8px; padding: 10px 12px;
-    font-size: 0.85rem; margin-bottom: 12px;
+    background: var(--blue-dim); border-left: 3px solid var(--blue); color: var(--text);
+    border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; margin-bottom: 12px;
   }
-  label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0 0 6px; }
-  .hint { font-size: 0.8rem; opacity: 0.7; margin: -2px 0 8px; }
-  textarea {
-    width: 100%; min-height: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc;
-    font-size: 1rem; font-family: inherit; resize: vertical; background: white; color: var(--pp-navy);
-  }
+  .hint { font-size: 0.82rem; color: var(--text-muted); margin: -2px 0 8px; }
+  .answer-card textarea { min-height: 130px; resize: vertical; }
   .attachments { margin-top: 14px; }
-  .attachment-list { list-style: none; padding: 0; margin: 8px 0 0; font-size: 0.85rem; }
+  .attachment-list { list-style: none; padding: 0; margin: 8px 0 0; font-size: 0.88rem; }
   .attachment-list li {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 10px; background: #f0eee7; border-radius: 6px; margin-bottom: 4px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 7px 10px; background: var(--panel-raised); border-radius: 6px; margin-bottom: 4px;
+    overflow-wrap: anywhere;
   }
-  .attachment-list button { border: none; background: none; color: #a3271f; cursor: pointer; font-size: 0.9rem; }
-  input[type="file"] { margin-top: 8px; max-width: 100%; }
-  .save-status { font-size: 0.8rem; opacity: 0.65; margin-top: 10px; min-height: 1.2em; }
-  .row-buttons { display: flex; gap: 10px; margin-top: 16px; }
-  button.submit {
-    flex: 1; font-size: 1.05rem; padding: 12px 18px; border-radius: 8px; border: none;
-    background: var(--pp-navy); color: white; cursor: pointer;
-  }
-  button.submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .attachment-list button { border: none; background: none; color: var(--red-soft); cursor: pointer; font: inherit; font-size: 0.88rem; }
+  .attachment-list button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input[type="file"] { margin-top: 4px; max-width: 100%; color: var(--text-muted); font: inherit; font-size: 0.88rem; }
+  .save-status { font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; min-height: 1.3em; }
+  .row-buttons { display: flex; gap: 10px; margin-top: 14px; }
+  .row-buttons .pp-btn { flex: 1; }
   .submitted-banner {
-    background: #e7f5e9; color: #1e5c28; border-radius: 8px; padding: 10px 14px;
-    font-size: 0.9rem; margin-top: 14px;
+    background: var(--teal-dim); border: 1px solid var(--teal); color: #c9efe1; border-radius: 8px;
+    padding: 10px 14px; font-size: 0.95rem; font-weight: 600; margin-top: 14px;
   }
-  .error {
-    display: none; margin-top: 10px; padding: 10px 12px; border-radius: 8px;
-    background: #fde4e1; color: #a3271f; font-size: 0.9rem;
+  .edit-hint { margin-top: 8px; }
+  /* Changing a submitted answer ("Edit answer", 11 October 2026). */
+  .editing-note {
+    background: var(--amber-dim); border: 1px solid var(--amber); border-radius: 8px;
+    padding: 10px 14px; font-size: 0.9rem; margin-top: 14px;
   }
-  .center-note { text-align: center; opacity: 0.85; padding: 60px 20px; font-size: 1.1rem; }
+  .center-note { text-align: center; color: var(--text); padding: 72px 20px; font-size: 1.15rem; text-wrap: balance; }
+  .center-note a { color: var(--amber); }
 
   /* Facilitator messages (added 5 October 2026). The banner and the list sit
      outside <main>, which is redrawn on every update. */
-  .msg-banner { display: none; background: var(--pp-amber); color: var(--pp-navy); }
+  .msg-banner { display: none; background: var(--amber); color: var(--amber-ink); }
   .msg-banner.show { display: block; }
   .msg-banner-inner {
     max-width: 640px; margin: 0 auto; padding: 12px 16px;
     display: flex; align-items: center; gap: 12px;
   }
   .msg-banner-inner > div { flex: 1; min-width: 0; }
-  .msg-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; opacity: 0.75; }
-  .msg-text { font-size: 1.05rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+  .msg-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
+  .msg-text { font-size: 1.08rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
   .msg-banner button {
-    flex: 0 0 auto; border: 1px solid var(--pp-navy); background: transparent; color: var(--pp-navy);
-    border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+    flex: 0 0 auto; border: 1.5px solid var(--amber-ink); background: transparent; color: var(--amber-ink);
+    border-radius: 8px; padding: 9px 13px; font: inherit; font-weight: 600; cursor: pointer; font-size: 0.92rem;
   }
-  .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
-  .msg-history summary { cursor: pointer; font-size: 0.9rem; opacity: 0.85; padding: 8px 0; }
-  /* Marked-hidden elements stay hidden even when a class sets display (fixed
-     11 October 2026: the "new" badge on facilitator messages could never hide). */
-  [hidden] { display: none !important; }
+  .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 20px; }
+  .msg-history summary { cursor: pointer; font-size: 0.95rem; padding: 8px 0; }
   .msg-badge {
     display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
-    background: var(--pp-amber); color: var(--pp-navy); font-size: 0.75rem; font-weight: 700;
+    background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
   }
-  .msg-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.9rem; }
-  .msg-list li { padding: 8px 0; border-top: 1px solid rgba(244,241,234,0.15); overflow-wrap: anywhere; }
-  .msg-list .meta { opacity: 0.6; font-size: 0.8rem; display: block; }
+  .msg-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.92rem; }
+  .msg-list li { padding: 8px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+  .msg-list .meta { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.78rem; display: block; }
   .msg-list li.unread { font-weight: 600; }
 
-  /* Message the facilitator (roadmap item 4, added 7 October 2026). */
-  .msg-reply { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
-  .msg-reply-card {
-    background: rgba(244,241,234,0.06); border: 1px solid rgba(244,241,234,0.15);
-    border-radius: 12px; padding: 16px;
-  }
-  .msg-reply-label { font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; }
-  .msg-reply select, .msg-reply textarea {
-    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc;
-    font-size: 0.95rem; font-family: inherit; box-sizing: border-box; margin-top: 6px;
-    background: var(--pp-paper); color: var(--pp-navy);
-  }
-  .msg-reply textarea { min-height: 56px; resize: vertical; }
-  .msg-reply-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-  .msg-reply-row .count { font-size: 0.8rem; opacity: 0.6; }
-  .msg-reply-row button {
-    border: none; border-radius: 8px; padding: 10px 18px; font-size: 1rem; font-weight: 600;
-    background: var(--pp-amber); color: var(--pp-navy); cursor: pointer;
-  }
-  .msg-reply-row button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .msg-reply-feedback { font-size: 0.85rem; margin-top: 8px; min-height: 1.1em; }
-  .msg-reply-feedback.ok { color: #9be3a8; }
-  .msg-reply-feedback.err { color: #ffb3a8; }
+  /* Message the facilitator (roadmap item 4, added 7 October 2026). Since
+     11 October 2026 the typing box has its own label and a clear edge, so it
+     is recognisable as a place to type on a phone. */
+  .msg-reply { max-width: 640px; margin: 0 auto; padding: 0 16px 72px; }
+  .msg-reply-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 18px; }
+  .msg-reply-label { font-size: 1.05rem; margin: 0 0 12px; }
+  .msg-reply-card label { margin-top: 12px; }
+  .msg-reply-card label:first-of-type { margin-top: 0; }
+  .msg-reply textarea { min-height: 76px; resize: vertical; border-width: 2px; }
+  .msg-reply-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .msg-reply-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .msg-reply-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
+  .msg-reply-feedback.ok { color: var(--teal-soft); }
+  .msg-reply-feedback.err { color: var(--red-soft); }
 </style>
 </head>
 <body>
-  <header>
-    <div class="brand" id="clientLabel">PlanProof</div>
-    <div class="brand" id="whoLabel" style="opacity:0.7; font-size:0.85rem; text-align:right;"></div>
+  <header class="pp-top">
+    <span class="pp-brand small"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+    <div class="pp-context"><strong id="clientLabel">PlanProof</strong><div id="whoLabel"></div></div>
   </header>
   <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
     <div class="msg-banner-inner">
@@ -157,13 +129,15 @@
     </details>
   </section>
   <section class="msg-reply" id="msgReply" hidden>
-    <div class="msg-reply-card">
-      <div class="msg-reply-label">Message the facilitator</div>
+    <div class="msg-reply-card pp-form">
+      <h2 class="msg-reply-label">Message the facilitator</h2>
+      <label for="replyPreset">Choose a ready-made message</label>
       <select id="replyPreset"><option value="">— Choose a ready-made message —</option></select>
-      <textarea id="replyText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+      <label for="replyText">Or type your own message</label>
+      <textarea id="replyText" maxlength="280" placeholder="Tap here and type your message"></textarea>
       <div class="msg-reply-row">
         <span class="count" id="replyCount">0 / 280</span>
-        <button id="replySendBtn" disabled>Send &rarr;</button>
+        <button class="pp-btn" id="replySendBtn" disabled>Send &rarr;</button>
       </div>
       <div class="msg-reply-feedback" id="replyFeedback"></div>
     </div>
@@ -195,6 +169,15 @@
   // so they're saved as "submitted" — otherwise reopening it would quietly
   // turn an on-time answer back into an unsubmitted draft on the dashboard.
   let reopenedSubmitted = false;
+  // "Edit answer" (Ahmed, 11 October 2026): a team can reopen its own
+  // submitted answer while the inject's time is still running. While it is
+  // being changed nothing is sent — the answer as submitted stays as it is
+  // until "Submit changes" (or the time running out) sends the new version.
+  let editingSubmitted = false;
+  let editBaseline = null;   // the answer as submitted: { answerText, attachments }
+  let editDirty = false;     // something was really changed since "Edit answer"
+  let lockLabel = "Time's up"; // what the greyed button says when the form is closed
+  let submitting = false;    // a Submit is on its way to the server
   let currentExtraMinutes = 0; // the exercise_sessions.inject_extra_minutes value already applied to the running timer, for the inject currently on screen
   let forceUnlocked = false; // mirrors exercise_sessions.inject_force_unlocked for the inject currently on screen
   let latestRow = null;
@@ -229,13 +212,13 @@
     const joinLink = `./join.html?session=${encodeURIComponent(sessionId)}`;
     if (!identity || identity.role !== "participant") {
       mainEl.innerHTML = `<div class="center-note">You need to join this exercise first.
-        <br/><a href="${joinLink}" style="color:var(--pp-amber);">Join now</a></div>`;
+        <br/><a href="${joinLink}">Join now</a></div>`;
     } else if (!identity.attendeeId) {
       // Registered before registration asked for first/family name and job
       // title, and before individual answers existed — no attendee id to
       // file an individual answer under.
       mainEl.innerHTML = `<div class="center-note">Registration has been updated — please register again.
-        <br/><a href="${joinLink}" style="color:var(--pp-amber);">Register</a></div>`;
+        <br/><a href="${joinLink}">Register</a></div>`;
     } else {
       whoLabelEl.textContent = `${identity.name} — ${identity.department}${identity.room ? ` — Room ${identity.room}` : ""}`;
       init();
@@ -336,6 +319,8 @@
       submitted: submittedForCurrent,
       locked: injectLocked,
       dirty: dirtyForCurrent,
+      editing: editingSubmitted,
+      baseline: editingSubmitted ? editBaseline : null,
     };
   }
   function storeAnswers() {
@@ -573,6 +558,16 @@
     });
   }
 
+  // When the time for the inject on screen runs out (ms), or null when it
+  // has no time limit. Includes any time the facilitator has added.
+  function currentDeadline() {
+    return latestRow && formInject ? injectDeadlineMs(latestRow, formInject) : null;
+  }
+  function timeRemains() {
+    const d = currentDeadline();
+    return !d || d > Date.now();
+  }
+
   function render(row) {
     if (!row) return;
     // A new run (the facilitator pressed Reset): answers kept on this phone
@@ -591,6 +586,8 @@
       mainEl.innerHTML = `<div class="center-note">Exercise complete. Thank you for participating.</div>`;
       formIdx = null;
       formInject = null;
+      editingSubmitted = false;
+      editBaseline = null;
       // The exercise is over: nothing of the answers stays on this phone.
       clearStoredAnswers();
       return;
@@ -600,6 +597,8 @@
       mainEl.innerHTML = `<div class="center-note">Waiting for the facilitator to start the exercise…</div>`;
       formIdx = null;
       formInject = null;
+      editingSubmitted = false;
+      editBaseline = null;
       return;
     }
 
@@ -616,14 +615,11 @@
       // Previous). Snapshot what's on screen into the local cache first, so
       // coming back to THIS inject later restores it instead of showing blank.
       if (formIdx !== null) {
+        // Changes to a submitted answer that were never sent are dropped:
+        // the facilitator has moved on, and the answer as submitted stands.
+        if (editingSubmitted) abandonEdit();
         const lastAnswerEl = document.getElementById("answerText");
-        answersCache[formIdx] = {
-          answerText: lastAnswerEl ? lastAnswerEl.value : "",
-          attachments: attachments.slice(),
-          submitted: submittedForCurrent,
-          locked: injectLocked,
-          dirty: dirtyForCurrent,
-        };
+        snapshotCurrent();
         storeAnswers();
         // "Facilitator moved on before they clicked Submit" — keep whatever
         // they wrote as status=autosaved rather than losing it. Saved under
@@ -642,38 +638,62 @@
       formInject = inject;
       currentExtraMinutes = row.inject_extra_minutes || 0;
       forceUnlocked = !!row.inject_force_unlocked;
+      lockLabel = "Time's up";
+      editingSubmitted = false;
+      editBaseline = null;
+      editDirty = false;
 
       const cached = answersCache[idx];
+      const deadline = injectDeadlineMs(row, inject);
+      const open = !deadline || deadline > Date.now();
       // Restored from this phone after a reload: a form that had locked on
       // time-out reopens if the facilitator has since added time.
       if (cached && restoredFromPhone[idx] && cached.locked && !cached.submitted) {
-        const dl = injectDeadlineMs(row, inject);
-        if (dl && dl > Date.now()) cached.locked = false;
+        if (deadline && deadline > Date.now()) cached.locked = false;
       }
+      let lostEdit = false;
+      let answerText = cached ? cached.answerText : "";
       attachments = cached ? (cached.attachments || []).slice() : [];
       submittedForCurrent = forceUnlocked ? false : cached ? !!cached.submitted : false;
       injectLocked = forceUnlocked ? false : cached ? !!cached.locked : false;
       dirtyForCurrent = cached ? !!cached.dirty : false;
+      // The page closed while a submitted answer was being changed: carry on
+      // changing it if there is still time; otherwise the unsent changes are
+      // dropped and the answer as submitted is shown.
+      if (cached && cached.editing && cached.baseline && submittedForCurrent) {
+        if (open) {
+          editingSubmitted = true;
+          editDirty = true;
+          editBaseline = cached.baseline;
+          injectLocked = false;
+        } else {
+          answerText = cached.baseline.answerText || "";
+          attachments = (cached.baseline.attachments || []).slice();
+          injectLocked = true;
+          lostEdit = true;
+        }
+      }
 
-      renderForm(inject, idx, {
-        answerText: cached ? cached.answerText : "",
-        submitted: cached ? cached.submitted : false,
-        locked: cached ? cached.locked : false,
-      });
+      renderForm(inject, idx, { answerText });
+      armTimer();
 
-      if (!forceUnlocked && !submittedForCurrent && !injectLocked) {
-        // The deadline comes from the server's start time for this inject
-        // (plus any extension), so it's the same deadline the database uses
-        // to decide "on time" — and a phone that reloads mid-inject picks
-        // the countdown up where it really is, instead of restarting it.
-        startInjectTimer(injectDeadlineMs(row, inject), () => lockForCurrentInject(false));
-      } else {
-        startInjectTimer(null, null);
+      if (lostEdit && currentSaveStatusEl) {
+        currentSaveStatusEl.textContent = "Time ran out before your changes were sent. The answer submitted earlier stands.";
+        storeAnswers();
+      } else if (forceUnlocked && cached && (cached.submitted || cached.locked) && currentSaveStatusEl) {
+        currentSaveStatusEl.textContent =
+          `Unlocked by the facilitator — previously ${cached.submitted ? "submitted" : "timed out"}; you can edit and resubmit.`;
+      } else if (!forceUnlocked && cached && cached.locked && !cached.submitted && currentSaveStatusEl) {
+        currentSaveStatusEl.textContent = dirtyForCurrent
+          ? "Time's up for this inject — your response has been saved automatically."
+          : "Time's up for this inject.";
       }
       if (cached && restoredFromPhone[idx]) {
         delete restoredFromPhone[idx];
         if (currentSaveStatusEl && !currentSaveStatusEl.textContent && (cached.answerText || (cached.attachments || []).length)) {
-          currentSaveStatusEl.textContent = "Your answer was brought back on this phone.";
+          currentSaveStatusEl.textContent = editingSubmitted
+            ? "Your unsent changes were brought back on this phone. Press “Submit changes” to send them."
+            : "Your answer was brought back on this phone.";
         }
       }
     } else {
@@ -691,27 +711,27 @@
             wasSubmitted,
             wasLocked
           );
-          startInjectTimer(null, null); // an explicit unlock has no deadline of its own
         } else {
           forceUnlocked = false;
           lockForCurrentInject(true, "The facilitator has locked this inject again.");
-          startInjectTimer(null, null);
         }
+        armTimer();
       }
 
-      // Extending time gives it back even if this device had already locked
-      // the form on timeout — never once explicitly submitted, and not while
-      // the Facilitator's manual unlock is in effect.
+      // More time from the facilitator: the countdown follows at once. A
+      // form that had locked on time-out reopens (never one that was
+      // submitted — that one gets its "Edit answer" button back instead),
+      // and not while the Facilitator's manual unlock is in effect.
       const extraNow = row.inject_extra_minutes || 0;
-      if (!forceUnlocked && extraNow > currentExtraMinutes && !submittedForCurrent) {
+      if (extraNow !== currentExtraMinutes) {
+        const more = extraNow > currentExtraMinutes;
         currentExtraMinutes = extraNow;
         const deadline = injectDeadlineMs(row, inject);
-        if (injectLocked && deadline && deadline > Date.now()) {
+        if (more && !forceUnlocked && !submittedForCurrent && injectLocked && deadline && deadline > Date.now()) {
           unlockForCurrentInject("The facilitator added more time — you can continue.", false, true);
         }
-        if (!injectLocked) {
-          startInjectTimer(deadline, () => lockForCurrentInject(false));
-        }
+        armTimer();
+        drawState();
       }
     }
   }
@@ -726,6 +746,14 @@
       : responsibleList.join(", ");
 
     mainEl.innerHTML = `
+      <div class="clock-wrap">
+        <div class="pp-clock" id="injectClock" data-state="none" role="timer" aria-label="Time left for this inject">
+          <div class="pp-clock-label">Time left for this inject</div>
+          <div class="pp-clock-value" id="injectTimerValue">--:--</div>
+          <div class="pp-clock-note" id="injectTimerNote"></div>
+          <div class="pp-clock-bar"><i id="injectTimerBar"></i></div>
+        </div>
+      </div>
       <div class="inject-card">
         <div class="task-tags">
           <span class="tag ${individual ? "individual" : ""}">${individual ? "Individual task — everyone answers" : "Group task — one answer per department"}</span>
@@ -734,9 +762,8 @@
         <div class="inject-title">${escapeHtml(inject.title)}</div>
         <div class="inject-desc">${escapeHtml(inject.desc)}</div>
         ${injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : ""}
-        <div class="timer">Time for this inject: <span id="injectTimerValue">--:--</span></div>
       </div>
-      <div class="answer-card">
+      <div class="answer-card pp-form">
         ${responsible ? "" : `<div class="not-required">Your department isn't named as responsible for this inject, so no answer is required from you. You can still add input if it's relevant.</div>`}
         <label for="answerText">${individual ? "Your own response" : `${escapeHtml(identity.department)}'s response`}</label>
         <div class="hint">${individual
@@ -744,38 +771,38 @@
           : `Anyone in ${escapeHtml(identity.department)} can write and submit this one shared answer.`}</div>
         <textarea id="answerText" placeholder="${individual ? "Your answer" : `What is ${escapeHtml(identity.department)} doing right now?`}">${escapeHtml(initial.answerText || "")}</textarea>
         <div class="attachments">
-          <label>Attach documents (up to 3, 10MB each)</label>
+          <label for="fileInput">Attach documents (up to 3, 10MB each)</label>
           <input type="file" id="fileInput" multiple
             accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/jpeg,image/png,image/heic" />
           <ul class="attachment-list" id="attachmentList"></ul>
         </div>
-        <div class="save-status" id="saveStatus"></div>
-        <div class="error" id="errorBox"></div>
-        <div class="row-buttons">
-          <button class="submit" id="submitBtn">Submit answer</button>
-        </div>
+        <div class="save-status" id="saveStatus" role="status"></div>
+        <div class="pp-error error" id="errorBox"></div>
+        <div id="answerActions"></div>
       </div>
     `;
 
     const answerEl = document.getElementById("answerText");
     const fileInput = document.getElementById("fileInput");
-    const submitBtn = document.getElementById("submitBtn");
     const saveStatusEl = document.getElementById("saveStatus");
     const errorBoxEl = document.getElementById("errorBox");
 
     currentAnswerEl = answerEl;
     currentFileInput = fileInput;
-    currentSubmitBtn = submitBtn;
     currentSaveStatusEl = saveStatusEl;
-
-    const submittedText = individual
-      ? "✓ Your answer is submitted."
-      : `✓ Submitted for ${escapeHtml(identity.department)}.`;
 
     answerEl.addEventListener("input", () => {
       if (injectLocked) return;
       dirtyForCurrent = true;
       storeAnswers(); // on the phone at once; on the server 1.5 seconds after the last keystroke
+      if (editingSubmitted) {
+        // A submitted answer being changed: nothing goes to the server until
+        // "Submit changes" (or the time runs out), so the answer as submitted
+        // is never replaced by something half-typed.
+        editDirty = true;
+        saveStatusEl.textContent = UNSENT_TEXT;
+        return;
+      }
       saveStatusEl.textContent = "Saving…";
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => autosaveDraft(idx, inject, answerEl, saveStatusEl), 1500);
@@ -803,7 +830,12 @@
           dirtyForCurrent = true;
           storeAnswers();
           renderAttachmentList();
-          await autosaveDraft(idx, inject, answerEl, saveStatusEl);
+          if (editingSubmitted) {
+            editDirty = true;
+            saveStatusEl.textContent = UNSENT_TEXT;
+          } else {
+            await autosaveDraft(idx, inject, answerEl, saveStatusEl);
+          }
         } catch (err) {
           errorBoxEl.textContent = err.message;
           errorBoxEl.style.display = "block";
@@ -811,63 +843,200 @@
       }
     });
 
-    submitBtn.addEventListener("click", async () => {
-      if (injectLocked) return; // time ran out before the click was processed
-      errorBoxEl.style.display = "none";
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Submitting…";
-      try {
-        clearTimeout(saveTimer); // a pending draft save must not land after (and overwrite) the submit
-        await saveFor(idx, inject, {
-          answerText: answerEl.value,
-          attachments,
-          status: "submitted",
-        });
-        dirtyForCurrent = true;
-        submittedForCurrent = true;
-        injectLocked = true; // locked unless/until the Facilitator explicitly unlocks this inject
-        answerEl.disabled = true;
-        fileInput.disabled = true;
-        saveStatusEl.textContent = "";
-        storeAnswers();
-        document.querySelector(".row-buttons").insertAdjacentHTML(
-          "beforebegin",
-          `<div class="submitted-banner">${submittedText}</div>`
-        );
-        submitBtn.remove();
-        startInjectTimer(null, null);
-      } catch (err) {
-        errorBoxEl.textContent = err.message;
-        errorBoxEl.style.display = "block";
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit answer";
-      }
+    // One listener for whichever buttons the answer's state shows.
+    document.getElementById("answerActions").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      if (btn.id === "submitBtn") submitAnswer(idx, inject, btn, errorBoxEl);
+      else if (btn.id === "editBtn") startEdit();
+      else if (btn.id === "cancelEditBtn") cancelEdit();
     });
 
-    if (forceUnlocked) {
-      if (initial.submitted || initial.locked) {
-        saveStatusEl.textContent =
-          `Unlocked by the facilitator — previously ${initial.submitted ? "submitted" : "timed out"}; you can edit and resubmit.`;
-      }
-    } else if (initial.submitted) {
-      answerEl.disabled = true;
-      fileInput.disabled = true;
-      document.querySelector(".row-buttons").insertAdjacentHTML(
-        "beforebegin",
-        `<div class="submitted-banner">${submittedText}</div>`
-      );
-      submitBtn.remove();
-    } else if (initial.locked) {
-      answerEl.disabled = true;
-      fileInput.disabled = true;
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Time's up";
-      saveStatusEl.textContent = dirtyForCurrent
-        ? "Time's up for this inject — your response has been saved automatically."
-        : "Time's up for this inject.";
-    }
-
+    drawState();
     renderAttachmentList();
+  }
+
+  const UNSENT_TEXT = "Not sent yet — press “Submit changes” to send it.";
+
+  // Draws the buttons under the answer for the state it is in, and opens or
+  // closes the answer box to match:
+  //   writing            -> "Submit answer"
+  //   submitted          -> the green line, and "Edit answer" while the time
+  //                         for this inject is still running
+  //   changing a submitted answer -> "Cancel" and "Submit changes"
+  //   time's up / locked -> a greyed button saying so
+  function drawState() {
+    const box = document.getElementById("answerActions");
+    if (!box || !currentAnswerEl || !formInject) return;
+    const open = !injectLocked;
+    currentAnswerEl.disabled = !open;
+    if (currentFileInput) currentFileInput.disabled = !open;
+
+    const individual = isIndividual(formInject);
+    const submittedText = individual
+      ? "✓ Your answer is submitted."
+      : `✓ Submitted for ${escapeHtml(identity.department)}.`;
+    let html;
+    if (editingSubmitted) {
+      html = `
+        <div class="editing-note">You are changing a submitted answer. Nothing is sent until you press “Submit changes”.</div>
+        <div class="row-buttons">
+          <button type="button" class="pp-btn ghost" id="cancelEditBtn">Cancel</button>
+          <button type="button" class="pp-btn submit" id="submitBtn">Submit changes</button>
+        </div>`;
+    } else if (submittedForCurrent) {
+      // "Edit answer" (Ahmed, 11 October 2026): the team can reopen its own
+      // answer while the countdown runs; after that only the facilitator's
+      // Unlock reopens it.
+      const running = latestRow && latestRow.status === "running";
+      const canEdit = running && !forceUnlocked && timeRemains();
+      html = `<div class="submitted-banner">${submittedText}</div>` + (canEdit
+        ? `<div class="row-buttons"><button type="button" class="pp-btn ghost" id="editBtn">Edit answer</button></div>
+           <div class="pp-hint edit-hint">${currentDeadline()
+             ? "You can change it until the time runs out."
+             : "You can change it until the facilitator moves to the next inject."}</div>`
+        : `<div class="pp-hint edit-hint">The time for this inject is over. Only the facilitator can reopen this answer.</div>`);
+    } else if (injectLocked) {
+      html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn" disabled>${escapeHtml(lockLabel)}</button></div>`;
+    } else {
+      html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn">Submit answer</button></div>`;
+    }
+    box.innerHTML = html;
+    currentSubmitBtn = document.getElementById("submitBtn");
+    renderAttachmentList();
+    updateClock();
+  }
+
+  // Submit, and "Submit changes" for a submitted answer being changed.
+  async function submitAnswer(idx, inject, btn, errorBoxEl) {
+    if (injectLocked) return; // time ran out before the click was processed
+    const answerEl = currentAnswerEl;
+    const wasEditing = editingSubmitted;
+    errorBoxEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Submitting…";
+    submitting = true;
+    try {
+      clearTimeout(saveTimer); // a pending draft save must not land after (and overwrite) the submit
+      await saveFor(idx, inject, {
+        answerText: answerEl.value,
+        attachments,
+        status: "submitted",
+      });
+      if (idx !== formIdx) return; // the facilitator moved on while it was being sent
+      dirtyForCurrent = true;
+      submittedForCurrent = true;
+      injectLocked = true; // closed again; "Edit answer" reopens it while the time runs
+      editingSubmitted = false;
+      editBaseline = null;
+      editDirty = false;
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = wasEditing ? "Your changes are submitted." : "";
+      storeAnswers();
+      drawState();
+    } catch (err) {
+      if (idx !== formIdx) return;
+      errorBoxEl.textContent = err.message;
+      errorBoxEl.style.display = "block";
+      drawState();
+    } finally {
+      submitting = false;
+      // The time ran out while it was being sent: settle the form now.
+      if (idx === formIdx && !forceUnlocked && !timeRemains()) onTimeUp();
+    }
+  }
+
+  // "Edit answer": reopen this device's submitted answer. What was submitted
+  // is kept aside so Cancel (or running out of time with nothing changed)
+  // puts it back exactly.
+  function startEdit() {
+    if (!submittedForCurrent || editingSubmitted || forceUnlocked || !timeRemains()) {
+      drawState();
+      return;
+    }
+    editBaseline = { answerText: currentAnswerEl.value, attachments: attachments.slice() };
+    editingSubmitted = true;
+    editDirty = false;
+    injectLocked = false;
+    if (currentSaveStatusEl) currentSaveStatusEl.textContent = "";
+    storeAnswers();
+    drawState();
+    currentAnswerEl.focus();
+  }
+
+  // Puts the answer back as it was submitted and closes it again.
+  function restoreBaseline() {
+    if (editBaseline) {
+      if (currentAnswerEl) currentAnswerEl.value = editBaseline.answerText || "";
+      attachments = (editBaseline.attachments || []).slice();
+    }
+    editingSubmitted = false;
+    editBaseline = null;
+    editDirty = false;
+    injectLocked = true;
+  }
+  function cancelEdit() {
+    if (!editingSubmitted) return;
+    restoreBaseline();
+    if (currentSaveStatusEl) currentSaveStatusEl.textContent = "No changes made — your submitted answer stands.";
+    storeAnswers();
+    drawState();
+  }
+  // The facilitator moved to another inject mid-change: the changes were
+  // never sent, so the answer as submitted is what this phone keeps.
+  function abandonEdit() {
+    restoreBaseline();
+  }
+
+  // The time ran out while a submitted answer was being changed. What was
+  // typed is sent as the change, so nothing is lost — unless nothing was
+  // changed, or the box was left empty, in which case the answer as
+  // submitted stands. If it can't be sent, the submitted answer stands too.
+  async function finishEditAtTimeUp() {
+    const idx = formIdx;
+    const inject = formInject;
+    const el = currentAnswerEl;
+    const baseline = editBaseline;
+    const text = el ? el.value : "";
+    const files = attachments.slice();
+    const changed = editDirty && (text.trim() !== "" || files.length > 0);
+    editingSubmitted = false;
+    editDirty = false;
+    injectLocked = true;
+    const putBack = () => {
+      editBaseline = baseline;
+      restoreBaseline();
+    };
+    if (!changed) {
+      putBack();
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — your submitted answer stands.";
+      storeAnswers();
+      drawState();
+      return;
+    }
+    editBaseline = null;
+    if (currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — sending your changes…";
+    storeAnswers();
+    drawState();
+    try {
+      await saveFor(idx, inject, { answerText: text, attachments: files, status: "submitted" });
+      if (idx === formIdx && currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — your changes were saved.";
+    } catch (err) {
+      if (idx !== formIdx) {
+        // Already on another inject: correct what this phone keeps for it.
+        if (answersCache[idx] && baseline) {
+          answersCache[idx].answerText = baseline.answerText || "";
+          answersCache[idx].attachments = (baseline.attachments || []).slice();
+          storeAnswers();
+        }
+        return;
+      }
+      putBack();
+      if (currentSaveStatusEl) {
+        currentSaveStatusEl.textContent = "Time ran out before your changes could be sent. The answer submitted earlier stands.";
+      }
+      storeAnswers();
+      drawState();
+    }
   }
 
   function renderAttachmentList() {
@@ -875,7 +1044,7 @@
     if (!listEl) return;
     listEl.innerHTML = attachments
       .map(
-        (a, i) => `<li><span>${escapeHtml(a.filename)}</span><button data-i="${i}">Remove</button></li>`
+        (a, i) => `<li><span>${escapeHtml(a.filename)}</span><button type="button" data-i="${i}" ${injectLocked ? "disabled" : ""}>Remove</button></li>`
       )
       .join("");
     listEl.querySelectorAll("button").forEach((btn) => {
@@ -885,7 +1054,12 @@
         dirtyForCurrent = true;
         storeAnswers();
         renderAttachmentList();
-        autosaveDraft(formIdx, formInject, currentAnswerEl, currentSaveStatusEl);
+        if (editingSubmitted) {
+          editDirty = true;
+          if (currentSaveStatusEl) currentSaveStatusEl.textContent = UNSENT_TEXT;
+        } else {
+          autosaveDraft(formIdx, formInject, currentAnswerEl, currentSaveStatusEl);
+        }
       });
     });
   }
@@ -912,21 +1086,22 @@
   function lockForCurrentInject(force, message) {
     if (!force && (injectLocked || submittedForCurrent)) return;
     injectLocked = true;
+    editingSubmitted = false;
+    editBaseline = null;
     clearTimeout(saveTimer);
-    if (currentAnswerEl) {
-      if (!submittedForCurrent && dirtyForCurrent) {
-        saveFor(formIdx, formInject, {
-          answerText: currentAnswerEl.value,
-          attachments,
-          status: reopenedSubmitted ? "submitted" : "autosaved",
-        }).catch((err) => console.warn("Autosave on lock failed:", err.message));
-      }
-      currentAnswerEl.disabled = true;
+    if (currentAnswerEl && !submittedForCurrent && dirtyForCurrent) {
+      saveFor(formIdx, formInject, {
+        answerText: currentAnswerEl.value,
+        attachments,
+        status: reopenedSubmitted ? "submitted" : "autosaved",
+      }).catch((err) => console.warn("Autosave on lock failed:", err.message));
     }
-    if (currentFileInput) currentFileInput.disabled = true;
-    if (currentSubmitBtn) {
-      currentSubmitBtn.disabled = true;
-      currentSubmitBtn.textContent = force ? "Locked" : "Time's up";
+    lockLabel = force ? "Locked" : "Time's up";
+    // Locked again by the facilitator after reopening a submitted answer: it
+    // is a submitted answer again (and can be edited while time remains).
+    if (force && reopenedSubmitted) {
+      submittedForCurrent = true;
+      reopenedSubmitted = false;
     }
     if (currentSaveStatusEl) {
       currentSaveStatusEl.textContent = message || (dirtyForCurrent
@@ -934,6 +1109,7 @@
         : "Time's up for this inject.");
     }
     storeAnswers();
+    drawState();
   }
 
   // Reverses a lock by re-rendering the form as editable, keeping whatever
@@ -941,47 +1117,89 @@
   function unlockForCurrentInject(message, wasSubmitted, wasLocked) {
     if (!formInject) return;
     injectLocked = false;
+    editingSubmitted = false;
+    editBaseline = null;
+    editDirty = false;
     const preservedAnswer = currentAnswerEl ? currentAnswerEl.value : "";
-    renderForm(formInject, formIdx, {
-      answerText: preservedAnswer,
-      submitted: !!wasSubmitted,
-      locked: !!wasLocked,
-    });
+    renderForm(formInject, formIdx, { answerText: preservedAnswer });
     if (currentSaveStatusEl) {
       currentSaveStatusEl.textContent = message || "The facilitator added more time — you can continue.";
     }
   }
 
-  // deadlineMs: when time runs out (ms timestamp), or null for no deadline
-  // (no duration set, already submitted, or unlocked by the facilitator).
-  function startInjectTimer(deadlineMs, onExpire) {
+  // ---- The countdown -----------------------------------------------------
+  // Always shows the real time left for the inject (the server's start time
+  // + its duration + any time added) — also after Submit, so a team that has
+  // submitted can see how long it still has to change its answer. Amber in
+  // the last minute, "Time's up" at zero.
+  function updateClock() {
+    const clockEl = document.getElementById("injectClock");
+    const valueEl = document.getElementById("injectTimerValue");
+    const noteEl = document.getElementById("injectTimerNote");
+    const barEl = document.getElementById("injectTimerBar");
+    if (!clockEl || !valueEl) return null;
+    const deadline = currentDeadline();
+    let remainingMs = null;
+    if (!deadline) {
+      clockEl.dataset.state = "none";
+      valueEl.textContent = "No time limit";
+    } else {
+      remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        clockEl.dataset.state = "up";
+        valueEl.textContent = "Time's up";
+        if (barEl) barEl.style.transform = "scaleX(0)";
+      } else {
+        const m = Math.floor(remainingMs / 60000);
+        const s = Math.floor((remainingMs % 60000) / 1000);
+        valueEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        clockEl.dataset.state = remainingMs < 60000 ? "warn" : "run";
+        const totalMs = (((formInject && formInject.durationMinutes) || 0) + currentExtraMinutes) * 60000;
+        if (barEl) barEl.style.transform = `scaleX(${totalMs > 0 ? Math.min(1, remainingMs / totalMs) : 1})`;
+      }
+    }
+    if (noteEl) {
+      const open = remainingMs === null || remainingMs > 0;
+      noteEl.textContent = forceUnlocked
+        ? "Unlocked by the facilitator — you can edit and resubmit"
+        : editingSubmitted
+          ? "Changing your submitted answer"
+          : submittedForCurrent
+            ? (open ? "Submitted — you can still edit it" : "Submitted")
+            : currentExtraMinutes > 0
+              ? `Includes +${currentExtraMinutes} min extra time`
+              : "";
+    }
+    return remainingMs;
+  }
+
+  function onTimeUp() {
+    if (forceUnlocked) return; // the facilitator's unlock has no deadline of its own
+    if (submitting) return; // a Submit is on its way; its own result settles the state
+    if (editingSubmitted) {
+      finishEditAtTimeUp();
+      return;
+    }
+    if (submittedForCurrent) {
+      drawState(); // "Edit answer" goes
+      return;
+    }
+    lockForCurrentInject(false);
+  }
+
+  // (Re)starts the once-a-second countdown for the inject on screen.
+  function armTimer() {
     clearInjectTimer();
     let expired = false;
     function tick() {
-      const el = document.getElementById("injectTimerValue");
-      if (!deadlineMs) {
-        if (el) {
-          el.textContent = forceUnlocked ? "open (unlocked by facilitator)" : submittedForCurrent ? "submitted" : injectLocked ? "closed" : "no time limit";
-          el.classList.remove("warn");
-        }
-        return;
-      }
-      const remainingMs = deadlineMs - Date.now();
-      if (el) {
-        const shown = Math.max(0, remainingMs);
-        const m = Math.floor(shown / 60000);
-        const s = Math.floor((shown % 60000) / 1000);
-        el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-        el.classList.toggle("warn", remainingMs < 60000);
-      }
-      if (!expired && remainingMs <= 0) {
+      const remainingMs = updateClock();
+      if (remainingMs !== null && remainingMs <= 0 && !expired) {
         expired = true;
-        clearInjectTimer();
-        if (onExpire) onExpire();
+        onTimeUp();
       }
     }
     tick();
-    if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
+    if (currentDeadline()) injectTimerInterval = setInterval(tick, 1000);
   }
 
   function clearInjectTimer() {

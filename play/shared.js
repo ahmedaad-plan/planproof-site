@@ -1084,7 +1084,7 @@ function createLiveStatus() {
   el.setAttribute("role", "status");
   el.setAttribute("aria-live", "polite");
   el.style.cssText = "position:fixed;right:10px;bottom:10px;z-index:9999;padding:4px 10px;" +
-    "border-radius:999px;font:600 12px/1.4 system-ui,-apple-system,sans-serif;color:#fff;" +
+    "border-radius:999px;font:600 12px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
     "pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:background .2s";
   document.body.appendChild(el);
   const channels = new Map(); // name -> last status
@@ -1437,11 +1437,11 @@ function setNotice(id, text, { tone } = {}) {
     el.id = id;
     el.setAttribute("role", "status");
     el.style.cssText = "position:fixed;left:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
-      "padding:6px 10px;border-radius:8px;font:500 12px/1.35 system-ui,-apple-system,sans-serif;color:#fff;" +
+      "padding:6px 10px;border-radius:8px;font:500 12px/1.35 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
       "box-shadow:0 1px 4px rgba(0,0,0,.25)";
     document.body.appendChild(el);
   }
-  el.style.background = tone === "info" ? "rgba(11,31,58,.92)" : "rgba(150,95,10,.95)";
+  el.style.background = tone === "info" ? "rgba(33,43,54,.96)" : "rgba(150,95,10,.95)";
   el.textContent = text;
 }
 const AWAKE_NOTICE = "This device may go to sleep. Keep it plugged in and switch off battery saver.";
@@ -1457,7 +1457,7 @@ function showToast(text, ms) {
     el.setAttribute("aria-live", "polite");
     el.style.cssText = "position:fixed;left:10px;right:10px;top:10px;margin:0 auto;width:fit-content;z-index:10000;" +
       "max-width:min(560px,calc(100vw - 20px));padding:10px 14px;border-radius:10px;cursor:pointer;" +
-      "font:600 14px/1.4 system-ui,-apple-system,sans-serif;color:#0b1f3a;background:#e8a33d;" +
+      "font:600 14px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#201404;background:#e2a63b;" +
       "box-shadow:0 2px 10px rgba(0,0,0,.35)";
     el.title = "Tap to dismiss";
     el.addEventListener("click", () => el.remove());
