@@ -194,7 +194,7 @@
   // without a tap. Never a failure: without it the screen needs one tap.
   function autoSoundAdvice() {
     const ua = navigator.userAgent;
-    if (/Edg\//.test(ua)) return "Microsoft Edge: Settings → Cookies and site permissions → Media autoplay → set to Allow. Then reload this page.";
+    if (/Edg\//.test(ua)) return "Microsoft Edge: type edge://settings/content/mediaAutoplay in the address bar (or open Settings and search for \"autoplay\"), set Media autoplay to Allow, then reload this page.";
     if (/Firefox\//.test(ua)) return "Firefox: click the autoplay icon in the address bar (or Page Info → Permissions) and set Autoplay to Allow Audio and Video for plan-proof.com. Then reload this page. Help: support.mozilla.org/kb/block-autoplay";
     if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return "Safari on Mac: click the Page menu button in the address bar, choose Website Settings, and set Auto-Play to Allow All Auto-Play. Then reload this page.";
     return "Chrome has no simple switch for this. It usually starts allowing it once this laptop has played the exercise sounds a few times; otherwise use Microsoft Edge, Firefox or Safari for the room screen, or ask IT to add https://plan-proof.com to Chrome's AutoplayAllowlist policy.";
