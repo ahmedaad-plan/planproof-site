@@ -94,6 +94,15 @@
           <li>When the system is back, carry on from the next inject on screen. Paper answers are typed into the report afterwards — mark them "paper" in the evidence.</li>
         </ol>
       </div>
+      <div class="box">
+        <h2>Say this to the room before you start</h2>
+        <ol class="steps">
+          <li>This exercise tests the plan, not individuals. Findings are reported at team level.</li>
+          <li>Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.</li>
+          <li>Keep your phone or laptop plugged in if you can, and leave the exercise page open in front.</li>
+          <li>If you step away or take a call, the page catches up by itself when you come back.</li>
+        </ol>
+      </div>
       <h2>Inject list</h2>
       <table><thead><tr><th>#</th><th>Inject</th><th>Responsible</th><th>Answer</th><th>Time</th></tr></thead><tbody>
       ${injects.map((inj, i) => `<tr><td>${i + 1}</td><td>${esc(inj.title || "")}</td><td>${esc(injectResponsible(inj).join(", "))}</td><td>${injectOutput(inj) === "individual" ? "Individual" : "Group"}</td><td>${inj.durationMinutes ? esc(inj.durationMinutes) + " min" : "—"}</td></tr>`).join("")}
@@ -111,7 +120,7 @@
           <dt>Answer</dt><dd>${injectOutput(inj) === "individual" ? "Individual — everyone answers on their own sheet" : "Group — one answer per department"}</dd>
           <dt>Time allowed</dt><dd>${inj.durationMinutes ? esc(inj.durationMinutes) + " minutes" : "No time limit"}</dd>
         </dl>
-        <div class="box"><div style="white-space:pre-wrap">${esc(inj.description || inj.body || "")}</div></div>
+        <div class="box"><div style="white-space:pre-wrap">${esc(inj.desc || inj.description || inj.body || "")}</div></div>
         ${task ? `<div class="box task"><strong>Task:</strong> ${esc(task)}</div>` : ""}
         ${inj.sfx ? `<p class="foot">Sound on the room screen: ${esc(Array.isArray(inj.sfx) ? inj.sfx.join(" + ") : inj.sfx)} (not needed on paper).</p>` : ""}
         <h2 style="margin-top:14px">Facilitator notes</h2>

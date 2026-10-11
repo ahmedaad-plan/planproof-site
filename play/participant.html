@@ -208,6 +208,11 @@
   // never re-read from the server. Lost on a page reload; the server copy
   // is unaffected either way.
   const answersCache = {};
+  // State used by init(), which runs just below — declared here, before it.
+  let storedRun = null;          // which run of the exercise the answers kept on this phone belong to
+  let restoredFromPhone = {};    // inject index -> true: brought back from this phone after a reload
+  let messagesLoading = false;
+  let messagesAgain = null;
   let currentAnswerEl = null;
   let currentFileInput = null;
   let currentSubmitBtn = null;
@@ -239,21 +244,113 @@
 
   function init() {
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-    // Live updates plus the safety net (shared.js keepSessionInSync): a
-    // silently dropped live connection is noticed and refetched within
-    // seconds; the form is only re-rendered when the session really changed.
+    loadStoredAnswers();
+    // Live updates (the doorbell) plus the safety net (shared.js
+    // keepSessionInSync): a silently dropped live connection is noticed and
+    // refetched within seconds; the form is only re-rendered when the
+    // session really changed.
     const sync = keepSessionInSync({
       sessionId,
-      onRow: render,
-      onRecovered: () => loadMessages(), // pick up any message missed while disconnected
+      supabaseClient,
+      onRow: (row) => {
+        render(row);
+        awake.update();
+        if (checkins) checkins.beatSoon();
+      },
+      onRecovered: () => loadMessages(false), // pick up any message missed while disconnected
+      onRing: (kind) => { if (kind === "message") loadMessages(true); },
     });
+
+    // Keep the phone awake while the exercise is running (item 6): a
+    // sleeping phone would stop checking in and look offline on the
+    // Facilitator's control tower. Released at the end.
+    const awake = keepAwake({
+      wanted: () => !!latestRow && latestRow.status === "running",
+      onChange: (st) => setNotice("awakeNotice", st === "off" ? AWAKE_NOTICE : null),
+    });
+
+    // Check-ins for the control tower; the reply also shows where the
+    // exercise really is, so a page that missed an update corrects itself.
+    const checkins = startCheckins({
+      sessionId,
+      kind: "person",
+      attendeeId: identity.attendeeId,
+      getState: () => ({
+        page: "participant",
+        shownStatus: latestRow ? latestRow.status : null,
+        shownInject: latestRow && latestRow.status === "running" ? latestRow.current_inject_index : null,
+        sound: "na",
+        awake: awake.state(),
+        live: sync.liveState(),
+      }),
+      onReply: (reply) => handleCheckinReply(reply, { sync, getRow: () => latestRow }),
+      onRefused: () =>
+        setNotice("regNotice", "You are no longer registered in this exercise. Please join again from the join link."),
+    });
+
+    // Back from a phone call, a locked screen or another app: catch up
+    // first, then say where the exercise is now.
+    watchAway({
+      onBack: async (ms) => {
+        await sync.resync("back");
+        showToast(awayText(ms, latestRow));
+      },
+    });
+
     fetchSession(sessionId).then(sync.deliver).catch((err) => {
       mainEl.innerHTML = `<div class="center-note">Couldn't load session: ${escapeHtml(err.message)}</div>`;
     });
-    subscribeToSession(supabaseClient, sessionId, sync.deliver, sync.channelStatus("session"));
-    loadMessages();
-    subscribeToMessages(supabaseClient, sessionId, onNewMessage, sync.channelStatus("messages"));
+    loadMessages(false);
     initReply();
+  }
+
+  // ---- The unfinished answer is also kept on this phone (item 6) --------
+  // If the phone closes the page (a long call, a flat battery, a reload),
+  // the answer box comes back with what was typed instead of blank — so
+  // nobody retypes a shorter answer over the one already saved. Kept per
+  // run of the exercise, and removed from the phone when the exercise ends.
+  // The server copy is still what the report uses.
+  function answersKey() {
+    return `pp_answers_${sessionId}_${identity.attendeeId}`;
+  }
+  function loadStoredAnswers() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(answersKey()) || "null");
+      if (stored && stored.items && typeof stored.items === "object") {
+        storedRun = stored.run === undefined ? null : stored.run;
+        Object.keys(stored.items).forEach((k) => {
+          answersCache[k] = stored.items[k];
+          restoredFromPhone[k] = true;
+        });
+      }
+    } catch {
+      /* storage blocked or damaged — start blank, as before */
+    }
+  }
+  function snapshotCurrent() {
+    if (formIdx === null) return;
+    const el = document.getElementById("answerText");
+    answersCache[formIdx] = {
+      answerText: el ? el.value : (answersCache[formIdx] && answersCache[formIdx].answerText) || "",
+      attachments: attachments.slice(),
+      submitted: submittedForCurrent,
+      locked: injectLocked,
+      dirty: dirtyForCurrent,
+    };
+  }
+  function storeAnswers() {
+    try {
+      snapshotCurrent();
+      const run = latestRow ? latestRow.run_number : storedRun;
+      localStorage.setItem(answersKey(), JSON.stringify({ run, items: answersCache }));
+    } catch {
+      /* storage blocked — the answer is still saved to the server */
+    }
+  }
+  function clearStoredAnswers() {
+    Object.keys(answersCache).forEach((k) => delete answersCache[k]);
+    restoredFromPhone = {};
+    try { localStorage.removeItem(answersKey()); } catch { /* ignore */ }
   }
 
   // ---- Messages from the facilitator (added 5 October 2026) -------------
@@ -306,24 +403,39 @@
     return msgContext(m) === currentContext();
   }
 
-  async function loadMessages() {
+  // Messages come through the checked function (item 6): those for
+  // everyone plus this person's own department. fromRing = a doorbell ring
+  // said a new one exists — a short vibration when one really is new.
+
+  async function loadMessages(fromRing) {
+    if (messagesLoading) {
+      messagesAgain = messagesAgain || !!fromRing;
+      return;
+    }
+    messagesLoading = true;
     try {
-      messages = (await fetchMessages(sessionId)).filter(isForMe);
+      const fresh = (await fetchMessages(sessionId, identity.department)).filter(isForMe);
+      const known = new Set(messages.map((m) => m.id));
+      const first = messages.length === 0 && !fromRing;
+      const gotNew = fresh.some((m) => !known.has(m.id));
+      messages = fresh;
       renderMessages();
+      if (gotNew && fromRing && !first) {
+        try {
+          if (navigator.vibrate) navigator.vibrate(200);
+        } catch {
+          /* not supported — the banner is enough */
+        }
+      }
     } catch (err) {
       console.warn("Couldn't load messages:", err.message);
-    }
-  }
-
-  function onNewMessage(m) {
-    if (!isForMe(m) || messages.some((x) => x.id === m.id)) return;
-    messages.push(m);
-    messages.sort((a, b) => msgTime(a) - msgTime(b));
-    renderMessages();
-    try {
-      if (navigator.vibrate) navigator.vibrate(200);
-    } catch {
-      /* not supported — the banner is enough */
+    } finally {
+      messagesLoading = false;
+      if (messagesAgain !== null) {
+        const again = messagesAgain;
+        messagesAgain = null;
+        loadMessages(again);
+      }
     }
   }
 
@@ -455,14 +567,20 @@
   function saveFor(idx, inject, fields) {
     return saveSubmission(sessionId, {
       injectIndex: idx,
-      department: identity.department,
-      attendeeId: isIndividual(inject) ? identity.attendeeId : null,
+      writerId: identity.attendeeId,
+      individual: isIndividual(inject),
       ...fields,
     });
   }
 
   function render(row) {
     if (!row) return;
+    // A new run (the facilitator pressed Reset): answers kept on this phone
+    // belong to the earlier run — start clean.
+    if (storedRun !== null && row.run_number !== undefined && row.run_number !== storedRun) {
+      clearStoredAnswers();
+    }
+    if (row.run_number !== undefined) storedRun = row.run_number;
     latestRow = row;
     clientLabelEl.textContent = row.label || "PlanProof";
     // The message banner follows what's showing (hides on inject change).
@@ -473,6 +591,8 @@
       mainEl.innerHTML = `<div class="center-note">Exercise complete. Thank you for participating.</div>`;
       formIdx = null;
       formInject = null;
+      // The exercise is over: nothing of the answers stays on this phone.
+      clearStoredAnswers();
       return;
     }
     if (row.status === "lobby") {
@@ -504,6 +624,7 @@
           locked: injectLocked,
           dirty: dirtyForCurrent,
         };
+        storeAnswers();
         // "Facilitator moved on before they clicked Submit" — keep whatever
         // they wrote as status=autosaved rather than losing it. Saved under
         // the inject being LEFT (formInject), not the new one.
@@ -523,10 +644,16 @@
       forceUnlocked = !!row.inject_force_unlocked;
 
       const cached = answersCache[idx];
-      attachments = cached ? cached.attachments.slice() : [];
-      submittedForCurrent = forceUnlocked ? false : cached ? cached.submitted : false;
-      injectLocked = forceUnlocked ? false : cached ? cached.locked : false;
-      dirtyForCurrent = cached ? cached.dirty : false;
+      // Restored from this phone after a reload: a form that had locked on
+      // time-out reopens if the facilitator has since added time.
+      if (cached && restoredFromPhone[idx] && cached.locked && !cached.submitted) {
+        const dl = injectDeadlineMs(row, inject);
+        if (dl && dl > Date.now()) cached.locked = false;
+      }
+      attachments = cached ? (cached.attachments || []).slice() : [];
+      submittedForCurrent = forceUnlocked ? false : cached ? !!cached.submitted : false;
+      injectLocked = forceUnlocked ? false : cached ? !!cached.locked : false;
+      dirtyForCurrent = cached ? !!cached.dirty : false;
 
       renderForm(inject, idx, {
         answerText: cached ? cached.answerText : "",
@@ -542,6 +669,12 @@
         startInjectTimer(injectDeadlineMs(row, inject), () => lockForCurrentInject(false));
       } else {
         startInjectTimer(null, null);
+      }
+      if (cached && restoredFromPhone[idx]) {
+        delete restoredFromPhone[idx];
+        if (currentSaveStatusEl && !currentSaveStatusEl.textContent && (cached.answerText || (cached.attachments || []).length)) {
+          currentSaveStatusEl.textContent = "Your answer was brought back on this phone.";
+        }
       }
     } else {
       formInject = inject;
@@ -642,6 +775,7 @@
     answerEl.addEventListener("input", () => {
       if (injectLocked) return;
       dirtyForCurrent = true;
+      storeAnswers(); // on the phone at once; on the server 1.5 seconds after the last keystroke
       saveStatusEl.textContent = "Saving…";
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => autosaveDraft(idx, inject, answerEl, saveStatusEl), 1500);
@@ -667,6 +801,7 @@
           const uploaded = await uploadAttachment(sessionId, idx, identity.department, file);
           attachments.push(uploaded);
           dirtyForCurrent = true;
+          storeAnswers();
           renderAttachmentList();
           await autosaveDraft(idx, inject, answerEl, saveStatusEl);
         } catch (err) {
@@ -694,6 +829,7 @@
         answerEl.disabled = true;
         fileInput.disabled = true;
         saveStatusEl.textContent = "";
+        storeAnswers();
         document.querySelector(".row-buttons").insertAdjacentHTML(
           "beforebegin",
           `<div class="submitted-banner">${submittedText}</div>`
@@ -747,6 +883,7 @@
         if (injectLocked) return;
         attachments.splice(Number(btn.dataset.i), 1);
         dirtyForCurrent = true;
+        storeAnswers();
         renderAttachmentList();
         autosaveDraft(formIdx, formInject, currentAnswerEl, currentSaveStatusEl);
       });
@@ -796,6 +933,7 @@
         ? "Time's up for this inject — your response has been saved automatically."
         : "Time's up for this inject.");
     }
+    storeAnswers();
   }
 
   // Reverses a lock by re-rendering the form as editable, keeping whatever

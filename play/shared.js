@@ -47,32 +47,40 @@ function assertValidSessionId(sessionId) {
   }
 }
 
+// Headers for a call to one of the database's checked functions. The
+// facilitator token is added only when this page's link carries a
+// well-formed one.
+function rpcHeaders(facilitatorToken) {
+  const headers = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (facilitatorToken && UUID_RE.test(facilitatorToken)) headers["x-facilitator-token"] = facilitatorToken;
+  return headers;
+}
+
+// The session, by its exact id (item 6, 11 October 2026). The public key can
+// no longer read the exercise_sessions table — listing sessions is closed —
+// so every page asks the database function player_session for this one
+// session. Without the facilitator token the answer is cut down to what a
+// player's screen needs: only injects already played, and only their display
+// fields. With the token (the Facilitator page, the backup pack) it is the
+// full scenario.
+// `cache: "no-store"` stays: a stale cached copy was once mistaken for a real
+// bug ("No inject at index 2" on a session that had 17).
 async function fetchSession(sessionId) {
   assertValidSessionId(sessionId);
-  const res = await fetch(
-    // Same URL is requested over and over as the exercise progresses (every
-    // page load, every realtime-triggered refresh), which is exactly the
-    // shape of request a browser's HTTP cache likes to reuse instead of
-    // re-fetching — observed directly as "No inject at index 2" on a
-    // session that actually had 17 injects, because the page was reading
-    // a response cached from before injects were added. `cache: "no-store"`
-    // forces a real network request every time. (Deliberately NOT adding a
-    // cache-busting query param here — PostgREST treats any unrecognized
-    // query parameter as a column filter, e.g. "?_=123" errors with
-    // "column _ does not exist", so cache: "no-store" has to do the job
-    // alone.)
-    `${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}&select=*`,
-    {
-      cache: "no-store",
-      headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-      },
-    }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/player_session`, {
+    method: "POST",
+    cache: "no-store",
+    headers: rpcHeaders(getFacilitatorToken()),
+    body: JSON.stringify({ p_session_id: sessionId }),
+  });
   if (!res.ok) throw new Error(`Fetch session failed: HTTP ${res.status}`);
-  const rows = await res.json();
-  return rows[0] || null;
+  const text = await res.text();
+  const row = text ? JSON.parse(text) : null;
+  return row || null;
 }
 
 // Retries a failed write a few times (with increasing delay) before giving
@@ -147,6 +155,7 @@ async function patchSession(sessionId, fields) {
           "this session. Use the exact Facilitator link that was issued for it."
       );
     }
+    ringDoorbell(writerDoorbell, "session");
   });
 }
 
@@ -211,73 +220,42 @@ async function joinSession(sessionId, { id, firstName, familyName, title, depart
   }
 }
 
-// Saves a department's answer to one inject (roadmap: participant task
-// submission). One row per (session, inject, department) — anyone who
-// joined as that department can write it, same self-declared trust model
-// the join flow already uses (no login exists to check against, so this
-// isn't a new weaker boundary). Deliberately NOT an upsert: PostgREST/
-// Postgres's ON CONFLICT DO UPDATE requires full-row SELECT privilege to
-// even attempt it, which would mean granting anon read access to every
-// department's actual answer text across every session — a much worse
-// exposure than the metadata-only reads already accepted elsewhere. Insert
-// first; a unique-constraint conflict (this department already has a row
-// for this inject) falls back to a plain UPDATE, which only needs SELECT
-// on the filter columns (session_id/inject_index/department — granted),
-// never on answer_text/attachments/status.
+// Saves an answer to one inject through the database's checked function
+// save_submission (item 6, 11 October 2026 — the public key can no longer
+// read, insert or update the answers table directly). The writer must be a
+// registered participant of this session; the department always comes from
+// that registration, never from the browser, and nothing about the writer is
+// stored on a group answer.
 //
-// Group vs individual (Ahmed, 4 October 2026): each inject in the scenario
-// says whether it needs one answer per department ("group" — attendeeId
-// omitted, as before) or one answer per person ("individual" — attendeeId
-// set). An individual row is keyed by the attendee instead of the
-// department, and the database takes the department from that attendee's
-// registration rather than trusting the browser. submitted_at/on_time are
-// stamped by the database at the moment of Submit — never sent from here.
-async function saveSubmission(sessionId, { injectIndex, department, attendeeId, answerText, attachments, status }) {
+// Group vs individual (Ahmed, 4 October 2026): a "group" inject has one
+// answer per department (anyone registered in it can write it); an
+// "individual" inject has one answer per person. submitted_at/on_time are
+// stamped by the database at the moment of Submit. A draft or an automatic
+// save can never turn an already-submitted answer back into an unsubmitted
+// one — the database refuses it, in plain words.
+async function saveSubmission(sessionId, { injectIndex, writerId, individual, answerText, attachments, status }) {
   assertValidSessionId(sessionId);
-  const commonHeaders = {
-    apikey: SUPABASE_PUBLISHABLE_KEY,
-    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-    "Content-Type": "application/json",
-    Prefer: "return=minimal",
-  };
-
-  const row = {
-    session_id: sessionId,
-    inject_index: injectIndex,
-    department,
-    answer_text: answerText,
-    attachments,
-    status,
-  };
-  if (attendeeId) row.attendee_id = attendeeId;
-
-  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions`, {
-    method: "POST",
-    headers: commonHeaders,
-    body: JSON.stringify(row),
-  });
-  if (insertRes.ok) return;
-  if (insertRes.status !== 409) {
-    throw new Error(`Couldn't save your answer: ${await readErrorDetail(insertRes)}`);
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_submission`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(null),
+      body: JSON.stringify({
+        p_session_id: sessionId,
+        p_writer_id: writerId,
+        p_inject_index: injectIndex,
+        p_individual: !!individual,
+        p_answer_text: answerText,
+        p_attachments: attachments || [],
+        p_status: status,
+      }),
+    });
+  } catch {
+    throw new Error("Couldn't save your answer: no connection. It is kept on this device — it will be saved when the connection is back.");
   }
-
-  // 409 = this answer already has a row (this department's group answer, or
-  // this person's individual answer) — expected on every save after the
-  // first one for the same inject. The group filter must say attendee_id is
-  // null, or it would also overwrite that department's individual answers.
-  const filter =
-    `session_id=eq.${encodeURIComponent(sessionId)}` +
-    `&inject_index=eq.${encodeURIComponent(injectIndex)}` +
-    (attendeeId
-      ? `&attendee_id=eq.${encodeURIComponent(attendeeId)}`
-      : `&department=eq.${encodeURIComponent(department)}&attendee_id=is.null`);
-  const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/exercise_submissions?${filter}`, {
-    method: "PATCH",
-    headers: commonHeaders,
-    body: JSON.stringify({ answer_text: answerText, attachments, status }),
-  });
-  if (!updateRes.ok) {
-    throw new Error(`Couldn't save your answer: ${await readErrorDetail(updateRes)}`);
+  if (!res.ok) {
+    throw new Error(`Couldn't save your answer: ${await readErrorDetail(res)}`);
   }
 }
 
@@ -536,23 +514,36 @@ function onReconnect(callback) {
   });
 }
 
-// Subscribes to live changes on one session row. Calls onChange(newRow) every
-// time it changes (facilitator action, or anyone else's update). Uses the
-// Supabase Realtime client, loaded from CDN by the page.
-function subscribeToSession(supabaseClient, sessionId, onChange, onStatus) {
+// ---- The doorbell (item 6, 11 October 2026) --------------------------------
+// Live updates no longer carry any data. The database rings a content-free
+// "ring" on this session's own channel whenever the session changes or a
+// message is added; each page then fetches the latest through the checked
+// functions. A false ring (the channel is open to anyone who knows the
+// session id) can only cause a re-fetch. onRing(kind): "session", "message"
+// (to participants) or "inbox" (to the facilitator).
+function subscribeToDoorbell(supabaseClient, sessionId, onRing, onStatus) {
   return supabaseClient
-    .channel(`session-${sessionId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: "exercise_sessions",
-        filter: `id=eq.${sessionId}`,
-      },
-      (payload) => onChange(payload.new)
-    )
+    .channel(`pp-${sessionId}`, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "ring" }, (msg) => {
+      const kind = msg && msg.payload && msg.payload.kind;
+      onRing(kind === "message" || kind === "inbox" ? kind : "session");
+    })
     .subscribe((status) => onStatus && onStatus(status));
+}
+
+// The Facilitator page also rings after each of its own actions — belt and
+// braces with the database's ring, so screens react at once either way.
+// It registers its channel here; patchSession and sendBroadcast then ring it.
+let writerDoorbell = null;
+function setWriterDoorbell(channel) {
+  writerDoorbell = channel;
+}
+function ringDoorbell(channel, kind) {
+  try {
+    if (channel) channel.send({ type: "broadcast", event: "ring", payload: { kind: kind || "session" } });
+  } catch {
+    /* the database's own ring and the 15-second check still cover it */
+  }
 }
 
 // ---- Facilitator broadcast messages (added 5 October 2026) ----------------
@@ -642,6 +633,7 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
     }
     throw new Error(`Message not sent: ${detail}`);
   }
+  ringDoorbell(writerDoorbell, "message");
 }
 
 // Department -> facilitator. No facilitator token exists for a participant,
@@ -687,87 +679,48 @@ async function sendDepartmentRequest(sessionId, { body, presetKey, department })
   }
 }
 
-// Messages addressed to participants, oldest first. Read is open (see the
-// table's comments) because Realtime can't check a header.
-async function fetchMessages(sessionId) {
+// Messages addressed to participants, oldest first, through the checked
+// function player_messages (item 6 — the public key can no longer read the
+// messages table): messages for everyone, plus those for `department` when
+// one is given (a participant's own department).
+async function fetchMessages(sessionId, department) {
   assertValidSessionId(sessionId);
   const res = await withRetry(() =>
-    fetch(
-      `${SUPABASE_URL}/rest/v1/session_messages?session_id=eq.${sessionId}` +
-        `&direction=eq.to_participants` +
-        `&select=id,department,inject_index,preset_key,body,created_at&order=created_at.asc`,
-      {
-        cache: "no-store",
-        headers: {
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        },
-      }
-    )
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/player_messages`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(null),
+      body: JSON.stringify({ p_session_id: sessionId, p_department: department || null }),
+    })
   );
-  if (!res.ok) throw new Error(`Fetch messages failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Fetch messages failed: ${await readErrorDetail(res)}`);
   return res.json();
 }
 
-// Messages addressed to the facilitator (department requests), oldest
-// first. Same open read as fetchMessages above, for the same reason
-// (Realtime can't check a header) — accepted, closed at item 6.
+// Every message of the session, both directions — facilitator token only
+// (item 6: department requests are no longer readable without it).
+async function fetchAllMessages(sessionId) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_messages`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(getFacilitatorToken()),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(`Fetch messages failed: ${await readErrorDetail(res)}`);
+  return res.json();
+}
+
+// Messages addressed to the facilitator (department requests), oldest first.
 async function fetchFacilitatorMessages(sessionId) {
-  assertValidSessionId(sessionId);
-  const res = await withRetry(() =>
-    fetch(
-      `${SUPABASE_URL}/rest/v1/session_messages?session_id=eq.${sessionId}` +
-        `&direction=eq.to_facilitator` +
-        `&select=id,department,inject_index,preset_key,body,created_at&order=created_at.asc`,
-      {
-        cache: "no-store",
-        headers: {
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        },
-      }
-    )
-  );
-  if (!res.ok) throw new Error(`Fetch facilitator messages failed: HTTP ${res.status}`);
-  return res.json();
+  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_facilitator");
 }
 
-// Calls onMessage(row) for every new message in this session, live.
-function subscribeToMessages(supabaseClient, sessionId, onMessage, onStatus) {
-  return supabaseClient
-    .channel(`messages-${sessionId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "session_messages",
-        filter: `session_id=eq.${sessionId}`,
-      },
-      (payload) => {
-        if (payload.new && payload.new.direction === "to_participants") onMessage(payload.new);
-      }
-    )
-    .subscribe((status) => onStatus && onStatus(status));
-}
-
-// Calls onMessage(row) for every new department->facilitator message, live.
-function subscribeToFacilitatorMessages(supabaseClient, sessionId, onMessage, onStatus) {
-  return supabaseClient
-    .channel(`facilitator-messages-${sessionId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "session_messages",
-        filter: `session_id=eq.${sessionId}`,
-      },
-      (payload) => {
-        if (payload.new && payload.new.direction === "to_facilitator") onMessage(payload.new);
-      }
-    )
-    .subscribe((status) => onStatus && onStatus(status));
+// What the facilitator has sent (to everyone and to departments), oldest first.
+async function fetchSentMessages(sessionId) {
+  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_participants");
 }
 
 function formatMessageTime(iso) {
@@ -1167,34 +1120,46 @@ function createLiveStatus() {
   };
 }
 
-// opts: { sessionId, onRow(row), onRecovered(row)?, intervalMs? }
-// Returns { deliver, channelStatus(name), resync(reason), live }.
-// Pass `deliver` (not the page's render) to subscribeToSession, so the live
-// stream and the safety-net refetch never double-render the same row.
+// opts: { sessionId, supabaseClient?, onRow(row), onRecovered(row)?, onRing(kind)?, intervalMs? }
+// Returns { deliver, channelStatus(name), resync(reason, {force}), softRefresh(), live, doorbell(), liveState() }.
+// With supabaseClient it joins the session's doorbell channel itself: a
+// "session" ring fetches the session (at most once a second); every ring is
+// also passed to opts.onRing so the page can reload its messages.
 function keepSessionInSync(opts) {
   const live = createLiveStatus();
   let lastSig = null;
-  function deliver(row) {
+  function deliver(row, force) {
     if (!row) return;
     const sig = rowSignature(row);
-    if (sig === lastSig) return;
+    if (sig === lastSig && !force) return;
     lastSig = sig;
     opts.onRow(row);
   }
   let inFlight = false;
-  async function resync(reason) {
-    if (inFlight) return;
+  let again = null;
+  async function resync(reason, o) {
+    const force = !!(o && o.force);
+    if (inFlight) {
+      // Never drop a request made while a fetch is running: run once more after it.
+      again = { reason, force: force || !!(again && again.force) };
+      return;
+    }
     inFlight = true;
     try {
       const row = await fetchSession(opts.sessionId);
       live.fetchResult(true);
-      deliver(row);
-      if (reason !== "poll" && opts.onRecovered) opts.onRecovered(row);
+      deliver(row, force);
+      if (reason !== "poll" && reason !== "ring" && opts.onRecovered) opts.onRecovered(row);
     } catch (err) {
       live.fetchResult(false);
       console.warn(`Resync (${reason}) failed:`, err.message);
     } finally {
       inFlight = false;
+      if (again) {
+        const next = again;
+        again = null;
+        resync(next.reason, { force: next.force });
+      }
     }
   }
   function channelStatus(name) {
@@ -1206,7 +1171,338 @@ function keepSessionInSync(opts) {
       else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") resync(`channel ${status}`);
     };
   }
+
+  // The doorbell: at most one session fetch a second, however often it rings.
+  let lastRingFetch = 0;
+  let ringTimer = null;
+  function onRing(kind) {
+    if (kind === "session") {
+      const wait = 1000 - (Date.now() - lastRingFetch);
+      if (wait <= 0) {
+        lastRingFetch = Date.now();
+        resync("ring");
+      } else if (!ringTimer) {
+        ringTimer = setTimeout(() => {
+          ringTimer = null;
+          lastRingFetch = Date.now();
+          resync("ring");
+        }, wait);
+      }
+    }
+    if (opts.onRing) opts.onRing(kind);
+  }
+  let channel = null;
+  function joinDoorbell() {
+    if (!opts.supabaseClient) return;
+    channel = subscribeToDoorbell(opts.supabaseClient, opts.sessionId, onRing, channelStatus("doorbell"));
+  }
+  joinDoorbell();
+
+  // "Refresh this screen" from the control tower: throw away what is shown,
+  // rejoin the live channel, fetch everything and redraw — without reloading
+  // the page, so sound that was switched on stays on.
+  async function softRefresh() {
+    try {
+      if (channel && opts.supabaseClient) {
+        const old = channel;
+        channel = null;
+        await opts.supabaseClient.removeChannel(old);
+        live.channel("doorbell", "JOINING");
+        joinDoorbell();
+      }
+    } catch (err) {
+      console.warn("Rejoining the live channel failed:", err.message);
+    }
+    await resync("soft", { force: true });
+  }
+
   setInterval(() => resync("poll"), opts.intervalMs || 15000);
   onReconnect(() => resync("reconnect"));
-  return { deliver, channelStatus, resync, live };
+  return {
+    deliver, channelStatus, resync, softRefresh, live,
+    doorbell: () => channel,
+    liveState: () => (live.el.dataset.state === "live" ? "live" : "poll"),
+  };
+}
+
+// ---- Check-ins (item 6, 11 October 2026) -----------------------------------
+// Every 20 seconds each device tells the database it is still here — over
+// plain HTTP, so it works on networks that block live connections — and
+// reports what it is showing. Only the Facilitator's link can read them (the
+// control tower). The reply carries the exercise's real position, so a screen
+// that is behind corrects itself, and any command the Facilitator queued for
+// this screen ("soft" refresh or full "reload").
+// opts: { sessionId, kind: "person"|"room_screen", attendeeId?, deviceId?,
+//         getState() -> { room, page, shownStatus, shownInject, sound, awake, live },
+//         onReply(reply)?, onRefused(message)?, intervalMs? }
+const CHECKIN_INTERVAL_MS = 20000;
+function startCheckins(opts) {
+  let inFlight = false;
+  async function beat() {
+    // A page that is not in front is not "here": it stops checking in, and
+    // checks in again the moment it is back.
+    if (inFlight || document.hidden) return;
+    inFlight = true;
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 10000) : null;
+    try {
+      const st = (opts.getState && opts.getState()) || {};
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/player_checkin`, {
+        method: "POST",
+        cache: "no-store",
+        headers: rpcHeaders(null),
+        signal: ctl ? ctl.signal : undefined,
+        body: JSON.stringify({
+          p_session_id: opts.sessionId,
+          p_kind: opts.kind,
+          p_attendee_id: opts.attendeeId || null,
+          p_device_id: opts.deviceId || null,
+          p_room: st.room === undefined ? null : st.room,
+          p_page: st.page || null,
+          p_shown_status: st.shownStatus || null,
+          p_shown_inject: Number.isInteger(st.shownInject) ? st.shownInject : null,
+          p_sound: st.sound || null,
+          p_awake: st.awake || null,
+          p_live: st.live || null,
+        }),
+      });
+      if (res.ok) {
+        const reply = await res.json();
+        if (opts.onReply) opts.onReply(reply || {});
+      } else if (res.status === 401 || res.status === 403) {
+        if (opts.onRefused) opts.onRefused(await readErrorDetail(res));
+      }
+    } catch {
+      /* offline or timed out — the next beat tries again */
+    } finally {
+      if (timer) clearTimeout(timer);
+      inFlight = false;
+    }
+  }
+  // After the screen changes what it shows, report it shortly (not on every
+  // redraw), so the control tower is never 20 seconds behind the screen.
+  let soonTimer = null;
+  function beatSoon() {
+    if (soonTimer) return;
+    soonTimer = setTimeout(() => {
+      soonTimer = null;
+      beat();
+    }, 1500);
+  }
+  beat();
+  setInterval(beat, opts.intervalMs || CHECKIN_INTERVAL_MS);
+  onReconnect(beat);
+  return { beat, beatSoon };
+}
+
+// ---- The control tower's own calls (facilitator token only) ----------------
+async function fetchPresence(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_presence`, {
+    method: "POST",
+    cache: "no-store",
+    headers: rpcHeaders(facilitatorToken),
+    body: JSON.stringify({ p_session_id: sessionId }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// command: "soft" (refresh without reloading — sound stays on) or "reload".
+async function sendScreenCommand(sessionId, deviceKey, command, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_screen_command`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId, p_device_key: deviceKey, p_command: command }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// How fresh a check-in is, against the server's own clock.
+const PRESENCE_GREEN_MS = 45000;
+const PRESENCE_AMBER_MS = 120000;
+function presenceState(lastSeenIso, serverNowMs) {
+  if (!lastSeenIso) return "never";
+  const age = serverNowMs - Date.parse(lastSeenIso);
+  if (age <= PRESENCE_GREEN_MS) return "green";
+  if (age <= PRESENCE_AMBER_MS) return "amber";
+  return "grey";
+}
+
+// The usual reaction to a check-in reply: obey a queued command, and if the
+// reply shows the exercise is somewhere else than this screen, fetch it now.
+function handleCheckinReply(reply, { sync, getRow, onSoft }) {
+  if (reply.command === "reload") {
+    try { sessionStorage.setItem("pp_reloaded_by_facilitator", "1"); } catch { /* ignore */ }
+    location.reload();
+    return;
+  }
+  if (reply.command === "soft") {
+    sync.softRefresh().then(() => { if (onSoft) onSoft(); });
+    return;
+  }
+  const row = getRow();
+  const sameTime = row && Date.parse(row.updated_at) === Date.parse(reply.updated_at);
+  if (!row || row.status !== reply.status || row.current_inject_index !== reply.current_inject_index || !sameTime) {
+    sync.resync("checkin");
+  }
+}
+
+// A stable id for a shared room screen (it has no registration), kept in
+// this browser. { deviceId, room }.
+function loadScreenIdentity(sessionId) {
+  const key = `pp_screen_${sessionId}`;
+  let me = null;
+  try { me = JSON.parse(localStorage.getItem(key) || "null"); } catch { me = null; }
+  if (!me || !UUID_RE.test(me.deviceId || "")) me = { deviceId: crypto.randomUUID(), room: null, started: false };
+  const store = () => { try { localStorage.setItem(key, JSON.stringify(me)); } catch { /* kept in memory only */ } };
+  store();
+  return { me, store };
+}
+
+// ---- Keep the device awake (item 6, 11 October 2026) -----------------------
+// Asks the browser to keep the screen on while this page is in front (the
+// way a video player does), whenever wanted() is true. state(): "on", "off"
+// (wanted but the device refused or can't — battery saver, old browser) or
+// "na" (not wanted now). The browser drops the request whenever the page
+// leaves the front; it is asked again the moment the page is back.
+function keepAwake({ wanted, onChange }) {
+  const supported = !!(navigator.wakeLock && navigator.wakeLock.request);
+  let lock = null;
+  let state = "na";
+  let requesting = false;
+  let letGo = false; // true while this code is releasing it on purpose
+  function set(next) {
+    if (next === state) return;
+    state = next;
+    if (onChange) onChange(state);
+  }
+  async function update() {
+    let want = false;
+    try { want = !!wanted(); } catch { want = false; }
+    if (!want) {
+      if (lock) {
+        const held = lock;
+        lock = null;
+        letGo = true;
+        try { await held.release(); } catch { /* already gone */ }
+        letGo = false;
+      }
+      set("na");
+      return;
+    }
+    if (!supported) { set("off"); return; }
+    if (lock) { set("on"); return; }
+    if (document.hidden || requesting) return;
+    requesting = true;
+    try {
+      const got = await navigator.wakeLock.request("screen");
+      lock = got;
+      got.addEventListener("release", () => {
+        if (lock === got) lock = null;
+        if (letGo) return;
+        // Dropped while in front (for example battery saver switching on):
+        // say so, and try again shortly.
+        if (!document.hidden) { set("off"); setTimeout(update, 3000); }
+      });
+      set("on");
+    } catch {
+      lock = null;
+      set("off");
+    } finally {
+      requesting = false;
+    }
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) update(); });
+  // Some browsers only grant it after the person has touched the page.
+  ["click", "touchend", "keydown"].forEach((ev) =>
+    document.addEventListener(ev, () => { if (state === "off") update(); }, { passive: true })
+  );
+  setInterval(update, 30000);
+  update();
+  return { state: () => state, update };
+}
+
+// A small fixed notice (one per id). text null/"" hides it.
+function setNotice(id, text, { tone } = {}) {
+  let el = document.getElementById(id);
+  if (!text) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = id;
+    el.setAttribute("role", "status");
+    el.style.cssText = "position:fixed;left:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
+      "padding:6px 10px;border-radius:8px;font:500 12px/1.35 system-ui,-apple-system,sans-serif;color:#fff;" +
+      "box-shadow:0 1px 4px rgba(0,0,0,.25)";
+    document.body.appendChild(el);
+  }
+  el.style.background = tone === "info" ? "rgba(11,31,58,.92)" : "rgba(150,95,10,.95)";
+  el.textContent = text;
+}
+const AWAKE_NOTICE = "This device may go to sleep. Keep it plugged in and switch off battery saver.";
+
+// A message across the top that the person dismisses (or that goes after
+// `ms`). Used for "welcome back" and "refreshed by the facilitator".
+function showToast(text, ms) {
+  let el = document.getElementById("ppToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ppToast";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.style.cssText = "position:fixed;left:10px;right:10px;top:10px;margin:0 auto;width:fit-content;z-index:10000;" +
+      "max-width:min(560px,calc(100vw - 20px));padding:10px 14px;border-radius:10px;cursor:pointer;" +
+      "font:600 14px/1.4 system-ui,-apple-system,sans-serif;color:#0b1f3a;background:#e8a33d;" +
+      "box-shadow:0 2px 10px rgba(0,0,0,.35)";
+    el.title = "Tap to dismiss";
+    el.addEventListener("click", () => el.remove());
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { if (el.parentNode) el.remove(); }, ms || 15000);
+}
+
+// ---- Coming back after being away (item 6, 11 October 2026) ----------------
+// A phone call, a locked screen or another app pauses the page. onBack(ms)
+// fires when it has been away for at least minMs — either the page was not
+// in front, or its clock stopped (the device slept).
+function watchAway({ minMs, onBack }) {
+  const min = minMs || 60000;
+  let hiddenAt = document.hidden ? Date.now() : null;
+  let lastTick = Date.now();
+  let lastFired = 0;
+  function fire(ms) {
+    if (Date.now() - lastFired < 10000) return;
+    lastFired = Date.now();
+    onBack(ms);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    const away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = null;
+    lastTick = Date.now();
+    if (away >= min) fire(away);
+  });
+  setInterval(() => {
+    const now = Date.now();
+    const gap = now - lastTick;
+    lastTick = now;
+    if (!document.hidden && gap >= min + 5000) fire(gap);
+  }, 5000);
+}
+
+function awayText(ms, row) {
+  const mins = Math.max(1, Math.round(ms / 60000));
+  const away = `You were away for ${mins} minute${mins === 1 ? "" : "s"}.`;
+  if (!row) return away;
+  if (row.status === "ended") return `${away} The exercise has ended.`;
+  if (row.status === "lobby") return `${away} The exercise has not started yet.`;
+  const total = ((row.scenario && row.scenario.injects) || []).length;
+  return `${away} The exercise is now on inject ${row.current_inject_index + 1}${total ? ` of ${total}` : ""}.`;
 }

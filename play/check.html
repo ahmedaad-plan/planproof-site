@@ -51,6 +51,8 @@
   <div class="card" id="c-live" data-state="running"><span class="dot"></span><h2>Live updates (WebSocket)</h2><div class="msg">Checking… (up to 12 seconds)</div></div>
   <div class="card" id="c-clock" data-state="running"><span class="dot"></span><h2>Device clock</h2><div class="msg">Checking…</div></div>
   <div class="card" id="c-browser" data-state="running"><span class="dot"></span><h2>Browser</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-awake" data-state="running"><span class="dot"></span><h2>Staying awake</h2><div class="msg">Checking…</div></div>
+  <div class="card" id="c-autosound" data-state="running"><span class="dot"></span><h2>Sound without a tap (room screens only)</h2><div class="msg">Checking…</div></div>
   <div class="card" id="c-sound" data-state="pending"><span class="dot"></span><h2>Sound (room screens only)</h2>
     <div class="msg">Press the button, then say whether you heard a phone ringing.</div>
     <div class="row"><button id="soundBtn">Play test sound</button><button class="ghost" id="heardYes" hidden>Yes, I heard it</button><button class="ghost" id="heardNo" hidden>No sound</button></div>
@@ -84,7 +86,7 @@
   }
 
   function summarise() {
-    const auto = ["c-site", "c-data", "c-live", "c-clock", "c-browser"];
+    const auto = ["c-site", "c-data", "c-live", "c-clock", "c-browser", "c-awake"];
     if (auto.some((k) => !results[k] || results[k].state === "running")) return;
     const states = Object.values(results).map((r) => r.state);
     const el = document.getElementById("summary");
@@ -96,7 +98,7 @@
   }
 
   function report() {
-    const names = { "c-site": "Website", "c-data": "Data service", "c-live": "Live updates", "c-clock": "Clock", "c-browser": "Browser", "c-sound": "Sound" };
+    const names = { "c-site": "Website", "c-data": "Data service", "c-live": "Live updates", "c-clock": "Clock", "c-browser": "Browser", "c-awake": "Staying awake", "c-autosound": "Sound without a tap", "c-sound": "Sound" };
     return [`PlanProof connection check — ${new Date().toString()}`, `Device: ${navigator.userAgent}`, "",
       ...Object.entries(names).map(([k, n]) => `${n}: ${results[k] ? results[k].state.toUpperCase() + " — " + results[k].msg : "not run"}`)].join("\n");
   }
@@ -106,8 +108,8 @@
   }
 
   async function run() {
-    for (const k of Object.keys(results)) if (k !== "c-sound") delete results[k];
-    ["c-site", "c-data", "c-live", "c-clock", "c-browser"].forEach((id) => { const el = document.getElementById(id); el.dataset.state = "running"; el.querySelector(".msg").textContent = "Checking…"; const f = el.querySelector(".fix"); if (f) f.remove(); });
+    for (const k of Object.keys(results)) if (k !== "c-sound" && k !== "c-autosound") delete results[k];
+    ["c-site", "c-data", "c-live", "c-clock", "c-browser", "c-awake"].forEach((id) => { const el = document.getElementById(id); el.dataset.state = "running"; el.querySelector(".msg").textContent = "Checking…"; const f = el.querySelector(".fix"); if (f) f.remove(); });
     document.getElementById("summary").hidden = true;
 
     // Browser features the player relies on.
@@ -138,11 +140,15 @@
       set("c-clock", "warn", "Not checked (the website was not reachable).", "Make sure the device's date and time are set automatically.");
     }
 
-    // Exercise data service (REST).
+    // Exercise data service: the same checked route the player pages use
+    // (item 6, 11 October 2026) — asks for a session that does not exist.
     try {
       const t0 = Date.now();
-      const res = await timed(fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?select=id&limit=1`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }, cache: "no-store",
+      const res = await timed(fetch(`${SUPABASE_URL}/rest/v1/rpc/player_session`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ p_session_id: crypto.randomUUID() }),
       }), 8000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       set("c-data", "ok", `Reachable (${Date.now() - t0} ms).`);
@@ -150,14 +156,16 @@
       set("c-data", "bad", `Not reachable (${err.message}).`, ALLOW);
     }
 
-    // Live updates: join a throwaway channel and wait for SUBSCRIBED.
+    // Live updates: join a throwaway channel, ring it, and wait for the ring
+    // to come back — the same "doorbell" the player pages rely on.
     try {
       const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
       const t0 = Date.now();
       await timed(new Promise((resolve, reject) => {
-        const ch = client.channel(`connection-check-${crypto.randomUUID()}`);
+        const ch = client.channel(`connection-check-${crypto.randomUUID()}`, { config: { broadcast: { self: true } } });
+        ch.on("broadcast", { event: "ring" }, () => { resolve(); setTimeout(() => client.removeChannel(ch), 500); });
         ch.subscribe((status) => {
-          if (status === "SUBSCRIBED") { resolve(); setTimeout(() => client.removeChannel(ch), 500); }
+          if (status === "SUBSCRIBED") ch.send({ type: "broadcast", event: "ring", payload: { kind: "check" } });
           else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error(status));
         });
       }), 12000);
@@ -165,7 +173,48 @@
     } catch (err) {
       set("c-live", "bad", `Live updates are blocked on this network (${err.message}). Screens would only refresh every 15 seconds.`, ALLOW);
     }
+
+    // Staying awake: the player asks the device to keep its screen on.
+    const LOCK_ADVICE = "On a company laptop used as a room screen, also ask IT to make the automatic screen lock longer than the exercise — a website cannot override a forced lock.";
+    try {
+      if (!(navigator.wakeLock && navigator.wakeLock.request)) throw new Error("not supported by this browser");
+      const lock = await timed(navigator.wakeLock.request("screen"), 5000);
+      try { await lock.release(); } catch { /* fine */ }
+      set("c-awake", "ok", "This device can be kept awake during the exercise.", LOCK_ADVICE);
+    } catch (err) {
+      set("c-awake", "warn", `This device may go to sleep during the exercise (${err.message}).`,
+        "Keep it plugged in, switch off battery saver, and set the screen to stay on for the length of the exercise. " + LOCK_ADVICE);
+    }
   }
+
+  // Sound without a tap — checked once, when the page opens and before
+  // anything has been pressed (a press would make the answer meaningless).
+  // After a full reload a room screen tries to start its sound by itself;
+  // that only works where the browser allows this site to play sound
+  // without a tap. Never a failure: without it the screen needs one tap.
+  function autoSoundAdvice() {
+    const ua = navigator.userAgent;
+    if (/Edg\//.test(ua)) return "Microsoft Edge: Settings → Cookies and site permissions → Media autoplay → set to Allow. Then reload this page.";
+    if (/Firefox\//.test(ua)) return "Firefox: click the autoplay icon in the address bar (or Page Info → Permissions) and set Autoplay to Allow Audio and Video for plan-proof.com. Then reload this page. Help: support.mozilla.org/kb/block-autoplay";
+    if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return "Safari on Mac: click the Page menu button in the address bar, choose Website Settings, and set Auto-Play to Allow All Auto-Play. Then reload this page.";
+    return "Chrome has no simple switch for this. It usually starts allowing it once this laptop has played the exercise sounds a few times; otherwise use Microsoft Edge, Firefox or Safari for the room screen, or ask IT to add https://plan-proof.com to Chrome's AutoplayAllowlist policy.";
+  }
+  (function checkAutoSound() {
+    const el = document.getElementById("c-autosound");
+    try {
+      const a = new Audio("./sfx/phone-ring.mp3");
+      a.volume = 0.01;
+      a.play().then(() => {
+        a.pause();
+        set("c-autosound", "ok", "Allowed — after a full reload this room screen will start its sound by itself.");
+      }).catch(() => {
+        set("c-autosound", "info", "Not allowed yet — after a full reload this room screen needs one tap on \"Tap to begin\". The exercise still works. To avoid the tap:", autoSoundAdvice());
+      });
+    } catch {
+      el.dataset.state = "info";
+      set("c-autosound", "info", "Could not be checked on this browser. After a full reload the room screen may need one tap.");
+    }
+  })();
 
   document.getElementById("soundBtn").onclick = () => {
     const a = new Audio("./sfx/phone-ring.mp3");

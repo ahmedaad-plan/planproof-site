@@ -74,6 +74,23 @@
     font-size: 1.3rem; padding: 16px 32px; border-radius: 10px; border: none;
     background: var(--pp-amber); color: var(--pp-navy); font-weight: 700; cursor: pointer;
   }
+  .sound-gate button:disabled { opacity: 0.45; cursor: not-allowed; }
+  /* Item 6 (11 October 2026): with more than one room, the screen asks once
+     which room it is in, so the control tower can say which room's screen
+     is down or behind. */
+  .room-pick { text-align: center; }
+  .room-pick .q { font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; }
+  .room-pick .room-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .sound-gate .room-buttons button {
+    font-size: 1.1rem; padding: 12px 20px; background: transparent; color: var(--pp-paper);
+    border: 2px solid rgba(244,241,234,0.5); font-weight: 600;
+  }
+  .sound-gate .room-buttons button.sel { background: var(--pp-paper); color: var(--pp-navy); border-color: var(--pp-paper); }
+  .screen-room { margin-left: 10px; font-size: 0.9rem; opacity: 0.85; }
+  .screen-room button {
+    margin-left: 6px; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+    background: transparent; color: inherit; border: 1px solid rgba(244,241,234,0.4);
+  }
   /* Shows what the last sound attempt actually did (playing / blocked / no
      file) right on screen, so a sound problem can be diagnosed on the room's
      own laptop without opening dev tools. */
@@ -129,12 +146,17 @@
 
 <div class="sound-gate" id="soundGate">
   <div style="font-size:1.1rem; opacity:0.8;">Exercise Room Display</div>
+  <div class="room-pick" id="roomPick" hidden>
+    <div class="q">Which room is this screen in?</div>
+    <div class="room-buttons" id="roomButtons"></div>
+  </div>
   <button id="startBtn">Tap to begin (enables sound)</button>
 </div>
 
 <header>
   <div class="brand">
     <span id="clientLabel">PlanProof</span>
+    <span class="screen-room" id="screenRoom" hidden></span>
   </div>
   <div class="brand powered">Powered by PlanProof</div>
 </header>
@@ -205,6 +227,8 @@
   // is actually dismissed, instead of only on the next inject change.
   let audioUnlocked = false;
   let pendingSfx = null;
+  let checkins = null;
+  const screenId = observerMode || !sessionId ? null : loadScreenIdentity(sessionId);
 
   setSfxStatusHandler((msg) => {
     sfxStatusEl.textContent = `sound: ${msg}`;
@@ -213,63 +237,211 @@
   if (!sessionId) {
     mainEl.innerHTML = `<div class="lobby">No ?session=&lt;id&gt; given in the URL.</div>`;
   } else {
-    document.getElementById("startBtn").addEventListener("click", () => {
-      document.getElementById("soundGate").style.display = "none";
-      // Same gesture unlocks the broadcast chime (Web Audio).
+    // ---- Start gate, room question and sound (item 6, 11 October 2026) ---
+    // A shared room screen has no registration, so it keeps its own id in
+    // this browser, plus (with more than one room) which room it is in.
+    const gateEl = document.getElementById("soundGate");
+    const startBtnEl = document.getElementById("startBtn");
+    const roomPickEl = document.getElementById("roomPick");
+    const roomButtonsEl = document.getElementById("roomButtons");
+    const screenRoomEl = document.getElementById("screenRoom");
+    let gateOpen = !observerMode;
+    let roomsKnown = 0; // the session's room_count, once loaded
+
+    function roomNeeded() {
+      return !observerMode && roomsKnown > 1 && !(screenId.me.room >= 1 && screenId.me.room <= roomsKnown);
+    }
+    function drawGate() {
+      if (observerMode) return;
+      const many = roomsKnown > 1;
+      roomPickEl.hidden = !many;
+      if (many) {
+        roomButtonsEl.innerHTML = Array.from({ length: roomsKnown }, (_, i) => i + 1)
+          .map((n) => `<button type="button" data-room="${n}" class="${screenId.me.room === n ? "sel" : ""}">Room ${n}${n === 1 ? " (facilitator's)" : ""}</button>`)
+          .join("");
+      }
+      startBtnEl.disabled = roomNeeded();
+      startBtnEl.textContent = audioUnlocked ? "Done" : "Tap to begin (enables sound)";
+      gateEl.style.display = gateOpen ? "" : "none";
+      screenRoomEl.hidden = !(many && screenId.me.room && !gateOpen);
+      if (!screenRoomEl.hidden) {
+        screenRoomEl.innerHTML = `· Room ${screenId.me.room} <button type="button" id="changeRoomBtn">change</button>`;
+      }
+    }
+    // Called on every session update: a room count that grew or shrank can
+    // make the stored room invalid — then the screen asks again.
+    function updateRoomUi(row) {
+      if (observerMode || !row) return;
+      roomsKnown = row.room_count || 1;
+      if (roomsKnown > 1 && screenId.me.room && screenId.me.room > roomsKnown) {
+        screenId.me.room = null;
+        screenId.store();
+      }
+      if (roomNeeded()) gateOpen = true;
+      drawGate();
+    }
+    roomButtonsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-room]");
+      if (!btn) return;
+      screenId.me.room = Number(btn.dataset.room);
+      screenId.store();
+      drawGate();
+    });
+    screenRoomEl.addEventListener("click", (e) => {
+      if (!e.target.closest("#changeRoomBtn")) return;
+      gateOpen = true;
+      drawGate();
+    });
+
+    function onSoundUnlocked() {
+      audioUnlocked = true;
+      sfxStatusEl.textContent = "sound: unlocked ✓";
+      // Catch up on the sound for whatever inject was already showing
+      // before sound was on, since its own playSfx() attempt was blocked.
+      if (pendingSfx) {
+        const toPlay = pendingSfx;
+        pendingSfx = null;
+        playSfx(toPlay);
+      }
+      drawGate();
+      if (checkins) checkins.beat();
+    }
+    // Plays one real clip for an instant. Inside the "Tap to begin" gesture
+    // it is silent (volume 0) and unlocks sound for the rest of the session,
+    // including on stricter browsers (Safari). Without a gesture — after a
+    // reload — it is barely audible (volume 0.01) so the browser's own
+    // answer is truthful: it resolves only if this laptop allows sound for
+    // this site without a tap.
+    function tryUnlockSound(volume) {
       unlockChime();
-      // This click is the user gesture that unlocks audio playback for the
-      // rest of the session in most browsers. Priming one real clip here
-      // (played muted, immediately stopped) also satisfies stricter browsers
-      // (Safari) that need an actual play() call inside the gesture itself.
       const unlock = new Audio(SFX_FILES["siren-ambulance"]);
-      unlock.volume = 0;
-      unlock
-        .play()
-        .then(() => {
-          unlock.pause();
-          audioUnlocked = true;
-          sfxStatusEl.textContent = "sound: unlocked ✓";
-          // Catch up on the sound for whatever inject was already showing
-          // before this tap, since its own playSfx() attempt (at page load)
-          // would have been blocked.
-          if (pendingSfx) {
-            const toPlay = pendingSfx;
-            pendingSfx = null;
-            playSfx(toPlay);
-          }
-        })
+      unlock.volume = volume;
+      return unlock.play().then(() => {
+        unlock.pause();
+      });
+    }
+
+    startBtnEl.addEventListener("click", () => {
+      if (roomNeeded()) return;
+      gateOpen = false;
+      screenId.me.started = true;
+      screenId.store();
+      drawGate();
+      if (audioUnlocked) {
+        if (checkins) checkins.beat();
+        return;
+      }
+      tryUnlockSound(0)
+        .then(onSoundUnlocked)
         .catch((err) => {
           sfxStatusEl.textContent = `sound: unlock failed — ${err.message}`;
         });
     });
 
+    // After a reload (for example "Full reload" from the control tower) a
+    // screen that was already started tries to start itself: no room
+    // question left to answer, and sound only if the browser allows it
+    // without a tap. Otherwise "Tap to begin" stays, as before.
+    let autoStartTried = false;
+    function maybeAutoStart() {
+      if (observerMode || autoStartTried || !screenId.me.started || roomNeeded()) return;
+      autoStartTried = true;
+      tryUnlockSound(0.01)
+        .then(() => {
+          gateOpen = false;
+          onSoundUnlocked();
+        })
+        .catch(() => {
+          /* the browser wants a tap — the gate stays up */
+        });
+    }
+
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    // Live updates plus the safety net (shared.js keepSessionInSync): a
-    // silently dropped live connection is noticed and the screen refetches
-    // within seconds, with a status pill in the corner.
+    // Live updates (the doorbell) plus the safety net (shared.js
+    // keepSessionInSync): a silently dropped live connection is noticed and
+    // the screen refetches within seconds, with a status pill in the corner.
     const sync = keepSessionInSync({
       sessionId,
-      onRow: render,
+      supabaseClient,
+      onRow: (row) => {
+        render(row);
+        updateRoomUi(row);
+        maybeAutoStart();
+        awake.update();
+        if (checkins) checkins.beatSoon();
+      },
       // After a drop or a WiFi change, don't trust that the live stream
       // caught everything — re-check for a broadcast missed meanwhile.
-      onRecovered: (row) => catchUpBroadcast(row),
+      onRecovered: (row) => catchUpBroadcast(row, false),
+      // A new message for participants: fetch it; chime if it really is new.
+      onRing: (kind) => { if (kind === "message") catchUpBroadcast(latestRow, true); },
     });
 
+    // Keep the screen awake: a room screen until the exercise ends; an
+    // Observer's phone until their notes hour closes.
+    const awake = keepAwake({
+      wanted: () => {
+        if (!latestRow) return true;
+        if (!observerMode) return latestRow.status !== "ended";
+        return latestRow.status === "lobby" || notesWindow(latestRow, "observer").open;
+      },
+      onChange: (st) => setNotice("awakeNotice", st === "off" ? AWAKE_NOTICE : null),
+    });
+
+    // Check-ins for the Facilitator's control tower; the reply also tells
+    // this screen where the exercise really is, and carries "Refresh this
+    // screen" / "Full reload" from the tower.
+    checkins = startCheckins({
+      sessionId,
+      kind: observerMode ? "person" : "room_screen",
+      attendeeId: observer ? observer.attendeeId : null,
+      deviceId: observerMode ? null : screenId.me.deviceId,
+      getState: () => ({
+        room: observerMode ? null : screenId.me.room,
+        page: observerMode ? "observer" : "room",
+        shownStatus: latestRow ? latestRow.status : null,
+        shownInject: latestRow && latestRow.status === "running" ? latestRow.current_inject_index : null,
+        sound: observerMode ? "na" : audioUnlocked ? "on" : "off",
+        awake: awake.state(),
+        live: sync.liveState(),
+      }),
+      onReply: (reply) =>
+        handleCheckinReply(reply, {
+          sync,
+          getRow: () => latestRow,
+          onSoft: () => showToast("Refreshed by the facilitator.", 6000),
+        }),
+      onRefused: observerMode
+        ? () => setNotice("regNotice", "You are no longer registered in this exercise. Please join again from the join link.")
+        : null,
+    });
+
+    try {
+      if (sessionStorage.getItem("pp_reloaded_by_facilitator")) {
+        sessionStorage.removeItem("pp_reloaded_by_facilitator");
+        showToast("Reloaded by the facilitator.", 6000);
+      }
+    } catch { /* ignore */ }
+
+    if (observerMode) {
+      watchAway({
+        onBack: async (ms) => {
+          await sync.resync("back");
+          showToast(awayText(ms, latestRow));
+        },
+      });
+    }
+
+    drawGate();
     fetchSession(sessionId)
       .then((row) => {
         sync.deliver(row);
-        return catchUpBroadcast(row);
+        return catchUpBroadcast(row, false);
       })
       .catch((err) => {
         mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
       });
-
-    subscribeToSession(supabaseClient, sessionId, sync.deliver, sync.channelStatus("session"));
-    subscribeToMessages(supabaseClient, sessionId, (m) => {
-      // A live message: full display time, plus the chime if sound is on.
-      if (showBroadcast(m, BANNER_SECONDS * 1000) && audioUnlocked) playChime();
-    }, sync.channelStatus("messages"));
   }
 
   // ---- Facilitator broadcast banner (added 5 October 2026) ----------------
@@ -315,21 +487,41 @@
     return row && row.status === "running" ? row.current_inject_index : null;
   }
 
-  // On load or reconnect: if the latest message for everyone was sent for
-  // what's showing now and its 30 seconds aren't up, show it for the time
-  // it has left (no chime — it isn't new).
-  async function catchUpBroadcast(row) {
+  // On load, reconnect or a doorbell ring: if the latest message for
+  // everyone was sent for what's showing now and its 30 seconds aren't up,
+  // show it for the time it has left. It chimes only when it arrived by a
+  // ring and has not been seen on this screen before.
+  const seenBroadcastIds = new Set();
+  let broadcastFetching = false;
+  let broadcastAgain = false;
+  async function catchUpBroadcast(row, fromRing) {
     if (!row || row.status === "ended") return;
+    if (broadcastFetching) {
+      // A ring that arrives mid-fetch is never dropped: fetch once more after.
+      broadcastAgain = broadcastAgain || !!fromRing;
+      return;
+    }
+    broadcastFetching = true;
     try {
       const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
       const latest = msgs[msgs.length - 1];
+      const firstLoad = seenBroadcastIds.size === 0 && !fromRing;
+      const isNew = latest && !seenBroadcastIds.has(latest.id);
+      msgs.forEach((m) => seenBroadcastIds.add(m.id));
       if (!latest) return;
       const msgContext = latest.inject_index === undefined ? null : latest.inject_index;
-      if (msgContext !== rowContext(row)) return;
+      if (msgContext !== rowContext(latestRow || row)) return;
       const ageMs = Math.max(0, Date.now() - new Date(latest.created_at).getTime());
-      showBroadcast(latest, BANNER_SECONDS * 1000 - ageMs);
+      const shown = showBroadcast(latest, BANNER_SECONDS * 1000 - ageMs);
+      if (shown && isNew && fromRing && !firstLoad && audioUnlocked) playChime();
     } catch (err) {
       console.warn("Couldn't load messages:", err.message);
+    } finally {
+      broadcastFetching = false;
+      if (broadcastAgain) {
+        broadcastAgain = false;
+        catchUpBroadcast(latestRow, true);
+      }
     }
   }
 

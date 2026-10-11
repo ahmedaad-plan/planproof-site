@@ -155,6 +155,33 @@
   .notes-own .ppn { border: 1px solid #e3e3e3; margin-top: 8px; }
   .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: #0b1f3a; color: #fff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-left: 4px; vertical-align: 1px; }
   .roster-summary { font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px; }
+  /* Control tower (roadmap item 6, 11 October 2026): who is connected right
+     now. Visual only — it never chimes. */
+  [hidden] { display: none !important; }
+  .tower-section { margin-top: 24px; max-width: 760px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 16px; }
+  .tower-section h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  .tower-section h3 { font-size: 0.92rem; margin: 14px 0 6px; }
+  .tower-section .sub { font-size: 0.85rem; opacity: 0.75; margin-bottom: 10px; }
+  .tower-headline { font-size: 1.25rem; font-weight: 700; }
+  .tower-headline small { font-size: 0.85rem; font-weight: 500; opacity: 0.75; margin-left: 8px; }
+  .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff3d6; border: 1px solid #e8a33d; font-size: 0.9rem; }
+  .tower-warn.red { background: #fde4e1; border-color: #c0392b; color: #7d1f16; font-weight: 600; }
+  .tower-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eee; font-size: 0.92rem; flex-wrap: wrap; }
+  .tower-row:first-of-type { border-top: none; }
+  .tower-row .what { flex: 1 1 260px; min-width: 0; }
+  .tower-row .what b { font-weight: 600; }
+  .tower-row .what .bad { color: #b00020; font-weight: 600; }
+  .tower-row .what .soft { opacity: 0.7; }
+  .tower-row button { font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #0b1f3a; background: white; color: #0b1f3a; cursor: pointer; }
+  .tower-row button.danger { border-color: #b00020; color: #b00020; }
+  .tower-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .tower-legend { margin-top: 10px; font-size: 0.8rem; opacity: 0.8; display: flex; gap: 14px; flex-wrap: wrap; }
+  .tower-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .tower-legend .dot, .roster-dept .dot, .tower-row .dot { width: 11px; height: 11px; flex: 0 0 11px; }
+  .roster-dept .seen { opacity: 0.6; font-size: 0.82rem; }
+  .roster-group { margin: 6px 0 10px; font-size: 0.85rem; }
+  .roster-group button { font-size: 0.82rem; padding: 3px 10px; border-radius: 6px; border: 1px solid #0b1f3a; background: white; color: #0b1f3a; cursor: pointer; }
+  .roster-group button.on { background: #0b1f3a; color: white; }
 </style>
 </head>
 <body>
@@ -166,7 +193,7 @@
     shows up instantly on the room display.
   </div>
 
-  <div class="status">Status: <b id="statusVal">loading…</b> · Inject index: <b id="indexVal">—</b></div>
+  <div class="status">Status: <b id="statusVal">loading…</b> · Inject: <b id="indexVal">—</b></div>
 
   <div class="controls">
     <button class="primary" id="startBtn">Start exercise</button>
@@ -187,6 +214,29 @@
 
   <div class="current-inject" id="currentInject">—</div>
   <div id="errorBox" style="display:none; margin-top:12px; color:#b00020; font-size:0.9rem;"></div>
+
+  <div class="tower-section" id="towerSection">
+    <h2>Control tower</h2>
+    <div class="sub">
+      Who is connected right now. Every screen and phone checks in every 20
+      seconds; this is a live indicator, not the attendance record.
+    </div>
+    <div class="tower-headline" id="towerHeadline">Loading…</div>
+    <div id="towerWarnings"></div>
+    <h3>Room screens</h3>
+    <div id="towerScreens"></div>
+    <div id="towerObserversWrap" hidden>
+      <h3>Observers</h3>
+      <div id="towerObservers"></div>
+    </div>
+    <div id="towerError" style="display:none; margin-top:8px; color:#b00020; font-size:0.9rem;"></div>
+    <div class="tower-legend">
+      <span><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
+      <span><i class="dot amber"></i> Not seen for up to 2 minutes</span>
+      <span><i class="dot grey"></i> Offline, or not connected yet</span>
+      <span><i class="dot red"></i> Needs attention</span>
+    </div>
+  </div>
 
   <div class="broadcast-section" id="broadcastSection">
     <h2>Message everyone</h2>
@@ -296,6 +346,11 @@
       <button id="addDeptBtn">Add department</button>
     </div>
     <div id="rosterError" style="display:none; margin-bottom:10px; color:#b00020; font-size:0.9rem;"></div>
+    <div class="roster-group" id="rosterGroup" hidden>
+      Group by:
+      <button type="button" data-group="department" class="on">Department</button>
+      <button type="button" data-group="room">Room</button>
+    </div>
     <div id="roster">Loading…</div>
   </div>
 
@@ -349,6 +404,8 @@
     document.getElementById("printLink").href = `${location.origin}/play/print.html?session=${sessionId}&token=${encodeURIComponent(facilitatorToken)}`;
 
     let currentRow = null;
+    let actionBusy = false; // an action is being sent — the background check waits
+    let refreshSeq = 0;     // see refresh()
     const startBtn = document.getElementById("startBtn");
     const nextBtn = document.getElementById("nextBtn");
     const prevBtn = document.getElementById("prevBtn");
@@ -384,6 +441,7 @@
       button.addEventListener("click", async () => {
         actionButtons.forEach((b) => (b.disabled = true));
         errorBoxEl.style.display = "none";
+        actionBusy = true;
         try {
           await action();
           await refresh();
@@ -391,6 +449,7 @@
           errorBoxEl.textContent = `Action failed: ${err.message}`;
           errorBoxEl.style.display = "block";
         } finally {
+          actionBusy = false;
           updateButtonAvailability();
         }
       });
@@ -579,7 +638,7 @@
 
     async function refreshMessageLog() {
       try {
-        const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+        const msgs = (await fetchSentMessages(sessionId)).filter((m) => !m.department);
         msgLogEl.innerHTML = msgs.length
           ? msgs
               .slice()
@@ -701,7 +760,7 @@
 
     async function refreshDeptMsgLog() {
       try {
-        const msgs = (await fetchMessages(sessionId)).filter((m) => !!m.department);
+        const msgs = (await fetchSentMessages(sessionId)).filter((m) => !!m.department);
         deptMsgLogEl.innerHTML = msgs.length
           ? msgs
               .slice()
@@ -773,10 +832,18 @@
         : `<li style="opacity:0.6;">No messages yet.</li>`;
     }
 
-    async function refreshInbox() {
+    // fromRing = the doorbell said a department has just sent something:
+    // chime if a message really is new (as the live inbox always did).
+    let inboxLoadedOnce = false;
+    async function refreshInbox(fromRing) {
       try {
-        inboxMessages = await fetchFacilitatorMessages(sessionId);
+        const known = new Set(inboxMessages.map((m) => m.id));
+        const fresh = await fetchFacilitatorMessages(sessionId);
+        const gotNew = fresh.some((m) => !known.has(m.id));
+        inboxMessages = fresh;
         renderInbox();
+        if (gotNew && inboxLoadedOnce) playChime();
+        inboxLoadedOnce = true;
       } catch (err) {
         inboxListEl.innerHTML = `<li style="color:#b00020;">Couldn't load messages: ${escapeHtml(err.message)}</li>`;
       }
@@ -792,17 +859,32 @@
     // connection drops; a drop or recovery also refetches the inbox at once
     // (the 15-second poll below stays as the safety net).
     const liveStatus = createLiveStatus();
-    liveStatus.expect("inbox");
-    subscribeToFacilitatorMessages(supabaseClient, sessionId, (m) => {
-      if (inboxMessages.some((x) => x.id === m.id)) return;
-      inboxMessages.push(m);
-      inboxMessages.sort((a, b) => inboxMsgTime(a) - inboxMsgTime(b));
-      renderInbox();
-      playChime();
+    liveStatus.expect("doorbell");
+    // The doorbell (item 6): a content-free ring from the database when the
+    // session changes or a message arrives. "inbox" = a department has
+    // written to the facilitator; "session" = the session changed (for
+    // example from a second facilitator device).
+    let ringRefreshAt = 0;
+    const doorbell = subscribeToDoorbell(supabaseClient, sessionId, (kind) => {
+      if (kind === "inbox") refreshInbox(true);
+      else if (kind === "session" && Date.now() - ringRefreshAt > 1000) {
+        ringRefreshAt = Date.now();
+        refresh().catch(() => {});
+      }
     }, (status) => {
-      const wasDown = liveStatus.isDown("inbox");
-      liveStatus.channel("inbox", status);
+      const wasDown = liveStatus.isDown("doorbell");
+      liveStatus.channel("doorbell", status);
       if ((status === "SUBSCRIBED" && wasDown) || status === "CHANNEL_ERROR" || status === "TIMED_OUT") refreshInbox();
+    });
+    // This page rings the same bell after each of its own actions.
+    setWriterDoorbell(doorbell);
+
+    // Keep the facilitator's laptop awake until the exercise ends (item 6).
+    // If it does sleep, nothing moves: the exercise position lives in the
+    // database.
+    const awake = keepAwake({
+      wanted: () => !currentRow || currentRow.status !== "ended",
+      onChange: (st) => setNotice("awakeNotice", st === "off" ? AWAKE_NOTICE : null),
     });
 
     // The attendee roster isn't on Realtime (see design-notes.md — a
@@ -820,7 +902,18 @@
         lastAttendees = attendees;
         lastSubmissions = submissions;
         rosterErrorEl.style.display = "none";
+        // Who is connected right now (control tower). A failure here never
+        // hides the roster or the response status.
+        try {
+          lastPresence = await fetchPresence(sessionId, facilitatorToken);
+          lastPresenceAt = Date.now();
+          towerErrorEl.style.display = "none";
+        } catch (err) {
+          towerErrorEl.textContent = `Couldn't load who is online: ${err.message}`;
+          towerErrorEl.style.display = "block";
+        }
         renderRoster(attendees);
+        renderTower();
         renderStatus();
         // The department picker depends on currentRow (scenario
         // departments) and lastAttendees — refresh() and refreshRoster()
@@ -1007,17 +1100,249 @@
       statusSectionEl.innerHTML = html;
     }
 
+    // ---- Control tower (roadmap item 6, 11 October 2026) -----------------
+    // Every device checks in every 20 seconds; only this facilitator link
+    // can read the check-ins. Ages are measured against the server's clock
+    // (sent with the list), never this laptop's.
+    const towerHeadlineEl = document.getElementById("towerHeadline");
+    const towerWarningsEl = document.getElementById("towerWarnings");
+    const towerScreensEl = document.getElementById("towerScreens");
+    const towerObserversWrapEl = document.getElementById("towerObserversWrap");
+    const towerObserversEl = document.getElementById("towerObservers");
+    const towerErrorEl = document.getElementById("towerError");
+    const rosterGroupEl = document.getElementById("rosterGroup");
+    let lastPresence = null;   // { now, devices: [...] }
+    let lastPresenceAt = 0;    // this laptop's clock when it arrived
+    let rosterGroupBy = "department";
+    const softSentAt = {};     // device_key -> when "Refresh this screen" was pressed here
+    const SCREEN_RECENT_MS = 15 * 60 * 1000; // screens silent for longer drop off the list
+    const BEHIND_AFTER_MS = 30000;           // a screen gets this long to correct itself
+    const PROMPT_AFTER_MS = 60000;
+
+    // The server's "now", moved on by the time since the list arrived.
+    function towerNowMs() {
+      if (!lastPresence) return Date.now();
+      return Date.parse(lastPresence.now) + (Date.now() - lastPresenceAt);
+    }
+    function personPresence(attendeeId) {
+      if (!lastPresence) return null;
+      return lastPresence.devices.find((d) => d.kind === "person" && d.attendee_id === attendeeId) || null;
+    }
+    function seenText(d, state) {
+      if (!d) return "not connected yet";
+      if (state === "green") return "online";
+      const t = formatMessageTime(d.last_seen);
+      return state === "amber" ? `not seen since ${t}` : `offline — last seen ${t}`;
+    }
+    function personDotHtml(a) {
+      if (!lastPresence) return "";
+      const d = personPresence(a.id);
+      const state = d ? presenceState(d.last_seen, towerNowMs()) : "never";
+      const colour = state === "green" ? "green" : state === "amber" ? "amber" : "grey";
+      return `<i class="dot ${colour}" title="${escapeHtml(seenText(d, state))}"></i> `;
+    }
+    function personSeenHtml(a) {
+      if (!lastPresence) return "";
+      const d = personPresence(a.id);
+      const state = d ? presenceState(d.last_seen, towerNowMs()) : "never";
+      if (state === "green") return "";
+      return ` <span class="seen">· ${escapeHtml(seenText(d, state))}</span>`;
+    }
+    function injectName(idx) {
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      const inj = injects[idx];
+      return `inject ${idx + 1}${inj && inj.title ? ` "${inj.title}"` : ""}`;
+    }
+    function shownText(d) {
+      if (d.shown_status === "running" && Number.isInteger(d.shown_inject)) return injectName(d.shown_inject);
+      if (d.shown_status === "lobby") return "the waiting screen";
+      if (d.shown_status === "ended") return "the end screen";
+      return "nothing yet";
+    }
+    // Is this device showing something other than where the exercise is?
+    function isBehind(d) {
+      if (!currentRow || !d.shown_status) return false;
+      if (d.shown_status !== currentRow.status) return true;
+      return currentRow.status === "running" && d.shown_inject !== currentRow.current_inject_index;
+    }
+
+    function renderTower() {
+      if (!lastPresence || !lastAttendees) return;
+      const now = towerNowMs();
+      const people = lastAttendees;
+      const states = people.map((a) => {
+        const d = personPresence(a.id);
+        return { a, d, state: d ? presenceState(d.last_seen, now) : "never" };
+      });
+      const online = states.filter((x) => x.state === "green").length;
+      const amber = states.filter((x) => x.state === "amber").length;
+      const off = states.length - online - amber;
+      towerHeadlineEl.innerHTML = people.length
+        ? `${online} of ${people.length} online<small>${amber ? `${amber} not seen for a minute · ` : ""}${off ? `${off} offline or not connected yet` : amber ? "" : "everyone is connected"}</small>`
+        : `No one has joined yet`;
+
+      const warnings = [];
+      // A department with people registered but nobody online.
+      const byDept = {};
+      states.filter((x) => x.a.role !== "observer").forEach((x) => {
+        (byDept[x.a.department] = byDept[x.a.department] || []).push(x);
+      });
+      Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
+        if (!byDept[dept].some((x) => x.state === "green")) {
+          warnings.push({ red: false, text: `${dept}: nobody online` });
+        }
+      });
+
+      // ---- Room screens ----
+      const rooms = (currentRow && currentRow.room_count) || 1;
+      // When the exercise last moved, on the server's clock where it has one
+      // (the inject's start, the end) — a screen gets 30 seconds from then.
+      const movedAt = !currentRow ? null
+        : currentRow.status === "running" && currentRow.inject_started_at ? currentRow.inject_started_at
+        : currentRow.status === "ended" && currentRow.ended_at ? currentRow.ended_at
+        : currentRow.updated_at;
+      const sinceChange = movedAt ? now - Date.parse(movedAt) : 0;
+      const screens = lastPresence.devices
+        .filter((d) => d.kind === "room_screen" && now - Date.parse(d.last_seen) <= SCREEN_RECENT_MS)
+        .sort((a, b) => (a.room || 99) - (b.room || 99) || Date.parse(a.first_seen) - Date.parse(b.first_seen));
+      const rowsHtml = [];
+      const screenRow = (d, label) => {
+        const state = presenceState(d.last_seen, now);
+        const age = now - Date.parse(d.last_seen);
+        const behind = state === "green" && isBehind(d) && sinceChange > BEHIND_AFTER_MS;
+        const catching = state === "green" && isBehind(d) && !behind;
+        let colour = state === "green" ? "green" : state === "amber" ? "amber" : "grey";
+        let text;
+        if (state !== "green") {
+          text = `<span class="${state === "grey" ? "bad" : ""}">${state === "amber" ? "not seen since" : "not responding — last seen"} ${escapeHtml(formatMessageTime(d.last_seen))}</span>`;
+          if (state === "grey" && currentRow && currentRow.status !== "ended") colour = "red";
+        } else if (behind) {
+          colour = "red";
+          text = `<span class="bad">behind — showing ${escapeHtml(shownText(d))}</span>`;
+        } else {
+          text = `online, showing ${escapeHtml(shownText(d))}${catching ? ` <span class="soft">(catching up…)</span>` : ""}`;
+        }
+        const extras = [];
+        if (state === "green") {
+          extras.push(d.sound === "on" ? "sound on" : `<span class="bad">sound off — needs a tap on "Tap to begin"</span>`);
+          if (d.awake === "off") extras.push(`<span class="bad">may go to sleep</span>`);
+          if (d.live === "poll") extras.push(`<span class="soft">live connection down — updating every 15 seconds</span>`);
+        }
+        let cmd = "";
+        if (d.pending_command) {
+          cmd = ` <span class="soft">· ${d.pending_command === "reload" ? "Full reload" : "Refresh"} sent — waiting for the screen (up to 20 seconds)</span>`;
+        } else if (d.last_command_delivered_at && now - Date.parse(d.last_command_delivered_at) < 120000) {
+          cmd = ` <span class="soft">· ${d.last_command === "reload" ? "reloaded" : "refreshed"} at ${escapeHtml(formatMessageTime(d.last_command_delivered_at))}</span>`;
+        }
+        const showReload = softSentAt[d.device_key] && Date.now() - softSentAt[d.device_key] < 10 * 60 * 1000;
+        const busy = !!d.pending_command;
+        rowsHtml.push(`
+          <div class="tower-row" data-key="${escapeHtml(d.device_key)}">
+            <i class="dot ${colour}"></i>
+            <span class="what"><b>${escapeHtml(label)}:</b> ${text}${extras.length ? " · " + extras.join(" · ") : ""}${cmd}</span>
+            <button type="button" data-cmd="soft" ${busy ? "disabled" : ""}>Refresh this screen</button>
+            ${showReload ? `<button type="button" class="danger" data-cmd="reload" ${busy ? "disabled" : ""}>Full reload</button>` : ""}
+          </div>`);
+        // After a minute behind or silent, say what to do.
+        if (currentRow && currentRow.status !== "ended") {
+          if (state === "grey" || (state === "amber" && age > PROMPT_AFTER_MS)) {
+            warnings.push({ red: true, text: `${label} is not responding. Ask the room to refresh it (or reopen the room display link).` });
+          } else if (behind && sinceChange > PROMPT_AFTER_MS) {
+            warnings.push({ red: true, text: `${label} is behind. Press "Refresh this screen"; if that doesn't help, "Full reload".` });
+          }
+        }
+      };
+      if (rooms > 1) {
+        for (let r = 1; r <= rooms; r++) {
+          const inRoom = screens.filter((d) => d.room === r);
+          if (!inRoom.length) {
+            rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>Room ${r} screen:</b> <span class="soft">no screen connected</span></span></div>`);
+            if (currentRow && currentRow.status === "running") {
+              warnings.push({ red: false, text: `Room ${r}: no room screen is connected.` });
+            }
+          }
+          inRoom.forEach((d, i) => screenRow(d, `Room ${r} screen${inRoom.length > 1 ? ` ${i + 1}` : ""}`));
+        }
+        screens.filter((d) => !d.room).forEach((d, i) => screenRow(d, `Screen ${i + 1} (room not chosen yet)`));
+      } else if (!screens.length) {
+        rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>Room screen:</b> <span class="soft">no screen connected</span></span></div>`);
+        if (currentRow && currentRow.status === "running") warnings.push({ red: false, text: "No room screen is connected." });
+      } else {
+        screens.forEach((d, i) => screenRow(d, `Room screen${screens.length > 1 ? ` ${i + 1}` : ""}`));
+      }
+      towerScreensEl.innerHTML = rowsHtml.join("");
+
+      // ---- Observers, per room ----
+      const observers = states.filter((x) => x.a.role === "observer");
+      towerObserversWrapEl.hidden = observers.length === 0;
+      if (observers.length) {
+        observers.sort((x, y) => (x.a.room || 0) - (y.a.room || 0) || x.a.name.localeCompare(y.a.name));
+        towerObserversEl.innerHTML = observers.map((x) => {
+          const colour = x.state === "green" ? "green" : x.state === "amber" ? "amber" : "grey";
+          const sleepy = x.state === "green" && x.d && x.d.awake === "off" ? ` · <span class="bad">may go to sleep</span>` : "";
+          return `<div class="tower-row"><i class="dot ${colour}"></i><span class="what"><b>${x.a.room ? `Room ${x.a.room} — ` : ""}${escapeHtml(x.a.name)}:</b> ${escapeHtml(seenText(x.d, x.state))}${sleepy}</span></div>`;
+        }).join("");
+        if (rooms > 1 && currentRow && currentRow.status === "running") {
+          for (let r = 2; r <= rooms; r++) {
+            const inRoom = observers.filter((x) => x.a.room === r);
+            if (inRoom.length && !inRoom.some((x) => x.state === "green")) {
+              warnings.push({ red: false, text: `Room ${r}: no Observer is online.` });
+            }
+          }
+        }
+      }
+
+      towerWarningsEl.innerHTML = warnings
+        .map((w) => `<div class="tower-warn${w.red ? " red" : ""}">${escapeHtml(w.text)}</div>`)
+        .join("");
+    }
+
+    // "Refresh this screen" (soft: no reload, sound stays on) and, offered
+    // only after that, "Full reload". They reach the screen in the reply to
+    // its next check-in, so they work even if its live connection is down.
+    towerScreensEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-cmd]");
+      if (!btn) return;
+      const key = btn.closest(".tower-row").dataset.key;
+      const cmd = btn.dataset.cmd;
+      if (cmd === "reload" && !confirm("Reload this screen completely? If this laptop was not set up to allow sound, someone in the room will need to tap \"Tap to begin\" again for sound. The inject and the countdown come back by themselves.")) return;
+      btn.disabled = true;
+      towerErrorEl.style.display = "none";
+      try {
+        await sendScreenCommand(sessionId, key, cmd, facilitatorToken);
+        if (cmd === "soft") softSentAt[key] = Date.now();
+        await refreshRoster();
+      } catch (err) {
+        towerErrorEl.textContent = `Couldn't send to the screen: ${err.message}`;
+        towerErrorEl.style.display = "block";
+        btn.disabled = false;
+      }
+    });
+    rosterGroupEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-group]");
+      if (!btn) return;
+      rosterGroupBy = btn.dataset.group;
+      rosterGroupEl.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+      if (lastAttendees) renderRoster(lastAttendees);
+    });
+
     function renderRoster(attendees) {
+      const rooms = (currentRow && currentRow.room_count) || 1;
+      rosterGroupEl.hidden = rooms <= 1;
+      if (rooms <= 1) rosterGroupBy = "department";
       if (attendees.length === 0) {
         rosterEl.innerHTML = "<p>No one has joined yet.</p>";
         return;
       }
       // Grouped by department (not one alphabetical list of names) so the
       // facilitator can compare headcount per department against the room —
-      // that comparison is the whole point of this view.
+      // that comparison is the whole point of this view. With more than one
+      // room it can be grouped by room instead (item 6).
+      const byRoom = rosterGroupBy === "room";
       const byDept = {};
       attendees.forEach((a) => {
-        (byDept[a.department] = byDept[a.department] || []).push(a);
+        const key = byRoom ? (a.room ? `Room ${a.room}` : "No room") : a.department;
+        (byDept[key] = byDept[key] || []).push(a);
       });
       const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
       // Observers are marked clearly (item 5): someone who re-joined as an
@@ -1036,7 +1361,7 @@
                   (a) => `
                 <li>
                   <span>
-                    ${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">OBSERVER</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${a.room ? ` — Room ${a.room}` : ""}
+                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">OBSERVER</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — Room ${a.room}` : ""}${personSeenHtml(a)}
                   </span>
                   <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
                 </li>`
@@ -1275,16 +1600,21 @@
     setInterval(refreshMessageLog, 5000);
     setInterval(refreshDeptMsgLog, 5000);
     setInterval(updateDeptMsgOptions, 5000);
-    // Inbox arrives live over Realtime (subscribeToFacilitatorMessages
-    // above) — this poll is just a safety net for the rare missed event.
-    setInterval(refreshInbox, 15000);
+    // The inbox is refreshed at once by the doorbell (above) — this poll is
+    // the safety net for a missed ring.
+    setInterval(() => refreshInbox(), 15000);
+    // The session itself, in case it was changed from another device and
+    // the ring was missed.
+    setInterval(() => { if (!actionBusy) refresh().catch(() => {}); }, 15000);
+    // Re-draw the tower every 5 seconds between polls so "last seen" ages on time.
+    setInterval(renderTower, 5000);
     // Re-draw (no network) every second so the countdown and the switch to
     // "time's up" happen on time, between the 5-second data polls.
     setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
     onReconnect(refreshMessageLog);
     onReconnect(refreshDeptMsgLog);
-    onReconnect(refreshInbox);
+    onReconnect(() => refreshInbox());
 
     // Same reasoning as the room display: a dropped connection or a
     // backgrounded tab can leave the facilitator looking at a stale status
@@ -1357,8 +1687,14 @@
       })
     );
 
+    // Only the most recently started refresh is applied (refreshSeq), so the
+    // 15-second check can never put an older copy of the session back after
+    // an action.
     async function refresh() {
-      currentRow = await fetchSession(sessionId);
+      const seq = ++refreshSeq;
+      const row = await fetchSession(sessionId);
+      if (seq !== refreshSeq) return;
+      currentRow = row;
       updateButtonAvailability();
       if (!currentRow) return;
       // Reflect the session's real room_count in the selector. refresh()
@@ -1366,11 +1702,13 @@
       // or right after this control's own change event below) — never on
       // the roster's 5-second poll — so this can't clobber a selection the
       // facilitator is still making.
-      roomCountSelectEl.value = String(currentRow.room_count || 1);
+      if (document.activeElement !== roomCountSelectEl) roomCountSelectEl.value = String(currentRow.room_count || 1);
       statusVal.textContent = currentRow.status;
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;
-      indexVal.textContent = `${currentRow.current_inject_index} of ${injects.length - 1}${isLast ? " — last inject" : ""}`;
+      indexVal.textContent = currentRow.current_inject_index >= 0
+        ? `${currentRow.current_inject_index + 1} of ${injects.length}${isLast ? " — last inject" : ""}`
+        : `not started (${injects.length} injects)`;
       const inject = injects[currentRow.current_inject_index];
       const extra = currentRow.inject_extra_minutes || 0;
       const durationText = extra > 0
@@ -1381,6 +1719,8 @@
         ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
         : "No current inject.";
       renderStatus();
+      renderTower();
+      awake.update();
       updateDeptMsgOptions();
       facNoteForm.refresh();
       renderNotesClose();
