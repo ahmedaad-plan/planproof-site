@@ -342,3 +342,37 @@ test("flood protection: after 5 possible-spam emails in a day the rest are saved
   await handleIntake(genericBody({ honeypot: "bot" }), d);
   assert.equal(net.emails.length, 7);
 });
+
+test("the preferred exercise language is saved, and Arabic is flagged in the email", async () => {
+  // English (the form's default).
+  let net = fakeNet(); let d = deps(net);
+  let body = genericBody(); body.data.exercise_language = "english";
+  let r = await handleIntake(body, d);
+  assert.equal(r.ok, true);
+  assert.equal(net.inserts.submissions[0].exercise_language, "english");
+  assert.ok(!net.emails[0].text.includes("ARABIC"));
+
+  // Arabic (coming soon): stored as a preference, and the email says it is not offered yet.
+  net = fakeNet(); d = deps(net);
+  body = genericBody(); body.data.exercise_language = "arabic";
+  r = await handleIntake(body, d);
+  assert.equal(r.ok, true);
+  assert.equal(net.inserts.submissions[0].exercise_language, "arabic");
+  assert.match(net.emails[0].text, /prefer the exercise in ARABIC/);
+  assert.match(net.emails[0].text, /not offered yet/);
+});
+
+test("a request without a language answer, or with a made-up one, still saves (no language column sent)", async () => {
+  let net = fakeNet(); let d = deps(net);
+  let r = await handleIntake(genericBody(), d);
+  assert.equal(r.ok, true);
+  assert.ok(!("exercise_language" in net.inserts.submissions[0]));
+
+  net = fakeNet(); d = deps(net);
+  const body = genericBody(); body.data.exercise_language = "klingon";
+  r = await handleIntake(body, d);
+  assert.equal(r.ok, true);
+  assert.ok(!("exercise_language" in net.inserts.submissions[0]));
+  assert.equal(net.emails.length, 1);
+});
+
