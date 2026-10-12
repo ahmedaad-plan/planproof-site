@@ -657,6 +657,9 @@
   .dept-option{ padding: 8px 12px; font-size: 14px; cursor: pointer; }
   .dept-option:hover{ background: var(--panel-raised); }
   .dept-empty{ padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
+  .dept-done{ position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 8px 10px; text-align: right; }
+  .dept-done-btn{ font: inherit; font-size: 14px; font-weight: 600; padding: 7px 18px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
+  .intake-card .optout-note .not-kept{ color: #d84a3a; font-weight: 700; }
   .risk-note{ font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; min-height: 0; }
   .risk-note:empty{ display: none; }
 
@@ -1596,23 +1599,36 @@ function buildMailto(subject, bodyLines){
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function outsideIntakeClickHandler(e){
-  const card = document.querySelector('.intake-card');
-  if(card && !card.contains(e.target)){
-    closeIntakeForm();
-  }
+// Closing an intake form (12 October 2026, Ahmed's remark). A click outside
+// the form used to close it and throw the answers away without a word. Now
+// the form closes only with its own close button, and anything that would
+// lose answers asks first. intakeDirty is true once the visitor has typed,
+// chosen or picked anything on the open form; it is cleared when a form
+// opens and when a request has been sent.
+let intakeDirty = false;
+const LEAVE_FORM_QUESTION = "Leave this form? Your answers will be lost.";
+function intakeHasAnswers(){
+  return intakeDirty && !!document.querySelector("#genericFormEl, #planFormEl");
+}
+function trackIntakeAnswers(form){
+  intakeDirty = false;
+  const mark = ()=>{ intakeDirty = true; };
+  form.addEventListener("input", mark);
+  form.addEventListener("change", mark);
+  // Picking from a list is handled on mousedown and stops there, so listen on the way down.
+  form.addEventListener("mousedown", (e)=>{ if(e.target.closest(".dept-option")) mark(); }, true);
 }
 function closeIntakeForm(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
+  if(intakeHasAnswers() && !confirm(LEAVE_FORM_QUESTION)) return;
+  intakeDirty = false;
   renderScenarioChoice();
 }
-function armOutsideClose(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
-  setTimeout(()=>{ document.addEventListener('click', outsideIntakeClickHandler); }, 0);
-}
+// Reloading, closing the tab or following a link away: the browser asks first.
+window.addEventListener("beforeunload", (e)=>{
+  if(intakeHasAnswers()){ e.preventDefault(); e.returnValue = ""; }
+});
 
 function renderScenarioChoice(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
   requestStage.innerHTML = `
     <div class="choice-grid">
       <button class="choice-card" data-key="generic">
@@ -1738,7 +1754,7 @@ ${returningHTML("f")}
     </form>
   `;
   document.getElementById("intakeCloseBtn").addEventListener("click", closeIntakeForm);
-  armOutsideClose();
+  trackIntakeAnswers(document.getElementById("genericFormEl"));
   document.getElementById("f_industry").addEventListener("change", (e)=>{
     document.getElementById("industryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
@@ -1825,6 +1841,7 @@ ${returningHTML("f")}
       const formData = new FormData(e.target);
       formData.append("formatted_summary", genericSummaryText);
       await submitIntake(formData);
+      intakeDirty = false; // sent: nothing left to lose
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll design your exercise and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
       requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
@@ -1900,7 +1917,7 @@ function returningHTML(p){ return `
         </div>
         <p class="returning-note" id="${p}_returningUnsure" hidden>Thank you — we'll check our records and let you know if your organization has exercised with us before.</p>
         <label class="optout"><input type="checkbox" name="history_opt_out" value="yes"> Don't keep our exercise history</label>
-        <p class="empty-note optout-note">We keep a short summary of each exercise — scores, findings and actions, not your plan document — for 5 years from your latest exercise, so your next exercise can show your progress. Tick to opt out, or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
+        <p class="empty-note optout-note">We keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 5 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Tick to opt out, or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
       </div>`; }
 
 function initReturning(p){
@@ -2058,7 +2075,7 @@ ${returningHTML("p")}
     </div>
   `;
   document.getElementById("intakeCloseBtn").addEventListener("click", closeIntakeForm);
-  armOutsideClose();
+  trackIntakeAnswers(document.getElementById("planFormEl"));
   document.getElementById("p_industry").addEventListener("change", (e)=>{
     document.getElementById("planIndustryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
@@ -2153,6 +2170,7 @@ ${returningHTML("p")}
       const planThanks = sent.fileUploadFailed
         ? `Your details have been received, but your plan document didn't upload. Please email it to <a class="mail-link" href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we'll match it to your request.`
         : `Your plan and details have been received. We'll review it and be in touch at the email you provided.`;
+      intakeDirty = false; // sent: nothing left to lose
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>${planThanks}</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
       requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
@@ -2253,6 +2271,7 @@ function initRiskPicker(prefix, otherWrapId){
     dropdownEl.innerHTML = matches.length
       ? matches.map(r => `<div class="dept-option" data-name="${r}">${r}</div>`).join("")
       : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`;
+    dropdownEl.innerHTML += DONE_ROW_HTML;
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
         e.preventDefault();
@@ -2260,12 +2279,30 @@ function initRiskPicker(prefix, otherWrapId){
         addRisk(opt.dataset.name);
       });
     });
+    wireListClose(dropdownEl, searchEl);
     dropdownEl.classList.add("open");
   }
+  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
   searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("blur", ()=> setTimeout(()=> dropdownEl.classList.remove("open"), 150));
   sync();
+}
+
+// The pick lists stay open after each choice so several can be chosen. A
+// "Done" button (and Escape) closes them — before, the only way was to click
+// somewhere else (12 October 2026, Ahmed's remark).
+const DONE_ROW_HTML = `<div class="dept-done"><button type="button" class="dept-done-btn">Done</button></div>`;
+function closePickList(dropdownEl, searchEl){
+  dropdownEl.classList.remove("open");
+  searchEl.value = "";
+  searchEl.blur();
+}
+function wireListClose(dropdownEl, searchEl){
+  const btn = dropdownEl.querySelector(".dept-done-btn");
+  if(!btn) return;
+  btn.addEventListener("mousedown", (e)=>{ e.preventDefault(); e.stopPropagation(); closePickList(dropdownEl, searchEl); });
+  btn.addEventListener("click", (e)=>{ e.preventDefault(); closePickList(dropdownEl, searchEl); }); // keyboard
 }
 
 function initDeptPicker(prefix){
@@ -2322,6 +2359,7 @@ function initDeptPicker(prefix){
       }
     });
     html += `<div class="dept-option" data-name="__other__">+ Other (specify)</div>`;
+    html += DONE_ROW_HTML;
     dropdownEl.innerHTML = html;
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
@@ -2331,8 +2369,10 @@ function initDeptPicker(prefix){
         else addDept(opt.dataset.name);
       });
     });
+    wireListClose(dropdownEl, searchEl);
     dropdownEl.classList.add("open");
   }
+  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
 
   searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
@@ -2597,7 +2637,7 @@ function renderTeaserEnd(){
       const goToRequest = ()=>{
         if(jumped) return; jumped = true;
         clearInterval(countdownTimer);
-        renderScenarioChoice(); // make sure the two options are showing, not a half-filled form
+        if(!intakeHasAnswers()) renderScenarioChoice(); // show the two options — but never replace a form someone has started filling in
         const section = document.getElementById("tool");
         const nav = document.querySelector(".sitenav");
         const offset = (nav ? nav.offsetHeight : 70) + 12;
