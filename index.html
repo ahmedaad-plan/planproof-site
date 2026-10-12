@@ -657,8 +657,9 @@
   .dept-option{ padding: 8px 12px; font-size: 14px; cursor: pointer; }
   .dept-option:hover{ background: var(--panel-raised); }
   .dept-empty{ padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
-  .dept-done{ position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 8px 10px; text-align: right; }
-  .dept-done-btn{ font: inherit; font-size: 14px; font-weight: 600; padding: 7px 18px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
+  .dept-done{ position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px 10px 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dept-done-hint{ font-size: 12.5px; color: var(--text-muted); }
+  .dept-done-btn{ flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 600; padding: 7px 18px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
   .intake-card .optout-note .not-kept{ color: #d84a3a; font-weight: 700; }
   .risk-note{ font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; min-height: 0; }
   .risk-note:empty{ display: none; }
@@ -2068,7 +2069,7 @@ function returningPairs(p){
   const pairs = [["Done a PlanProof exercise before", { yes: "Yes", no: "No", not_sure: "Not sure — check our records" }[used] || ""]];
   if(used === "yes"){
     pairs.push(["Client reference", val("_client_ref")], ["Last exercise", val("_last_when")],
-      ["This time", { retest: "Re-test the same risk", new: "Test a new risk", unsure: "Not sure yet" }[retest] || ""],
+      ["Re-test or new risk for this exercise", { retest: "Re-test the same risk as last time", new: "Test a new risk (see the risk concerns above)", unsure: "Not decided yet \u2014 to agree with the client" }[retest] || ""],
       ["What has changed", val("_changed")], ["Actions done since", val("_actions_done")], ["Plan changed", val("_plan_updated")]);
   }
   pairs.push(["Exercise history", optOut ? "Don't keep (client opted out)" : "Keep for 5 years (default)"]);
@@ -2381,10 +2382,9 @@ function initRiskPicker(prefix, otherWrapId){
   function renderDropdown(term){
     const t = term.trim().toLowerCase();
     const matches = RISKS.filter(r => !selected.includes(r) && r.toLowerCase().includes(t));
-    dropdownEl.innerHTML = matches.length
+    dropdownEl.innerHTML = DONE_ROW_HTML + (matches.length
       ? matches.map(r => `<div class="dept-option" data-name="${r}">${r}</div>`).join("")
-      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`;
-    dropdownEl.innerHTML += DONE_ROW_HTML;
+      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`);
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
         e.preventDefault();
@@ -2405,7 +2405,9 @@ function initRiskPicker(prefix, otherWrapId){
 // The pick lists stay open after each choice so several can be chosen. A
 // "Done" button (and Escape) closes them — before, the only way was to click
 // somewhere else (12 October 2026, Ahmed's remark).
-const DONE_ROW_HTML = `<div class="dept-done"><button type="button" class="dept-done-btn">Done</button></div>`;
+// The button sits at the TOP of the list and stays there while the list is
+// scrolled: at the bottom it could be cut off by the edge of the window.
+const DONE_ROW_HTML = `<div class="dept-done"><span class="dept-done-hint">Choose all that apply, then press Done</span><button type="button" class="dept-done-btn">Done</button></div>`;
 function closePickList(dropdownEl, searchEl){
   dropdownEl.classList.remove("open");
   searchEl.value = "";
@@ -2472,8 +2474,7 @@ function initDeptPicker(prefix){
       }
     });
     html += `<div class="dept-option" data-name="__other__">+ Other (specify)</div>`;
-    html += DONE_ROW_HTML;
-    dropdownEl.innerHTML = html;
+    dropdownEl.innerHTML = DONE_ROW_HTML + html;
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
         e.preventDefault();
