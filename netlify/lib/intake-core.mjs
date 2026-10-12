@@ -182,6 +182,7 @@ export async function saveToSupabase(record, deps) {
     location: clean(data.location, 200),
   }], opts);
   const usedBefore = oneOf(data.used_before, ["yes", "no", "not_sure"]);
+  const exerciseLanguage = oneOf(data.exercise_language, ["english", "arabic"]);
   const returning = usedBefore === "yes"; // returning-client answers only count when "Yes" was chosen
   const label = record.spamReasons.length ? `POSSIBLE SPAM (${record.spamReasons.join("; ")}) — check before acting.\n\n` : "";
   const fileNote = record.file
@@ -207,6 +208,9 @@ export async function saveToSupabase(record, deps) {
     actions_done: returning ? clean(data.actions_done, 4000) : null,
     plan_updated: returning ? clean(data.plan_updated, 300) : null,
     history_opt_out: !!clean(data.history_opt_out, 10),
+    // Preferred exercise language (12 October 2026). Left out entirely when
+    // the form sent no valid answer, so an older page still saves.
+    ...(exerciseLanguage ? { exercise_language: exerciseLanguage } : {}),
     notes: `${label}Form: ${formName}\n\n${data.formatted_summary || "(No summary available)"}${fileNote}`,
   }], opts);
 }
@@ -245,6 +249,9 @@ export function buildEmail(record, fileResult) {
     lines.push("If it is junk, ignore it and erase it on the admin page.", "");
   }
   lines.push(`New submission: ${formName}`, `Received: ${uaeTime(record.receivedAt)} (UAE time)`);
+  if (String(data.exercise_language || "").trim() === "arabic") {
+    lines.push("Language: the client would prefer the exercise in ARABIC. Arabic exercises are not offered yet — the form told them it will run in English for now (the report is in both languages).", "");
+  }
   if (record.attempts > 0) lines.push("(This email was delayed: the first attempt to send it failed and it was retried automatically.)");
   lines.push("", data.formatted_summary || "(No summary available)");
 

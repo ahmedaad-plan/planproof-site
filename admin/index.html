@@ -197,6 +197,7 @@ const dd = (s) => s ? new Date(s + (s.length === 10 ? "T00:00:00" : "")).toLocal
 const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 const LABEL_TEXT = { reference: "Matched by reference", likely: "Likely match", possible: "Possible match", new: "New client" };
 const USED_TEXT = { yes: "Yes", no: "No", not_sure: "Not sure" };
+const LANGUAGE_TEXT = { english: "English", arabic: "Arabic preferred (not offered yet — runs in English for now)" };
 const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", unsure: "Not sure yet" };
 const STATUS = ["new", "contacted", "scenario_sent", "exercise_scheduled", "delivered"];
 const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
@@ -383,6 +384,7 @@ function requestBlock(s) {
     ["For which part", s.org_unit],
     ["Organisation", [c.sector, c.size_band, c.location].filter(Boolean).join(" · ")],
     ["Service", s.service_type],
+    ["Exercise language", LANGUAGE_TEXT[s.exercise_language]],
     ["Risk concerns", [s.risk_concern_1 && s.risk_concern_1 + " (main)", s.risk_concern_2, s.risk_concern_3].filter(Boolean).join(", ")],
     ["Exercised before?", USED_TEXT[s.used_before]],
     ["Reference given", s.reference_given],

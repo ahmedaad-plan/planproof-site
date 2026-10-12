@@ -671,6 +671,7 @@
   .intake-card .choice-row input, .intake-card .optout input{ width: auto; margin: 0; accent-color: #d84a3a; }
   .intake-card .returning{ border-top: 1px solid var(--border); margin-top: 22px; padding-top: 6px; }
   .intake-card .returning-q{ font-size: 14px; color: var(--text); margin: 14px 0 8px; }
+  .intake-card .choice-row label .opt{ font-style: italic; opacity: 0.8; color: var(--text-muted); font-size: 13px; }
   .intake-card .returning-q .opt{ font-style: italic; opacity: 0.8; color: var(--text-muted); font-size: 13px; }
   .intake-card .returning-panel{ border-left: 2px solid var(--amber); padding-left: 14px; margin-top: 6px; }
   .intake-card .returning-note{ font-size: 13.5px; color: var(--text-muted); margin: 10px 0 0; }
@@ -1718,6 +1719,7 @@ ${orgUnitHTML("f")}
         <option>Self-service kit</option><option>Facilitated session</option>
       </select>
 
+${languageHTML("f")}
       <label for="f_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
       <textarea name="focus" id="f_focus" rows="2" placeholder="e.g. our IT escalation steps, or our supplier failover process"></textarea>
 
@@ -1743,6 +1745,7 @@ ${returningHTML("f")}
   initRiskPicker("f", "riskOtherWrap");
   initDeptPicker("f");
   initReturning("f");
+  initLanguage("f");
   let genericSummaryText = "";
   document.getElementById("genericFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1803,6 +1806,7 @@ ${returningHTML("f")}
         ["Audience (departments participating)", document.getElementById("f_audience").value],
         ["Preferred duration", document.getElementById("f_duration").value],
         ["Type of service required", document.getElementById("f_service_type").value],
+        languagePair("f"),
         ["Specific focus areas", document.getElementById("f_focus").value],
         ["Recent incidents/near-misses", document.getElementById("f_incidents").value],
         ["Peak/critical periods", document.getElementById("f_peak").value],
@@ -1843,6 +1847,29 @@ function orgUnitHTML(p){ return `
         <input type="text" id="${p}_org_unit_name" placeholder="e.g. Dubai warehouse, retail division" maxlength="200">
       </div>
       <input type="hidden" name="org_unit" id="${p}_org_unit">`; }
+
+// Preferred exercise language (12 October 2026). English is offered today;
+// Arabic is "coming soon" — choosing it records the preference only, and the
+// note says so plainly, so nothing is promised that can't be delivered yet.
+function languageHTML(p){ return `
+      <p class="returning-q" id="${p}_langLabel">Which language would you prefer for the exercise?</p>
+      <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_langLabel" id="${p}_langGroup">
+        <label><input type="radio" name="exercise_language" value="english" checked> English</label>
+        <label><input type="radio" name="exercise_language" value="arabic"> Arabic <span class="opt">(coming soon)</span></label>
+      </div>
+      <p class="returning-note" id="${p}_langNote" hidden>Thank you — we've noted your preference. Exercises in Arabic are coming soon; for now your exercise will run in English. Your report is always delivered in both English and Arabic.</p>`; }
+
+function initLanguage(p){
+  document.querySelectorAll("#" + p + "_langGroup input").forEach((r)=>r.addEventListener("change", ()=>{
+    const v = (document.querySelector("#" + p + "_langGroup input:checked") || {}).value;
+    document.getElementById(p + "_langNote").hidden = v !== "arabic";
+  }));
+}
+
+function languagePair(p){
+  const v = (document.querySelector("#" + p + "_langGroup input:checked") || {}).value;
+  return ["Preferred exercise language", v === "arabic" ? "Arabic (coming soon — preference noted; exercise runs in English for now)" : "English"];
+}
 
 function returningHTML(p){ return `
       <div class="returning">
@@ -2004,6 +2031,7 @@ ${orgUnitHTML("p")}
         <option>Self-service kit</option><option>Facilitated session</option>
       </select>
 
+${languageHTML("p")}
       <label for="p_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
       <textarea name="focus" id="p_focus" rows="2" placeholder="e.g. our IT escalation steps, or our supplier failover process"></textarea>
 
@@ -2037,6 +2065,7 @@ ${returningHTML("p")}
   initRiskPicker("p", "planRiskOtherWrap");
   initDeptPicker("p");
   initReturning("p");
+  initLanguage("p");
   let planSummaryText = "";
   document.getElementById("planFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -2101,6 +2130,7 @@ ${returningHTML("p")}
         ["Audience (departments participating)", document.getElementById("p_audience").value],
         ["Preferred duration", document.getElementById("p_duration").value],
         ["Type of service required", document.getElementById("p_service_type").value],
+        languagePair("p"),
         ["Specific focus areas", document.getElementById("p_focus").value],
         ["Recent incidents/near-misses", document.getElementById("p_incidents").value],
         ["Peak/critical periods", document.getElementById("p_peak").value],
