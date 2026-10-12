@@ -1686,6 +1686,19 @@ function endScreenHtml({ name, everyone, compact, label, extraHtml, close } = {}
     </section>`;
 }
 
+// True when the inject on screen came back through "Resume at inject N"
+// (the exercise was ended and carried on): the database then moves the
+// inject's clock forward, so it no longer matches the inject's first start
+// in the log. A resumed inject returns silently — its sound belongs to the
+// moment it first appeared (Ahmed, 12 October 2026). A fresh inject, and one
+// restarted with "Previous inject", have the two times equal.
+function injectWasResumed(row, idx) {
+  if (!row || !row.inject_started_at) return false;
+  const first = (row.inject_started_log || {})[String(idx)];
+  if (!first) return false;
+  return Math.abs(Date.parse(row.inject_started_at) - Date.parse(first)) > 1500;
+}
+
 // "52 minutes left" / "1 minute left" / "less than a minute left".
 function minutesLeftText(ms) {
   if (ms < 60000) return "less than a minute left";

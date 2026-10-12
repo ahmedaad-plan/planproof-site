@@ -232,11 +232,11 @@
   </div>
 
   <div class="start-check" id="resumeCheck" hidden role="alertdialog" aria-labelledby="resumeCheckTitle">
-    <div class="t" id="resumeCheckTitle">Resume the exercise?</div>
+    <div class="t" id="resumeCheckTitle">Resume at this inject?</div>
     <div class="why" id="resumeCheckBody"></div>
     <div class="b">
       <button id="resumeBackBtn">Go back</button>
-      <button id="resumeConfirmBtn" class="primary">Resume exercise</button>
+      <button id="resumeConfirmBtn" class="primary">Resume</button>
     </div>
   </div>
 
@@ -534,7 +534,7 @@
       const isRunning = currentRow && currentRow.status === "running";
       startBtn.disabled = false;
       // After End the same button brings the exercise back (Resume).
-      startBtn.textContent = canResume() ? "Resume exercise" : "Start exercise";
+      startBtn.textContent = canResume() ? resumeLabel() : "Start exercise";
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
@@ -1915,13 +1915,18 @@
     }
     // ---- Resume after End (Ahmed, 11 October 2026) ------------------------
     // An ended exercise that had reached an inject is not started again
-    // from inject 1: the button reads "Resume exercise" and puts every
+    // from inject 1: the button reads "Resume at inject N" (Ahmed, 12 October
+    // 2026 — it names the inject, since earlier injects are not replayed;
+    // the exercise then carries on from there) and puts every
     // device back on the inject that was showing at End. The inject's clock
     // carries on from where it stood (the database moves its start forward
     // by the time spent ended) — no fresh window, so the late rule holds.
     // Only the status is sent: added minutes and an unlock stay as they were.
     const resumeCheckEl = document.getElementById("resumeCheck");
     const resumeCheckBodyEl = document.getElementById("resumeCheckBody");
+    function resumeLabel() {
+      return `Resume at inject ${currentRow.current_inject_index + 1}`;
+    }
     function canResume() {
       if (!currentRow || currentRow.status !== "ended") return false;
       const idx = currentRow.current_inject_index;
@@ -1948,7 +1953,9 @@
       else clock = `Its countdown carries on from where it stopped: ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left. It is not given its full time again.`;
       const notes = currentRow.notes_closed_at ? " Notes were marked complete and stay closed." : "";
       resumeCheckBodyEl.textContent =
-        `The thank-you screens go and every device returns to inject ${idx + 1} of ${injects.length} — "${injects[idx].title}". Earlier injects are not replayed. ${clock}${notes}`;
+        `The thank-you screens go and every device returns to inject ${idx + 1} of ${injects.length} — "${injects[idx].title}". Earlier injects are not replayed, and this inject's sound is not played again. The exercise then carries on from here. ${clock}${notes}`;
+      document.getElementById("resumeCheckTitle").textContent = `${resumeLabel()}?`;
+      document.getElementById("resumeConfirmBtn").textContent = resumeLabel();
       resumeCheckEl.hidden = false;
       document.getElementById("resumeConfirmBtn").focus();
     }
@@ -2087,7 +2094,7 @@
           : "Your own notes closed 48 hours after the end.");
       }
       lines.push("Every panel on this page stays live: control tower, response status, Observer notes, messages and the attendee list.");
-      if (canResume()) lines.push("Ended by mistake? Press \"Resume exercise\" to return everyone to the inject that was showing, with the time that was left.");
+      if (canResume()) lines.push(`Ended by mistake? Press "${resumeLabel()}" to return everyone to the inject that was showing, with the time that was left and without its sound.`);
       const html =
         `<span class="t">Exercise ended${isNaN(endedMs) ? "" : ` at ${escapeHtml(clockTimeText(endedMs))}`}. Every device now shows the thank-you screen.</span>` +
         `<ul>${lines.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`;

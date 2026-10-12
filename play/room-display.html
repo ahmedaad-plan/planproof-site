@@ -660,7 +660,12 @@
     `;
 
     // An Observer's phone stays silent: the room's display plays the sound.
-    if (isNewInject && inject.sfx && !observerMode) {
+    // A resumed inject comes back without its sound (shared.js
+    // injectWasResumed) — also on a screen that was reloaded meanwhile.
+    if (isNewInject && inject.sfx && !observerMode && injectWasResumed(row, idx)) {
+      pendingSfx = null;
+      sfxStatusEl.textContent = `sound: — resumed inject, ${inject.sfx} not played again`;
+    } else if (isNewInject && inject.sfx && !observerMode) {
       if (audioUnlocked) {
         playSfx(inject.sfx);
       } else {
