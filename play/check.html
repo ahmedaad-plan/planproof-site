@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Connection check</title>
+<title data-i18n="check.page.title">PlanProof — Connection check</title>
 <meta name="robots" content="noindex" />
 <!--
   Connection check (added 9 October 2026, system review item 7).
@@ -44,39 +44,40 @@
 </head>
 <body>
 <header class="pp-top">
-  <span class="pp-brand"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
-  <div class="pp-context"><strong>Connection check</strong></div>
+  <span class="pp-brand" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <div class="pp-context"><strong data-i18n="check.page.context">Connection check</strong></div>
 </header>
 <main>
-  <h1>PlanProof connection check</h1>
-  <p class="lead">Run this on the network and device you will use for the exercise (meeting-room WiFi, room screen laptop, a phone). It takes about 20 seconds and reads no company data.</p>
+  <h1 data-i18n="check.page.heading">PlanProof connection check</h1>
+  <p class="lead" data-i18n="check.page.lead">Run this on the network and device you will use for the exercise (meeting-room WiFi, room screen laptop, a phone). It takes about 20 seconds and reads no company data.</p>
 
-  <div class="card" id="c-site" data-state="running"><span class="dot"></span><h2>PlanProof website</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-data" data-state="running"><span class="dot"></span><h2>Exercise data service</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-live" data-state="running"><span class="dot"></span><h2>Live updates (WebSocket)</h2><div class="msg">Checking… (up to 12 seconds)</div></div>
-  <div class="card" id="c-clock" data-state="running"><span class="dot"></span><h2>Device clock</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-browser" data-state="running"><span class="dot"></span><h2>Browser</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-awake" data-state="running"><span class="dot"></span><h2>Staying awake</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-autosound" data-state="running"><span class="dot"></span><h2>Sound without a tap (room screens only)</h2><div class="msg">Checking…</div></div>
-  <div class="card" id="c-sound" data-state="pending"><span class="dot"></span><h2>Sound (room screens only)</h2>
-    <div class="msg">Press the button, then say whether you heard a phone ringing.</div>
-    <div class="row"><button id="soundBtn">Play test sound</button><button class="ghost" id="heardYes" hidden>Yes, I heard it</button><button class="ghost" id="heardNo" hidden>No sound</button></div>
+  <div class="card" id="c-site" data-state="running"><span class="dot"></span><h2 data-i18n="check.site.heading">PlanProof website</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-data" data-state="running"><span class="dot"></span><h2 data-i18n="check.data.heading">Exercise data service</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-live" data-state="running"><span class="dot"></span><h2 data-i18n="check.live.heading">Live updates (WebSocket)</h2><div class="msg" data-i18n="check.live.checking">Checking… (up to 12 seconds)</div></div>
+  <div class="card" id="c-clock" data-state="running"><span class="dot"></span><h2 data-i18n="check.clock.heading">Device clock</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-browser" data-state="running"><span class="dot"></span><h2 data-i18n="check.browser.heading">Browser</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-awake" data-state="running"><span class="dot"></span><h2 data-i18n="check.awake.heading">Staying awake</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-autosound" data-state="running"><span class="dot"></span><h2 data-i18n="check.autoSound.heading">Sound without a tap (room screens only)</h2><div class="msg" data-i18n="check.checking">Checking…</div></div>
+  <div class="card" id="c-sound" data-state="pending"><span class="dot"></span><h2 data-i18n="check.sound.heading">Sound (room screens only)</h2>
+    <div class="msg" data-i18n="check.sound.instructions">Press the button, then say whether you heard a phone ringing.</div>
+    <div class="row"><button id="soundBtn" data-i18n="check.sound.playButton">Play test sound</button><button class="ghost" id="heardYes" hidden data-i18n="check.sound.heardYes">Yes, I heard it</button><button class="ghost" id="heardNo" hidden data-i18n="check.sound.heardNo">No sound</button></div>
   </div>
 
   <div class="summary" id="summary" hidden></div>
-  <div class="row" style="margin-left:0">
-    <button id="copyBtn">Copy results</button>
-    <a id="mailBtn" href="#" style="align-self:center">Email results to PlanProof</a>
-    <button class="ghost" id="againBtn">Run again</button>
+  <div class="row" style="margin-inline-start:0">
+    <button id="copyBtn" data-i18n="check.actions.copy">Copy results</button>
+    <a id="mailBtn" href="#" style="align-self:center" data-i18n="check.actions.email">Email results to PlanProof</a>
+    <button class="ghost" id="againBtn" data-i18n="check.actions.again">Run again</button>
   </div>
-  <p><small>If something fails and the advice below doesn't help, a phone's mobile data hotspot is a quick fallback for the room screen and the facilitator's laptop.</small></p>
+  <p><small data-i18n="check.page.fallbackNote">If something fails and the advice below doesn't help, a phone's mobile data hotspot is a quick fallback for the room screen and the facilitator's laptop.</small></p>
 </main>
 
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script>
   const HOST = new URL(SUPABASE_URL).host;
-  const ALLOW = `Ask your IT team to allow https://plan-proof.com and https://${HOST}, including WebSocket (wss://) connections to ${HOST}, for the exercise devices — or use mobile data.`;
+  const ALLOW = T("check.allowFix", { host: HOST });
   const results = {};
 
   function set(id, state, msg, fix) {
@@ -96,25 +97,25 @@
     const states = Object.values(results).map((r) => r.state);
     const el = document.getElementById("summary");
     el.hidden = false;
-    if (states.includes("bad")) { el.className = "summary bad"; el.textContent = "Not ready yet — fix the red items below (the advice under each one says how), then run the check again."; }
-    else if (states.includes("warn")) { el.className = "summary warn"; el.textContent = "Ready, with a warning — see the amber item."; }
-    else { el.className = "summary ok"; el.textContent = "Ready — this device and network can run the exercise."; }
-    document.getElementById("mailBtn").href = "mailto:exercises@plan-proof.com?subject=" + encodeURIComponent("Connection check results") + "&body=" + encodeURIComponent(report());
+    if (states.includes("bad")) { el.className = "summary bad"; el.textContent = T("check.summary.notReady"); }
+    else if (states.includes("warn")) { el.className = "summary warn"; el.textContent = T("check.summary.warning"); }
+    else { el.className = "summary ok"; el.textContent = T("check.summary.ready"); }
+    document.getElementById("mailBtn").href = "mailto:exercises@plan-proof.com?subject=" + encodeURIComponent(T("check.report.subject")) + "&body=" + encodeURIComponent(report());
   }
 
   function report() {
-    const names = { "c-site": "Website", "c-data": "Data service", "c-live": "Live updates", "c-clock": "Clock", "c-browser": "Browser", "c-awake": "Staying awake", "c-autosound": "Sound without a tap", "c-sound": "Sound" };
-    return [`PlanProof connection check — ${new Date().toString()}`, `Device: ${navigator.userAgent}`, "",
-      ...Object.entries(names).map(([k, n]) => `${n}: ${results[k] ? results[k].state.toUpperCase() + " — " + results[k].msg : "not run"}`)].join("\n");
+    const names = { "c-site": T("check.report.name.site"), "c-data": T("check.report.name.data"), "c-live": T("check.report.name.live"), "c-clock": T("check.report.name.clock"), "c-browser": T("check.report.name.browser"), "c-awake": T("check.report.name.awake"), "c-autosound": T("check.report.name.autoSound"), "c-sound": T("check.report.name.sound") };
+    return [T("check.report.title", { date: new Date().toString() }), T("check.report.device", { device: navigator.userAgent }), "",
+      ...Object.entries(names).map(([k, n]) => results[k] ? T("check.report.line", { name: n, state: T("check.report.state." + results[k].state), message: String(results[k].msg) }) : T("check.report.lineNotRun", { name: n }))].join("\n");
   }
 
   async function timed(promise, ms) {
-    return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
+    return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(T("check.err.timedOut"))), ms))]);
   }
 
   async function run() {
     for (const k of Object.keys(results)) if (k !== "c-sound" && k !== "c-autosound") delete results[k];
-    ["c-site", "c-data", "c-live", "c-clock", "c-browser", "c-awake"].forEach((id) => { const el = document.getElementById(id); el.dataset.state = "running"; el.querySelector(".msg").textContent = "Checking…"; const f = el.querySelector(".fix"); if (f) f.remove(); });
+    ["c-site", "c-data", "c-live", "c-clock", "c-browser", "c-awake"].forEach((id) => { const el = document.getElementById(id); el.dataset.state = "running"; el.querySelector(".msg").textContent = T("check.checking"); const f = el.querySelector(".fix"); if (f) f.remove(); });
     document.getElementById("summary").hidden = true;
 
     // Browser features the player relies on.
@@ -123,8 +124,8 @@
     if (!window.WebSocket) missing.push("WebSocket");
     if (!(window.crypto && crypto.randomUUID)) missing.push("crypto.randomUUID");
     if (!window.localStorage) missing.push("localStorage");
-    if (missing.length) set("c-browser", "bad", `This browser is missing: ${missing.join(", ")}.`, "Use an up-to-date Chrome, Edge, Safari or Firefox.");
-    else set("c-browser", "ok", "Up to date.");
+    if (missing.length) set("c-browser", "bad", T("check.browser.missing", { list: missing.join(", ") }), T("check.browser.missingFix"));
+    else set("c-browser", "ok", T("check.browser.upToDate"));
 
     // Website + clock (the site's own Date header).
     try {
@@ -132,17 +133,17 @@
       const res = await timed(fetch("/play/shared.js", { method: "HEAD", cache: "no-store" }), 8000);
       const rtt = Date.now() - t0;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      set("c-site", "ok", `Reachable (${rtt} ms).`);
+      set("c-site", "ok", T("check.site.reachable", { ms: rtt }));
       const serverMs = Date.parse(res.headers.get("date") || "");
-      if (!Number.isFinite(serverMs)) set("c-clock", "warn", "Could not read the server time to compare.", "Make sure the device's date and time are set automatically.");
+      if (!Number.isFinite(serverMs)) set("c-clock", "warn", T("check.clock.noServerTime"), T("check.clock.setAutomaticallyFix"));
       else {
         const off = Math.round((Date.now() - rtt / 2 - serverMs) / 1000);
-        if (Math.abs(off) <= 60) set("c-clock", "ok", `Correct (within ${Math.max(1, Math.abs(off))} s).`);
-        else set("c-clock", "bad", `This device's clock is ${Math.abs(off)} seconds ${off > 0 ? "fast" : "slow"}.`, "Turn on 'Set time automatically' in the device's date and time settings — inject countdowns use the device clock.");
+        if (Math.abs(off) <= 60) set("c-clock", "ok", T("check.clock.correct", { count: Math.max(1, Math.abs(off)) }));
+        else set("c-clock", "bad", off > 0 ? T("check.clock.fast", { count: Math.abs(off) }) : T("check.clock.slow", { count: Math.abs(off) }), T("check.clock.wrongFix"));
       }
     } catch (err) {
-      set("c-site", "bad", `Not reachable (${err.message}).`, ALLOW);
-      set("c-clock", "warn", "Not checked (the website was not reachable).", "Make sure the device's date and time are set automatically.");
+      set("c-site", "bad", T("check.site.notReachable", { reason: String(err.message) }), ALLOW);
+      set("c-clock", "warn", T("check.clock.notChecked"), T("check.clock.setAutomaticallyFix"));
     }
 
     // Exercise data service: the same checked route the player pages use
@@ -156,9 +157,9 @@
         body: JSON.stringify({ p_session_id: crypto.randomUUID() }),
       }), 8000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      set("c-data", "ok", `Reachable (${Date.now() - t0} ms).`);
+      set("c-data", "ok", T("check.data.reachable", { ms: Date.now() - t0 }));
     } catch (err) {
-      set("c-data", "bad", `Not reachable (${err.message}).`, ALLOW);
+      set("c-data", "bad", T("check.data.notReachable", { reason: String(err.message) }), ALLOW);
     }
 
     // Live updates: join a throwaway channel, ring it, and wait for the ring
@@ -174,21 +175,21 @@
           else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error(status));
         });
       }), 12000);
-      set("c-live", "ok", `Working (${Date.now() - t0} ms).`);
+      set("c-live", "ok", T("check.live.working", { ms: Date.now() - t0 }));
     } catch (err) {
-      set("c-live", "bad", `Live updates are blocked on this network (${err.message}). Screens would only refresh every 15 seconds.`, ALLOW);
+      set("c-live", "bad", T("check.live.blocked", { reason: String(err.message) }), ALLOW);
     }
 
     // Staying awake: the player asks the device to keep its screen on.
-    const LOCK_ADVICE = "On a company laptop used as a room screen, also ask IT to make the automatic screen lock longer than the exercise — a website cannot override a forced lock.";
+    const LOCK_ADVICE = T("check.awake.lockAdvice");
     try {
-      if (!(navigator.wakeLock && navigator.wakeLock.request)) throw new Error("not supported by this browser");
+      if (!(navigator.wakeLock && navigator.wakeLock.request)) throw new Error(T("check.awake.notSupported"));
       const lock = await timed(navigator.wakeLock.request("screen"), 5000);
       try { await lock.release(); } catch { /* fine */ }
-      set("c-awake", "ok", "This device can be kept awake during the exercise.", LOCK_ADVICE);
+      set("c-awake", "ok", T("check.awake.ok"), LOCK_ADVICE);
     } catch (err) {
-      set("c-awake", "warn", `This device may go to sleep during the exercise (${err.message}).`,
-        "Keep it plugged in, switch off battery saver, and set the screen to stay on for the length of the exercise. " + LOCK_ADVICE);
+      set("c-awake", "warn", T("check.awake.maySleep", { reason: String(err.message) }),
+        T("check.awake.maySleepFix"));
     }
   }
 
@@ -199,10 +200,10 @@
   // without a tap. Never a failure: without it the screen needs one tap.
   function autoSoundAdvice() {
     const ua = navigator.userAgent;
-    if (/Edg\//.test(ua)) return "Microsoft Edge: type edge://settings/content/mediaAutoplay in the address bar (or open Settings and search for \"autoplay\"), set Media autoplay to Allow, then reload this page.";
-    if (/Firefox\//.test(ua)) return "Firefox: click the autoplay icon in the address bar (or Page Info → Permissions) and set Autoplay to Allow Audio and Video for plan-proof.com. Then reload this page. Help: support.mozilla.org/kb/block-autoplay";
-    if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return "Safari on Mac: click the Page menu button in the address bar, choose Website Settings, and set Auto-Play to Allow All Auto-Play. Then reload this page.";
-    return "Chrome has no simple switch for this. It usually starts allowing it once this laptop has played the exercise sounds a few times; otherwise use Microsoft Edge, Firefox or Safari for the room screen, or ask IT to add https://plan-proof.com to Chrome's AutoplayAllowlist policy.";
+    if (/Edg\//.test(ua)) return T("check.autoSound.adviceEdge");
+    if (/Firefox\//.test(ua)) return T("check.autoSound.adviceFirefox");
+    if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return T("check.autoSound.adviceSafari");
+    return T("check.autoSound.adviceChrome");
   }
   (function checkAutoSound() {
     const el = document.getElementById("c-autosound");
@@ -211,13 +212,13 @@
       a.volume = 0.01;
       a.play().then(() => {
         a.pause();
-        set("c-autosound", "ok", "Allowed — after a full reload this room screen will start its sound by itself.");
+        set("c-autosound", "ok", T("check.autoSound.allowed"));
       }).catch(() => {
-        set("c-autosound", "info", "Not allowed yet — after a full reload this room screen needs one tap on \"Tap to begin\". The exercise still works. To avoid the tap:", autoSoundAdvice());
+        set("c-autosound", "info", T("check.autoSound.notAllowed"), autoSoundAdvice());
       });
     } catch {
       el.dataset.state = "info";
-      set("c-autosound", "info", "Could not be checked on this browser. After a full reload the room screen may need one tap.");
+      set("c-autosound", "info", T("check.autoSound.notCheckable"));
     }
   })();
 
@@ -227,13 +228,13 @@
       setTimeout(() => a.pause(), 4000);
       document.getElementById("heardYes").hidden = false;
       document.getElementById("heardNo").hidden = false;
-    }).catch((err) => set("c-sound", "bad", `The browser refused to play sound (${err.message}).`, "Check the device isn't muted and allow sound for plan-proof.com in the browser."));
+    }).catch((err) => set("c-sound", "bad", T("check.sound.refused", { reason: String(err.message) }), T("check.sound.refusedFix")));
   };
-  document.getElementById("heardYes").onclick = () => set("c-sound", "ok", "Sound works.");
-  document.getElementById("heardNo").onclick = () => set("c-sound", "bad", "No sound was heard.", "Check the volume, the selected speaker/HDMI audio output, and that the browser tab isn't muted.");
+  document.getElementById("heardYes").onclick = () => set("c-sound", "ok", T("check.sound.works"));
+  document.getElementById("heardNo").onclick = () => set("c-sound", "bad", T("check.sound.notHeard"), T("check.sound.notHeardFix"));
   document.getElementById("copyBtn").onclick = async () => {
-    try { await navigator.clipboard.writeText(report()); document.getElementById("copyBtn").textContent = "Copied"; }
-    catch { prompt("Copy the results:", report()); }
+    try { await navigator.clipboard.writeText(report()); document.getElementById("copyBtn").textContent = T("check.actions.copied"); }
+    catch { prompt(T("check.actions.copyPrompt"), report()); }
   };
   document.getElementById("againBtn").onclick = run;
   run();

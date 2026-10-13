@@ -39,11 +39,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 function assertValidSessionId(sessionId) {
   if (!sessionId || !UUID_RE.test(sessionId)) {
-    throw new Error(
-      `Session ID "${sessionId}" looks incomplete or malformed — the link may ` +
-        `have been cut off when it was copied or typed. Use the full link, ` +
-        `exactly as given, including everything after "session=".`
-    );
+    throw new Error(T("shared.error.sessionIdMalformed", { id: String(sessionId) }));
   }
 }
 
@@ -77,9 +73,11 @@ async function fetchSession(sessionId) {
     headers: rpcHeaders(getFacilitatorToken()),
     body: JSON.stringify({ p_session_id: sessionId }),
   });
-  if (!res.ok) throw new Error(`Fetch session failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(T("shared.error.fetchSessionFailed", { status: res.status }));
   const text = await res.text();
   const row = text ? JSON.parse(text) : null;
+  // The exercise's own language (lang.js). English: nothing happens.
+  if (row) await PPLang.useSessionLanguage(row.language);
   return row || null;
 }
 
@@ -115,10 +113,7 @@ async function patchSession(sessionId, fields) {
   // being used where the Facilitator link (with &token=...) was needed.
   const facilitatorToken = getFacilitatorToken();
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   await withRetry(() =>
     fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`, {
@@ -147,13 +142,10 @@ async function patchSession(sessionId, fields) {
     // inside withRetry, so a rejected action silently retried 3 times with
     // backoff — up to ~1.5s — before finally showing the error; fixed
     // 5 October 2026.)
-    if (!res.ok) throw new Error(`Update session failed: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(T("shared.error.updateSessionFailed", { status: res.status }));
     const rows = await res.json();
     if (rows.length === 0) {
-      throw new Error(
-        "Update rejected: the facilitator token in this link doesn't match " +
-          "this session. Use the exact Facilitator link that was issued for it."
-      );
+      throw new Error(T("shared.error.updateRejected"));
     }
     ringDoorbell(writerDoorbell, "session");
   });
@@ -212,11 +204,11 @@ async function joinSession(sessionId, { id, firstName, familyName, title, depart
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      if (body && body.message) detail = body.message;
+      if (body && body.message) detail = PPLang.dbMessage(body.message);
     } catch {
       /* response wasn't JSON — keep the plain HTTP status above */
     }
-    throw new Error(`Couldn't join: ${detail}`);
+    throw new Error(T("shared.error.couldntJoin", { detail }));
   }
 }
 
@@ -252,10 +244,10 @@ async function saveSubmission(sessionId, { injectIndex, writerId, individual, an
       }),
     });
   } catch {
-    throw new Error("Couldn't save your answer: no connection. It is kept on this device — it will be saved when the connection is back.");
+    throw new Error(T("shared.error.saveAnswerNoConnection"));
   }
   if (!res.ok) {
-    throw new Error(`Couldn't save your answer: ${await readErrorDetail(res)}`);
+    throw new Error(T("shared.error.couldntSaveAnswer", { detail: await readErrorDetail(res) }));
   }
 }
 
@@ -265,7 +257,7 @@ async function saveSubmission(sessionId, { injectIndex, writerId, individual, an
 async function readErrorDetail(res) {
   try {
     const body = await res.json();
-    if (body && body.message) return body.message;
+    if (body && body.message) return PPLang.dbMessage(body.message);
   } catch {
     /* not JSON */
   }
@@ -279,10 +271,7 @@ async function readErrorDetail(res) {
 async function fetchSubmissionStatus(sessionId, facilitatorToken) {
   assertValidSessionId(sessionId);
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   const res = await withRetry(() =>
     fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_submission_status`, {
@@ -297,7 +286,7 @@ async function fetchSubmissionStatus(sessionId, facilitatorToken) {
       body: JSON.stringify({ p_session_id: sessionId }),
     })
   );
-  if (!res.ok) throw new Error(`Fetch submission status failed: ${await readErrorDetail(res)}`);
+  if (!res.ok) throw new Error(T("shared.error.fetchSubmissionStatusFailed", { detail: await readErrorDetail(res) }));
   return res.json();
 }
 
@@ -312,7 +301,7 @@ function injectOutput(inject) {
 // planproof-scenario skill's Stage 3 JSON produces).
 function injectResponsible(inject) {
   const r = inject && (inject.responsible != null ? inject.responsible : inject.team);
-  if (!r || (Array.isArray(r) && r.length === 0)) return ["All"];
+  if (!r || (Array.isArray(r) && r.length === 0)) return ["All"]; // i18n-ok: the scenario's own code for "every department" (compared in isDepartmentResponsible), not wording
   return Array.isArray(r) ? r : [r];
 }
 // The inject's task line for participants. The planproof-scenario skill's
@@ -424,11 +413,11 @@ async function uploadAttachment(sessionId, injectIndex, department, file) {
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      if (body && body.message) detail = body.message;
+      if (body && body.message) detail = PPLang.dbMessage(body.message);
     } catch {
       /* not JSON — keep the plain status */
     }
-    throw new Error(`Couldn't upload "${file.name}": ${detail}`);
+    throw new Error(T("shared.error.couldntUpload", { name: String(file.name), detail }));
   }
   return { path, filename: file.name, size: file.size, contentType: file.type };
 }
@@ -443,10 +432,7 @@ async function uploadAttachment(sessionId, injectIndex, department, file) {
 async function fetchAttendees(sessionId, facilitatorToken) {
   assertValidSessionId(sessionId);
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   const res = await withRetry(() =>
     fetch(
@@ -461,7 +447,7 @@ async function fetchAttendees(sessionId, facilitatorToken) {
       }
     )
   );
-  if (!res.ok) throw new Error(`Fetch attendees failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(T("shared.error.fetchAttendeesFailed", { status: res.status }));
   return res.json();
 }
 
@@ -473,10 +459,7 @@ async function fetchAttendees(sessionId, facilitatorToken) {
 // worry about. Same facilitator-token gating as everything else here.
 async function deleteAttendee(attendeeId, facilitatorToken) {
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   const res = await withRetry(() =>
     fetch(`${SUPABASE_URL}/rest/v1/attendees?id=eq.${attendeeId}`, {
@@ -489,12 +472,10 @@ async function deleteAttendee(attendeeId, facilitatorToken) {
       },
     })
   );
-  if (!res.ok) throw new Error(`Remove attendee failed: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(T("shared.error.removeAttendeeFailed", { status: res.status }));
   const rows = await res.json();
   if (rows.length === 0) {
-    throw new Error(
-      "Remove rejected: the facilitator token in this link doesn't match this session."
-    );
+    throw new Error(T("shared.error.removeRejected"));
   }
 }
 
@@ -559,11 +540,11 @@ function ringDoorbell(channel, kind) {
 // fills the text box — the facilitator can edit it or type anything else.
 // preset_key is recorded only when a preset is sent unedited.
 const BROADCAST_PRESETS = [
-  { key: "five_min", text: "5 minutes left on this inject" },
-  { key: "two_min", text: "2 minutes left — please finalise your answer" },
-  { key: "submit_now", text: "Please submit now" },
-  { key: "next_soon", text: "Moving to the next inject shortly" },
-  { key: "short_break", text: "Short break — please stay nearby" },
+  { key: "five_min", text: T("shared.presetBroadcast.fiveMin") },
+  { key: "two_min", text: T("shared.presetBroadcast.twoMin") },
+  { key: "submit_now", text: T("shared.presetBroadcast.submitNow") },
+  { key: "next_soon", text: T("shared.presetBroadcast.nextSoon") },
+  { key: "short_break", text: T("shared.presetBroadcast.shortBreak") },
 ];
 const MESSAGE_MAX_LENGTH = 280;
 
@@ -573,14 +554,14 @@ const MESSAGE_MAX_LENGTH = 280;
 // broadcast presets above. preset_key is recorded only when a preset is sent
 // unedited.
 const FACILITATOR_TO_DEPARTMENT_PRESETS = [
-  { key: "need_more_time", text: "Do you need more time?" },
-  { key: "submit_when_ready", text: "Please submit when ready" },
-  { key: "finalise_soon", text: "Moving on shortly — please finalise" },
+  { key: "need_more_time", text: T("shared.presetToDepartment.needMoreTime") },
+  { key: "submit_when_ready", text: T("shared.presetToDepartment.submitWhenReady") },
+  { key: "finalise_soon", text: T("shared.presetToDepartment.finaliseSoon") },
 ];
 const DEPARTMENT_TO_FACILITATOR_PRESETS = [
-  { key: "few_more_minutes", text: "Yes, a few more minutes" },
-  { key: "submitting_now", text: "No, submitting now" },
-  { key: "technical_issue", text: "Technical issue — please wait" },
+  { key: "few_more_minutes", text: T("shared.presetFromDepartment.fewMoreMinutes") },
+  { key: "submitting_now", text: T("shared.presetFromDepartment.submittingNow") },
+  { key: "technical_issue", text: T("shared.presetFromDepartment.technicalIssue") },
 ];
 
 // Facilitator -> participants: everyone (department omitted/null) or one
@@ -591,10 +572,7 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
   assertValidSessionId(sessionId);
   const facilitatorToken = getFacilitatorToken();
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   // Same pattern as joinSession: retry only the network call; a rejection
   // (wrong token, exercise ended, empty/too-long text) fails once, at once.
@@ -619,20 +597,22 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
   );
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
+    let rawDetail = detail; // the database's own words, for the two checks below
     try {
       const err = await res.json();
-      if (err && err.message) detail = err.message;
+      if (err && err.message) {
+        rawDetail = err.message;
+        detail = PPLang.dbMessage(err.message);
+      }
     } catch {
       /* not JSON — keep the HTTP status */
     }
-    if (/row-level security/i.test(detail)) {
-      detail =
-        "the facilitator token in this link doesn't match this session. " +
-        "Use the exact Facilitator link that was issued for it.";
-    } else if (/check constraint/i.test(detail)) {
-      detail = `the message must be between 1 and ${MESSAGE_MAX_LENGTH} characters.`;
+    if (/row-level security/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentToken"));
+    } else if (/check constraint/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentLength", { max: MESSAGE_MAX_LENGTH }));
     }
-    throw new Error(`Message not sent: ${detail}`);
+    throw new Error(T("shared.error.messageNotSent", { detail }));
   }
   ringDoorbell(writerDoorbell, "message");
 }
@@ -645,7 +625,7 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
 async function sendDepartmentRequest(sessionId, { body, presetKey, department }) {
   assertValidSessionId(sessionId);
   if (!department) {
-    throw new Error("No department on this identity — please rejoin the exercise.");
+    throw new Error(T("shared.error.noDepartment"));
   }
   const res = await withRetry(() =>
     fetch(`${SUPABASE_URL}/rest/v1/session_messages`, {
@@ -667,16 +647,20 @@ async function sendDepartmentRequest(sessionId, { body, presetKey, department })
   );
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
+    let rawDetail = detail; // the database's own words, for the check below
     try {
       const err = await res.json();
-      if (err && err.message) detail = err.message;
+      if (err && err.message) {
+        rawDetail = err.message;
+        detail = PPLang.dbMessage(err.message);
+      }
     } catch {
       /* not JSON — keep the HTTP status */
     }
-    if (/check constraint/i.test(detail)) {
-      detail = `the message must be between 1 and ${MESSAGE_MAX_LENGTH} characters.`;
+    if (/check constraint/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentLength", { max: MESSAGE_MAX_LENGTH }));
     }
-    throw new Error(`Message not sent: ${detail}`);
+    throw new Error(T("shared.error.messageNotSent", { detail }));
   }
 }
 
@@ -694,7 +678,7 @@ async function fetchMessages(sessionId, department) {
       body: JSON.stringify({ p_session_id: sessionId, p_department: department || null }),
     })
   );
-  if (!res.ok) throw new Error(`Fetch messages failed: ${await readErrorDetail(res)}`);
+  if (!res.ok) throw new Error(T("shared.error.fetchMessagesFailed", { detail: await readErrorDetail(res) }));
   return res.json();
 }
 
@@ -712,7 +696,7 @@ async function fetchAllMessages(sessionId) {
       body: JSON.stringify({ p_session_id: sessionId }),
     })
   );
-  if (!res.ok) throw new Error(`Fetch messages failed: ${await readErrorDetail(res)}`);
+  if (!res.ok) throw new Error(T("shared.error.fetchMessagesFailed", { detail: await readErrorDetail(res) }));
   return res.json();
 }
 
@@ -748,32 +732,32 @@ async function fetchSentMessages(sessionId) {
 // call goes through a checked database function. Operational traffic only —
 // it stays out of the report; anything evaluative belongs in a note.
 const OBSERVER_TO_FACILITATOR_PRESETS = [
-  { key: "obs_need_more_time", text: "Need more time" },
-  { key: "obs_ready", text: "Ready to continue" },
-  { key: "obs_technical_issue", text: "Technical issue" },
-  { key: "obs_question", text: "Question" },
+  { key: "obs_need_more_time", text: T("shared.presetFromObserver.needMoreTime") },
+  { key: "obs_ready", text: T("shared.presetFromObserver.ready") },
+  { key: "obs_technical_issue", text: T("shared.presetFromObserver.technicalIssue") },
+  { key: "obs_question", text: T("shared.presetFromObserver.question") },
 ];
 const FACILITATOR_TO_OBSERVER_PRESETS = [
-  { key: "obs_advancing_1min", text: "Advancing in 1 min" },
-  { key: "obs_noted_hold", text: "Noted, hold" },
-  { key: "obs_please_proceed", text: "Please proceed" },
+  { key: "obs_advancing_1min", text: T("shared.presetToObserver.advancingOneMin") },
+  { key: "obs_noted_hold", text: T("shared.presetToObserver.notedHold") },
+  { key: "obs_please_proceed", text: T("shared.presetToObserver.pleaseProceed") },
 ];
 
 // Mirrors the database's own rule (private.observer_channel_closed_reason),
 // so a screen can say when the channel closes. The database still decides.
 function observerChannel(row, nowMs) {
   const now = nowMs === undefined ? Date.now() : nowMs;
-  if (!row) return { open: false, reason: "Loading…", closesAt: null };
+  if (!row) return { open: false, reason: T("shared.status.loading"), closesAt: null };
   if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
   if (row.notes_closed_at) {
-    return { open: false, reason: "Messages are closed: notes are complete for this exercise.", closesAt: null };
+    return { open: false, reason: T("shared.observerChannel.closedNotesComplete"), closesAt: null };
   }
   const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
   const closesAt = ended + OBSERVER_NOTES_WINDOW_MS;
   if (now > closesAt) {
     return {
       open: false,
-      reason: "Messages between Observers and the facilitator closed one hour after the exercise ended.",
+      reason: T("shared.observerChannel.closedAfterHour"),
       closesAt,
     };
   }
@@ -782,11 +766,11 @@ function observerChannel(row, nowMs) {
 
 // "Room 2 Observer" — or just "Observer" in a one-room exercise. Never a name.
 function observerRoomLabel(room) {
-  return room ? `Room ${room} Observer` : "Observer";
+  return room ? T("shared.observer.roomLabel", { room }) : T("shared.observer.label");
 }
 // Who a facilitator's message to Observers was for.
 function observerTargetLabel(room) {
-  return room ? `Room ${room} Observers` : "all Observers";
+  return room ? T("shared.observer.roomTarget", { room }) : T("shared.observer.allTarget");
 }
 
 // Observer -> facilitator. message.id is created on the phone when the
@@ -808,10 +792,7 @@ async function sendToObservers(sessionId, { id, body, presetKey, room }) {
   assertValidSessionId(sessionId);
   const facilitatorToken = getFacilitatorToken();
   if (!facilitatorToken) {
-    throw new Error(
-      "No facilitator token in this link. Use the Facilitator link (with " +
-        "&token=... after the session ID), not the room-display link."
-    );
+    throw new Error(T("shared.error.noFacilitatorToken"));
   }
   const result = await callNotesRpc(
     "facilitator_message_observers",
@@ -831,7 +812,7 @@ async function fetchObserverMessages(sessionId, attendeeId) {
 
 function formatMessageTime(iso) {
   const d = new Date(iso);
-  return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return isNaN(d) ? "" : d.toLocaleTimeString(PPLang.locales(), { hour: "2-digit", minute: "2-digit" });
 }
 
 // A short two-note chime for a new broadcast on the room display. Made with
@@ -882,18 +863,18 @@ function playChime() {
 // inject and the department list. These helpers just call those functions.
 
 const NOTE_TOPICS = [
-  { key: "decision", label: "Decision-making & escalation" },
-  { key: "communication", label: "Communication" },
-  { key: "plan", label: "Plan adherence" },
-  { key: "roles", label: "Roles & responsibility clarity" },
-  { key: "coordination", label: "Coordination between teams" },
-  { key: "other", label: "Other" },
+  { key: "decision", label: T("shared.noteTopic.decision") },
+  { key: "communication", label: T("shared.noteTopic.communication") },
+  { key: "plan", label: T("shared.noteTopic.plan") },
+  { key: "roles", label: T("shared.noteTopic.roles") },
+  { key: "coordination", label: T("shared.noteTopic.coordination") },
+  { key: "other", label: T("shared.noteTopic.other") },
 ];
 // Three levels, not five (Ahmed, 11 October 2026).
 const NOTE_TYPES = [
-  { key: "positive", label: "Positive" },
-  { key: "improvement", label: "Needs improvement" },
-  { key: "critical", label: "Critical gap" },
+  { key: "positive", label: T("shared.noteType.positive") },
+  { key: "improvement", label: T("shared.noteType.improvement") },
+  { key: "critical", label: T("shared.noteType.critical") },
 ];
 const NOTE_MAX_LENGTH = 500;
 const NOTE_TOPIC_OTHER_MAX = 60;
@@ -904,7 +885,7 @@ const OBSERVER_NOTES_WINDOW_MS = 60 * 60 * 1000;
 const FACILITATOR_NOTES_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 function noteTopicLabel(note) {
-  if (note.topic === "other") return note.topic_other ? `Other: ${note.topic_other}` : "Other";
+  if (note.topic === "other") return note.topic_other ? T("shared.noteTopic.otherWith", { text: note.topic_other }) : T("shared.noteTopic.other");
   const t = NOTE_TOPICS.find((x) => x.key === note.topic);
   return t ? t.label : note.topic;
 }
@@ -913,7 +894,7 @@ function noteTypeLabel(key) {
   return t ? t.label : key;
 }
 function noteAboutLabel(note) {
-  if (note.department_scope === "external") return `External party: ${note.external_party}`;
+  if (note.department_scope === "external") return T("shared.noteAbout.external", { name: String(note.external_party) });
   return (note.departments || []).join(", ");
 }
 
@@ -922,9 +903,9 @@ function noteAboutLabel(note) {
 // sent a moment too late is refused there with the same reason.
 function notesWindow(row, role, nowMs) {
   const now = nowMs === undefined ? Date.now() : nowMs;
-  if (!row) return { open: false, reason: "Loading…", closesAt: null };
-  if (row.notes_closed_at) return { open: false, reason: "Notes are closed for this exercise.", closesAt: null };
-  if (row.status === "lobby") return { open: false, reason: "Notes open when the exercise starts.", closesAt: null };
+  if (!row) return { open: false, reason: T("shared.status.loading"), closesAt: null };
+  if (row.notes_closed_at) return { open: false, reason: T("shared.notesWindow.closed"), closesAt: null };
+  if (row.status === "lobby") return { open: false, reason: T("shared.notesWindow.opensAtStart"), closesAt: null };
   if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
   const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
   const span = role === "facilitator" ? FACILITATOR_NOTES_WINDOW_MS : OBSERVER_NOTES_WINDOW_MS;
@@ -933,8 +914,8 @@ function notesWindow(row, role, nowMs) {
     return {
       open: false,
       reason: role === "facilitator"
-        ? "Notes closed 48 hours after the exercise ended."
-        : "Observer notes closed one hour after the exercise ended.",
+        ? T("shared.notesWindow.closedFacilitator")
+        : T("shared.notesWindow.closedObserver"),
       closesAt,
     };
   }
@@ -971,9 +952,7 @@ async function callNotesRpc(name, body, facilitatorToken) {
       })
     );
   } catch {
-    const err = new Error(
-      "Couldn't reach the server — check the connection and try again. Nothing you wrote has been lost."
-    );
+    const err = new Error(T("shared.error.serverUnreachable"));
     err.network = true;
     throw err;
   }
@@ -1136,7 +1115,7 @@ function playSfxLayer(name) {
   const path = SFX_FILES[name];
   if (!path) {
     console.warn(`No sound file mapped for sfx "${name}"`);
-    onSfxStatus(`⚠ no file mapped for "${name}"`);
+    onSfxStatus(T("shared.sfx.noFile", { name }));
     return;
   }
 
@@ -1149,15 +1128,15 @@ function playSfxLayer(name) {
   audio.currentTime = 0;
   currentSfxAudios.push(audio);
 
-  onSfxStatus(`▶ attempting: ${name}`);
+  onSfxStatus(T("shared.sfx.attempting", { name }));
   audio
     .play()
-    .then(() => onSfxStatus(`✓ playing: ${name}`))
+    .then(() => onSfxStatus(T("shared.sfx.playing", { name })))
     .catch((err) => {
       // Most common cause: no user gesture has unlocked audio yet (the
       // "Tap to begin" screen handles this on room-display.html).
       console.warn(`Playback blocked for "${name}":`, err.message);
-      onSfxStatus(`✗ blocked: ${name} — ${err.message}`);
+      onSfxStatus(T("shared.sfx.blocked", { name, reason: String(err.message) }));
     });
 
   if (SFX_LOOP.has(name)) {
@@ -1198,7 +1177,7 @@ function createLiveStatus() {
   el.id = "liveStatus";
   el.setAttribute("role", "status");
   el.setAttribute("aria-live", "polite");
-  el.style.cssText = "position:fixed;right:10px;bottom:10px;z-index:9999;padding:4px 10px;" +
+  el.style.cssText = "position:fixed;inset-inline-end:10px;bottom:10px;z-index:9999;padding:4px 10px;" +
     "border-radius:999px;font:600 12px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
     "pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:background .2s";
   document.body.appendChild(el);
@@ -1216,10 +1195,10 @@ function createLiveStatus() {
   function draw() {
     const st = state();
     el.dataset.state = st;
-    if (st === "live") { el.textContent = "\u25CF Live"; el.style.background = "rgba(34,139,84,.85)"; }
-    else if (st === "connecting") { el.textContent = "Connecting\u2026"; el.style.background = "rgba(120,120,120,.85)"; }
-    else if (st === "reconnecting") { el.textContent = "Reconnecting\u2026"; el.style.background = "rgba(200,140,20,.95)"; }
-    else { el.textContent = "Offline \u2014 showing the last known state"; el.style.background = "rgba(200,50,40,.95)"; }
+    if (st === "live") { el.textContent = T("shared.live.live"); el.style.background = "rgba(34,139,84,.85)"; }
+    else if (st === "connecting") { el.textContent = T("shared.live.connecting"); el.style.background = "rgba(120,120,120,.85)"; }
+    else if (st === "reconnecting") { el.textContent = T("shared.live.reconnecting"); el.style.background = "rgba(200,140,20,.95)"; }
+    else { el.textContent = T("shared.live.offline"); el.style.background = "rgba(200,50,40,.95)"; }
   }
   window.addEventListener("online", draw);
   window.addEventListener("offline", draw);
@@ -1551,7 +1530,7 @@ function setNotice(id, text, { tone } = {}) {
     el = document.createElement("div");
     el.id = id;
     el.setAttribute("role", "status");
-    el.style.cssText = "position:fixed;left:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
+    el.style.cssText = "position:fixed;inset-inline-start:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
       "padding:6px 10px;border-radius:8px;font:500 12px/1.35 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
       "box-shadow:0 1px 4px rgba(0,0,0,.25)";
     document.body.appendChild(el);
@@ -1559,7 +1538,7 @@ function setNotice(id, text, { tone } = {}) {
   el.style.background = tone === "info" ? "rgba(33,43,54,.96)" : "rgba(150,95,10,.95)";
   el.textContent = text;
 }
-const AWAKE_NOTICE = "This device may go to sleep. Keep it plugged in and switch off battery saver.";
+const AWAKE_NOTICE = T("shared.notice.awake");
 
 // A message across the top that the person dismisses (or that goes after
 // `ms`). Used for "welcome back" and "refreshed by the facilitator".
@@ -1574,7 +1553,7 @@ function showToast(text, ms) {
       "max-width:min(560px,calc(100vw - 20px));padding:10px 14px;border-radius:10px;cursor:pointer;" +
       "font:600 14px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#201404;background:#e2a63b;" +
       "box-shadow:0 2px 10px rgba(0,0,0,.35)";
-    el.title = "Tap to dismiss";
+    el.title = T("shared.toast.dismissTitle");
     el.addEventListener("click", () => el.remove());
     document.body.appendChild(el);
   }
@@ -1614,12 +1593,14 @@ function watchAway({ minMs, onBack }) {
 
 function awayText(ms, row) {
   const mins = Math.max(1, Math.round(ms / 60000));
-  const away = `You were away for ${mins} minute${mins === 1 ? "" : "s"}.`;
-  if (!row) return away;
-  if (row.status === "ended") return `${away} The exercise has ended.`;
-  if (row.status === "lobby") return `${away} The exercise has not started yet.`;
+  if (!row) return T("shared.away.only", { count: mins });
+  if (row.status === "ended") return T("shared.away.ended", { count: mins });
+  if (row.status === "lobby") return T("shared.away.lobby", { count: mins });
   const total = ((row.scenario && row.scenario.injects) || []).length;
-  return `${away} The exercise is now on inject ${row.current_inject_index + 1}${total ? ` of ${total}` : ""}.`;
+  const inject = row.current_inject_index + 1;
+  return total
+    ? T("shared.away.onInjectOf", { count: mins, inject, total })
+    : T("shared.away.onInject", { count: mins, inject });
 }
 
 
@@ -1652,7 +1633,7 @@ function greetingName(identity) {
 // "Thank you, Ahmed" — the name in its own direction-isolated span, so an
 // Arabic name sits correctly inside the English line.
 function thanksLine(name) {
-  return name ? `Thank you, <bdi class="pp-thanks-name">${ppEscape(name)}</bdi>` : "Thank you";
+  return name ? T("shared.thanks.named_html", { name: ppEscape(name) }) : ppEscape(T("shared.thanks.plain"));
 }
 
 // After registering, while waiting for the start.
@@ -1661,9 +1642,9 @@ function welcomeScreenHtml({ name, observer } = {}) {
   return `
     <section class="pp-thanks pp-thanks-welcome" aria-live="polite">
       <h1 class="pp-thanks-title">${thanksLine(name)}</h1>
-      <p class="pp-thanks-lead">You are registered${observer ? " as an Observer" : ""}.</p>
-      <p class="pp-thanks-nofault">Kindly note that this exercise tests the plan, not individuals.</p>
-      <p class="pp-thanks-wait">Waiting for the facilitator to start the exercise…</p>
+      <p class="pp-thanks-lead">${ppEscape(observer ? T("shared.welcome.registeredObserver") : T("shared.welcome.registered"))}</p>
+      <p class="pp-thanks-nofault">${ppEscape(T("shared.welcome.noFault"))}</p>
+      <p class="pp-thanks-wait">${ppEscape(T("shared.welcome.waiting"))}</p>
     </section>`;
 }
 
@@ -1674,15 +1655,15 @@ function welcomeScreenHtml({ name, observer } = {}) {
 //   extraHtml      -> an extra block inside the card (the Observer's time line)
 //   close: false   -> leave out "You can now close this page."
 function endScreenHtml({ name, everyone, compact, label, extraHtml, close } = {}) {
-  const title = everyone ? "Thank you, everyone" : thanksLine(name);
+  const title = everyone ? ppEscape(T("shared.thanks.everyone")) : thanksLine(name);
   return `
     <section class="pp-thanks pp-thanks-end${compact ? " compact" : ""}${everyone ? " everyone" : ""}" aria-live="polite">
       <h1 class="pp-thanks-title">${title}</h1>
-      <p class="pp-thanks-lead">This exercise has ended.</p>
+      <p class="pp-thanks-lead">${ppEscape(T("shared.end.ended"))}</p>
       ${label ? `<p class="pp-thanks-label">${ppEscape(label)}</p>` : ""}
-      <p class="pp-thanks-nofault">As mentioned at the start, this exercise tested the plan, not individuals.</p>
+      <p class="pp-thanks-nofault">${ppEscape(T("shared.end.noFault"))}</p>
       ${extraHtml || ""}
-      ${close === false ? "" : `<p class="pp-thanks-close">You can now close this page.</p>`}
+      ${close === false ? "" : `<p class="pp-thanks-close">${ppEscape(T("shared.end.closePage"))}</p>`}
     </section>`;
 }
 
@@ -1701,12 +1682,12 @@ function injectWasResumed(row, idx) {
 
 // "52 minutes left" / "1 minute left" / "less than a minute left".
 function minutesLeftText(ms) {
-  if (ms < 60000) return "less than a minute left";
+  if (ms < 60000) return T("shared.time.lessThanMinuteLeft");
   const m = Math.floor(ms / 60000);
-  return `${m} minute${m === 1 ? "" : "s"} left`;
+  return T("shared.time.minutesLeft", { count: m });
 }
 function clockTimeText(ms) {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(PPLang.locales(), { hour: "2-digit", minute: "2-digit" });
 }
 
 // The Observer's line under the thank-you: how long the notes area and the
@@ -1717,11 +1698,23 @@ function observerAfterEndLine(row, nowMs) {
   const notes = notesWindow(row, "observer", now);
   const chan = observerChannel(row, now);
   if (notes.open && notes.closesAt) {
-    return {
-      open: true,
-      text: `You can still add or edit your notes${chan.open ? " and message the facilitator" : ""} until ${clockTimeText(notes.closesAt)} (${minutesLeftText(notes.closesAt - now)}).`,
-    };
+    // One whole sentence per case (with or without messages; under a minute
+    // or a count of minutes) — the same split as minutesLeftText.
+    const time = clockTimeText(notes.closesAt);
+    const left = notes.closesAt - now;
+    const count = Math.floor(left / 60000);
+    let text;
+    if (chan.open) {
+      text = left < 60000
+        ? T("shared.observerEnd.notesAndMessagesUntilSoon", { time })
+        : T("shared.observerEnd.notesAndMessagesUntil", { time, count });
+    } else {
+      text = left < 60000
+        ? T("shared.observerEnd.notesUntilSoon", { time })
+        : T("shared.observerEnd.notesUntil", { time, count });
+    }
+    return { open: true, text };
   }
-  return { open: false, text: "Notes and messages are now closed. You can close this page." };
+  return { open: false, text: T("shared.observerEnd.closed") };
 }
 

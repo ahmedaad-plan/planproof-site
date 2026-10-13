@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Participant</title>
+<title data-i18n="part.title">PlanProof — Participant</title>
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="./theme.css" />
@@ -14,6 +14,8 @@
   /* The countdown stays at the top of the screen while the person scrolls
      down to type, so the time left is always in sight. */
   .clock-wrap { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 10px; }
+  /* Countdown digits never reverse in a right-to-left language. */
+  #injectTimerValue { direction: ltr; unicode-bidi: isolate; }
   .inject-card {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 12px; padding: 18px 18px 20px; margin-bottom: 16px;
@@ -21,7 +23,7 @@
   .inject-title { font-family: var(--font-display); font-size: 1.45rem; font-weight: 600; line-height: 1.25; margin-bottom: 8px; }
   .inject-desc { color: var(--text); margin-bottom: 14px; }
   .inject-task {
-    background: var(--amber-dim); border-left: 3px solid var(--amber);
+    background: var(--amber-dim); border-inline-start: 3px solid var(--amber);
     padding: 9px 12px; border-radius: 4px; font-size: 0.95rem;
   }
   .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -34,7 +36,7 @@
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
   }
   .not-required {
-    background: var(--blue-dim); border-left: 3px solid var(--blue); color: var(--text);
+    background: var(--blue-dim); border-inline-start: 3px solid var(--blue); color: var(--text);
     border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; margin-bottom: 12px;
   }
   .hint { font-size: 0.82rem; color: var(--text-muted); margin: -2px 0 8px; }
@@ -83,7 +85,7 @@
   .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 20px; }
   .msg-history summary { cursor: pointer; font-size: 0.95rem; padding: 8px 0; }
   .msg-badge {
-    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
+    display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
     background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
   }
   .msg-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.92rem; }
@@ -101,7 +103,7 @@
   .msg-reply-card label:first-of-type { margin-top: 0; }
   .msg-reply textarea { min-height: 76px; resize: vertical; border-width: 2px; }
   .msg-reply-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .msg-reply-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .msg-reply-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
   .msg-reply-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
   .msg-reply-feedback.ok { color: var(--teal-soft); }
   .msg-reply-feedback.err { color: var(--red-soft); }
@@ -109,35 +111,35 @@
 </head>
 <body>
   <header class="pp-top">
-    <span class="pp-brand small"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
-    <div class="pp-context"><strong id="clientLabel">PlanProof</strong><div id="whoLabel"></div></div>
+    <span class="pp-brand small" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+    <div class="pp-context"><strong id="clientLabel" data-i18n-skip>PlanProof</strong><div id="whoLabel"></div></div>
   </header>
   <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
     <div class="msg-banner-inner">
       <div>
-        <div class="msg-label">Message from the facilitator <span id="msgBannerTime"></span></div>
+        <div class="msg-label" data-i18n-nodes="part.msg.bannerLabel">Message from the facilitator <span id="msgBannerTime"></span></div>
         <div class="msg-text" id="msgBannerText"></div>
       </div>
-      <button id="msgBannerOk">Got it</button>
+      <button id="msgBannerOk" data-i18n="part.msg.gotIt">Got it</button>
     </div>
   </div>
-  <main id="main">Loading…</main>
+  <main id="main" data-i18n-nodes="part.loading">Loading…</main>
   <section class="msg-history" id="msgHistory" hidden>
     <details id="msgHistoryDetails">
-      <summary>Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></summary>
+      <summary data-i18n-nodes="part.msg.historyTitle">Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></summary>
       <ul class="msg-list" id="msgList"></ul>
     </details>
   </section>
   <section class="msg-reply" id="msgReply" hidden>
     <div class="msg-reply-card pp-form">
-      <h2 class="msg-reply-label">Message the facilitator</h2>
-      <label for="replyPreset">Choose a ready-made message</label>
-      <select id="replyPreset"><option value="">— Choose a ready-made message —</option></select>
-      <label for="replyText">Or type your own message</label>
-      <textarea id="replyText" maxlength="280" placeholder="Tap here and type your message"></textarea>
+      <h2 class="msg-reply-label" data-i18n="part.reply.title">Message the facilitator</h2>
+      <label for="replyPreset" data-i18n="part.reply.presetLabel">Choose a ready-made message</label>
+      <select id="replyPreset"><option value="" data-i18n="part.reply.presetPlaceholder">— Choose a ready-made message —</option></select>
+      <label for="replyText" data-i18n="part.reply.textLabel">Or type your own message</label>
+      <textarea id="replyText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:part.reply.textPlaceholder"></textarea>
       <div class="msg-reply-row">
         <span class="count" id="replyCount">0 / 280</span>
-        <button class="pp-btn" id="replySendBtn" disabled>Send &rarr;</button>
+        <button class="pp-btn" id="replySendBtn" disabled data-i18n="part.reply.send">Send &rarr;</button>
       </div>
       <div class="msg-reply-feedback" id="replyFeedback"></div>
     </div>
@@ -145,6 +147,7 @@
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -176,7 +179,7 @@
   let editingSubmitted = false;
   let editBaseline = null;   // the answer as submitted: { answerText, attachments }
   let editDirty = false;     // something was really changed since "Edit answer"
-  let lockLabel = "Time's up"; // what the greyed button says when the form is closed
+  let lockLabel = T("part.lock.timesUp"); // what the greyed button says when the form is closed
   let submitting = false;    // a Submit is on its way to the server
   let currentExtraMinutes = 0; // the exercise_sessions.inject_extra_minutes value already applied to the running timer, for the inject currently on screen
   let forceUnlocked = false; // mirrors exercise_sessions.inject_force_unlocked for the inject currently on screen
@@ -204,7 +207,7 @@
   let currentSaveStatusEl = null;
 
   if (!sessionId) {
-    mainEl.innerHTML = `<div class="center-note">No ?session=&lt;id&gt; given in the URL.</div>`;
+    mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.error.noSession"))}</div>`;
   } else {
     try {
       identity = JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null");
@@ -213,16 +216,18 @@
     }
     const joinLink = `./join.html?session=${encodeURIComponent(sessionId)}`;
     if (!identity || identity.role !== "participant") {
-      mainEl.innerHTML = `<div class="center-note">You need to join this exercise first.
-        <br/><a href="${joinLink}">Join now</a></div>`;
+      mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.gate.needJoin"))}
+        <br/><a href="${joinLink}">${escapeHtml(T("part.gate.joinNow"))}</a></div>`;
     } else if (!identity.attendeeId) {
       // Registered before registration asked for first/family name and job
       // title, and before individual answers existed — no attendee id to
       // file an individual answer under.
-      mainEl.innerHTML = `<div class="center-note">Registration has been updated — please register again.
-        <br/><a href="${joinLink}">Register</a></div>`;
+      mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.gate.registerAgain"))}
+        <br/><a href="${joinLink}">${escapeHtml(T("part.gate.register"))}</a></div>`;
     } else {
-      whoLabelEl.textContent = `${identity.name} — ${identity.department}${identity.room ? ` — Room ${identity.room}` : ""}`;
+      whoLabelEl.textContent = identity.room
+        ? T("part.who.withRoom", { name: String(identity.name), department: String(identity.department), room: identity.room })
+        : T("part.who.noRoom", { name: String(identity.name), department: String(identity.department) });
       init();
     }
   }
@@ -270,7 +275,7 @@
       }),
       onReply: (reply) => handleCheckinReply(reply, { sync, getRow: () => latestRow }),
       onRefused: () =>
-        setNotice("regNotice", "You are no longer registered in this exercise. Please join again from the join link."),
+        setNotice("regNotice", T("part.notice.notRegistered")),
     });
 
     // Back from a phone call, a locked screen or another app: catch up
@@ -283,7 +288,7 @@
     });
 
     fetchSession(sessionId).then(sync.deliver).catch((err) => {
-      mainEl.innerHTML = `<div class="center-note">Couldn't load session: ${escapeHtml(err.message)}</div>`;
+      mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.error.loadFailed", { detail: String(PPLang.dbMessage(err.message)) }))}</div>`;
     });
     loadMessages(false);
     initReply();
@@ -461,7 +466,7 @@
     msgHistoryEl.hidden = messages.length === 0;
     const unread = messages.filter(isUnread);
     msgBadgeEl.hidden = unread.length === 0;
-    msgBadgeEl.textContent = unread.length === 1 ? "1 new" : `${unread.length} new`;
+    msgBadgeEl.textContent = T("part.msg.newCount", { count: unread.length });
     document.title = unread.length ? `(${unread.length}) ${baseTitle}` : baseTitle;
 
     msgListEl.innerHTML = messages
@@ -514,7 +519,7 @@
       sendBtn.disabled = sending || len === 0 || ended;
       presetEl.disabled = ended;
       textEl.disabled = ended;
-      if (ended) feedbackEl.textContent = "The exercise has ended — messages can no longer be sent.";
+      if (ended) feedbackEl.textContent = T("part.reply.ended");
     }
 
     presetEl.addEventListener("change", () => {
@@ -539,16 +544,16 @@
       sending = true;
       updateControls();
       feedbackEl.className = "msg-reply-feedback";
-      feedbackEl.textContent = "Sending…";
+      feedbackEl.textContent = T("part.reply.sending");
       try {
         await sendDepartmentRequest(sessionId, { body, presetKey, department: identity.department });
         textEl.value = "";
         presetEl.value = "";
         feedbackEl.className = "msg-reply-feedback ok";
-        feedbackEl.textContent = `Sent to the facilitator at ${formatMessageTime(new Date().toISOString())} ✓`;
+        feedbackEl.textContent = T("part.reply.sent", { time: formatMessageTime(new Date().toISOString()) });
       } catch (err) {
         feedbackEl.className = "msg-reply-feedback err";
-        feedbackEl.textContent = err.message;
+        feedbackEl.textContent = PPLang.dbMessage(err.message);
       } finally {
         sending = false;
         updateControls();
@@ -642,7 +647,7 @@
     const idx = row.current_inject_index;
     const inject = injects[idx];
     if (!inject) {
-      mainEl.innerHTML = `<div class="center-note">No inject at index ${idx}.</div>`;
+      mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.error.noInject", { index: String(idx) }))}</div>`;
       return;
     }
 
@@ -674,7 +679,7 @@
       formInject = inject;
       currentExtraMinutes = row.inject_extra_minutes || 0;
       forceUnlocked = !!row.inject_force_unlocked;
-      lockLabel = "Time's up";
+      lockLabel = T("part.lock.timesUp");
       editingSubmitted = false;
       editBaseline = null;
       editDirty = false;
@@ -714,22 +719,22 @@
       armTimer();
 
       if (lostEdit && currentSaveStatusEl) {
-        currentSaveStatusEl.textContent = "Time ran out before your changes were sent. The answer submitted earlier stands.";
+        currentSaveStatusEl.textContent = T("part.status.lostEdit");
         storeAnswers();
       } else if (forceUnlocked && cached && (cached.submitted || cached.locked) && currentSaveStatusEl) {
         currentSaveStatusEl.textContent =
-          `Unlocked by the facilitator — previously ${cached.submitted ? "submitted" : "timed out"}; you can edit and resubmit.`;
+          cached.submitted ? T("part.status.unlockedWasSubmitted") : T("part.status.unlockedWasTimedOut");
       } else if (!forceUnlocked && cached && cached.locked && !cached.submitted && currentSaveStatusEl) {
         currentSaveStatusEl.textContent = dirtyForCurrent
-          ? "Time's up for this inject — your response has been saved automatically."
-          : "Time's up for this inject.";
+          ? T("part.status.timesUpSaved")
+          : T("part.status.timesUp");
       }
       if (cached && restoredFromPhone[idx]) {
         delete restoredFromPhone[idx];
         if (currentSaveStatusEl && !currentSaveStatusEl.textContent && (cached.answerText || (cached.attachments || []).length)) {
           currentSaveStatusEl.textContent = editingSubmitted
-            ? "Your unsent changes were brought back on this phone. Press “Submit changes” to send them."
-            : "Your answer was brought back on this phone.";
+            ? T("part.status.restoredEdit")
+            : T("part.status.restored");
         }
       }
     } else {
@@ -743,13 +748,13 @@
           submittedForCurrent = false;
           reopenedSubmitted = reopenedSubmitted || wasSubmitted;
           unlockForCurrentInject(
-            "The facilitator has unlocked this inject — you can edit and resubmit.",
+            T("part.status.unlocked"),
             wasSubmitted,
             wasLocked
           );
         } else {
           forceUnlocked = false;
-          lockForCurrentInject(true, "The facilitator has locked this inject again.");
+          lockForCurrentInject(true, T("part.status.lockedAgain"));
         }
         armTimer();
       }
@@ -764,7 +769,7 @@
         currentExtraMinutes = extraNow;
         const deadline = injectDeadlineMs(row, inject);
         if (more && !forceUnlocked && !submittedForCurrent && injectLocked && deadline && deadline > Date.now()) {
-          unlockForCurrentInject("The facilitator added more time — you can continue.", false, true);
+          unlockForCurrentInject(T("part.status.moreTime"), false, true);
         }
         armTimer();
         drawState();
@@ -778,13 +783,13 @@
     const responsible = isDepartmentResponsible(inject, identity.department, latestRow, idx);
     const responsibleList = injectResponsible(inject);
     const responsibleText = responsibleList.some((d) => String(d).toLowerCase() === "all")
-      ? "All departments"
+      ? T("part.task.allDepartments")
       : responsibleList.join(", ");
 
     mainEl.innerHTML = `
       <div class="clock-wrap">
-        <div class="pp-clock" id="injectClock" data-state="none" role="timer" aria-label="Time left for this inject">
-          <div class="pp-clock-label">Time left for this inject</div>
+        <div class="pp-clock" id="injectClock" data-state="none" role="timer" aria-label="${escapeHtml(T("part.clock.aria"))}">
+          <div class="pp-clock-label">${escapeHtml(T("part.clock.label"))}</div>
           <div class="pp-clock-value" id="injectTimerValue">--:--</div>
           <div class="pp-clock-note" id="injectTimerNote"></div>
           <div class="pp-clock-bar"><i id="injectTimerBar"></i></div>
@@ -792,22 +797,22 @@
       </div>
       <div class="inject-card">
         <div class="task-tags">
-          <span class="tag ${individual ? "individual" : ""}">${individual ? "Individual task — everyone answers" : "Group task — one answer per department"}</span>
-          <span class="tag">Responsible: ${escapeHtml(responsibleText)}</span>
+          <span class="tag ${individual ? "individual" : ""}">${escapeHtml(individual ? T("part.task.individual") : T("part.task.group"))}</span>
+          <span class="tag">${escapeHtml(T("part.task.responsible", { list: responsibleText }))}</span>
         </div>
         <div class="inject-title">${escapeHtml(inject.title)}</div>
         <div class="inject-desc">${escapeHtml(inject.desc)}</div>
         ${injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : ""}
       </div>
       <div class="answer-card pp-form">
-        ${responsible ? "" : `<div class="not-required">Your department isn't named as responsible for this inject, so no answer is required from you. You can still add input if it's relevant.</div>`}
-        <label for="answerText">${individual ? "Your own response" : `${escapeHtml(identity.department)}'s response`}</label>
-        <div class="hint">${individual
-          ? "Answer for yourself — each person in your department submits their own."
-          : `Anyone in ${escapeHtml(identity.department)} can write and submit this one shared answer.`}</div>
-        <textarea id="answerText" placeholder="${individual ? "Your answer" : `What is ${escapeHtml(identity.department)} doing right now?`}">${escapeHtml(initial.answerText || "")}</textarea>
+        ${responsible ? "" : `<div class="not-required">${escapeHtml(T("part.form.notRequired"))}</div>`}
+        <label for="answerText">${escapeHtml(individual ? T("part.form.labelIndividual") : T("part.form.labelGroup", { department: String(identity.department == null ? "" : identity.department) }))}</label>
+        <div class="hint">${escapeHtml(individual
+          ? T("part.form.hintIndividual")
+          : T("part.form.hintGroup", { department: String(identity.department == null ? "" : identity.department) }))}</div>
+        <textarea id="answerText" placeholder="${escapeHtml(individual ? T("part.form.placeholderIndividual") : T("part.form.placeholderGroup", { department: String(identity.department == null ? "" : identity.department) }))}">${escapeHtml(initial.answerText || "")}</textarea>
         <div class="attachments">
-          <label for="fileInput">Attach documents (up to 3, 10MB each)</label>
+          <label for="fileInput">${escapeHtml(T("part.form.attachLabel"))}</label>
           <input type="file" id="fileInput" multiple
             accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/jpeg,image/png,image/heic" />
           <ul class="attachment-list" id="attachmentList"></ul>
@@ -839,7 +844,7 @@
         saveStatusEl.textContent = UNSENT_TEXT;
         return;
       }
-      saveStatusEl.textContent = "Saving…";
+      saveStatusEl.textContent = T("part.status.saving");
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => autosaveDraft(idx, inject, answerEl, saveStatusEl), 1500);
     });
@@ -849,18 +854,18 @@
       const files = Array.from(fileInput.files || []);
       fileInput.value = "";
       if (attachments.length + files.length > 3) {
-        errorBoxEl.textContent = "You can attach at most 3 documents.";
+        errorBoxEl.textContent = T("part.error.tooManyFiles");
         errorBoxEl.style.display = "block";
         return;
       }
       for (const file of files) {
         if (file.size > 10 * 1024 * 1024) {
-          errorBoxEl.textContent = `"${file.name}" is over 10MB — not attached.`;
+          errorBoxEl.textContent = T("part.error.fileTooBig", { name: file.name });
           errorBoxEl.style.display = "block";
           continue;
         }
         try {
-          saveStatusEl.textContent = `Uploading ${file.name}…`;
+          saveStatusEl.textContent = T("part.status.uploading", { name: file.name });
           const uploaded = await uploadAttachment(sessionId, idx, identity.department, file);
           attachments.push(uploaded);
           dirtyForCurrent = true;
@@ -873,7 +878,7 @@
             await autosaveDraft(idx, inject, answerEl, saveStatusEl);
           }
         } catch (err) {
-          errorBoxEl.textContent = err.message;
+          errorBoxEl.textContent = PPLang.dbMessage(err.message);
           errorBoxEl.style.display = "block";
         }
       }
@@ -892,7 +897,7 @@
     renderAttachmentList();
   }
 
-  const UNSENT_TEXT = "Not sent yet — press “Submit changes” to send it.";
+  const UNSENT_TEXT = T("part.status.unsent");
 
   // Draws the buttons under the answer for the state it is in, and opens or
   // closes the answer box to match:
@@ -909,16 +914,16 @@
     if (currentFileInput) currentFileInput.disabled = !open;
 
     const individual = isIndividual(formInject);
-    const submittedText = individual
-      ? "✓ Your answer is submitted."
-      : `✓ Submitted for ${escapeHtml(identity.department)}.`;
+    const submittedText = escapeHtml(individual
+      ? T("part.submitted.individual")
+      : T("part.submitted.group", { department: String(identity.department == null ? "" : identity.department) }));
     let html;
     if (editingSubmitted) {
       html = `
-        <div class="editing-note">You are changing a submitted answer. Nothing is sent until you press “Submit changes”.</div>
+        <div class="editing-note">${escapeHtml(T("part.edit.note"))}</div>
         <div class="row-buttons">
-          <button type="button" class="pp-btn ghost" id="cancelEditBtn">Cancel</button>
-          <button type="button" class="pp-btn submit" id="submitBtn">Submit changes</button>
+          <button type="button" class="pp-btn ghost" id="cancelEditBtn">${escapeHtml(T("part.edit.cancel"))}</button>
+          <button type="button" class="pp-btn submit" id="submitBtn">${escapeHtml(T("part.edit.submitChanges"))}</button>
         </div>`;
     } else if (submittedForCurrent) {
       // "Edit answer" (Ahmed, 11 October 2026): the team can reopen its own
@@ -927,15 +932,15 @@
       const running = latestRow && latestRow.status === "running";
       const canEdit = running && !forceUnlocked && timeRemains();
       html = `<div class="submitted-banner">${submittedText}</div>` + (canEdit
-        ? `<div class="row-buttons"><button type="button" class="pp-btn ghost" id="editBtn">Edit answer</button></div>
-           <div class="pp-hint edit-hint">${currentDeadline()
-             ? "You can change it until the time runs out."
-             : "You can change it until the facilitator moves to the next inject."}</div>`
-        : `<div class="pp-hint edit-hint">The time for this inject is over. Only the facilitator can reopen this answer.</div>`);
+        ? `<div class="row-buttons"><button type="button" class="pp-btn ghost" id="editBtn">${escapeHtml(T("part.edit.editAnswer"))}</button></div>
+           <div class="pp-hint edit-hint">${escapeHtml(currentDeadline()
+             ? T("part.edit.hintUntilTime")
+             : T("part.edit.hintUntilNext"))}</div>`
+        : `<div class="pp-hint edit-hint">${escapeHtml(T("part.edit.hintOver"))}</div>`);
     } else if (injectLocked) {
       html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn" disabled>${escapeHtml(lockLabel)}</button></div>`;
     } else {
-      html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn">Submit answer</button></div>`;
+      html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn">${escapeHtml(T("part.form.submit"))}</button></div>`;
     }
     box.innerHTML = html;
     currentSubmitBtn = document.getElementById("submitBtn");
@@ -950,7 +955,7 @@
     const wasEditing = editingSubmitted;
     errorBoxEl.style.display = "none";
     btn.disabled = true;
-    btn.textContent = "Submitting…";
+    btn.textContent = T("part.form.submitting");
     submitting = true;
     try {
       clearTimeout(saveTimer); // a pending draft save must not land after (and overwrite) the submit
@@ -966,12 +971,12 @@
       editingSubmitted = false;
       editBaseline = null;
       editDirty = false;
-      if (currentSaveStatusEl) currentSaveStatusEl.textContent = wasEditing ? "Your changes are submitted." : "";
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = wasEditing ? T("part.status.changesSubmitted") : "";
       storeAnswers();
       drawState();
     } catch (err) {
       if (idx !== formIdx) return;
-      errorBoxEl.textContent = err.message;
+      errorBoxEl.textContent = PPLang.dbMessage(err.message);
       errorBoxEl.style.display = "block";
       drawState();
     } finally {
@@ -1013,7 +1018,7 @@
   function cancelEdit() {
     if (!editingSubmitted) return;
     restoreBaseline();
-    if (currentSaveStatusEl) currentSaveStatusEl.textContent = "No changes made — your submitted answer stands.";
+    if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.noChanges");
     storeAnswers();
     drawState();
   }
@@ -1044,18 +1049,18 @@
     };
     if (!changed) {
       putBack();
-      if (currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — your submitted answer stands.";
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.timesUpStands");
       storeAnswers();
       drawState();
       return;
     }
     editBaseline = null;
-    if (currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — sending your changes…";
+    if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.timesUpSending");
     storeAnswers();
     drawState();
     try {
       await saveFor(idx, inject, { answerText: text, attachments: files, status: "submitted" });
-      if (idx === formIdx && currentSaveStatusEl) currentSaveStatusEl.textContent = "Time's up — your changes were saved.";
+      if (idx === formIdx && currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.timesUpChangesSaved");
     } catch (err) {
       if (idx !== formIdx) {
         // Already on another inject: correct what this phone keeps for it.
@@ -1068,7 +1073,7 @@
       }
       putBack();
       if (currentSaveStatusEl) {
-        currentSaveStatusEl.textContent = "Time ran out before your changes could be sent. The answer submitted earlier stands.";
+        currentSaveStatusEl.textContent = T("part.status.couldNotSendChanges");
       }
       storeAnswers();
       drawState();
@@ -1080,7 +1085,7 @@
     if (!listEl) return;
     listEl.innerHTML = attachments
       .map(
-        (a, i) => `<li><span>${escapeHtml(a.filename)}</span><button type="button" data-i="${i}" ${injectLocked ? "disabled" : ""}>Remove</button></li>`
+        (a, i) => `<li><span>${escapeHtml(a.filename)}</span><button type="button" data-i="${i}" ${injectLocked ? "disabled" : ""}>${escapeHtml(T("part.attach.remove"))}</button></li>`
       )
       .join("");
     listEl.querySelectorAll("button").forEach((btn) => {
@@ -1109,9 +1114,9 @@
         attachments,
         status: reopenedSubmitted ? "submitted" : "draft",
       });
-      if (saveStatusEl) saveStatusEl.textContent = "Saved.";
+      if (saveStatusEl) saveStatusEl.textContent = T("part.status.saved");
     } catch (err) {
-      if (saveStatusEl) saveStatusEl.textContent = `Couldn't save: ${err.message}`;
+      if (saveStatusEl) saveStatusEl.textContent = T("part.status.saveFailed", { detail: String(PPLang.dbMessage(err.message)) });
     }
   }
 
@@ -1132,7 +1137,7 @@
         status: reopenedSubmitted ? "submitted" : "autosaved",
       }).catch((err) => console.warn("Autosave on lock failed:", err.message));
     }
-    lockLabel = force ? "Locked" : "Time's up";
+    lockLabel = force ? T("part.lock.locked") : T("part.lock.timesUp");
     // Locked again by the facilitator after reopening a submitted answer: it
     // is a submitted answer again (and can be edited while time remains).
     if (force && reopenedSubmitted) {
@@ -1141,8 +1146,8 @@
     }
     if (currentSaveStatusEl) {
       currentSaveStatusEl.textContent = message || (dirtyForCurrent
-        ? "Time's up for this inject — your response has been saved automatically."
-        : "Time's up for this inject.");
+        ? T("part.status.timesUpSaved")
+        : T("part.status.timesUp"));
     }
     storeAnswers();
     drawState();
@@ -1159,7 +1164,7 @@
     const preservedAnswer = currentAnswerEl ? currentAnswerEl.value : "";
     renderForm(formInject, formIdx, { answerText: preservedAnswer });
     if (currentSaveStatusEl) {
-      currentSaveStatusEl.textContent = message || "The facilitator added more time — you can continue.";
+      currentSaveStatusEl.textContent = message || T("part.status.moreTime");
     }
   }
 
@@ -1178,12 +1183,12 @@
     let remainingMs = null;
     if (!deadline) {
       clockEl.dataset.state = "none";
-      valueEl.textContent = "No time limit";
+      valueEl.textContent = T("part.clock.noLimit");
     } else {
       remainingMs = deadline - Date.now();
       if (remainingMs <= 0) {
         clockEl.dataset.state = "up";
-        valueEl.textContent = "Time's up";
+        valueEl.textContent = T("part.clock.timesUp");
         if (barEl) barEl.style.transform = "scaleX(0)";
       } else {
         const m = Math.floor(remainingMs / 60000);
@@ -1197,13 +1202,13 @@
     if (noteEl) {
       const open = remainingMs === null || remainingMs > 0;
       noteEl.textContent = forceUnlocked
-        ? "Unlocked by the facilitator — you can edit and resubmit"
+        ? T("part.clock.noteUnlocked")
         : editingSubmitted
-          ? "Changing your submitted answer"
+          ? T("part.clock.noteEditing")
           : submittedForCurrent
-            ? (open ? "Submitted — you can still edit it" : "Submitted")
+            ? (open ? T("part.clock.noteSubmittedOpen") : T("part.clock.noteSubmitted"))
             : currentExtraMinutes > 0
-              ? `Includes +${currentExtraMinutes} min extra time`
+              ? T("part.clock.noteExtra", { count: currentExtraMinutes })
               : "";
     }
     return remainingMs;

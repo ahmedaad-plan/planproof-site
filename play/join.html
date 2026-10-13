@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Join the exercise</title>
+<title data-i18n="join.title">PlanProof — Join the exercise</title>
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="./theme.css" />
@@ -36,7 +36,7 @@
   .role-options label.checked { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
   .role-options label:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
   button.full { width: 100%; margin-top: 24px; }
-  .error { text-align: left; }
+  .error { text-align: start; }
   /* The two briefing boxes (Ahmed, 11 October 2026): centred, with lines of
      even length on a phone — "balance" stops one short word being left on a
      line of its own. Same shape for both so they read as a pair. */
@@ -74,22 +74,23 @@
 </style>
 </head>
 <body>
-  <div class="join-brand"><span class="pp-brand large"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span></div>
-  <div class="card pp-form" id="card">Loading…</div>
+  <div class="join-brand"><span class="pp-brand large" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span></div>
+  <div class="card pp-form" id="card" data-i18n-nodes="join.loading">Loading…</div>
 
   <div class="overlay" id="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="confirm-box pp-form">
-      <h2 id="confirmTitle">Please confirm your details</h2>
+      <h2 id="confirmTitle" data-i18n="join.confirm.title">Please confirm your details</h2>
       <dl id="confirmDetails"></dl>
       <div class="question" id="confirmQuestion"></div>
       <div class="confirm-buttons">
-        <button class="pp-btn ghost" id="cancelBtn">Cancel</button>
-        <button class="pp-btn" id="proceedBtn">Proceed</button>
+        <button class="pp-btn ghost" id="cancelBtn" data-i18n="join.confirm.cancel">Cancel</button>
+        <button class="pp-btn" id="proceedBtn" data-i18n="join.confirm.proceed">Proceed</button>
       </div>
       <div class="pp-error error" id="confirmError"></div>
     </div>
   </div>
 
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -102,7 +103,7 @@
   const cancelBtn = document.getElementById("cancelBtn");
 
   if (!sessionId) {
-    cardEl.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+    cardEl.innerHTML = `<p>${escapeHtml(T("join.error.noSession"))}</p>`;
   } else {
     init();
   }
@@ -112,16 +113,16 @@
     try {
       session = await fetchSession(sessionId);
     } catch (err) {
-      cardEl.innerHTML = `<p>Couldn't load this exercise: ${escapeHtml(err.message)}</p>`;
+      cardEl.innerHTML = `<p>${escapeHtml(T("join.error.loadFailed", { detail: String(PPLang.dbMessage(err.message)) }))}</p>`;
       return;
     }
     if (!session) {
-      cardEl.innerHTML = "<p>No exercise found for this link.</p>";
+      cardEl.innerHTML = `<p>${escapeHtml(T("join.error.notFound"))}</p>`;
       return;
     }
     if (session.status === "ended") {
       cardEl.innerHTML =
-        "<p>This exercise has already ended — joining is no longer possible.</p>";
+        `<p>${escapeHtml(T("join.error.ended"))}</p>`;
       return;
     }
     renderForm(session);
@@ -154,66 +155,65 @@
 
     if (departments.length === 0) {
       cardEl.innerHTML = `
-        <h1>${escapeHtml(session.label || "Exercise")}</h1>
-        <p>The department list for this exercise hasn't been set up yet, so
-        registration isn't open. Please let the facilitator know.</p>`;
+        <h1>${escapeHtml(session.label || T("join.form.fallbackTitle"))}</h1>
+        <p>${escapeHtml(T("join.form.noDepartments"))}</p>`;
       return;
     }
 
     const roomField = roomCount > 1
-      ? `<label for="room">Which room are you in?</label>
+      ? `<label for="room">${escapeHtml(T("join.room.label"))}</label>
          <select id="room">
-           <option value="" disabled selected>Choose your room</option>
+           <option value="" disabled selected>${escapeHtml(T("join.room.choose"))}</option>
            ${Array.from({ length: roomCount }, (_, i) => i + 1)
-             .map((n) => `<option value="${n}">Room ${n}${n === 1 ? " (facilitator's room)" : ""}</option>`)
+             .map((n) => `<option value="${n}">${escapeHtml(n === 1 ? T("join.room.optionFacilitator", { n }) : T("join.room.option", { n }))}</option>`)
              .join("")}
          </select>`
       : "";
 
     cardEl.innerHTML = `
-      <h1>${escapeHtml(session.label || "Exercise")}</h1>
-      <p class="sub">Enter your details to join as a participant or observer.</p>
+      <h1>${escapeHtml(session.label || T("join.form.fallbackTitle"))}</h1>
+      <p class="sub">${escapeHtml(T("join.form.sub"))}</p>
       <div class="brief nofault">
-        <strong>This exercise tests the plan, not individuals.</strong>
-        Findings are reported at team level.
+        <strong>${escapeHtml(T("join.brief.noFaultTitle"))}</strong>
+        ${escapeHtml(T("join.brief.noFaultText"))}
       </div>
       <div class="brief phone" id="phoneNote">
-        <strong>Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.</strong>
-        Keep your device plugged in if you can.
+        <strong>${escapeHtml(T("join.brief.phoneTitle"))}</strong>
+        ${escapeHtml(T("join.brief.phoneText"))}
       </div>
       <div class="name-row">
         <div>
-          <label for="firstName">First name</label>
-          <input type="text" id="firstName" placeholder="First name" autocomplete="given-name" />
+          <label for="firstName">${escapeHtml(T("join.form.firstName"))}</label>
+          <input type="text" id="firstName" placeholder="${escapeHtml(T("join.form.firstNamePlaceholder"))}" autocomplete="given-name" />
         </div>
         <div>
-          <label for="familyName">Family name</label>
-          <input type="text" id="familyName" placeholder="Family name" autocomplete="family-name" />
+          <label for="familyName">${escapeHtml(T("join.form.familyName"))}</label>
+          <input type="text" id="familyName" placeholder="${escapeHtml(T("join.form.familyNamePlaceholder"))}" autocomplete="family-name" />
         </div>
       </div>
-      <label for="jobTitle">Job title</label>
-      <input type="text" id="jobTitle" placeholder="e.g. Finance Manager" autocomplete="organization-title" />
-      <label for="department">Department</label>
+      <label for="jobTitle">${escapeHtml(T("join.form.jobTitle"))}</label>
+      <input type="text" id="jobTitle" placeholder="${escapeHtml(T("join.form.jobTitlePlaceholder"))}" autocomplete="organization-title" />
+      <label for="department">${escapeHtml(T("join.form.department"))}</label>
       ${departments.length > DEPT_SEARCH_ABOVE
-        ? `<input type="text" id="deptSearch" class="dept-search" placeholder="Type to find your department" autocomplete="off" aria-label="Find your department in the list below" />
+        ? `<input type="text" id="deptSearch" class="dept-search" placeholder="${escapeHtml(T("join.dept.searchPlaceholder"))}" autocomplete="off" aria-label="${escapeHtml(T("join.dept.searchAria"))}" />
            <div class="dept-count" id="deptCount" aria-live="polite"></div>`
         : ""}
       <select id="department">
-        <option value="" disabled selected>Choose your department</option>
+        <option value="" disabled selected>${escapeHtml(T("join.dept.choose"))}</option>
         ${departments.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("")}
       </select>
-      <div class="dept-missing">Department missing? Ask the facilitator to add it.</div>
-      <label>Role</label>
+      <div class="dept-missing">${escapeHtml(T("join.dept.missing"))}</div>
+      <label>${escapeHtml(T("join.form.role"))}</label>
       <div class="role-options">
         <label id="roleParticipantLabel" class="checked">
-          <input type="radio" name="role" value="participant" checked /> Participant
+          <input type="radio" name="role" value="participant" checked /> ${escapeHtml(T("join.role.participant"))}
         </label>
         <label id="roleObserverLabel">
-          <input type="radio" name="role" value="observer" /> Observer
+          <input type="radio" name="role" value="observer" /> ${escapeHtml(T("join.role.observer"))}
         </label>
       </div>
       ${roomField}
-      <button class="pp-btn full" id="registerBtn">Register</button>
+      <button class="pp-btn full" id="registerBtn">${escapeHtml(T("join.form.register"))}</button>
       <div class="pp-error error" id="errorBox"></div>
     `;
 
@@ -250,16 +250,16 @@
         const matches = departments.filter((d) => String(d).toLowerCase().includes(q));
         const keep = matches.includes(chosen) ? chosen : matches.length === 1 && q ? matches[0] : "";
         departmentEl.innerHTML =
-          `<option value="" disabled ${keep ? "" : "selected"}>${matches.length ? "Choose your department" : "No department matches"}</option>` +
+          `<option value="" disabled ${keep ? "" : "selected"}>${escapeHtml(matches.length ? T("join.dept.choose") : T("join.dept.noMatchOption"))}</option>` +
           matches.map((d) => `<option value="${escapeHtml(d)}" ${d === keep ? "selected" : ""}>${escapeHtml(d)}</option>`).join("");
         if (keep) departmentEl.classList.remove("invalid");
         deptCountEl.textContent = !q
           ? ""
           : matches.length === 0
-            ? "No department matches. Clear the box to see the whole list."
+            ? T("join.dept.noMatches")
             : matches.length === 1
-              ? `1 match — ${matches[0]} is selected.`
-              : `${matches.length} of ${departments.length} departments shown.`;
+              ? T("join.dept.oneMatch", { department: String(matches[0]) })
+              : T("join.dept.someShown", { shown: matches.length, count: departments.length });
       });
     }
 
@@ -284,20 +284,20 @@
       const problems = [];
       [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => el && el.classList.remove("invalid"));
       if (!firstName || !familyName) {
-        problems.push("Please complete both your first name and family name.");
+        problems.push(T("join.validate.name"));
         if (!firstName) firstNameEl.classList.add("invalid");
         if (!familyName) familyNameEl.classList.add("invalid");
       }
       if (!title) {
-        problems.push("Please enter your job title.");
+        problems.push(T("join.validate.jobTitle"));
         jobTitleEl.classList.add("invalid");
       }
       if (!department) {
-        problems.push("Please choose your department.");
+        problems.push(T("join.validate.department"));
         departmentEl.classList.add("invalid");
       }
       if (roomEl && !roomEl.value) {
-        problems.push("Please choose your room.");
+        problems.push(T("join.validate.room"));
         roomEl.classList.add("invalid");
       }
       if (problems.length) {
@@ -309,16 +309,16 @@
 
       pending = { firstName, familyName, title, department, role, room };
       confirmDetailsEl.innerHTML = `
-        <dt>Name</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
-        <dt>Job title</dt><dd>${escapeHtml(title)}</dd>
-        <dt>Department</dt><dd><strong>${escapeHtml(department)}</strong></dd>
-        <dt>Role</dt><dd>${role === "participant" ? "Participant" : "Observer"}</dd>
-        ${room ? `<dt>Room</dt><dd>Room ${room}</dd>` : ""}`;
+        <dt>${escapeHtml(T("join.confirm.name"))}</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
+        <dt>${escapeHtml(T("join.confirm.jobTitle"))}</dt><dd>${escapeHtml(title)}</dd>
+        <dt>${escapeHtml(T("join.confirm.department"))}</dt><dd><strong>${escapeHtml(department)}</strong></dd>
+        <dt>${escapeHtml(T("join.confirm.role"))}</dt><dd>${escapeHtml(role === "participant" ? T("join.role.participant") : T("join.role.observer"))}</dd>
+        ${room ? `<dt>${escapeHtml(T("join.confirm.room"))}</dt><dd>${escapeHtml(T("join.confirm.roomValue", { n: room }))}</dd>` : ""}`;
       confirmQuestionEl.textContent =
-        `You have selected the ${department} department. Is this correct?`;
+        T("join.confirm.question", { department });
       confirmErrorEl.style.display = "none";
       proceedBtn.disabled = false;
-      proceedBtn.textContent = "Proceed";
+      proceedBtn.textContent = T("join.confirm.proceed");
       overlayEl.classList.add("open");
       proceedBtn.focus();
     });
@@ -334,7 +334,7 @@
       if (!pending) return;
       proceedBtn.disabled = true;
       cancelBtn.disabled = true;
-      proceedBtn.textContent = "Registering…";
+      proceedBtn.textContent = T("join.confirm.registering");
       confirmErrorEl.style.display = "none";
       const attendeeId = crypto.randomUUID();
       try {
@@ -364,16 +364,19 @@
         // Observers go to the room view in Observer mode (&observer=1): the
         // live view plus their notes area (roadmap item 5). A plain
         // room-display link stays the shared room screen.
+        // Outside English the next page is told the exercise's language in
+        // its link, so it opens in it at once (in English nothing is added).
+        const andLang = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
         const dest = pending.role === "participant"
-          ? `./participant.html?session=${encodeURIComponent(sessionId)}`
-          : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1`;
+          ? `./participant.html?session=${encodeURIComponent(sessionId)}${andLang}`
+          : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1${andLang}`;
         location.href = dest;
       } catch (err) {
-        confirmErrorEl.textContent = err.message;
+        confirmErrorEl.textContent = PPLang.dbMessage(err.message);
         confirmErrorEl.style.display = "block";
         proceedBtn.disabled = false;
         cancelBtn.disabled = false;
-        proceedBtn.textContent = "Proceed";
+        proceedBtn.textContent = T("join.confirm.proceed");
       }
     };
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Printable backup pack</title>
+<title data-i18n="print.page.title">PlanProof — Printable backup pack</title>
 <meta name="robots" content="noindex" />
 <!--
   Printable backup pack (added 9 October 2026, system review item 7).
@@ -28,12 +28,12 @@
   .meta dt { color:var(--muted); }
   .meta dd { margin:0; font-weight:600; }
   .box { border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:10px 0; }
-  .task { border-left:4px solid var(--amber); background:#fbf6ee; }
+  .task { border-inline-start:4px solid var(--amber); background:#fbf6ee; }
   ol.steps li { margin-bottom:4px; }
   .lines { margin-top:8px; }
   .lines div { border-bottom:1px solid var(--line); height:9mm; }
   table { width:100%; border-collapse:collapse; font-size:10pt; }
-  th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
+  th, td { border:1px solid var(--line); padding:5px 7px; text-align:start; vertical-align:top; }
   th { background:#f2f4f6; }
   .foot { margin-top:14px; color:var(--muted); font-size:8.5pt; }
   .err { max-width:640px; margin:40px auto; background:#fff; padding:20px; border-radius:8px; }
@@ -46,9 +46,10 @@
 </style>
 </head>
 <body>
-<div class="toolbar"><strong>Printable backup pack</strong><span id="tbInfo"></span><button id="printBtn">Print / Save as PDF</button></div>
-<div id="out"><p class="err">Loading…</p></div>
+<div class="toolbar"><strong data-i18n="print.toolbar.heading">Printable backup pack</strong><span id="tbInfo"></span><button id="printBtn" data-i18n="print.toolbar.printButton">Print / Save as PDF</button></div>
+<div id="out"><p class="err" data-i18n="print.loading">Loading…</p></div>
 
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script>
   const out = document.getElementById("out");
@@ -59,87 +60,87 @@
   (async () => {
     const sessionId = getSessionId();
     if (!sessionId || !getFacilitatorToken()) {
-      out.innerHTML = `<p class="err">Open this pack from the facilitator page (it needs the private facilitator link).</p>`;
+      out.innerHTML = `<p class="err">${esc(T("print.err.openFromFacilitator"))}</p>`;
       return;
     }
     let row;
-    try { row = await fetchSession(sessionId); } catch (err) { out.innerHTML = `<p class="err">Couldn't load the session: ${esc(err.message)}</p>`; return; }
-    if (!row) { out.innerHTML = `<p class="err">Session not found.</p>`; return; }
+    try { row = await fetchSession(sessionId); } catch (err) { out.innerHTML = `<p class="err">${esc(T("print.err.loadFailed", { message: String(err.message == null ? "" : err.message) }))}</p>`; return; }
+    if (!row) { out.innerHTML = `<p class="err">${esc(T("print.err.notFound"))}</p>`; return; }
     const sc = row.scenario || {};
     const injects = sc.injects || [];
     const depts = [...new Set([...scenarioDepartments(row), ...(row.extra_departments || [])])];
-    const title = sc.title || row.label || "Tabletop exercise";
+    const title = sc.title || row.label || T("print.defaultTitle");
     const totalMin = injects.reduce((t, i) => t + (Number(i.durationMinutes) || 0), 0);
-    document.getElementById("tbInfo").textContent = `${injects.length} injects · ${depts.length} departments`;
-    document.title = `Backup pack — ${title}`;
+    document.getElementById("tbInfo").textContent = `${T("print.toolbar.injects", { count: injects.length })} · ${T("print.toolbar.departments", { count: depts.length })}`;
+    document.title = T("print.docTitle", { title: String(title) });
 
     const pages = [];
     pages.push(`<section class="page">
-      <div class="eyebrow">PlanProof · Backup pack · Facilitator copy</div>
+      <div class="eyebrow">${esc(T("print.cover.eyebrow"))}</div>
       <h1>${esc(title)}</h1>
       <dl class="meta">
-        <dt>Organisation</dt><dd>${esc(row.label || "")}</dd>
-        <dt>Injects</dt><dd>${injects.length}${totalMin ? ` (about ${totalMin} minutes of answer time)` : ""}</dd>
-        <dt>Departments</dt><dd>${esc(depts.join(", ") || "—")}</dd>
-        <dt>Printed</dt><dd>${esc(new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }))}</dd>
+        <dt>${esc(T("print.cover.organisation"))}</dt><dd>${esc(row.label || "")}</dd>
+        <dt>${esc(T("print.cover.injects"))}</dt><dd>${totalMin ? esc(T("print.cover.injectsWithTime", { injects: injects.length, count: totalMin })) : injects.length}</dd>
+        <dt>${esc(T("print.cover.departments"))}</dt><dd>${esc(depts.join(", ") || "—")}</dd>
+        <dt>${esc(T("print.cover.printed"))}</dt><dd>${esc(new Date().toLocaleString((PPLang.lang() === "en" ? "en-GB" : PPLang.lang()), { dateStyle: "medium", timeStyle: "short" }))}</dd>
       </dl>
       <div class="box">
-        <h2>If the screens or the network fail</h2>
+        <h2>${esc(T("print.cover.failHeading"))}</h2>
         <ol class="steps">
-          <li>Tell the room calmly: the exercise continues on paper. Nothing already submitted is lost.</li>
-          <li>Hand each department its answer sheets (last pages — copy as many as needed).</li>
-          <li>Read the current inject aloud from this pack, then the task. Start a phone timer for the time shown.</li>
-          <li>Teams write their answer, the time they finished, and their department on the sheet.</li>
-          <li>At the end of each inject, collect the sheets and note the inject number on the back.</li>
-          <li>When the system is back, carry on from the next inject on screen. Paper answers are typed into the report afterwards — mark them "paper" in the evidence.</li>
+          <li>${esc(T("print.cover.failStep1"))}</li>
+          <li>${esc(T("print.cover.failStep2"))}</li>
+          <li>${esc(T("print.cover.failStep3"))}</li>
+          <li>${esc(T("print.cover.failStep4"))}</li>
+          <li>${esc(T("print.cover.failStep5"))}</li>
+          <li>${esc(T("print.cover.failStep6"))}</li>
         </ol>
       </div>
       <div class="box">
-        <h2>Say this to the room before you start</h2>
+        <h2>${esc(T("print.cover.sayHeading"))}</h2>
         <ol class="steps">
-          <li>This exercise tests the plan, not individuals. Findings are reported at team level.</li>
-          <li>Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.</li>
-          <li>Keep your phone or laptop plugged in if you can, and leave the exercise page open in front.</li>
-          <li>If you step away or take a call, the page catches up by itself when you come back.</li>
+          <li>${esc(T("print.cover.sayStep1"))}</li>
+          <li>${esc(T("print.cover.sayStep2"))}</li>
+          <li>${esc(T("print.cover.sayStep3"))}</li>
+          <li>${esc(T("print.cover.sayStep4"))}</li>
         </ol>
       </div>
-      <h2>Inject list</h2>
-      <table><thead><tr><th>#</th><th>Inject</th><th>Responsible</th><th>Answer</th><th>Time</th></tr></thead><tbody>
-      ${injects.map((inj, i) => `<tr><td>${i + 1}</td><td>${esc(inj.title || "")}</td><td>${esc(injectResponsible(inj).join(", "))}</td><td>${injectOutput(inj) === "individual" ? "Individual" : "Group"}</td><td>${inj.durationMinutes ? esc(inj.durationMinutes) + " min" : "—"}</td></tr>`).join("")}
+      <h2>${esc(T("print.list.heading"))}</h2>
+      <table><thead><tr><th>#</th><th>${esc(T("print.list.inject"))}</th><th>${esc(T("print.list.responsible"))}</th><th>${esc(T("print.list.answer"))}</th><th>${esc(T("print.list.time"))}</th></tr></thead><tbody>
+      ${injects.map((inj, i) => `<tr><td>${i + 1}</td><td>${esc(inj.title || "")}</td><td>${esc(injectResponsible(inj).join(", "))}</td><td>${injectOutput(inj) === "individual" ? esc(T("print.list.individual")) : esc(T("print.list.group"))}</td><td>${inj.durationMinutes ? esc(T("print.list.minutes", { count: inj.durationMinutes })) : "—"}</td></tr>`).join("")}
       </tbody></table>
-      <p class="foot">Confidential — prepared by PlanProof for this exercise only. This exercise tests the plan, not individuals.</p>
+      <p class="foot">${esc(T("print.cover.foot"))}</p>
     </section>`);
 
     injects.forEach((inj, i) => {
       const task = injectTaskText(inj);
       pages.push(`<section class="page">
-        <div class="eyebrow">Inject ${i + 1} of ${injects.length}${inj.time ? ` · ${esc(inj.time)}` : ""}</div>
-        <h1>${esc(inj.title || `Inject ${i + 1}`)}</h1>
+        <div class="eyebrow">${esc(T("print.inject.eyebrow", { number: i + 1, total: injects.length }))}${inj.time ? ` · ${esc(inj.time)}` : ""}</div>
+        <h1>${esc(inj.title || T("print.inject.fallbackTitle", { number: i + 1 }))}</h1>
         <dl class="meta">
-          <dt>Responsible</dt><dd>${esc(injectResponsible(inj).join(", "))}</dd>
-          <dt>Answer</dt><dd>${injectOutput(inj) === "individual" ? "Individual — everyone answers on their own sheet" : "Group — one answer per department"}</dd>
-          <dt>Time allowed</dt><dd>${inj.durationMinutes ? esc(inj.durationMinutes) + " minutes" : "No time limit"}</dd>
+          <dt>${esc(T("print.inject.responsible"))}</dt><dd>${esc(injectResponsible(inj).join(", "))}</dd>
+          <dt>${esc(T("print.inject.answer"))}</dt><dd>${injectOutput(inj) === "individual" ? esc(T("print.inject.answerIndividual")) : esc(T("print.inject.answerGroup"))}</dd>
+          <dt>${esc(T("print.inject.timeAllowed"))}</dt><dd>${inj.durationMinutes ? esc(T("print.inject.minutes", { count: inj.durationMinutes })) : esc(T("print.inject.noTimeLimit"))}</dd>
         </dl>
         <div class="box"><div style="white-space:pre-wrap">${esc(inj.desc || inj.description || inj.body || "")}</div></div>
-        ${task ? `<div class="box task"><strong>Task:</strong> ${esc(task)}</div>` : ""}
-        ${inj.sfx ? `<p class="foot">Sound on the room screen: ${esc(Array.isArray(inj.sfx) ? inj.sfx.join(" + ") : inj.sfx)} (not needed on paper).</p>` : ""}
-        <h2 style="margin-top:14px">Facilitator notes</h2>
+        ${task ? `<div class="box task">${T("print.inject.task_html", { task: esc(task) })}</div>` : ""}
+        ${inj.sfx ? `<p class="foot">${esc(T("print.inject.sound", { sounds: Array.isArray(inj.sfx) ? inj.sfx.join(" + ") : inj.sfx }))}</p>` : ""}
+        <h2 style="margin-top:14px">${esc(T("print.inject.notesHeading"))}</h2>
         ${lines(8)}
       </section>`);
     });
 
     pages.push(`<section class="page">
-      <div class="eyebrow">Answer sheet — copy as many as needed</div>
-      <h1>Department answer sheet</h1>
+      <div class="eyebrow">${esc(T("print.sheet.eyebrow"))}</div>
+      <h1>${esc(T("print.sheet.heading"))}</h1>
       <dl class="meta">
-        <dt>Department</dt><dd>__________________________________________</dd>
-        <dt>Inject number</dt><dd>________</dd>
-        <dt>Time finished</dt><dd>________</dd>
-        <dt>Answer type</dt><dd>☐ Group answer &nbsp;&nbsp; ☐ Individual answer (name not required)</dd>
+        <dt>${esc(T("print.sheet.department"))}</dt><dd>__________________________________________</dd>
+        <dt>${esc(T("print.sheet.injectNumber"))}</dt><dd>________</dd>
+        <dt>${esc(T("print.sheet.timeFinished"))}</dt><dd>________</dd>
+        <dt>${esc(T("print.sheet.answerType"))}</dt><dd>${esc(T("print.sheet.groupAnswer"))} &nbsp;&nbsp; ${esc(T("print.sheet.individualAnswer"))}</dd>
       </dl>
-      <h2>Your answer</h2>
+      <h2>${esc(T("print.sheet.yourAnswer"))}</h2>
       ${lines(18)}
-      <p class="foot">This exercise tests the plan, not individuals. Findings are reported at team level.</p>
+      <p class="foot">${esc(T("print.sheet.foot"))}</p>
     </section>`);
     out.innerHTML = pages.join("");
   })();

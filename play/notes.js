@@ -15,10 +15,10 @@
 //     free typing is "External party" (who) and the topic "Other".
 
 (function () {
-  const CSS = `
+  const CSS = /* i18n-ok: the form's CSS, not wording */ `
   /* PlanProof look (player polish, 11 October 2026) — colours and fonts come
      from theme.css, which both pages using this form load. */
-  .ppn { background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px 16px; text-align:left;
+  .ppn { background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:14px 16px; text-align:start;
     font-family:var(--font-body); font-size:15px; line-height:1.4; }
   .ppn [hidden] { display:none !important; }
   .ppn fieldset { border:0; margin:0; padding:0; min-width:0; }
@@ -47,7 +47,7 @@
   .ppn-checks input { width:20px; height:20px; accent-color:var(--amber); }
   .ppn-hint { font-size:.8rem; color:var(--text-muted); margin-top:4px; }
   .ppn-row { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; }
-  .ppn-count { font-size:.8rem; color:var(--text-muted); font-family:var(--font-mono); }
+  .ppn-count { font-size:.8rem; color:var(--text-muted); font-family:var(--font-mono); direction:ltr; unicode-bidi:isolate; }
   .ppn-log { background:var(--amber); color:var(--amber-ink); border:0; border-radius:8px; padding:12px 22px; font:inherit; font-weight:600;
     font-size:1rem; cursor:pointer; min-height:44px; }
   .ppn-log:disabled { background:var(--panel-raised); color:var(--text-muted); cursor:not-allowed; }
@@ -59,7 +59,7 @@
   .ppn-item { border-top:1px solid var(--border); padding:9px 0; font-size:.92rem; overflow-wrap:anywhere; }
   .ppn-item:first-child { border-top:none; }
   .ppn-item .meta { font-size:.8rem; color:var(--text-muted); display:block; }
-  .ppn-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:700; color:#fff; margin-right:6px; }
+  .ppn-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:700; color:#fff; margin-inline-end:6px; }
   .ppn-pill.positive { background:#2f8f5b; } .ppn-pill.improvement { background:var(--amber); color:var(--amber-ink); } .ppn-pill.critical { background:var(--red); }
   .ppn-pill.earlier { background:#5a6673; }
   .ppn-actions { margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
@@ -88,18 +88,18 @@
   }
 
   function injectLabel(row, idx) {
-    if (idx === null) return "Whole exercise";
+    if (idx === null) return T("notes.inject.whole");
     const t = injectTitle(row, idx);
-    return t ? `Inject ${idx} — ${t}` : `Inject ${idx}`;
+    return t ? T("notes.inject.withTitle", { n: String(idx), title: t }) : T("notes.inject.number", { n: String(idx) });
   }
 
   function formatTime(ms) {
     const d = new Date(ms);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(PPLang.locales(), { hour: "2-digit", minute: "2-digit" });
   }
   function formatDateTime(ms) {
     const d = new Date(ms);
-    return d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleString(PPLang.locales(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   const SEVERAL = "__several__";
@@ -115,44 +115,44 @@
       <div class="ppn-window" data-el="window" hidden></div>
       <fieldset data-el="fields">
         <div class="ppn-editing" data-el="editing" hidden>
-          Editing a note you logged earlier ·
-          <button type="button" class="ppn-link" data-el="cancelEdit">Cancel editing</button>
+          ${esc(T("notes.form.editing"))} ·
+          <button type="button" class="ppn-link" data-el="cancelEdit">${esc(T("notes.form.cancelEdit"))}</button>
         </div>
         <div class="ppn-field">
-          <span class="ppn-label" id="ppn-inj-${uid}">Inject</span>
+          <span class="ppn-label" id="ppn-inj-${uid}">${esc(T("notes.form.injectLabel"))}</span>
           <div class="ppn-inject" data-el="injectFixed"></div>
           <select data-el="injectSelect" aria-labelledby="ppn-inj-${uid}" hidden></select>
           <div class="ppn-moved" data-el="moved" hidden>
-            The facilitator has moved on — this note stays with the inject you started it on.
+            ${esc(T("notes.form.moved"))}
           </div>
         </div>
         <div class="ppn-field">
-          <span class="ppn-label" id="ppn-topic-${uid}">Topic</span>
+          <span class="ppn-label" id="ppn-topic-${uid}">${esc(T("notes.form.topicLabel"))}</span>
           <div class="ppn-chips" role="radiogroup" aria-labelledby="ppn-topic-${uid}" data-el="topics">
             ${NOTE_TOPICS.map((t) => `<button type="button" role="radio" aria-checked="false" class="ppn-chip" data-topic="${t.key}">${esc(t.label)}</button>`).join("")}
           </div>
-          <input type="text" data-el="topicOther" maxlength="${NOTE_TOPIC_OTHER_MAX}" placeholder="Type the topic" aria-label="Topic (other)" hidden />
+          <input type="text" data-el="topicOther" maxlength="${NOTE_TOPIC_OTHER_MAX}" placeholder="${esc(T("notes.form.topicOtherPlaceholder"))}" aria-label="${esc(T("notes.form.topicOtherAria"))}" hidden />
         </div>
         <div class="ppn-field">
-          <span class="ppn-label" id="ppn-type-${uid}">Type</span>
+          <span class="ppn-label" id="ppn-type-${uid}">${esc(T("notes.form.typeLabel"))}</span>
           <div class="ppn-chips" role="radiogroup" aria-labelledby="ppn-type-${uid}" data-el="types">
             ${NOTE_TYPES.map((t) => `<button type="button" role="radio" aria-checked="false" class="ppn-chip ppn-type-${t.key}" data-type="${t.key}">${esc(t.label)}</button>`).join("")}
           </div>
         </div>
         <div class="ppn-field">
-          <label class="ppn-label" for="ppn-dept-${uid}">Department the note is about</label>
+          <label class="ppn-label" for="ppn-dept-${uid}">${esc(T("notes.form.deptLabel"))}</label>
           <select id="ppn-dept-${uid}" data-el="dept"></select>
           <div class="ppn-checks" data-el="checks" hidden></div>
-          <input type="text" data-el="external" maxlength="${NOTE_EXTERNAL_MAX}" placeholder="Who? For example Civil Defence or Police" aria-label="External party" hidden />
+          <input type="text" data-el="external" maxlength="${NOTE_EXTERNAL_MAX}" placeholder="${esc(T("notes.form.externalPlaceholder"))}" aria-label="${esc(T("notes.form.externalAria"))}" hidden />
         </div>
         <div class="ppn-field">
-          <label class="ppn-label" for="ppn-body-${uid}">Note</label>
-          <textarea id="ppn-body-${uid}" data-el="body" maxlength="${NOTE_MAX_LENGTH}" placeholder="What did the team do, and what does the plan say?"></textarea>
-          <div class="ppn-hint">Describe what the team did and what the plan says, not individuals.</div>
+          <label class="ppn-label" for="ppn-body-${uid}">${esc(T("notes.form.bodyLabel"))}</label>
+          <textarea id="ppn-body-${uid}" data-el="body" maxlength="${NOTE_MAX_LENGTH}" placeholder="${esc(T("notes.form.bodyPlaceholder"))}"></textarea>
+          <div class="ppn-hint">${esc(T("notes.form.bodyHint"))}</div>
         </div>
         <div class="ppn-row">
           <span class="ppn-count" data-el="count">0 / ${NOTE_MAX_LENGTH}</span>
-          <button type="button" class="ppn-log" data-el="log">Log note</button>
+          <button type="button" class="ppn-log" data-el="log">${esc(T("notes.form.log"))}</button>
         </div>
       </fieldset>
       <div class="ppn-feedback" role="status" aria-live="polite" data-el="feedback"></div>`;
@@ -218,11 +218,11 @@
       if (!force && sig === deptSignature) return;
       deptSignature = sig;
       E.dept.innerHTML =
-        `<option value="">— Choose —</option>` +
+        `<option value="">${esc(T("notes.dept.choose"))}</option>` +
         depts.map((d) => `<option value="${esc(d)}">${esc(d)}</option>`).join("") +
         `<option disabled>──────────</option>` +
-        `<option value="${SEVERAL}">Several departments</option>` +
-        `<option value="${EXTERNAL}">External party</option>`;
+        `<option value="${SEVERAL}">${esc(T("notes.dept.several"))}</option>` +
+        `<option value="${EXTERNAL}">${esc(T("notes.dept.external"))}</option>`;
       E.checks.innerHTML = depts
         .map((d) => `<label><input type="checkbox" value="${esc(d)}" /> ${esc(d)}</label>`)
         .join("");
@@ -273,7 +273,7 @@
       if (E.body.value !== state.body) E.body.value = state.body;
       E.count.textContent = `${E.body.value.length} / ${NOTE_MAX_LENGTH}`;
       E.editing.hidden = !state.editing;
-      E.log.textContent = saving ? "Saving…" : state.editing ? "Save changes" : "Log note";
+      E.log.textContent = saving ? T("notes.form.saving") : state.editing ? T("notes.form.saveChanges") : T("notes.form.log");
     }
 
     function refresh() {
@@ -304,8 +304,8 @@
         E.window.hidden = false;
         E.window.className = "ppn-window";
         E.window.textContent = opts.role === "facilitator"
-          ? `The exercise has ended. You can add notes until ${formatDateTime(win.closesAt)}, or until you press "Notes complete". Choose an inject or "Whole exercise".`
-          : `The exercise has ended. You can add or edit notes until ${formatTime(win.closesAt)} (one hour after the end). Choose an inject or "Whole exercise".`;
+          ? T("notes.window.endedFacilitator", { time: formatDateTime(win.closesAt) })
+          : T("notes.window.endedObserver", { time: formatTime(win.closesAt) });
       } else {
         E.window.hidden = true;
         E.window.textContent = "";
@@ -314,7 +314,7 @@
       // The inject the note is about.
       if (row.status === "ended") {
         const played = playedInjects(row);
-        const opts2 = [`<option value="whole">Whole exercise</option>`]
+        const opts2 = [`<option value="whole">${esc(T("notes.inject.whole"))}</option>`]
           .concat(played.map((i) => `<option value="${i}">${esc(injectLabel(row, i))}</option>`));
         const html = opts2.join("");
         if (E.injectSelect.dataset.sig !== html) {
@@ -331,7 +331,7 @@
         E.injectSelect.hidden = true;
         E.injectFixed.hidden = false;
         const idx = state.injectIndex === undefined ? row.current_inject_index : state.injectIndex;
-        E.injectFixed.innerHTML = `${esc(injectLabel(row, idx))} <small>· set automatically</small>`;
+        E.injectFixed.innerHTML = `${esc(injectLabel(row, idx))} <small>· ${esc(T("notes.inject.setAuto"))}</small>`;
         E.moved.hidden = !(state.injectIndex !== undefined && state.injectIndex !== null
           && state.injectIndex !== row.current_inject_index);
         applyDefaultDept(row);
@@ -405,14 +405,14 @@
     }
 
     function validate() {
-      if (!state.topic) return fail("Please choose a topic.");
-      if (state.topic === "other" && !state.topicOther.trim()) return fail("Please type the topic.");
-      if (!state.noteType) return fail("Please choose a type: Positive, Needs improvement or Critical gap.");
-      if (!state.scope) return fail("Please choose the department the note is about.");
-      if (state.scope === "one" && !state.dept) return fail("Please choose the department the note is about.");
-      if (state.scope === "several" && state.depts.length < 2) return fail("Please tick at least two departments.");
-      if (state.scope === "external" && !state.externalParty.trim()) return fail("Please type who the external party is (for example Civil Defence or Police).");
-      if (!state.body.trim()) return fail("Please write the note.");
+      if (!state.topic) return fail(T("notes.validate.topic"));
+      if (state.topic === "other" && !state.topicOther.trim()) return fail(T("notes.validate.topicOther"));
+      if (!state.noteType) return fail(T("notes.validate.type"));
+      if (!state.scope) return fail(T("notes.validate.dept"));
+      if (state.scope === "one" && !state.dept) return fail(T("notes.validate.dept"));
+      if (state.scope === "several" && state.depts.length < 2) return fail(T("notes.validate.several"));
+      if (state.scope === "external" && !state.externalParty.trim()) return fail(T("notes.validate.external"));
+      if (!state.body.trim()) return fail(T("notes.validate.body"));
       return true;
     }
 
@@ -440,19 +440,19 @@
       renderFields();
       refresh();
       E.feedback.className = "ppn-feedback";
-      E.feedback.textContent = "Saving…";
+      E.feedback.textContent = T("notes.feedback.saving");
       try {
         const result = await opts.save(payload);
         state = blank();
         persist();
         E.feedback.className = "ppn-feedback ok";
-        E.feedback.textContent = wasEditing ? "Changes saved ✓" : "Note logged ✓";
+        E.feedback.textContent = wasEditing ? T("notes.feedback.changesSaved") : T("notes.feedback.logged");
         if (opts.onSaved) opts.onSaved(result, payload, wasEditing);
       } catch (err) {
         // Keep everything typed, so nothing is lost; pressing again is safe
         // (same note id).
         E.feedback.className = "ppn-feedback err";
-        E.feedback.textContent = err.message;
+        E.feedback.textContent = PPLang.dbMessage(err.message);
       } finally {
         saving = false;
         renderFields();
@@ -510,18 +510,18 @@
     const edited = note.updated_at && note.created_at && Date.parse(note.updated_at) - Date.parse(note.created_at) > 2000;
     const author = showAuthor
       ? note.author_role === "facilitator"
-        ? "Facilitator"
-        : `${note.author_name}${note.author_department ? ` (${note.author_department})` : ""}${note.room ? ` · Room ${note.room}` : ""}`
+        ? T("notes.item.facilitator")
+        : `${note.author_name}${note.author_department ? ` (${note.author_department})` : ""}${note.room ? ` · ${T("notes.item.room", { room: note.room })}` : ""}`
       : "";
     return `
       <div class="ppn-item${unread ? " unread" : ""}${note.note_type === "critical" ? " critical" : ""}" data-note-id="${esc(note.id)}">
         <div>
-          ${earlier ? `<span class="ppn-pill earlier">Earlier run</span>` : ""}
+          ${earlier ? `<span class="ppn-pill earlier">${esc(T("notes.item.earlierRun"))}</span>` : ""}
           <span class="ppn-pill ${esc(note.note_type)}">${esc(noteTypeLabel(note.note_type))}</span>
           <strong>${esc(noteTopicLabel(note))}</strong> · ${esc(noteAboutLabel(note))}
         </div>
         <div>${esc(note.body)}</div>
-        <span class="meta">${esc(injectLabel(row, note.inject_index === undefined ? null : note.inject_index))} · ${esc(time)}${edited ? " · edited" : ""}${author ? ` · ${esc(author)}` : ""}</span>
+        <span class="meta">${esc(injectLabel(row, note.inject_index === undefined ? null : note.inject_index))} · ${esc(time)}${edited ? ` · ${esc(T("notes.item.edited"))}` : ""}${author ? ` · ${esc(author)}` : ""}</span>
         ${actionsHtml ? `<div class="ppn-actions">${actionsHtml}</div>` : ""}
       </div>`;
   }

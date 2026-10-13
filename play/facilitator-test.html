@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Facilitator Test Controls (prototype)</title>
+<title data-i18n="fac.page.title">PlanProof — Facilitator Test Controls (prototype)</title>
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="./theme.css" />
@@ -15,7 +15,7 @@
   h1 { font-size: 1.35rem; margin: 0 0 14px; }
   h2 { font-size: 1.1rem; }
   .note {
-    background: var(--amber-dim); border: 1px solid var(--border); border-left: 3px solid var(--amber); border-radius: 8px;
+    background: var(--amber-dim); border: 1px solid var(--border); border-inline-start: 3px solid var(--amber); border-radius: 8px;
     padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem; max-width: 760px;
   }
   .status { margin-bottom: 16px; font-size: 1.05rem; color: var(--text-muted); }
@@ -79,7 +79,7 @@
   .history-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
   .history { border-collapse: collapse; font-size: 0.85rem; }
   .history th, .history td { padding: 5px 8px; text-align: center; white-space: nowrap; }
-  .history th:first-child, .history td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }
+  .history th:first-child, .history td:first-child { text-align: start; position: sticky; inset-inline-start: 0; background: var(--panel); }
   .history thead th { font-weight: 600; color: var(--text-muted); }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; margin-top: 10px; color: var(--text-muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -101,13 +101,13 @@
   .dept-msg-section select, .dept-msg-section textarea { width: 100%; margin-top: 6px; }
   .broadcast-section textarea { min-height: 64px; resize: vertical; margin-top: 8px; }
   .broadcast-row, .dept-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-  .broadcast-row .count, .dept-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .broadcast-row .count, .dept-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
   .broadcast-feedback, .dept-msg-feedback { font-size: 0.86rem; margin-top: 8px; min-height: 1.1em; }
   .broadcast-feedback.ok, .dept-msg-feedback.ok { color: var(--teal-soft); }
   .broadcast-feedback.err, .dept-msg-feedback.err { color: var(--red-soft); }
   .broadcast-log, .dept-msg-log { list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.86rem; max-height: 180px; overflow-y: auto; }
   .broadcast-log li, .dept-msg-log li { padding: 6px 0; border-top: 1px solid var(--border); }
-  .broadcast-log .meta, .dept-msg-log .meta { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.78rem; margin-right: 6px; }
+  .broadcast-log .meta, .dept-msg-log .meta { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.78rem; margin-inline-end: 6px; }
 
   /* Department messaging (roadmap item 4, added 7 October 2026). */
   .dept-msg-section textarea { min-height: 56px; resize: vertical; }
@@ -118,11 +118,11 @@
   .obs-msg-section textarea { min-height: 56px; resize: vertical; }
   .obs-msg-warn { font-size: 0.86rem; color: var(--amber); margin-top: 8px; }
   .inbox-list .from-tag {
-    display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+    display: inline-block; margin-inline-end: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
     letter-spacing: 0.02em; border: 1px solid var(--blue); color: var(--blue-soft); background: var(--blue-dim);
   }
   .inbox-list .earlier { color: var(--text-muted); font-style: italic; }
-  .inbox-list .msg-obs-btn { margin-left: 8px; }
+  .inbox-list .msg-obs-btn { margin-inline-start: 8px; }
   .msg-dept-btn {
     font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border-strong);
     background: transparent; color: var(--text); cursor: pointer;
@@ -143,7 +143,7 @@
   .notes-counts { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
   .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; background: var(--bg); }
   .notes-list .ppn-item.unread { background: var(--amber-dim); margin: 0 -12px; padding: 9px 12px; }
-  .notes-list .ppn-item.critical { border-left: 4px solid var(--red); margin-left: -12px; padding-left: 8px; }
+  .notes-list .ppn-item.critical { border-inline-start: 4px solid var(--red); margin-inline-start: -12px; padding-inline-start: 8px; }
   .notes-list .ppn-item.unread.critical { background: var(--red-dim); }
   .notes-list .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
   .notes-close { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-raised); font-size: 0.9rem; }
@@ -151,26 +151,26 @@
   .notes-own { margin-top: 14px; }
   .notes-own summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
   .notes-own .ppn { margin-top: 8px; background: var(--bg); }
-  .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue-soft); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-left: 4px; vertical-align: 1px; }
+  .roster-badge { display: inline-block; padding: 0 7px; border-radius: 999px; background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue-soft); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; margin-inline-start: 4px; vertical-align: 1px; }
   .roster-summary { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 8px; }
 
   /* Control tower (roadmap item 6, 11 October 2026): who is connected right
      now. Visual only — it never chimes. */
   .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 10px; background: var(--amber-dim); border: 2px solid var(--amber); }
   .start-check .t { font-family: var(--font-display); font-weight: 600; margin-bottom: 4px; }
-  .start-check ul { margin: 6px 0 10px; padding-left: 20px; font-size: 0.95rem; }
+  .start-check ul { margin: 6px 0 10px; padding-inline-start: 20px; font-size: 0.95rem; }
   .start-check .b { display: flex; gap: 10px; flex-wrap: wrap; }
   /* End of the exercise (item 8, 11 October 2026): the "End the exercise?"
      check and the strip that says what stays open afterwards. */
   .start-check.end-check { background: var(--red-dim); border-color: var(--red); }
   .start-check .why { font-size: 0.95rem; margin: 2px 0 6px; }
   .start-check .none { font-size: 0.95rem; color: var(--teal-soft); margin: 6px 0 10px; }
-  .end-strip { margin: 12px 0 0; max-width: 900px; padding: 12px 16px; border-radius: 10px; background: var(--teal-dim); border: 1px solid var(--teal); border-left: 5px solid var(--teal); font-size: 0.97rem; line-height: 1.5; }
+  .end-strip { margin: 12px 0 0; max-width: 900px; padding: 12px 16px; border-radius: 10px; background: var(--teal-dim); border: 1px solid var(--teal); border-inline-start: 5px solid var(--teal); font-size: 0.97rem; line-height: 1.5; }
   .end-strip .t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 2px; }
-  .end-strip ul { margin: 6px 0 0; padding-left: 20px; }
+  .end-strip ul { margin: 6px 0 0; padding-inline-start: 20px; }
   .tower-section h3 { font-size: 0.95rem; margin: 14px 0 6px; }
   .tower-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
-  .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+  .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-inline-start: 8px; }
   .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--amber-dim); border: 1px solid var(--amber); font-size: 0.9rem; }
   .tower-warn.red { background: var(--red-dim); border-color: var(--red); color: #ffd3cb; font-weight: 600; }
   .tower-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.92rem; flex-wrap: wrap; }
@@ -191,30 +191,30 @@
 </head>
 <body>
   <header class="pp-top">
-    <span class="pp-brand"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
-    <div class="pp-context"><strong id="facLabel">Facilitator</strong><div>Facilitator page. Private link, do not share it.</div></div>
+    <span class="pp-brand" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+    <div class="pp-context"><strong id="facLabel" data-i18n="fac.header.label">Facilitator</strong><div data-i18n="fac.header.private">Facilitator page. Private link, do not share it.</div></div>
   </header>
   <div class="fac-main">
-  <h1>Facilitator test controls (prototype)</h1>
-  <div class="note">
+  <h1 data-i18n="fac.page.heading">Facilitator test controls (prototype)</h1>
+  <div class="note" data-i18n="fac.page.intro">
     This page drives the demo session directly — it stands in for the real
     facilitator view (lobby/roster, criteria capture, submissions feed) which
     isn't built yet. Its only job here is to prove that an action taken here
     shows up instantly on the room display.
   </div>
 
-  <div class="status">Status: <b id="statusVal">loading…</b> · Inject: <b id="indexVal">—</b></div>
+  <div class="status" data-i18n-nodes="fac.statusLine.status; fac.statusLine.inject">Status: <b id="statusVal" data-i18n="fac.statusLine.loading">loading…</b> · Inject: <b id="indexVal">—</b></div>
 
   <div class="controls">
-    <button class="primary" id="startBtn">Start exercise</button>
-    <button id="prevBtn">&larr; Previous inject</button>
-    <button id="nextBtn">Next inject &rarr;</button>
-    <button id="extendBtn">+5 min for this inject</button>
-    <button id="unlockBtn">Unlock this inject</button>
-    <button id="endBtn">End exercise</button>
-    <button id="resetBtn">Reset to lobby</button>
+    <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
+    <button id="prevBtn" data-i18n="fac.controls.previous">&larr; Previous inject</button>
+    <button id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
+    <button id="extendBtn" data-i18n="fac.controls.extend">+5 min for this inject</button>
+    <button id="unlockBtn" data-i18n="fac.controls.unlock">Unlock this inject</button>
+    <button id="endBtn" data-i18n="fac.controls.end">End exercise</button>
+    <button id="resetBtn" data-i18n="fac.controls.reset">Reset to lobby</button>
   </div>
-  <div class="note" style="margin-top:4px; margin-bottom:0;">
+  <div class="note" style="margin-top:4px; margin-bottom:0;" data-i18n-html="fac.controls.unlockNote_html">
     "Unlock this inject" re-opens participant submissions for whichever inject
     is current right now — including one they already submitted, or one that
     timed out — until you click "Lock this inject" again or move on. To
@@ -223,30 +223,30 @@
   </div>
 
   <div class="start-check" id="startCheck" hidden role="alertdialog" aria-labelledby="startCheckTitle">
-    <div class="t" id="startCheckTitle">Not everything is ready</div>
+    <div class="t" id="startCheckTitle" data-i18n="fac.startCheck.title">Not everything is ready</div>
     <ul id="startCheckList"></ul>
     <div class="b">
-      <button id="startBackBtn" class="primary">Go back</button>
-      <button id="startAnywayBtn">Start anyway</button>
+      <button id="startBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
+      <button id="startAnywayBtn" data-i18n="fac.startCheck.anyway">Start anyway</button>
     </div>
   </div>
 
   <div class="start-check" id="resumeCheck" hidden role="alertdialog" aria-labelledby="resumeCheckTitle">
-    <div class="t" id="resumeCheckTitle">Resume at this inject?</div>
+    <div class="t" id="resumeCheckTitle" data-i18n="fac.resume.titleGeneric">Resume at this inject?</div>
     <div class="why" id="resumeCheckBody"></div>
     <div class="b">
-      <button id="resumeBackBtn">Go back</button>
-      <button id="resumeConfirmBtn" class="primary">Resume</button>
+      <button id="resumeBackBtn" data-i18n="fac.common.goBack">Go back</button>
+      <button id="resumeConfirmBtn" class="primary" data-i18n="fac.resume.confirmGeneric">Resume</button>
     </div>
   </div>
 
   <div class="start-check end-check" id="endCheck" hidden role="alertdialog" aria-labelledby="endCheckTitle">
-    <div class="t" id="endCheckTitle">End the exercise?</div>
-    <div class="why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.</div>
+    <div class="t" id="endCheckTitle" data-i18n="fac.endCheck.title">End the exercise?</div>
+    <div class="why" data-i18n="fac.endCheck.why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.</div>
     <div id="endCheckBody"></div>
     <div class="b">
-      <button id="endBackBtn" class="primary">Go back</button>
-      <button id="endConfirmBtn" class="danger">End exercise</button>
+      <button id="endBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
+      <button id="endConfirmBtn" class="danger" data-i18n="fac.endCheck.confirm">End exercise</button>
     </div>
   </div>
 
@@ -256,87 +256,87 @@
   <div id="errorBox" style="display:none; margin-top:12px; color:var(--red-soft); font-size:0.9rem;"></div>
 
   <div class="tower-section" id="towerSection">
-    <h2>Control tower</h2>
-    <div class="sub">
+    <h2 data-i18n="fac.tower.heading">Control tower</h2>
+    <div class="sub" data-i18n="fac.tower.sub">
       Who is connected right now. Every screen and phone checks in every 20
       seconds; this is a live indicator, not the attendance record.
     </div>
-    <div class="tower-headline" id="towerHeadline">Loading…</div>
+    <div class="tower-headline" id="towerHeadline" data-i18n="fac.common.loading">Loading…</div>
     <div id="towerWarnings"></div>
-    <h3>Room screens</h3>
+    <h3 data-i18n="fac.tower.screensHeading">Room screens</h3>
     <div id="towerScreens"></div>
     <div id="towerObserversWrap" hidden>
-      <h3>Observers</h3>
+      <h3 data-i18n="fac.tower.observersHeading">Observers</h3>
       <div id="towerObservers"></div>
     </div>
     <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
     <div class="tower-legend">
-      <span><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
-      <span><i class="dot amber"></i> Not seen for up to 2 minutes</span>
-      <span><i class="dot grey"></i> Offline, or not connected yet</span>
-      <span><i class="dot red"></i> Needs attention</span>
+      <span data-i18n-html="fac.tower.legendOnline_html"><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
+      <span data-i18n-html="fac.tower.legendNotSeen_html"><i class="dot amber"></i> Not seen for up to 2 minutes</span>
+      <span data-i18n-html="fac.tower.legendOffline_html"><i class="dot grey"></i> Offline, or not connected yet</span>
+      <span data-i18n-html="fac.tower.legendAttention_html"><i class="dot red"></i> Needs attention</span>
     </div>
   </div>
 
   <div class="broadcast-section" id="broadcastSection">
-    <h2>Message everyone</h2>
-    <div class="sub">
+    <h2 data-i18n="fac.broadcast.heading">Message everyone</h2>
+    <div class="sub" data-i18n="fac.broadcast.sub">
       Shows on every participant's page and as a banner on every room display
       (for 30 seconds there, or until you move to the next inject). Choose a
       ready-made message, or type your own.
     </div>
-    <label for="msgPreset" class="field-label">Ready-made messages (optional)</label>
+    <label for="msgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
     <select id="msgPreset">
-      <option value="">— Choose a ready-made message —</option>
+      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
     </select>
-    <textarea id="msgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <textarea id="msgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
     <div class="broadcast-row">
       <span class="count" id="msgCount">0 / 280</span>
-      <button class="primary" id="msgSendBtn" disabled>Send to everyone</button>
+      <button class="primary" id="msgSendBtn" disabled data-i18n="fac.broadcast.send">Send to everyone</button>
     </div>
     <div class="broadcast-feedback" id="msgFeedback"></div>
     <ul class="broadcast-log" id="msgLog"></ul>
   </div>
 
   <div class="dept-msg-section" id="deptMsgSection">
-    <h2>Message a department</h2>
-    <div class="sub">
+    <h2 data-i18n="fac.deptMsg.heading">Message a department</h2>
+    <div class="sub" data-i18n="fac.deptMsg.sub">
       Reaches everyone registered in that department's phones — not the
       shared room screen. Choose a ready-made message, or type your own.
     </div>
-    <label for="deptMsgDept" class="field-label">Department</label>
-    <select id="deptMsgDept"><option value="">— Choose a department —</option></select>
-    <label for="deptMsgPreset" class="field-label">Ready-made messages (optional)</label>
+    <label for="deptMsgDept" class="field-label" data-i18n="fac.deptMsg.deptLabel">Department</label>
+    <select id="deptMsgDept"><option value="" data-i18n="fac.deptMsg.chooseDept">— Choose a department —</option></select>
+    <label for="deptMsgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
     <select id="deptMsgPreset">
-      <option value="">— Choose a ready-made message —</option>
+      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
     </select>
-    <textarea id="deptMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <textarea id="deptMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
     <div class="dept-msg-row">
       <span class="count" id="deptMsgCount">0 / 280</span>
-      <button class="primary" id="deptMsgSendBtn" disabled>Send &rarr;</button>
+      <button class="primary" id="deptMsgSendBtn" disabled data-i18n="fac.msg.send">Send &rarr;</button>
     </div>
     <div class="dept-msg-feedback" id="deptMsgFeedback"></div>
     <ul class="dept-msg-log" id="deptMsgLog"></ul>
   </div>
 
   <div class="obs-msg-section" id="obsMsgSection">
-    <h2>Message Observers</h2>
-    <div class="sub">
+    <h2 data-i18n="fac.obsMsg.heading">Message Observers</h2>
+    <div class="sub" data-i18n="fac.obsMsg.sub">
       Reaches Observers' phones only — never participants or the room
       screen. Observers can write to you too; their messages arrive in the
       inbox below, marked with their room. This channel stays open after
       End until the Observers' notes window closes.
     </div>
-    <label for="obsMsgRoom" class="field-label">Send to</label>
-    <select id="obsMsgRoom"><option value="">All Observers</option></select>
-    <label for="obsMsgPreset" class="field-label">Ready-made messages (optional)</label>
+    <label for="obsMsgRoom" class="field-label" data-i18n="fac.obsMsg.roomLabel">Send to</label>
+    <select id="obsMsgRoom"><option value="" data-i18n="fac.obsMsg.allObservers">All Observers</option></select>
+    <label for="obsMsgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
     <select id="obsMsgPreset">
-      <option value="">— Choose a ready-made message —</option>
+      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
     </select>
-    <textarea id="obsMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it"></textarea>
+    <textarea id="obsMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
     <div class="dept-msg-row">
       <span class="count" id="obsMsgCount">0 / 280</span>
-      <button class="primary" id="obsMsgSendBtn" disabled>Send &rarr;</button>
+      <button class="primary" id="obsMsgSendBtn" disabled data-i18n="fac.msg.send">Send &rarr;</button>
     </div>
     <div class="obs-msg-warn" id="obsMsgWarn" hidden></div>
     <div class="dept-msg-feedback" id="obsMsgFeedback"></div>
@@ -344,50 +344,50 @@
   </div>
 
   <div class="inbox-section" id="inboxSection">
-    <h2>Messages from departments and Observers <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
-    <div class="sub">Requests and replies from participants and from Observers (marked with their room), newest first.</div>
-    <ul class="inbox-list" id="inboxList"><li class="muted-line">No messages yet.</li></ul>
+    <h2 data-i18n-nodes="fac.inbox.heading">Messages from departments and Observers <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
+    <div class="sub" data-i18n="fac.inbox.sub">Requests and replies from participants and from Observers (marked with their room), newest first.</div>
+    <ul class="inbox-list" id="inboxList"><li class="muted-line" data-i18n="fac.inbox.empty">No messages yet.</li></ul>
   </div>
 
   <div class="notes-section" id="notesSection">
-    <h2>Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
-    <div class="sub">
+    <h2 data-i18n-nodes="fac.notes.heading">Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
+    <div class="sub" data-i18n="fac.notes.sub">
       Every note from Observers and from you, newest first — only this
       facilitator link can read them. Critical gaps are marked in red and
       chime when they arrive. Click anywhere in this panel to mark notes as seen.
     </div>
     <div class="notes-counts" id="notesCounts"></div>
-    <div class="notes-list" id="notesList"><div class="empty">Loading…</div></div>
+    <div class="notes-list" id="notesList"><div class="empty" data-i18n="fac.common.loading">Loading…</div></div>
     <div class="notes-close" id="notesClose"></div>
     <details class="notes-own" id="notesOwn">
-      <summary>Add your own note</summary>
+      <summary data-i18n="fac.notes.addOwn">Add your own note</summary>
       <div id="facNoteForm"></div>
     </details>
   </div>
 
   <div class="status-section">
-    <h2>Response status</h2>
-    <div id="statusSection">Loading…</div>
+    <h2 data-i18n="fac.status.heading">Response status</h2>
+    <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
     <div class="legend">
-      <span><i class="dot grey"></i> Waiting, or not required</span>
-      <span><i class="dot amber"></i> Some have submitted (individual task)</span>
-      <span><i class="dot green"></i> Complete, on time</span>
-      <span><i class="dot red"></i> Time's up, not complete</span>
+      <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
+      <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
+      <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
+      <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
     </div>
   </div>
 
   <div class="roster-section">
-    <h2>Session setup</h2>
-    <div class="note" id="roomCountNote" style="margin-bottom:10px;">
+    <h2 data-i18n="fac.setup.heading">Session setup</h2>
+    <div class="note" id="roomCountNote" style="margin-bottom:10px;" data-i18n="fac.setup.roomsNote">
       How many rooms are running this exercise? Room 1 is always your own
       (the facilitator's) room, so "3" means your room plus 2 more. You can
       change this as many times as you like before clicking "Start
       exercise" — it locks once the exercise is running.
     </div>
     <div class="add-dept-row">
-      <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;">Rooms:</label>
+      <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;" data-i18n="fac.setup.roomsLabel">Rooms:</label>
       <select id="roomCountSelect" style="flex:0 0 auto;">
-        <option value="1">1 (no room question at check-in)</option>
+        <option value="1" data-i18n="fac.setup.roomsOne">1 (no room question at check-in)</option>
         <option value="2">2</option>
         <option value="3">3</option>
         <option value="4">4</option>
@@ -397,8 +397,8 @@
     </div>
     <div id="roomCountError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
 
-    <h2>Registered participants &amp; observers</h2>
-    <div class="note" id="addDeptNote" style="margin-bottom:10px;">
+    <h2 data-i18n="fac.roster.heading">Registered participants &amp; observers</h2>
+    <div class="note" id="addDeptNote" style="margin-bottom:10px;" data-i18n="fac.roster.addDeptNote">
       Add any department missing from the list — at any time, also during
       the exercise. Only you can add one, so nobody can invent a department.
       A department added during the exercise shows "Not required" for the
@@ -406,36 +406,37 @@
       is counted like every other department from the next inject on.
     </div>
     <div class="add-dept-row">
-      <input type="text" id="newDeptInput" placeholder="e.g. Marketing" />
-      <button id="addDeptBtn">Add department</button>
+      <input type="text" id="newDeptInput" placeholder="e.g. Marketing" data-i18n-attr="placeholder:fac.roster.newDeptPlaceholder" />
+      <button id="addDeptBtn" data-i18n="fac.roster.addDept">Add department</button>
     </div>
     <div id="rosterError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
-    <div class="roster-group" id="rosterGroup" hidden>
+    <div class="roster-group" id="rosterGroup" hidden data-i18n-nodes="fac.roster.groupBy">
       Group by:
-      <button type="button" data-group="department" class="on">Department</button>
-      <button type="button" data-group="room">Room</button>
+      <button type="button" data-group="department" class="on" data-i18n="fac.roster.groupDepartment">Department</button>
+      <button type="button" data-group="room" data-i18n="fac.roster.groupRoom">Room</button>
     </div>
-    <div id="roster">Loading…</div>
+    <div id="roster" data-i18n="fac.common.loading">Loading…</div>
   </div>
 
-  <div class="link-row">
+  <div class="link-row" data-i18n-nodes="fac.links.join">
     Participant/Observer join link for this session (share this one — it has no facilitator token):
     <input id="joinLink" readonly />
   </div>
-  <div class="link-row">
+  <div class="link-row" data-i18n-nodes="fac.links.display">
     Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):
     <input id="displayLink" readonly />
   </div>
-  <div class="link-row">
+  <div class="link-row" data-i18n-nodes="fac.links.before; fac.links.checkNote; fac.links.printNote">
     Before the exercise (added 9 October 2026):
-    <a id="checkLink" target="_blank" rel="noopener">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
-    <a id="printLink" target="_blank" rel="noopener">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
+    <a id="checkLink" target="_blank" rel="noopener" data-i18n="fac.links.check">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
+    <a id="printLink" target="_blank" rel="noopener" data-i18n="fac.links.print">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
   </div>
 
   </div>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script src="./notes.js"></script>
 <script>
@@ -449,7 +450,7 @@
   const errorBoxEl = document.getElementById("errorBox");
 
   if (!sessionId) {
-    document.body.innerHTML = "<p>No ?session=&lt;id&gt; given in the URL.</p>";
+    document.body.innerHTML = T("fac.error.noSession_html");
   } else if (!facilitatorToken) {
     // This page writes to the session (Start/Next/Prev/End/Reset), so without
     // the facilitator token every action below would be silently rejected by
@@ -458,16 +459,17 @@
     // time — this is exactly the "plain session link used where the private
     // Facilitator link was needed" mistake the roadmap's three-QR design
     // (Facilitator / Participant-Observer / Room-display) exists to prevent.
-    document.body.innerHTML =
-      "<p>This link is missing its facilitator token (<code>&amp;token=...</code> " +
-      "after the session ID). Use the private Facilitator link for this session, " +
-      "not a room-display or participant link — this page can't control the " +
-      "exercise without it.</p>";
+    document.body.innerHTML = T("fac.error.noToken_html");
   } else {
-    displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}`;
-    joinLinkEl.value = `${location.origin}/play/join.html?session=${sessionId}`;
-    document.getElementById("checkLink").href = `${location.origin}/play/check.html`;
-    document.getElementById("printLink").href = `${location.origin}/play/print.html?session=${sessionId}&token=${encodeURIComponent(facilitatorToken)}`;
+    // Outside English the links carry the exercise's language, so each page
+    // opens in it at once (in English nothing is added). The connection check
+    // has no exercise of its own, so its link is the only way it learns the language.
+    const langHint = PPLang.lang() === "en" ? "" : `lang=${PPLang.lang()}`;
+    const andLang = langHint ? `&${langHint}` : "";
+    displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}${andLang}`;
+    joinLinkEl.value = `${location.origin}/play/join.html?session=${sessionId}${andLang}`;
+    document.getElementById("checkLink").href = `${location.origin}/play/check.html${langHint ? `?${langHint}` : ""}`;
+    document.getElementById("printLink").href = `${location.origin}/play/print.html?session=${sessionId}&token=${encodeURIComponent(facilitatorToken)}${andLang}`;
 
     let currentRow = null;
     let actionBusy = false; // an action is being sent — the background check waits
@@ -511,7 +513,7 @@
         await action();
         await refresh();
       } catch (err) {
-        errorBoxEl.textContent = `Action failed: ${err.message}`;
+        errorBoxEl.textContent = T("fac.error.actionFailed", { message: PPLang.dbMessage(err.message) });
         errorBoxEl.style.display = "block";
       } finally {
         actionBusy = false;
@@ -534,14 +536,14 @@
       const isRunning = currentRow && currentRow.status === "running";
       startBtn.disabled = false;
       // After End the same button brings the exercise back (Resume).
-      startBtn.textContent = canResume() ? resumeLabel() : "Start exercise";
+      startBtn.textContent = canResume() ? resumeLabel() : T("fac.controls.start");
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
       unlockBtn.disabled = !isRunning;
       unlockBtn.textContent = currentRow && currentRow.inject_force_unlocked
-        ? "Lock this inject"
-        : "Unlock this inject";
+        ? T("fac.controls.lock")
+        : T("fac.controls.unlock");
       endBtn.disabled = false;
       resetBtn.disabled = false;
 
@@ -576,7 +578,7 @@
       rosterErrorEl.style.display = "none";
       if (!name) return;
       if (!currentRow) {
-        rosterErrorEl.textContent = "Add department failed: session not loaded yet.";
+        rosterErrorEl.textContent = T("fac.roster.addDeptNotLoaded");
         rosterErrorEl.style.display = "block";
         return;
       }
@@ -585,7 +587,7 @@
         ...(currentRow.extra_departments || []),
       ].map((d) => d.toLowerCase());
       if (existing.includes(name.toLowerCase())) {
-        rosterErrorEl.textContent = `"${name}" is already in the department list.`;
+        rosterErrorEl.textContent = T("fac.roster.deptExists", { name });
         rosterErrorEl.style.display = "block";
         return;
       }
@@ -596,7 +598,7 @@
         newDeptInputEl.value = "";
         await refresh();
       } catch (err) {
-        rosterErrorEl.textContent = `Add department failed: ${err.message}`;
+        rosterErrorEl.textContent = T("fac.roster.addDeptFailed", { message: PPLang.dbMessage(err.message) });
         rosterErrorEl.style.display = "block";
       } finally {
         addDeptBtn.disabled = false;
@@ -606,7 +608,7 @@
     roomCountSelectEl.addEventListener("change", async () => {
       roomCountErrorEl.style.display = "none";
       if (!currentRow) {
-        roomCountErrorEl.textContent = "Set rooms failed: session not loaded yet.";
+        roomCountErrorEl.textContent = T("fac.setup.roomsNotLoaded");
         roomCountErrorEl.style.display = "block";
         // Nothing to revert to yet — leave the selector as the facilitator
         // left it rather than guessing a value.
@@ -619,7 +621,7 @@
         await patchSession(sessionId, { room_count: value });
         await refresh();
       } catch (err) {
-        roomCountErrorEl.textContent = `Set rooms failed: ${err.message}`;
+        roomCountErrorEl.textContent = T("fac.setup.roomsFailed", { message: PPLang.dbMessage(err.message) });
         roomCountErrorEl.style.display = "block";
         // Roll the dropdown back to what's actually saved, so it never
         // silently shows a count that didn't take.
@@ -655,7 +657,7 @@
       msgSendBtn.disabled = msgSending || len === 0 || ended || !currentRow;
       msgPresetEl.disabled = ended;
       msgTextEl.disabled = ended;
-      const endedText = "The exercise has ended — messages can no longer be sent.";
+      const endedText = T("fac.msg.ended");
       if (ended) msgFeedbackEl.textContent = endedText;
       else if (msgFeedbackEl.textContent === endedText) msgFeedbackEl.textContent = ""; // running again after End
     }
@@ -682,18 +684,18 @@
       msgSending = true;
       updateMsgControls();
       msgFeedbackEl.className = "broadcast-feedback";
-      msgFeedbackEl.textContent = "Sending…";
+      msgFeedbackEl.textContent = T("fac.msg.sending");
       try {
         await sendBroadcast(sessionId, { body, presetKey });
         msgTextEl.value = "";
         msgPresetEl.value = "";
         msgFeedbackEl.className = "broadcast-feedback ok";
-        msgFeedbackEl.textContent = `Sent to everyone at ${formatMessageTime(new Date().toISOString())} ✓`;
+        msgFeedbackEl.textContent = T("fac.broadcast.sent", { time: formatMessageTime(new Date().toISOString()) });
         await refreshMessageLog();
       } catch (err) {
         // Keep the text so nothing typed is lost if the send failed.
         msgFeedbackEl.className = "broadcast-feedback err";
-        msgFeedbackEl.textContent = err.message;
+        msgFeedbackEl.textContent = PPLang.dbMessage(err.message);
       } finally {
         msgSending = false;
         updateMsgControls();
@@ -704,12 +706,12 @@
       if (m.inject_index === null || m.inject_index === undefined) {
         // Observer messages can also arrive after End (item 7).
         const ended = currentRow && currentRow.status === "ended" && currentRow.ended_at;
-        if (ended && new Date(m.created_at).getTime() >= Date.parse(currentRow.ended_at)) return "after the end";
-        return "before start";
+        if (ended && new Date(m.created_at).getTime() >= Date.parse(currentRow.ended_at)) return T("fac.msg.contextAfterEnd");
+        return T("fac.msg.contextBeforeStart");
       }
       const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
       const inj = injects[m.inject_index];
-      return inj ? `during "${inj.title}"` : `during inject ${m.inject_index}`;
+      return inj ? T("fac.msg.contextDuringTitled", { title: inj.title }) : T("fac.msg.contextDuringInject", { number: m.inject_index });
     }
 
     async function refreshMessageLog() {
@@ -723,9 +725,9 @@
                 (m) => `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
               )
               .join("")
-          : `<li class="muted-line">No messages sent yet.</li>`;
+          : `<li class="muted-line">${escapeHtml(T("fac.broadcast.logEmpty"))}</li>`;
       } catch (err) {
-        msgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+        msgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
       }
     }
 
@@ -757,7 +759,7 @@
       const prev = deptMsgDeptEl.value;
       const depts = allDepartments();
       deptMsgDeptEl.innerHTML =
-        `<option value="">— Choose a department —</option>` +
+        `<option value="">${escapeHtml(T("fac.deptMsg.chooseDept"))}</option>` +
         depts.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
       if (depts.includes(prev)) deptMsgDeptEl.value = prev;
     }
@@ -770,7 +772,7 @@
       deptMsgPresetEl.disabled = ended;
       deptMsgTextEl.disabled = ended;
       deptMsgDeptEl.disabled = ended;
-      const endedText = "The exercise has ended — messages can no longer be sent.";
+      const endedText = T("fac.msg.ended");
       if (ended) deptMsgFeedbackEl.textContent = endedText;
       else if (deptMsgFeedbackEl.textContent === endedText) deptMsgFeedbackEl.textContent = ""; // running again after End
     }
@@ -803,17 +805,17 @@
       deptMsgSending = true;
       updateDeptMsgControls();
       deptMsgFeedbackEl.className = "dept-msg-feedback";
-      deptMsgFeedbackEl.textContent = "Sending…";
+      deptMsgFeedbackEl.textContent = T("fac.msg.sending");
       try {
         await sendBroadcast(sessionId, { body, presetKey, department });
         deptMsgTextEl.value = "";
         deptMsgPresetEl.value = "";
         deptMsgFeedbackEl.className = "dept-msg-feedback ok";
-        deptMsgFeedbackEl.textContent = `Sent to ${department} at ${formatMessageTime(new Date().toISOString())} ✓`;
+        deptMsgFeedbackEl.textContent = T("fac.deptMsg.sent", { department, time: formatMessageTime(new Date().toISOString()) });
         await refreshDeptMsgLog();
       } catch (err) {
         deptMsgFeedbackEl.className = "dept-msg-feedback err";
-        deptMsgFeedbackEl.textContent = err.message;
+        deptMsgFeedbackEl.textContent = PPLang.dbMessage(err.message);
       } finally {
         deptMsgSending = false;
         updateDeptMsgControls();
@@ -843,12 +845,12 @@
               .reverse()
               .map(
                 (m) =>
-                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · to ${escapeHtml(m.department)} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.msg.logTo", { target: m.department }))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
               )
               .join("")
-          : `<li class="muted-line">No department messages sent yet.</li>`;
+          : `<li class="muted-line">${escapeHtml(T("fac.deptMsg.logEmpty"))}</li>`;
       } catch (err) {
-        deptMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+        deptMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
       }
     }
 
@@ -885,9 +887,9 @@
       if (obsMsgRoomEl.options.length === want + 1) return;
       const prev = obsMsgRoomEl.value;
       obsMsgRoomEl.innerHTML =
-        `<option value="">All Observers</option>` +
+        `<option value="">${escapeHtml(T("fac.obsMsg.allObservers"))}</option>` +
         Array.from({ length: want }, (_, i) => i + 1)
-          .map((n) => `<option value="${n}">Room ${n} Observers${n === 1 ? " (your room)" : ""}</option>`)
+          .map((n) => `<option value="${n}">${escapeHtml(n === 1 ? T("fac.obsMsg.roomOptionYours", { room: n }) : T("fac.obsMsg.roomOption", { room: n }))}</option>`)
           .join("");
       if (prev && Number(prev) <= want) obsMsgRoomEl.value = prev;
     }
@@ -915,8 +917,8 @@
       if (!closed && lastAttendees) {
         const observers = lastAttendees.filter((a) => a.role === "observer");
         const room = obsMsgRoomEl.value ? Number(obsMsgRoomEl.value) : null;
-        if (!observers.length) warn = "No Observer has joined this exercise yet.";
-        else if (room && !observers.some((a) => a.room === room)) warn = `No Observer has joined in Room ${room} yet.`;
+        if (!observers.length) warn = T("fac.obsMsg.warnNone");
+        else if (room && !observers.some((a) => a.room === room)) warn = T("fac.obsMsg.warnNoneInRoom", { room });
       }
       obsMsgWarnEl.hidden = !warn;
       obsMsgWarnEl.textContent = warn;
@@ -948,20 +950,20 @@
       obsMsgSending = true;
       updateObsMsgControls();
       obsMsgFeedbackEl.className = "dept-msg-feedback";
-      obsMsgFeedbackEl.textContent = "Sending…";
+      obsMsgFeedbackEl.textContent = T("fac.msg.sending");
       try {
         await sendToObservers(sessionId, { id: obsMsgPending.id, body, presetKey, room });
         obsMsgPending = { id: null, key: "" };
         obsMsgTextEl.value = "";
         obsMsgPresetEl.value = "";
         obsMsgFeedbackEl.className = "dept-msg-feedback ok";
-        obsMsgFeedbackEl.textContent = `Sent to ${observerTargetLabel(room)} at ${formatMessageTime(new Date().toISOString())} ✓`;
+        obsMsgFeedbackEl.textContent = T("fac.obsMsg.sent", { target: observerTargetLabel(room), time: formatMessageTime(new Date().toISOString()) });
         await refreshObsMsgLog();
       } catch (err) {
         obsMsgFeedbackEl.className = "dept-msg-feedback err";
         obsMsgFeedbackEl.textContent = err.network
-          ? "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again."
-          : `Not sent: ${err.message}`;
+          ? T("fac.obsMsg.notSentNetwork")
+          : T("fac.obsMsg.notSent", { message: PPLang.dbMessage(err.message) });
       } finally {
         obsMsgSending = false;
         updateObsMsgControls();
@@ -977,12 +979,12 @@
               .reverse()
               .map(
                 (m) =>
-                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · to ${escapeHtml(observerTargetLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? " · earlier run" : ""}</span>${escapeHtml(m.body)}</li>`
+                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.msg.logTo", { target: observerTargetLabel(m.room) }))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · ${escapeHtml(T("fac.obsMsg.logEarlierRun"))}` : ""}</span>${escapeHtml(m.body)}</li>`
               )
               .join("")
-          : `<li class="muted-line">No messages sent to Observers yet.</li>`;
+          : `<li class="muted-line">${escapeHtml(T("fac.obsMsg.logEmpty"))}</li>`;
       } catch (err) {
-        obsMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load sent messages: ${escapeHtml(err.message)}</li>`;
+        obsMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
       }
     }
 
@@ -1048,7 +1050,7 @@
     function renderInbox() {
       const unread = inboxMessages.filter(isInboxUnread);
       inboxBadgeEl.hidden = unread.length === 0;
-      inboxBadgeEl.textContent = unread.length === 1 ? "1 new" : `${unread.length} new`;
+      inboxBadgeEl.textContent = T("fac.inbox.badge", { count: unread.length });
       inboxListEl.innerHTML = inboxMessages.length
         ? inboxMessages
             .slice()
@@ -1056,11 +1058,11 @@
             .map(
               (m) =>
                 m.direction === "from_observer"
-                  ? `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="observer"><span class="meta"><span class="from-tag">OBSERVER</span>${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(observerRoomLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · <span class="earlier">Earlier run</span>` : ""}</span>${escapeHtml(m.body)}${isEarlierRun(m) || !observerChannel(currentRow).open ? "" : `<button type="button" class="msg-dept-btn msg-obs-btn" data-room="${m.room || ""}">Reply</button>`}</li>`
-                  : `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || "unknown department")} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
+                  ? `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="observer"><span class="meta"><span class="from-tag">${escapeHtml(T("fac.inbox.observerTag"))}</span>${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(observerRoomLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · <span class="earlier">${escapeHtml(T("fac.inbox.earlierRun"))}</span>` : ""}</span>${escapeHtml(m.body)}${isEarlierRun(m) || !observerChannel(currentRow).open ? "" : `<button type="button" class="msg-dept-btn msg-obs-btn" data-room="${m.room || ""}">${escapeHtml(T("fac.inbox.reply"))}</button>`}</li>`
+                  : `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || T("fac.inbox.unknownDept"))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
             )
             .join("")
-        : `<li class="muted-line">No messages yet.</li>`;
+        : `<li class="muted-line">${escapeHtml(T("fac.inbox.empty"))}</li>`;
     }
 
     // fromRing = the doorbell said a department or an Observer has just sent something:
@@ -1076,7 +1078,7 @@
         if (gotNew && inboxLoadedOnce) playChime();
         inboxLoadedOnce = true;
       } catch (err) {
-        inboxListEl.innerHTML = `<li style="color:var(--red-soft);">Couldn't load messages: ${escapeHtml(err.message)}</li>`;
+        inboxListEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.inbox.loadFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
       }
     }
 
@@ -1140,7 +1142,7 @@
           lastPresenceAt = Date.now();
           towerErrorEl.style.display = "none";
         } catch (err) {
-          towerErrorEl.textContent = `Couldn't load who is online: ${err.message}`;
+          towerErrorEl.textContent = T("fac.tower.loadFailed", { message: PPLang.dbMessage(err.message) });
           towerErrorEl.style.display = "block";
         }
         renderRoster(attendees);
@@ -1152,7 +1154,7 @@
         // here too rather than waiting for the next 5-second interval tick.
         updateDeptMsgOptions();
       } catch (err) {
-        rosterErrorEl.textContent = `Couldn't load roster/status: ${err.message}`;
+        rosterErrorEl.textContent = T("fac.roster.loadFailed", { message: PPLang.dbMessage(err.message) });
         rosterErrorEl.style.display = "block";
       }
     }
@@ -1217,20 +1219,31 @@
 
       if (!isDepartmentResponsible(inject, dept, currentRow, idx)) {
         const contributed = subs.some((s) => s.status === "submitted" || s.has_content);
-        const late = departmentMissedInject(currentRow, dept, idx) ? " — added after this inject started" : "";
-        return { state: "grey", label: contributed ? `Not required${late} (input received)` : `Not required${late}` };
+        const late = departmentMissedInject(currentRow, dept, idx);
+        return {
+          state: "grey",
+          label: late
+            ? (contributed ? T("fac.status.notRequiredLateInput") : T("fac.status.notRequiredLate"))
+            : (contributed ? T("fac.status.notRequiredInput") : T("fac.status.notRequired")),
+        };
       }
 
       if (injectOutput(inject) === "group") {
         const row = subs.find((s) => !s.attendee_id);
         if (row && row.status === "submitted") {
           return row.on_time
-            ? { state: "green", label: "Submitted on time" }
-            : { state: "red", label: "Submitted after the time" };
+            ? { state: "green", label: T("fac.status.submittedOnTime") }
+            : { state: "red", label: T("fac.status.submittedLate"), settled: true };
         }
         const draft = !!(row && row.has_content);
-        if (!timeUp) return { state: "grey", label: draft ? "Waiting — drafting" : "Waiting" };
-        return { state: "red", label: draft ? "Draft captured, not submitted" : "No response" };
+        // endLabel: how the "End the exercise?" check words this status;
+        // settled: nothing left to chase for it there.
+        if (!timeUp) {
+          return draft
+            ? { state: "grey", label: T("fac.status.waitingDrafting"), endLabel: T("fac.endCheck.statusDrafting") }
+            : { state: "grey", label: T("fac.status.waiting"), endLabel: T("fac.endCheck.statusNothing") };
+        }
+        return { state: "red", label: draft ? T("fac.status.draftCaptured") : T("fac.status.noResponse") };
       }
 
       // Individual task
@@ -1246,20 +1259,24 @@
       const onTime = mine.filter((s) => s.status === "submitted" && s.on_time).length;
       const drafts = mine.filter((s) => s.status !== "submitted" && s.has_content).length;
       const n = eligible.length;
-      if (n === 0) return { state: "grey", label: "No participants registered before this inject" };
-      if (onTime === n) return { state: "green", label: `All ${n} submitted on time` };
+      if (n === 0) return { state: "grey", label: T("fac.status.noParticipants"), settled: true };
+      if (onTime === n) return { state: "green", label: T("fac.status.allOnTime", { count: n }) };
       if (!timeUp) {
         return onTime === 0
-          ? { state: "grey", label: `Waiting — 0 of ${n} submitted` }
-          : { state: "amber", label: `${onTime} of ${n} submitted` };
+          ? { state: "grey", label: T("fac.status.waitingNoneOf", { total: n }), endLabel: T("fac.endCheck.statusNoneOf", { total: n }) }
+          : { state: "amber", label: T("fac.status.someSubmitted", { done: onTime, total: n }) };
       }
-      const draftText = drafts ? ` · ${drafts} draft${drafts > 1 ? "s" : ""} not submitted` : "";
-      return { state: "red", label: `${onTime} of ${n} submitted on time${draftText}` };
+      return {
+        state: "red",
+        label: drafts
+          ? T("fac.status.someOnTimeDrafts", { done: onTime, total: n, count: drafts })
+          : T("fac.status.someOnTime", { done: onTime, total: n }),
+      };
     }
 
     function responsibleText(inject) {
       const list = injectResponsible(inject);
-      return list.some((d) => String(d).toLowerCase() === "all") ? "All departments" : list.join(", ");
+      return list.some((d) => String(d).toLowerCase() === "all") ? T("fac.status.allDepartments") : list.join(", ");
     }
 
     function renderStatus() {
@@ -1271,7 +1288,7 @@
         .filter((i) => injects[i])
         .sort((a, b) => a - b);
       if (played.length === 0 || depts.length === 0) {
-        statusSectionEl.innerHTML = `<p class="muted-line" style="font-size:0.9rem;">Statuses appear here once the exercise starts.</p>`;
+        statusSectionEl.innerHTML = `<p class="muted-line" style="font-size:0.9rem;">${escapeHtml(T("fac.status.notStarted"))}</p>`;
         return;
       }
 
@@ -1281,23 +1298,23 @@
         const inj = injects[curIdx];
         const deadline = injectDeadlineMs(currentRow, inj);
         let timeText = "";
-        if (currentRow.inject_force_unlocked) timeText = " · Unlocked — no deadline";
+        if (currentRow.inject_force_unlocked) timeText = ` · ${T("fac.status.unlockedNoDeadline")}`;
         else if (deadline) {
           const left = deadline - Date.now();
           timeText = left > 0
-            ? ` · ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left`
-            : " · Time's up";
+            ? ` · ${T("fac.status.timeLeft", { time: `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}` })}`
+            : ` · ${T("fac.status.timesUp")}`;
         }
         html += `
           <div class="status-current">
-            <div class="status-head">Inject ${curIdx} — ${escapeHtml(inj.title)}</div>
-            <div class="status-sub">${injectOutput(inj) === "individual" ? "Individual task" : "Group task"} · Responsible: ${escapeHtml(responsibleText(inj))}${timeText}</div>
+            <div class="status-head">${escapeHtml(T("fac.status.currentHead", { number: curIdx, title: inj.title }))}</div>
+            <div class="status-sub">${escapeHtml(injectOutput(inj) === "individual" ? T("fac.status.taskIndividual") : T("fac.status.taskGroup"))} · ${escapeHtml(T("fac.status.responsible", { departments: responsibleText(inj) }))}${escapeHtml(timeText)}</div>
             <ul class="status-list">
               ${depts
                 .map((d) => {
                   const st = departmentStatus(curIdx, inj, d);
                   const canMessage = st.state === "amber" || st.state === "red";
-                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span>${canMessage ? `<button class="msg-dept-btn" data-dept="${escapeHtml(d)}">Message</button>` : ""}</li>`;
+                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span>${canMessage ? `<button class="msg-dept-btn" data-dept="${escapeHtml(d)}">${escapeHtml(T("fac.status.message"))}</button>` : ""}</li>`;
                 })
                 .join("")}
             </ul>
@@ -1307,11 +1324,11 @@
       const past = played.filter((i) => i !== curIdx);
       if (past.length) {
         html += `
-          <div style="font-size:0.85rem; font-weight:600; margin:4px 0 6px;">Earlier injects</div>
+          <div style="font-size:0.85rem; font-weight:600; margin:4px 0 6px;">${escapeHtml(T("fac.status.earlierHeading"))}</div>
           <div class="history-wrap">
             <table class="history">
-              <thead><tr><th>Department</th>${past
-                .map((i) => `<th title="${escapeHtml(injects[i].title)} — ${injectOutput(injects[i])}">#${i}${injectOutput(injects[i]) === "individual" ? " (ind.)" : ""}</th>`)
+              <thead><tr><th>${escapeHtml(T("fac.status.deptColumn"))}</th>${past
+                .map((i) => `<th title="${escapeHtml(T("fac.status.historyTip." + injectOutput(injects[i]), { title: injects[i].title }))}">${escapeHtml(injectOutput(injects[i]) === "individual" ? T("fac.status.historyColIndividual", { number: i }) : T("fac.status.historyCol", { number: i }))}</th>`)
                 .join("")}</tr></thead>
               <tbody>
                 ${depts
@@ -1360,10 +1377,10 @@
       return lastPresence.devices.find((d) => d.kind === "person" && d.attendee_id === attendeeId) || null;
     }
     function seenText(d, state) {
-      if (!d) return "not connected yet";
-      if (state === "green") return "online";
+      if (!d) return T("fac.presence.notConnected");
+      if (state === "green") return T("fac.presence.online");
       const t = formatMessageTime(d.last_seen);
-      return state === "amber" ? `not seen since ${t}` : `offline — last seen ${t}`;
+      return state === "amber" ? T("fac.presence.notSeenSince", { time: t }) : T("fac.presence.offlineLastSeen", { time: t });
     }
     function personDotHtml(a) {
       if (!lastPresence) return "";
@@ -1382,13 +1399,13 @@
     function injectName(idx) {
       const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
       const inj = injects[idx];
-      return `inject ${idx + 1}${inj && inj.title ? ` "${inj.title}"` : ""}`;
+      return inj && inj.title ? T("fac.tower.injectNamed", { number: idx + 1, title: inj.title }) : T("fac.tower.inject", { number: idx + 1 });
     }
     function shownText(d) {
       if (d.shown_status === "running" && Number.isInteger(d.shown_inject)) return injectName(d.shown_inject);
-      if (d.shown_status === "lobby") return "the waiting screen";
-      if (d.shown_status === "ended") return "the end screen";
-      return "nothing yet";
+      if (d.shown_status === "lobby") return T("fac.tower.shownLobby");
+      if (d.shown_status === "ended") return T("fac.tower.shownEnded");
+      return T("fac.tower.shownNothing");
     }
     // Is this device showing something other than where the exercise is?
     function isBehind(d) {
@@ -1409,8 +1426,8 @@
       const amber = states.filter((x) => x.state === "amber").length;
       const off = states.length - online - amber;
       towerHeadlineEl.innerHTML = people.length
-        ? `${online} of ${people.length} online<small>${amber ? `${amber} not seen for a minute · ` : ""}${off ? `${off} offline or not connected yet` : amber ? "" : "everyone is connected"}</small>`
-        : `No one has joined yet`;
+        ? `${escapeHtml(T("fac.tower.onlineCount", { online, total: people.length }))}<small>${amber ? `${escapeHtml(T("fac.tower.notSeenCount", { count: amber }))} · ` : ""}${off ? escapeHtml(T("fac.tower.offlineCount", { count: off })) : amber ? "" : escapeHtml(T("fac.tower.allConnected"))}</small>`
+        : escapeHtml(T("fac.tower.noOne"));
 
       const warnings = [];
       // A department with people registered but nobody online.
@@ -1420,7 +1437,7 @@
       });
       Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
         if (!byDept[dept].some((x) => x.state === "green")) {
-          warnings.push({ red: false, text: `${dept}: nobody online` });
+          warnings.push({ red: false, text: T("fac.tower.warnDeptNobody", { department: dept }) });
         }
       });
 
@@ -1445,25 +1462,25 @@
         let colour = state === "green" ? "green" : state === "amber" ? "amber" : "grey";
         let text;
         if (state !== "green") {
-          text = `<span class="${state === "grey" ? "bad" : ""}">${state === "amber" ? "not seen since" : "not responding — last seen"} ${escapeHtml(formatMessageTime(d.last_seen))}</span>`;
+          text = `<span class="${state === "grey" ? "bad" : ""}">${escapeHtml(state === "amber" ? T("fac.presence.notSeenSince", { time: formatMessageTime(d.last_seen) }) : T("fac.tower.notRespondingLastSeen", { time: formatMessageTime(d.last_seen) }))}</span>`;
           if (state === "grey" && currentRow && currentRow.status !== "ended") colour = "red";
         } else if (behind) {
           colour = "red";
-          text = `<span class="bad">behind — showing ${escapeHtml(shownText(d))}</span>`;
+          text = `<span class="bad">${escapeHtml(T("fac.tower.behindShowing", { what: shownText(d) }))}</span>`;
         } else {
-          text = `online, showing ${escapeHtml(shownText(d))}${catching ? ` <span class="soft">(catching up…)</span>` : ""}`;
+          text = `${escapeHtml(T("fac.tower.onlineShowing", { what: shownText(d) }))}${catching ? ` <span class="soft">${escapeHtml(T("fac.tower.catchingUp"))}</span>` : ""}`;
         }
         const extras = [];
         if (state === "green") {
-          extras.push(d.sound === "on" ? "sound on" : `<span class="bad">sound off — needs a tap on "Tap to begin"</span>`);
-          if (d.awake === "off") extras.push(`<span class="bad">may go to sleep</span>`);
-          if (d.live === "poll") extras.push(`<span class="soft">live connection down — updating every 15 seconds</span>`);
+          extras.push(d.sound === "on" ? escapeHtml(T("fac.tower.soundOn")) : `<span class="bad">${escapeHtml(T("fac.tower.soundOff"))}</span>`);
+          if (d.awake === "off") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.maySleep"))}</span>`);
+          if (d.live === "poll") extras.push(`<span class="soft">${escapeHtml(T("fac.tower.livePoll"))}</span>`);
         }
         let cmd = "";
         if (d.pending_command) {
-          cmd = ` <span class="soft">· ${d.pending_command === "reload" ? "Full reload" : "Refresh"} sent — waiting for the screen (up to 20 seconds)</span>`;
+          cmd = ` <span class="soft">· ${escapeHtml(d.pending_command === "reload" ? T("fac.tower.reloadSent") : T("fac.tower.refreshSent"))}</span>`;
         } else if (d.last_command_delivered_at && now - Date.parse(d.last_command_delivered_at) < 120000) {
-          cmd = ` <span class="soft">· ${d.last_command === "reload" ? "reloaded" : "refreshed"} at ${escapeHtml(formatMessageTime(d.last_command_delivered_at))}</span>`;
+          cmd = ` <span class="soft">· ${escapeHtml(d.last_command === "reload" ? T("fac.tower.reloadedAt", { time: formatMessageTime(d.last_command_delivered_at) }) : T("fac.tower.refreshedAt", { time: formatMessageTime(d.last_command_delivered_at) }))}</span>`;
         }
         const showReload = softSentAt[d.device_key] && Date.now() - softSentAt[d.device_key] < 10 * 60 * 1000;
         const busy = !!d.pending_command;
@@ -1471,15 +1488,15 @@
           <div class="tower-row" data-key="${escapeHtml(d.device_key)}">
             <i class="dot ${colour}"></i>
             <span class="what"><b>${escapeHtml(label)}:</b> ${text}${extras.length ? " · " + extras.join(" · ") : ""}${cmd}</span>
-            <button type="button" data-cmd="soft" ${busy ? "disabled" : ""}>Refresh this screen</button>
-            ${showReload ? `<button type="button" class="danger" data-cmd="reload" ${busy ? "disabled" : ""}>Full reload</button>` : ""}
+            <button type="button" data-cmd="soft" ${busy ? "disabled" : ""}>${escapeHtml(T("fac.tower.refreshBtn"))}</button>
+            ${showReload ? `<button type="button" class="danger" data-cmd="reload" ${busy ? "disabled" : ""}>${escapeHtml(T("fac.tower.reloadBtn"))}</button>` : ""}
           </div>`);
         // After a minute behind or silent, say what to do.
         if (currentRow && currentRow.status !== "ended") {
           if (state === "grey" || (state === "amber" && age > PROMPT_AFTER_MS)) {
-            warnings.push({ red: true, text: `${label} is not responding. Ask the room to refresh it (or reopen the room display link).` });
+            warnings.push({ red: true, text: T("fac.tower.warnNotResponding", { screen: label }) });
           } else if (behind && sinceChange > PROMPT_AFTER_MS) {
-            warnings.push({ red: true, text: `${label} is behind. Press "Refresh this screen"; if that doesn't help, "Full reload".` });
+            warnings.push({ red: true, text: T("fac.tower.warnBehind", { screen: label }) });
           }
         }
       };
@@ -1487,19 +1504,19 @@
         for (let r = 1; r <= rooms; r++) {
           const inRoom = screens.filter((d) => d.room === r);
           if (!inRoom.length) {
-            rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>Room ${r} screen:</b> <span class="soft">no screen connected</span></span></div>`);
+            rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>${escapeHtml(T("fac.tower.roomScreen", { room: r }))}:</b> <span class="soft">${escapeHtml(T("fac.tower.noScreen"))}</span></span></div>`);
             if (currentRow && currentRow.status === "running") {
-              warnings.push({ red: false, text: `Room ${r}: no room screen is connected.` });
+              warnings.push({ red: false, text: T("fac.tower.warnRoomNoScreen", { room: r }) });
             }
           }
-          inRoom.forEach((d, i) => screenRow(d, `Room ${r} screen${inRoom.length > 1 ? ` ${i + 1}` : ""}`));
+          inRoom.forEach((d, i) => screenRow(d, inRoom.length > 1 ? T("fac.tower.roomScreenNumbered", { room: r, number: i + 1 }) : T("fac.tower.roomScreen", { room: r })));
         }
-        screens.filter((d) => !d.room).forEach((d, i) => screenRow(d, `Screen ${i + 1} (room not chosen yet)`));
+        screens.filter((d) => !d.room).forEach((d, i) => screenRow(d, T("fac.tower.screenNoRoom", { number: i + 1 })));
       } else if (!screens.length) {
-        rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>Room screen:</b> <span class="soft">no screen connected</span></span></div>`);
-        if (currentRow && currentRow.status === "running") warnings.push({ red: false, text: "No room screen is connected." });
+        rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>${escapeHtml(T("fac.tower.singleScreen"))}:</b> <span class="soft">${escapeHtml(T("fac.tower.noScreen"))}</span></span></div>`);
+        if (currentRow && currentRow.status === "running") warnings.push({ red: false, text: T("fac.tower.warnNoScreen") });
       } else {
-        screens.forEach((d, i) => screenRow(d, `Room screen${screens.length > 1 ? ` ${i + 1}` : ""}`));
+        screens.forEach((d, i) => screenRow(d, screens.length > 1 ? T("fac.tower.singleScreenNumbered", { number: i + 1 }) : T("fac.tower.singleScreen")));
       }
       towerScreensEl.innerHTML = rowsHtml.join("");
 
@@ -1510,14 +1527,14 @@
         observers.sort((x, y) => (x.a.room || 0) - (y.a.room || 0) || x.a.name.localeCompare(y.a.name));
         towerObserversEl.innerHTML = observers.map((x) => {
           const colour = x.state === "green" ? "green" : x.state === "amber" ? "amber" : "grey";
-          const sleepy = x.state === "green" && x.d && x.d.awake === "off" ? ` · <span class="bad">may go to sleep</span>` : "";
-          return `<div class="tower-row"><i class="dot ${colour}"></i><span class="what"><b>${x.a.room ? `Room ${x.a.room} — ` : ""}${escapeHtml(x.a.name)}:</b> ${escapeHtml(seenText(x.d, x.state))}${sleepy}</span></div>`;
+          const sleepy = x.state === "green" && x.d && x.d.awake === "off" ? ` · <span class="bad">${escapeHtml(T("fac.tower.maySleep"))}</span>` : "";
+          return `<div class="tower-row"><i class="dot ${colour}"></i><span class="what"><b>${escapeHtml(x.a.room ? T("fac.tower.observerInRoom", { room: x.a.room, name: x.a.name }) : x.a.name)}:</b> ${escapeHtml(seenText(x.d, x.state))}${sleepy}</span></div>`;
         }).join("");
         if (rooms > 1 && currentRow && currentRow.status === "running") {
           for (let r = 2; r <= rooms; r++) {
             const inRoom = observers.filter((x) => x.a.room === r);
             if (inRoom.length && !inRoom.some((x) => x.state === "green")) {
-              warnings.push({ red: false, text: `Room ${r}: no Observer is online.` });
+              warnings.push({ red: false, text: T("fac.tower.warnRoomNoObserver", { room: r }) });
             }
           }
         }
@@ -1536,7 +1553,7 @@
       if (!btn) return;
       const key = btn.closest(".tower-row").dataset.key;
       const cmd = btn.dataset.cmd;
-      if (cmd === "reload" && !confirm("Reload this screen completely? If this laptop was not set up to allow sound, someone in the room will need to tap \"Tap to begin\" again for sound. The inject and the countdown come back by themselves.")) return;
+      if (cmd === "reload" && !confirm(T("fac.tower.confirmReload"))) return;
       btn.disabled = true;
       towerErrorEl.style.display = "none";
       try {
@@ -1544,7 +1561,7 @@
         if (cmd === "soft") softSentAt[key] = Date.now();
         await refreshRoster();
       } catch (err) {
-        towerErrorEl.textContent = `Couldn't send to the screen: ${err.message}`;
+        towerErrorEl.textContent = T("fac.tower.sendFailed", { message: PPLang.dbMessage(err.message) });
         towerErrorEl.style.display = "block";
         btn.disabled = false;
       }
@@ -1562,7 +1579,7 @@
       rosterGroupEl.hidden = rooms <= 1;
       if (rooms <= 1) rosterGroupBy = "department";
       if (attendees.length === 0) {
-        rosterEl.innerHTML = "<p>No one has joined yet.</p>";
+        rosterEl.innerHTML = `<p>${escapeHtml(T("fac.roster.empty"))}</p>`;
         return;
       }
       // Grouped by department (not one alphabetical list of names) so the
@@ -1572,7 +1589,7 @@
       const byRoom = rosterGroupBy === "room";
       const byDept = {};
       attendees.forEach((a) => {
-        const key = byRoom ? (a.room ? `Room ${a.room}` : "No room") : a.department;
+        const key = byRoom ? (a.room ? T("fac.roster.roomName", { room: a.room }) : T("fac.roster.noRoom")) : a.department;
         (byDept[key] = byDept[key] || []).push(a);
       });
       const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
@@ -1581,7 +1598,7 @@
       // only check against that, since joining has no login.
       const nObservers = attendees.filter((a) => a.role === "observer").length;
       rosterEl.innerHTML =
-        `<div class="roster-summary">${attendees.length - nObservers} participant${attendees.length - nObservers === 1 ? "" : "s"} · ${nObservers} observer${nObservers === 1 ? "" : "s"}</div>` +
+        `<div class="roster-summary">${escapeHtml(T("fac.roster.participantCount", { count: attendees.length - nObservers }))} · ${escapeHtml(T("fac.roster.observerCount", { count: nObservers }))}</div>` +
         depts
         .map((dept) => `
           <div class="roster-dept">
@@ -1592,9 +1609,9 @@
                   (a) => `
                 <li>
                   <span>
-                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">OBSERVER</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — Room ${a.room}` : ""}${personSeenHtml(a)}
+                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">${escapeHtml(T("fac.roster.observerBadge"))}</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — ${escapeHtml(T("fac.roster.roomName", { room: a.room }))}` : ""}${personSeenHtml(a)}
                   </span>
-                  <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">Remove</button>
+                  <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">${escapeHtml(T("fac.roster.remove"))}</button>
                 </li>`
                 )
                 .join("")}
@@ -1604,7 +1621,7 @@
       rosterEl.querySelectorAll(".removeAttendeeBtn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const ok = confirm(
-            `Remove ${btn.dataset.name} from the roster? They'll need to rejoin with the correct department.`
+            T("fac.roster.confirmRemove", { name: btn.dataset.name })
           );
           if (!ok) return;
           btn.disabled = true;
@@ -1613,7 +1630,7 @@
             await deleteAttendee(btn.dataset.id, facilitatorToken);
             await refreshRoster();
           } catch (err) {
-            rosterErrorEl.textContent = `Remove failed: ${err.message}`;
+            rosterErrorEl.textContent = T("fac.roster.removeFailed", { message: PPLang.dbMessage(err.message) });
             rosterErrorEl.style.display = "block";
             btn.disabled = false;
           }
@@ -1688,7 +1705,7 @@
         allNotes = notes;
         renderNotes();
       } catch (err) {
-        notesListEl.innerHTML = `<div class="empty" style="color:var(--red-soft);opacity:1;">Couldn't load notes: ${escapeHtml(err.message)}</div>`;
+        notesListEl.innerHTML = `<div class="empty" style="color:var(--red-soft);opacity:1;">${escapeHtml(T("fac.notes.loadFailed", { message: PPLang.dbMessage(err.message) }))}</div>`;
       }
     }
 
@@ -1701,15 +1718,17 @@
       const unreadCritical = unread.filter((n) => n.note_type === "critical").length;
       notesBadgeEl.hidden = unread.length === 0;
       notesBadgeEl.className = `notes-badge${unreadCritical ? " critical" : ""}`;
-      notesBadgeEl.textContent = `${unread.length} new${unreadCritical ? ` · ${unreadCritical} critical` : ""}`;
+      notesBadgeEl.textContent = unreadCritical
+        ? T("fac.notes.badgeCritical", { count: unread.length, critical: unreadCritical })
+        : T("fac.notes.badge", { count: unread.length });
 
       const count = (k) => thisRun.filter((n) => n.note_type === k).length;
       const withdrawn = allNotes.filter((n) => n.withdrawn).length;
       const earlier = visible.length - thisRun.length;
       notesCountsEl.textContent = thisRun.length || earlier || withdrawn
-        ? `${thisRun.length} note${thisRun.length === 1 ? "" : "s"} · ${count("critical")} critical gap${count("critical") === 1 ? "" : "s"} · ${count("improvement")} needs improvement · ${count("positive")} positive` +
-          (earlier ? ` · ${earlier} from an earlier run` : "") +
-          (withdrawn ? ` · ${withdrawn} withdrawn (hidden)` : "")
+        ? `${T("fac.notes.countNotes", { count: thisRun.length })} · ${T("fac.notes.countCritical", { count: count("critical") })} · ${T("fac.notes.countImprovement", { count: count("improvement") })} · ${T("fac.notes.countPositive", { count: count("positive") })}` +
+          (earlier ? ` · ${T("fac.notes.countEarlier", { count: earlier })}` : "") +
+          (withdrawn ? ` · ${T("fac.notes.countWithdrawn", { count: withdrawn })}` : "")
         : "";
 
       const win = notesWindow(currentRow, "facilitator");
@@ -1718,14 +1737,14 @@
             .map((n) => {
               const canEdit = win.open && n.author_role === "facilitator" && (!run || n.run_number === run);
               const actions =
-                (canEdit ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">Edit</button>` : "") +
+                (canEdit ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">${escapeHtml(T("fac.notes.edit"))}</button>` : "") +
                 (win.open
-                  ? `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${noteWithdrawArmed === n.id ? "Click again to withdraw" : "Withdraw"}</button>`
+                  ? `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${escapeHtml(noteWithdrawArmed === n.id ? T("fac.notes.withdrawAgain") : T("fac.notes.withdraw"))}</button>`
                   : "");
               return noteItemHtml(n, { row: currentRow, showAuthor: true, unread: isNoteUnread(n), actionsHtml: actions });
             })
             .join("")
-        : `<div class="empty">No notes yet.</div>`;
+        : `<div class="empty">${escapeHtml(T("fac.notes.empty"))}</div>`;
     }
 
     notesListEl.addEventListener("click", async (e) => {
@@ -1752,13 +1771,13 @@
       }
       noteWithdrawArmed = null;
       btn.disabled = true;
-      btn.textContent = "Withdrawing…";
+      btn.textContent = T("fac.notes.withdrawing");
       try {
         await withdrawObserverNote(sessionId, n.id, { facilitatorToken });
         facNoteForm.cancelEditIf(n.id);
         await refreshNotes();
       } catch (err) {
-        notesCountsEl.textContent = `Withdraw failed: ${err.message}`;
+        notesCountsEl.textContent = T("fac.notes.withdrawFailed", { message: PPLang.dbMessage(err.message) });
         renderNotes();
       }
     });
@@ -1770,24 +1789,25 @@
       if (!currentRow) return;
       const fac = notesWindow(currentRow, "facilitator");
       const obs = notesWindow(currentRow, "observer");
-      const fmt = (ms) => new Date(ms).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const fmt = (ms) => new Date(ms).toLocaleString(PPLang.locales(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       let html;
       if (currentRow.notes_closed_at) {
-        html = `<strong>✓ Notes complete</strong> — closed ${escapeHtml(fmt(Date.parse(currentRow.notes_closed_at)))}. No more notes can be added or changed.`;
+        html = T("fac.notesClose.closed_html", { time: escapeHtml(fmt(Date.parse(currentRow.notes_closed_at))) });
       } else if (currentRow.status !== "ended") {
-        html = `<strong>Notes complete</strong> becomes available once you end the exercise. After the end, Observers can add or edit notes for one hour, and you for 48 hours.`;
+        html = T("fac.notesClose.notYet_html");
       } else if (!fac.open) {
-        html = `<strong>Notes closed</strong> automatically 48 hours after the exercise ended.`;
+        html = T("fac.notesClose.auto_html");
       } else {
         html =
-          `Notes are open — Observers ${obs.open ? `until ${escapeHtml(fmt(obs.closesAt))}` : "closed (one hour after the end)"}, you until ${escapeHtml(fmt(fac.closesAt))}. ` +
-          `When everyone has finished, press <strong>Notes complete</strong>.` +
+          (obs.open
+            ? T("fac.notesClose.openBoth_html", { observers: escapeHtml(fmt(obs.closesAt)), you: escapeHtml(fmt(fac.closesAt)) })
+            : T("fac.notesClose.openYou_html", { you: escapeHtml(fmt(fac.closesAt)) })) +
           `<div class="confirm">` +
           (closeConfirmOpen
-            ? `<span>Are you sure? This closes notes for everyone, for good.</span>` +
-              `<button type="button" class="danger" data-act="close-yes"${closingNotes ? " disabled" : ""}>${closingNotes ? "Closing…" : "Yes, close notes"}</button>` +
-              `<button type="button" data-act="close-cancel"${closingNotes ? " disabled" : ""}>Cancel</button>`
-            : `<button type="button" class="primary" data-act="close">Notes complete</button>`) +
+            ? `<span>${escapeHtml(T("fac.notesClose.sure"))}</span>` +
+              `<button type="button" class="danger" data-act="close-yes"${closingNotes ? " disabled" : ""}>${escapeHtml(closingNotes ? T("fac.notesClose.closing") : T("fac.notesClose.yes"))}</button>` +
+              `<button type="button" data-act="close-cancel"${closingNotes ? " disabled" : ""}>${escapeHtml(T("fac.notesClose.cancel"))}</button>`
+            : `<button type="button" class="primary" data-act="close">${escapeHtml(T("fac.notesClose.button"))}</button>`) +
           `</div>`;
       }
       notesCloseEl.innerHTML = html;
@@ -1806,7 +1826,7 @@
           closeConfirmOpen = false;
           await refresh();
         } catch (err) {
-          errorBoxEl.textContent = `Notes complete failed: ${err.message}`;
+          errorBoxEl.textContent = T("fac.notesClose.failed", { message: PPLang.dbMessage(err.message) });
           errorBoxEl.style.display = "block";
         } finally {
           closingNotes = false;
@@ -1881,36 +1901,38 @@
     function startReadinessIssues() {
       const issues = [];
       if (!lastPresence || !lastAttendees) {
-        issues.push("Who is online could not be checked just now (no answer from the server).");
+        issues.push(T("fac.startCheck.noPresence"));
         return issues;
       }
       const now = towerNowMs();
       const rooms = (currentRow && currentRow.room_count) || 1;
       const screens = lastPresence.devices.filter((d) => d.kind === "room_screen" && now - Date.parse(d.last_seen) <= SCREEN_RECENT_MS);
-      const roomLabel = (r) => (rooms > 1 ? `Room ${r} screen` : "Room screen");
+      const roomLabel = (r) => (rooms > 1 ? T("fac.tower.roomScreen", { room: r }) : T("fac.tower.singleScreen"));
       for (let r = 1; r <= rooms; r++) {
         const inRoom = rooms > 1 ? screens.filter((d) => d.room === r) : screens;
         const live = inRoom.filter((d) => presenceState(d.last_seen, now) === "green");
-        if (!inRoom.length) issues.push(`${roomLabel(r)}: no screen connected.`);
-        else if (!live.length) issues.push(`${roomLabel(r)}: not responding.`);
+        if (!inRoom.length) issues.push(T("fac.startCheck.noScreen", { screen: roomLabel(r) }));
+        else if (!live.length) issues.push(T("fac.startCheck.notResponding", { screen: roomLabel(r) }));
         else {
-          if (!live.some((d) => d.sound === "on")) issues.push(`${roomLabel(r)}: sound off — someone needs to tap "Tap to begin".`);
-          if (live.some((d) => d.awake === "off")) issues.push(`${roomLabel(r)}: may go to sleep — plug it in and switch off battery saver.`);
+          if (!live.some((d) => d.sound === "on")) issues.push(T("fac.startCheck.soundOff", { screen: roomLabel(r) }));
+          if (live.some((d) => d.awake === "off")) issues.push(T("fac.startCheck.maySleep", { screen: roomLabel(r) }));
         }
       }
-      if (rooms > 1 && screens.some((d) => !d.room)) issues.push("A room screen has not chosen its room yet.");
+      if (rooms > 1 && screens.some((d) => !d.room)) issues.push(T("fac.startCheck.roomNotChosen"));
       const participants = lastAttendees.filter((a) => a.role !== "observer");
-      if (!participants.length) issues.push("No participants have joined yet.");
+      if (!participants.length) issues.push(T("fac.startCheck.noParticipants"));
       const byDept = {};
       participants.forEach((a) => {
         const d = personPresence(a.id);
         (byDept[a.department] = byDept[a.department] || []).push(d ? presenceState(d.last_seen, now) : "never");
       });
       Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
-        if (!byDept[dept].includes("green")) issues.push(`${dept}: nobody online.`);
+        if (!byDept[dept].includes("green")) issues.push(T("fac.startCheck.deptNobody", { department: dept }));
       });
       const offline = participants.filter((a) => { const d = personPresence(a.id); return !d || presenceState(d.last_seen, now) !== "green"; }).length;
-      if (offline && participants.length) issues.push(`${offline} of ${participants.length} registered participant${participants.length === 1 ? "" : "s"} ${offline === 1 ? "is" : "are"} not online.`);
+      if (offline && participants.length) issues.push(participants.length === 1
+        ? T("fac.startCheck.offlineOfOne", { count: offline, total: participants.length })
+        : T("fac.startCheck.offlineOfMany", { count: offline, total: participants.length }));
       return issues;
     }
     // ---- Resume after End (Ahmed, 11 October 2026) ------------------------
@@ -1925,7 +1947,7 @@
     const resumeCheckEl = document.getElementById("resumeCheck");
     const resumeCheckBodyEl = document.getElementById("resumeCheckBody");
     function resumeLabel() {
-      return `Resume at inject ${currentRow.current_inject_index + 1}`;
+      return T("fac.resume.label", { number: currentRow.current_inject_index + 1 });
     }
     function canResume() {
       if (!currentRow || currentRow.status !== "ended") return false;
@@ -1947,14 +1969,14 @@
       const idx = currentRow.current_inject_index;
       const left = timeLeftAtEnd();
       let clock;
-      if (currentRow.inject_force_unlocked) clock = "The inject is unlocked, so it has no deadline until you lock it or move on.";
-      else if (left === null) clock = "This inject has no time limit.";
-      else if (left <= 0) clock = "Its time had already run out when you ended, so it comes back as \"Time's up\". Press \"+5 min for this inject\" if teams need more time; answers sent then count as after the time.";
-      else clock = `Its countdown carries on from where it stopped: ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")} left. It is not given its full time again.`;
-      const notes = currentRow.notes_closed_at ? " Notes were marked complete and stay closed." : "";
+      if (currentRow.inject_force_unlocked) clock = T("fac.resume.clockUnlocked");
+      else if (left === null) clock = T("fac.resume.clockNoLimit");
+      else if (left <= 0) clock = T("fac.resume.clockTimesUp");
+      else clock = T("fac.resume.clockCarriesOn", { time: `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}` });
+      const notes = currentRow.notes_closed_at ? ` ${T("fac.resume.notesClosed")}` : "";
       resumeCheckBodyEl.textContent =
-        `The thank-you screens go and every device returns to inject ${idx + 1} of ${injects.length} — "${injects[idx].title}". Earlier injects are not replayed, and this inject's sound is not played again. The exercise then carries on from here. ${clock}${notes}`;
-      document.getElementById("resumeCheckTitle").textContent = `${resumeLabel()}?`;
+        `${T("fac.resume.body", { number: idx + 1, total: injects.length, title: injects[idx].title })} ${clock}${notes}`;
+      document.getElementById("resumeCheckTitle").textContent = T("fac.resume.title", { number: currentRow.current_inject_index + 1 });
       document.getElementById("resumeConfirmBtn").textContent = resumeLabel();
       resumeCheckEl.hidden = false;
       document.getElementById("resumeConfirmBtn").focus();
@@ -2040,13 +2062,13 @@
       const idx = currentRow.current_inject_index;
       const inj = injects[idx];
       const left = injects.length - 1 - idx;
-      if (left > 0) issues.push(`You are on inject ${idx + 1} of ${injects.length}: ${left} inject${left === 1 ? " has" : "s have"} not been played.`);
+      if (left > 0) issues.push(T("fac.endCheck.injectsLeft", { number: idx + 1, total: injects.length, count: left }));
       if (inj && lastSubmissions && lastAttendees) {
         allDepartments().forEach((d) => {
           if (!isDepartmentResponsible(inj, d, currentRow, idx)) return;
           const st = departmentStatus(idx, inj, d);
-          if (st.state === "green" || /^Submitted/.test(st.label) || /^No participants/.test(st.label)) return;
-          issues.push(`${d}: ${st.label.replace(/^Waiting — /, "").replace(/^Waiting$/, "nothing submitted yet")} (current inject).`);
+          if (st.state === "green" || st.settled) return;
+          issues.push(T("fac.endCheck.deptIssue", { department: d, status: st.endLabel || st.label }));
         });
       }
       return issues;
@@ -2058,10 +2080,10 @@
       if (!currentRow || currentRow.status === "ended") { hideEndCheck(); return; } // nothing to end
       const issues = endCheckIssues();
       endCheckBodyEl.innerHTML = currentRow.status === "lobby"
-        ? `<ul><li>The exercise has not started yet. Ending now closes it without any inject played.</li></ul>`
+        ? `<ul><li>${escapeHtml(T("fac.endCheck.notStarted"))}</li></ul>`
         : issues.length
           ? `<ul>${issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`
-          : `<div class="none">Every responsible department has submitted the current inject.</div>`;
+          : `<div class="none">${escapeHtml(T("fac.endCheck.allSubmitted"))}</div>`;
       endCheckEl.hidden = false;
       document.getElementById("endBackBtn").focus();
     });
@@ -2078,25 +2100,25 @@
     function renderEndStrip() {
       if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; return; }
       hideEndCheck();
-      const fmtDay = (ms) => new Date(ms).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const fmtDay = (ms) => new Date(ms).toLocaleString(PPLang.locales(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       const endedMs = currentRow.ended_at ? Date.parse(currentRow.ended_at) : NaN;
       const obs = notesWindow(currentRow, "observer");
       const fac = notesWindow(currentRow, "facilitator");
       const lines = [];
       if (currentRow.notes_closed_at) {
-        lines.push("Notes complete: notes and Observer messages are closed for everyone.");
+        lines.push(T("fac.endStrip.notesComplete"));
       } else {
         lines.push(obs.open && obs.closesAt
-          ? `Observers can add or edit notes and message you until ${clockTimeText(obs.closesAt)} (${minutesLeftText(obs.closesAt - Date.now())}).`
-          : "Observers' hour is over: their notes and message box are closed.");
+          ? T("fac.endStrip.observersUntil", { time: clockTimeText(obs.closesAt), left: minutesLeftText(obs.closesAt - Date.now()) })
+          : T("fac.endStrip.observersOver"));
         lines.push(fac.open && fac.closesAt
-          ? `Your own notes stay open until ${fmtDay(fac.closesAt)}, or until you press "Notes complete".`
-          : "Your own notes closed 48 hours after the end.");
+          ? T("fac.endStrip.ownUntil", { time: fmtDay(fac.closesAt) })
+          : T("fac.endStrip.ownClosed"));
       }
-      lines.push("Every panel on this page stays live: control tower, response status, Observer notes, messages and the attendee list.");
-      if (canResume()) lines.push(`Ended by mistake? Press "${resumeLabel()}" to return everyone to the inject that was showing, with the time that was left and without its sound.`);
+      lines.push(T("fac.endStrip.panelsLive"));
+      if (canResume()) lines.push(T("fac.endStrip.resume", { button: resumeLabel() }));
       const html =
-        `<span class="t">Exercise ended${isNaN(endedMs) ? "" : ` at ${escapeHtml(clockTimeText(endedMs))}`}. Every device now shows the thank-you screen.</span>` +
+        `<span class="t">${escapeHtml(isNaN(endedMs) ? T("fac.endStrip.ended") : T("fac.endStrip.endedAt", { time: clockTimeText(endedMs) }))}</span>` +
         `<ul>${lines.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`;
       if (endStripEl.innerHTML !== html) endStripEl.innerHTML = html;
       endStripEl.hidden = false;
@@ -2127,22 +2149,24 @@
       // the roster's 5-second poll — so this can't clobber a selection the
       // facilitator is still making.
       if (document.activeElement !== roomCountSelectEl) roomCountSelectEl.value = String(currentRow.room_count || 1);
-      statusVal.textContent = currentRow.status;
-      document.getElementById("facLabel").textContent = currentRow.label || "Facilitator";
+      statusVal.textContent = PPLang.has("fac.sessionStatus." + currentRow.status) ? T("fac.sessionStatus." + currentRow.status) : currentRow.status;
+      document.getElementById("facLabel").textContent = currentRow.label || T("fac.header.label");
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;
       indexVal.textContent = currentRow.current_inject_index >= 0
-        ? `${currentRow.current_inject_index + 1} of ${injects.length}${isLast ? " — last inject" : ""}`
-        : `not started (${injects.length} injects)`;
+        ? (isLast
+          ? T("fac.statusLine.indexLast", { number: currentRow.current_inject_index + 1, total: injects.length })
+          : T("fac.statusLine.index", { number: currentRow.current_inject_index + 1, total: injects.length }))
+        : T("fac.statusLine.notStarted", { count: injects.length });
       const inject = injects[currentRow.current_inject_index];
       const extra = currentRow.inject_extra_minutes || 0;
       const durationText = extra > 0
-        ? `${inject && inject.durationMinutes} + ${extra} extended = ${(inject && inject.durationMinutes || 0) + extra} min`
-        : `${inject && inject.durationMinutes} min`;
-      const unlockText = currentRow.inject_force_unlocked ? " — UNLOCKED for participants" : "";
+        ? T("fac.current.durationExtended", { base: String(inject && inject.durationMinutes), extra, total: (inject && inject.durationMinutes || 0) + extra })
+        : T("fac.current.duration", { minutes: String(inject && inject.durationMinutes) });
+      const unlockText = currentRow.inject_force_unlocked ? ` — ${T("fac.current.unlocked")}` : "";
       currentInjectEl.textContent = inject
-        ? `${inject.title} — sfx: ${inject.sfx || "none"} — video: ${inject.video ? inject.video.title : "none"} — ${durationText}${unlockText}${isLast ? " — this is the last inject; click \"End exercise\" to finish" : ""}`
-        : "No current inject.";
+        ? `${inject.title} — ${T("fac.current.sfx", { name: inject.sfx || T("fac.current.none") })} — ${T("fac.current.video", { title: String(inject.video ? inject.video.title : T("fac.current.none")) })} — ${durationText}${unlockText}${isLast ? ` — ${T("fac.current.lastInject")}` : ""}`
+        : T("fac.current.noInject");
       renderStatus();
       renderTower();
       renderEndStrip();

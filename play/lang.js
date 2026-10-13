@@ -1,0 +1,1033 @@
+// The language file of the exercise player (language foundation, 13 October
+// 2026). EVERY word a person sees on the player pages lives here, under a key.
+// Pages never type wording directly: static markup carries data-i18n="key"
+// (with the English text still inline, so English paints at once and reads
+// exactly as before), and scripts call T("key", { slots }).
+//
+// One language per exercise (exercise_sessions.language, default "en"). English
+// is built into this file. Another language is one more file, lang-<code>.js,
+// that calls PPLang.register(code, { dir, name, strings, db }); it is loaded
+// only when an exercise uses it. Nothing but English exists today.
+//
+// Rules for wording kept here:
+//  - whole sentences with {slots}, never sentences glued from pieces;
+//  - counts use forms: { one: "{count} minute", other: "{count} minutes" }
+//    chosen by the slot named count ("=0", "=1" … match an exact number);
+//  - a key ending in _html holds markup and is put in with innerHTML: every
+//    slot given to it must already be escaped by the caller;
+//  - what is SAVED (ready-made message keys, note topics, statuses) stays a
+//    code; only what is SHOWN comes from here.
+//
+// tools/check-lang.js fails the build when wording is typed into a page
+// instead of this file.
+(function () {
+  "use strict";
+
+  var EN = {
+    dir: "ltr",
+    name: "English",
+    strings: {
+      // <<EN_STRINGS
+      // ---- Shared by several pages (shared.js) ----
+      "shared.error.sessionIdMalformed": "Session ID \"{id}\" looks incomplete or malformed — the link may have been cut off when it was copied or typed. Use the full link, exactly as given, including everything after \"session=\".",
+      "shared.error.fetchSessionFailed": "Fetch session failed: HTTP {status}",
+      "shared.error.noFacilitatorToken": "No facilitator token in this link. Use the Facilitator link (with &token=... after the session ID), not the room-display link.",
+      "shared.error.updateSessionFailed": "Update session failed: HTTP {status}",
+      "shared.error.updateRejected": "Update rejected: the facilitator token in this link doesn't match this session. Use the exact Facilitator link that was issued for it.",
+      "shared.error.couldntJoin": "Couldn't join: {detail}",
+      "shared.error.saveAnswerNoConnection": "Couldn't save your answer: no connection. It is kept on this device — it will be saved when the connection is back.",
+      "shared.error.couldntSaveAnswer": "Couldn't save your answer: {detail}",
+      "shared.error.fetchSubmissionStatusFailed": "Fetch submission status failed: {detail}",
+      "shared.error.couldntUpload": "Couldn't upload \"{name}\": {detail}",
+      "shared.error.fetchAttendeesFailed": "Fetch attendees failed: HTTP {status}",
+      "shared.error.removeAttendeeFailed": "Remove attendee failed: HTTP {status}",
+      "shared.error.removeRejected": "Remove rejected: the facilitator token in this link doesn't match this session.",
+      "shared.error.messageNotSent": "Message not sent: {detail}",
+      "shared.error.messageNotSentToken": "Message not sent: the facilitator token in this link doesn't match this session. Use the exact Facilitator link that was issued for it.",
+      "shared.error.messageNotSentLength": "Message not sent: the message must be between 1 and {max} characters.",
+      "shared.error.noDepartment": "No department on this identity — please rejoin the exercise.",
+      "shared.error.fetchMessagesFailed": "Fetch messages failed: {detail}",
+      "shared.error.serverUnreachable": "Couldn't reach the server — check the connection and try again. Nothing you wrote has been lost.",
+      "shared.presetBroadcast.fiveMin": "5 minutes left on this inject",
+      "shared.presetBroadcast.twoMin": "2 minutes left — please finalise your answer",
+      "shared.presetBroadcast.submitNow": "Please submit now",
+      "shared.presetBroadcast.nextSoon": "Moving to the next inject shortly",
+      "shared.presetBroadcast.shortBreak": "Short break — please stay nearby",
+      "shared.presetToDepartment.needMoreTime": "Do you need more time?",
+      "shared.presetToDepartment.submitWhenReady": "Please submit when ready",
+      "shared.presetToDepartment.finaliseSoon": "Moving on shortly — please finalise",
+      "shared.presetFromDepartment.fewMoreMinutes": "Yes, a few more minutes",
+      "shared.presetFromDepartment.submittingNow": "No, submitting now",
+      "shared.presetFromDepartment.technicalIssue": "Technical issue — please wait",
+      "shared.presetFromObserver.needMoreTime": "Need more time",
+      "shared.presetFromObserver.ready": "Ready to continue",
+      "shared.presetFromObserver.technicalIssue": "Technical issue",
+      "shared.presetFromObserver.question": "Question",
+      "shared.presetToObserver.advancingOneMin": "Advancing in 1 min",
+      "shared.presetToObserver.notedHold": "Noted, hold",
+      "shared.presetToObserver.pleaseProceed": "Please proceed",
+      "shared.status.loading": "Loading…",
+      "shared.observerChannel.closedNotesComplete": "Messages are closed: notes are complete for this exercise.",
+      "shared.observerChannel.closedAfterHour": "Messages between Observers and the facilitator closed one hour after the exercise ended.",
+      "shared.observer.roomLabel": "Room {room} Observer",
+      "shared.observer.label": "Observer",
+      "shared.observer.roomTarget": "Room {room} Observers",
+      "shared.observer.allTarget": "all Observers",
+      "shared.noteTopic.decision": "Decision-making & escalation",
+      "shared.noteTopic.communication": "Communication",
+      "shared.noteTopic.plan": "Plan adherence",
+      "shared.noteTopic.roles": "Roles & responsibility clarity",
+      "shared.noteTopic.coordination": "Coordination between teams",
+      "shared.noteTopic.other": "Other",
+      "shared.noteTopic.otherWith": "Other: {text}",
+      "shared.noteType.positive": "Positive",
+      "shared.noteType.improvement": "Needs improvement",
+      "shared.noteType.critical": "Critical gap",
+      "shared.noteAbout.external": "External party: {name}",
+      "shared.notesWindow.closed": "Notes are closed for this exercise.",
+      "shared.notesWindow.opensAtStart": "Notes open when the exercise starts.",
+      "shared.notesWindow.closedFacilitator": "Notes closed 48 hours after the exercise ended.",
+      "shared.notesWindow.closedObserver": "Observer notes closed one hour after the exercise ended.",
+      "shared.sfx.noFile": "⚠ no file mapped for \"{name}\"",
+      "shared.sfx.attempting": "▶ attempting: {name}",
+      "shared.sfx.playing": "✓ playing: {name}",
+      "shared.sfx.blocked": "✗ blocked: {name} — {reason}",
+      "shared.live.live": "● Live",
+      "shared.live.connecting": "Connecting…",
+      "shared.live.reconnecting": "Reconnecting…",
+      "shared.live.offline": "Offline — showing the last known state",
+      "shared.notice.awake": "This device may go to sleep. Keep it plugged in and switch off battery saver.",
+      "shared.toast.dismissTitle": "Tap to dismiss",
+      "shared.away.only": {"one":"You were away for {count} minute.","other":"You were away for {count} minutes."},
+      "shared.away.ended": {"one":"You were away for {count} minute. The exercise has ended.","other":"You were away for {count} minutes. The exercise has ended."},
+      "shared.away.lobby": {"one":"You were away for {count} minute. The exercise has not started yet.","other":"You were away for {count} minutes. The exercise has not started yet."},
+      "shared.away.onInject": {"one":"You were away for {count} minute. The exercise is now on inject {inject}.","other":"You were away for {count} minutes. The exercise is now on inject {inject}."},
+      "shared.away.onInjectOf": {"one":"You were away for {count} minute. The exercise is now on inject {inject} of {total}.","other":"You were away for {count} minutes. The exercise is now on inject {inject} of {total}."},
+      "shared.thanks.named_html": "Thank you, <bdi class=\"pp-thanks-name\">{name}</bdi>",
+      "shared.thanks.plain": "Thank you",
+      "shared.thanks.everyone": "Thank you, everyone",
+      "shared.welcome.registered": "You are registered.",
+      "shared.welcome.registeredObserver": "You are registered as an Observer.",
+      "shared.welcome.noFault": "Kindly note that this exercise tests the plan, not individuals.",
+      "shared.welcome.waiting": "Waiting for the facilitator to start the exercise…",
+      "shared.end.ended": "This exercise has ended.",
+      "shared.end.noFault": "As mentioned at the start, this exercise tested the plan, not individuals.",
+      "shared.end.closePage": "You can now close this page.",
+      "shared.time.lessThanMinuteLeft": "less than a minute left",
+      "shared.time.minutesLeft": {"one":"{count} minute left","other":"{count} minutes left"},
+      "shared.observerEnd.notesUntil": {"one":"You can still add or edit your notes until {time} ({count} minute left).","other":"You can still add or edit your notes until {time} ({count} minutes left)."},
+      "shared.observerEnd.notesUntilSoon": "You can still add or edit your notes until {time} (less than a minute left).",
+      "shared.observerEnd.notesAndMessagesUntil": {"one":"You can still add or edit your notes and message the facilitator until {time} ({count} minute left).","other":"You can still add or edit your notes and message the facilitator until {time} ({count} minutes left)."},
+      "shared.observerEnd.notesAndMessagesUntilSoon": "You can still add or edit your notes and message the facilitator until {time} (less than a minute left).",
+      "shared.observerEnd.closed": "Notes and messages are now closed. You can close this page.",
+      // ---- Observer notes form (notes.js) ----
+      "notes.inject.whole": "Whole exercise",
+      "notes.inject.withTitle": "Inject {n} — {title}",
+      "notes.inject.number": "Inject {n}",
+      "notes.inject.setAuto": "set automatically",
+      "notes.form.editing": "Editing a note you logged earlier",
+      "notes.form.cancelEdit": "Cancel editing",
+      "notes.form.injectLabel": "Inject",
+      "notes.form.moved": "The facilitator has moved on — this note stays with the inject you started it on.",
+      "notes.form.topicLabel": "Topic",
+      "notes.form.topicOtherPlaceholder": "Type the topic",
+      "notes.form.topicOtherAria": "Topic (other)",
+      "notes.form.typeLabel": "Type",
+      "notes.form.deptLabel": "Department the note is about",
+      "notes.form.externalPlaceholder": "Who? For example Civil Defence or Police",
+      "notes.form.externalAria": "External party",
+      "notes.form.bodyLabel": "Note",
+      "notes.form.bodyPlaceholder": "What did the team do, and what does the plan say?",
+      "notes.form.bodyHint": "Describe what the team did and what the plan says, not individuals.",
+      "notes.form.log": "Log note",
+      "notes.form.saving": "Saving…",
+      "notes.form.saveChanges": "Save changes",
+      "notes.dept.choose": "— Choose —",
+      "notes.dept.several": "Several departments",
+      "notes.dept.external": "External party",
+      "notes.window.endedFacilitator": "The exercise has ended. You can add notes until {time}, or until you press \"Notes complete\". Choose an inject or \"Whole exercise\".",
+      "notes.window.endedObserver": "The exercise has ended. You can add or edit notes until {time} (one hour after the end). Choose an inject or \"Whole exercise\".",
+      "notes.validate.topic": "Please choose a topic.",
+      "notes.validate.topicOther": "Please type the topic.",
+      "notes.validate.type": "Please choose a type: Positive, Needs improvement or Critical gap.",
+      "notes.validate.dept": "Please choose the department the note is about.",
+      "notes.validate.several": "Please tick at least two departments.",
+      "notes.validate.external": "Please type who the external party is (for example Civil Defence or Police).",
+      "notes.validate.body": "Please write the note.",
+      "notes.feedback.saving": "Saving…",
+      "notes.feedback.changesSaved": "Changes saved ✓",
+      "notes.feedback.logged": "Note logged ✓",
+      "notes.item.facilitator": "Facilitator",
+      "notes.item.room": "Room {room}",
+      "notes.item.earlierRun": "Earlier run",
+      "notes.item.edited": "edited",
+      // ---- Join page (join.html) ----
+      "join.title": "PlanProof — Join the exercise",
+      "join.loading": "Loading…",
+      "join.error.noSession": "No ?session=<id> given in the URL.",
+      "join.error.loadFailed": "Couldn't load this exercise: {detail}",
+      "join.error.notFound": "No exercise found for this link.",
+      "join.error.ended": "This exercise has already ended — joining is no longer possible.",
+      "join.form.fallbackTitle": "Exercise",
+      "join.form.noDepartments": "The department list for this exercise hasn't been set up yet, so registration isn't open. Please let the facilitator know.",
+      "join.form.sub": "Enter your details to join as a participant or observer.",
+      "join.brief.noFaultTitle": "This exercise tests the plan, not individuals.",
+      "join.brief.noFaultText": "Findings are reported at team level.",
+      "join.brief.phoneTitle": "Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.",
+      "join.brief.phoneText": "Keep your device plugged in if you can.",
+      "join.form.firstName": "First name",
+      "join.form.firstNamePlaceholder": "First name",
+      "join.form.familyName": "Family name",
+      "join.form.familyNamePlaceholder": "Family name",
+      "join.form.jobTitle": "Job title",
+      "join.form.jobTitlePlaceholder": "e.g. Finance Manager",
+      "join.form.department": "Department",
+      "join.dept.searchPlaceholder": "Type to find your department",
+      "join.dept.searchAria": "Find your department in the list below",
+      "join.dept.choose": "Choose your department",
+      "join.dept.noMatchOption": "No department matches",
+      "join.dept.noMatches": "No department matches. Clear the box to see the whole list.",
+      "join.dept.oneMatch": "1 match — {department} is selected.",
+      "join.dept.someShown": "{shown} of {count} departments shown.",
+      "join.dept.missing": "Department missing? Ask the facilitator to add it.",
+      "join.form.role": "Role",
+      "join.role.participant": "Participant",
+      "join.role.observer": "Observer",
+      "join.room.label": "Which room are you in?",
+      "join.room.choose": "Choose your room",
+      "join.room.option": "Room {n}",
+      "join.room.optionFacilitator": "Room {n} (facilitator's room)",
+      "join.form.register": "Register",
+      "join.validate.name": "Please complete both your first name and family name.",
+      "join.validate.jobTitle": "Please enter your job title.",
+      "join.validate.department": "Please choose your department.",
+      "join.validate.room": "Please choose your room.",
+      "join.confirm.title": "Please confirm your details",
+      "join.confirm.name": "Name",
+      "join.confirm.jobTitle": "Job title",
+      "join.confirm.department": "Department",
+      "join.confirm.role": "Role",
+      "join.confirm.room": "Room",
+      "join.confirm.roomValue": "Room {n}",
+      "join.confirm.question": "You have selected the {department} department. Is this correct?",
+      "join.confirm.cancel": "Cancel",
+      "join.confirm.proceed": "Proceed",
+      "join.confirm.registering": "Registering…",
+      // ---- Participant page (participant.html) ----
+      "part.title": "PlanProof — Participant",
+      "part.loading": "Loading…",
+      "part.error.noSession": "No ?session=<id> given in the URL.",
+      "part.error.loadFailed": "Couldn't load session: {detail}",
+      "part.error.noInject": "No inject at index {index}.",
+      "part.gate.needJoin": "You need to join this exercise first.",
+      "part.gate.joinNow": "Join now",
+      "part.gate.registerAgain": "Registration has been updated — please register again.",
+      "part.gate.register": "Register",
+      "part.who.withRoom": "{name} — {department} — Room {room}",
+      "part.who.noRoom": "{name} — {department}",
+      "part.notice.notRegistered": "You are no longer registered in this exercise. Please join again from the join link.",
+      "part.msg.bannerLabel": "Message from the facilitator",
+      "part.msg.gotIt": "Got it",
+      "part.msg.historyTitle": "Messages from the facilitator",
+      "part.msg.newCount": "{count} new",
+      "part.reply.title": "Message the facilitator",
+      "part.reply.presetLabel": "Choose a ready-made message",
+      "part.reply.presetPlaceholder": "— Choose a ready-made message —",
+      "part.reply.textLabel": "Or type your own message",
+      "part.reply.textPlaceholder": "Tap here and type your message",
+      "part.reply.send": "Send →",
+      "part.reply.ended": "The exercise has ended — messages can no longer be sent.",
+      "part.reply.sending": "Sending…",
+      "part.reply.sent": "Sent to the facilitator at {time} ✓",
+      "part.task.allDepartments": "All departments",
+      "part.task.individual": "Individual task — everyone answers",
+      "part.task.group": "Group task — one answer per department",
+      "part.task.responsible": "Responsible: {list}",
+      "part.clock.aria": "Time left for this inject",
+      "part.clock.label": "Time left for this inject",
+      "part.clock.noLimit": "No time limit",
+      "part.clock.timesUp": "Time's up",
+      "part.clock.noteUnlocked": "Unlocked by the facilitator — you can edit and resubmit",
+      "part.clock.noteEditing": "Changing your submitted answer",
+      "part.clock.noteSubmittedOpen": "Submitted — you can still edit it",
+      "part.clock.noteSubmitted": "Submitted",
+      "part.clock.noteExtra": "Includes +{count} min extra time",
+      "part.form.notRequired": "Your department isn't named as responsible for this inject, so no answer is required from you. You can still add input if it's relevant.",
+      "part.form.labelIndividual": "Your own response",
+      "part.form.labelGroup": "{department}'s response",
+      "part.form.hintIndividual": "Answer for yourself — each person in your department submits their own.",
+      "part.form.hintGroup": "Anyone in {department} can write and submit this one shared answer.",
+      "part.form.placeholderIndividual": "Your answer",
+      "part.form.placeholderGroup": "What is {department} doing right now?",
+      "part.form.attachLabel": "Attach documents (up to 3, 10MB each)",
+      "part.form.submit": "Submit answer",
+      "part.form.submitting": "Submitting…",
+      "part.attach.remove": "Remove",
+      "part.error.tooManyFiles": "You can attach at most 3 documents.",
+      "part.error.fileTooBig": "\"{name}\" is over 10MB — not attached.",
+      "part.lock.timesUp": "Time's up",
+      "part.lock.locked": "Locked",
+      "part.submitted.individual": "✓ Your answer is submitted.",
+      "part.submitted.group": "✓ Submitted for {department}.",
+      "part.edit.note": "You are changing a submitted answer. Nothing is sent until you press “Submit changes”.",
+      "part.edit.cancel": "Cancel",
+      "part.edit.submitChanges": "Submit changes",
+      "part.edit.editAnswer": "Edit answer",
+      "part.edit.hintUntilTime": "You can change it until the time runs out.",
+      "part.edit.hintUntilNext": "You can change it until the facilitator moves to the next inject.",
+      "part.edit.hintOver": "The time for this inject is over. Only the facilitator can reopen this answer.",
+      "part.status.saving": "Saving…",
+      "part.status.saved": "Saved.",
+      "part.status.saveFailed": "Couldn't save: {detail}",
+      "part.status.uploading": "Uploading {name}…",
+      "part.status.unsent": "Not sent yet — press “Submit changes” to send it.",
+      "part.status.changesSubmitted": "Your changes are submitted.",
+      "part.status.noChanges": "No changes made — your submitted answer stands.",
+      "part.status.lostEdit": "Time ran out before your changes were sent. The answer submitted earlier stands.",
+      "part.status.couldNotSendChanges": "Time ran out before your changes could be sent. The answer submitted earlier stands.",
+      "part.status.unlockedWasSubmitted": "Unlocked by the facilitator — previously submitted; you can edit and resubmit.",
+      "part.status.unlockedWasTimedOut": "Unlocked by the facilitator — previously timed out; you can edit and resubmit.",
+      "part.status.unlocked": "The facilitator has unlocked this inject — you can edit and resubmit.",
+      "part.status.lockedAgain": "The facilitator has locked this inject again.",
+      "part.status.moreTime": "The facilitator added more time — you can continue.",
+      "part.status.timesUp": "Time's up for this inject.",
+      "part.status.timesUpSaved": "Time's up for this inject — your response has been saved automatically.",
+      "part.status.timesUpStands": "Time's up — your submitted answer stands.",
+      "part.status.timesUpSending": "Time's up — sending your changes…",
+      "part.status.timesUpChangesSaved": "Time's up — your changes were saved.",
+      "part.status.restoredEdit": "Your unsent changes were brought back on this phone. Press “Submit changes” to send them.",
+      "part.status.restored": "Your answer was brought back on this phone.",
+      // ---- Room screen and Observer view (room-display.html) ----
+      "room.page.title": "PlanProof — Exercise room display",
+      "room.page.footer": "Exercise room display",
+      "room.gate.title": "Exercise room display",
+      "room.gate.question": "Which room is this screen in?",
+      "room.gate.room": "Room {n}",
+      "room.gate.roomFacilitator": "Room {n} (facilitator's)",
+      "room.gate.begin": "Tap to begin (enables sound)",
+      "room.gate.done": "Done",
+      "room.screen.room": "Room {room}",
+      "room.screen.change": "change",
+      "room.sound.idle": "sound: —",
+      "room.sound.status": "sound: {msg}",
+      "room.sound.unlocked": "sound: unlocked ✓",
+      "room.sound.unlockFailed": "sound: unlock failed — {message}",
+      "room.sound.resumed": "sound: — resumed inject, {name} not played again",
+      "room.sound.waiting": "sound: ⏸ waiting for \"Tap to begin\" to play {name}",
+      "room.lobby.waiting": "Waiting for the facilitator to start the exercise…",
+      "room.error.noSession": "No ?session=<id> given in the URL.",
+      "room.error.loadSession": "Couldn't load session: {message}",
+      "room.error.noInject": "No inject at index {idx}.",
+      "room.video.nowPlaying": "Now playing",
+      "room.timer.label": "Time left for this inject",
+      "room.timer.extra": "includes +{count} min extra time",
+      "room.timer.noLimit": "No time limit",
+      "room.timer.up": "Time's up",
+      "room.broadcast.label": "Message from the facilitator",
+      "room.toast.refreshed": "Refreshed by the facilitator.",
+      "room.toast.reloaded": "Reloaded by the facilitator.",
+      "room.notice.notRegistered": "You are no longer registered in this exercise. Please join again from the join link.",
+      "room.observer.who": "Observer: {name} — {department}",
+      "room.observer.whoRoom": "Observer: {name} — {department} — Room {room}",
+      "room.observer.panelLabel": "Observer notes and messages",
+      "room.obsBanner.label": "Message from the facilitator",
+      "room.obsBanner.gotIt": "Got it",
+      "room.notes.heading": "Your notes",
+      "room.notes.loggedHeading": "Notes you've logged",
+      "room.notes.noneYet": "None yet.",
+      "room.notes.closedCleared": "Notes are closed — your notes have been sent and cleared from this phone.",
+      "room.notes.edit": "Edit",
+      "room.notes.withdraw": "Withdraw",
+      "room.notes.withdrawConfirm": "Tap again to withdraw",
+      "room.notes.withdrawing": "Withdrawing…",
+      "room.msg.jump": "Message the facilitator",
+      "room.msg.heading": "Messages with the facilitator",
+      "room.msg.none": "No messages yet.",
+      "room.msg.newCount": "{count} new",
+      "room.msg.fromFacilitatorRoom": "From the facilitator · to Room {room} Observers",
+      "room.msg.fromFacilitatorAll": "From the facilitator · to all Observers",
+      "room.msg.sentFromRoom": "Sent from Room {room}",
+      "room.msg.sentToFacilitator": "Sent to the facilitator",
+      "room.msg.cardTitle": "Message the facilitator",
+      "room.msg.hint": "Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.",
+      "room.msg.presetLabel": "Choose a ready-made message",
+      "room.msg.presetChoose": "— Choose a ready-made message —",
+      "room.msg.textLabel": "Or type your own message",
+      "room.msg.textPlaceholder": "Tap here and type your message",
+      "room.msg.send": "Send →",
+      "room.msg.sending": "Sending…",
+      "room.msg.sentAt": "Sent to the facilitator at {time} ✓",
+      "room.msg.notSentNetwork": "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again.",
+      "room.msg.notSent": "Not sent: {message}",
+      // ---- Facilitator page (facilitator-test.html) ----
+      "fac.page.title": "PlanProof — Facilitator Test Controls (prototype)",
+      "fac.header.label": "Facilitator",
+      "fac.header.private": "Facilitator page. Private link, do not share it.",
+      "fac.page.heading": "Facilitator test controls (prototype)",
+      "fac.page.intro": "This page drives the demo session directly — it stands in for the real facilitator view (lobby/roster, criteria capture, submissions feed) which isn't built yet. Its only job here is to prove that an action taken here shows up instantly on the room display.",
+      "fac.statusLine.status": "Status:",
+      "fac.statusLine.loading": "loading…",
+      "fac.statusLine.inject": "· Inject:",
+      "fac.controls.start": "Start exercise",
+      "fac.controls.previous": "← Previous inject",
+      "fac.controls.next": "Next inject →",
+      "fac.controls.extend": "+5 min for this inject",
+      "fac.controls.unlock": "Unlock this inject",
+      "fac.controls.end": "End exercise",
+      "fac.controls.reset": "Reset to lobby",
+      "fac.controls.unlockNote_html": "\"Unlock this inject\" re-opens participant submissions for whichever inject is current right now — including one they already submitted, or one that timed out — until you click \"Lock this inject\" again or move on. To revisit and unlock an <em>earlier</em> inject, use Previous to make it current again, then Unlock.",
+      "fac.startCheck.title": "Not everything is ready",
+      "fac.common.goBack": "Go back",
+      "fac.startCheck.anyway": "Start anyway",
+      "fac.resume.titleGeneric": "Resume at this inject?",
+      "fac.resume.confirmGeneric": "Resume",
+      "fac.endCheck.title": "End the exercise?",
+      "fac.endCheck.why": "Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.",
+      "fac.endCheck.confirm": "End exercise",
+      "fac.tower.heading": "Control tower",
+      "fac.tower.sub": "Who is connected right now. Every screen and phone checks in every 20 seconds; this is a live indicator, not the attendance record.",
+      "fac.common.loading": "Loading…",
+      "fac.tower.screensHeading": "Room screens",
+      "fac.tower.observersHeading": "Observers",
+      "fac.tower.legendOnline_html": "<i class=\"dot green\"></i> Online (seen in the last 45 seconds)",
+      "fac.tower.legendNotSeen_html": "<i class=\"dot amber\"></i> Not seen for up to 2 minutes",
+      "fac.tower.legendOffline_html": "<i class=\"dot grey\"></i> Offline, or not connected yet",
+      "fac.tower.legendAttention_html": "<i class=\"dot red\"></i> Needs attention",
+      "fac.broadcast.heading": "Message everyone",
+      "fac.broadcast.sub": "Shows on every participant's page and as a banner on every room display (for 30 seconds there, or until you move to the next inject). Choose a ready-made message, or type your own.",
+      "fac.msg.presetLabel": "Ready-made messages (optional)",
+      "fac.msg.presetChoose": "— Choose a ready-made message —",
+      "fac.broadcast.send": "Send to everyone",
+      "fac.deptMsg.heading": "Message a department",
+      "fac.deptMsg.sub": "Reaches everyone registered in that department's phones — not the shared room screen. Choose a ready-made message, or type your own.",
+      "fac.deptMsg.deptLabel": "Department",
+      "fac.deptMsg.chooseDept": "— Choose a department —",
+      "fac.msg.send": "Send →",
+      "fac.obsMsg.heading": "Message Observers",
+      "fac.obsMsg.sub": "Reaches Observers' phones only — never participants or the room screen. Observers can write to you too; their messages arrive in the inbox below, marked with their room. This channel stays open after End until the Observers' notes window closes.",
+      "fac.obsMsg.roomLabel": "Send to",
+      "fac.obsMsg.allObservers": "All Observers",
+      "fac.inbox.heading": "Messages from departments and Observers",
+      "fac.inbox.sub": "Requests and replies from participants and from Observers (marked with their room), newest first.",
+      "fac.inbox.empty": "No messages yet.",
+      "fac.notes.heading": "Observer notes",
+      "fac.notes.sub": "Every note from Observers and from you, newest first — only this facilitator link can read them. Critical gaps are marked in red and chime when they arrive. Click anywhere in this panel to mark notes as seen.",
+      "fac.notes.addOwn": "Add your own note",
+      "fac.status.heading": "Response status",
+      "fac.status.legendWaiting_html": "<i class=\"dot grey\"></i> Waiting, or not required",
+      "fac.status.legendSome_html": "<i class=\"dot amber\"></i> Some have submitted (individual task)",
+      "fac.status.legendComplete_html": "<i class=\"dot green\"></i> Complete, on time",
+      "fac.status.legendTimesUp_html": "<i class=\"dot red\"></i> Time's up, not complete",
+      "fac.setup.heading": "Session setup",
+      "fac.setup.roomsNote": "How many rooms are running this exercise? Room 1 is always your own (the facilitator's) room, so \"3\" means your room plus 2 more. You can change this as many times as you like before clicking \"Start exercise\" — it locks once the exercise is running.",
+      "fac.setup.roomsLabel": "Rooms:",
+      "fac.setup.roomsOne": "1 (no room question at check-in)",
+      "fac.roster.heading": "Registered participants & observers",
+      "fac.roster.addDeptNote": "Add any department missing from the list — at any time, also during the exercise. Only you can add one, so nobody can invent a department. A department added during the exercise shows \"Not required\" for the injects it missed (including the one running when you add it), and is counted like every other department from the next inject on.",
+      "fac.roster.addDept": "Add department",
+      "fac.roster.groupBy": "Group by:",
+      "fac.roster.groupDepartment": "Department",
+      "fac.roster.groupRoom": "Room",
+      "fac.links.join": "Participant/Observer join link for this session (share this one — it has no facilitator token):",
+      "fac.links.display": "Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):",
+      "fac.links.before": "Before the exercise (added 9 October 2026):",
+      "fac.links.check": "Connection check",
+      "fac.links.checkNote": "— send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·",
+      "fac.links.print": "Printable backup pack",
+      "fac.links.printNote": "— print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.",
+      "fac.msg.placeholder": "Type a message, or choose one above and edit it",
+      "fac.roster.newDeptPlaceholder": "e.g. Marketing",
+      "fac.error.noSession_html": "<p>No ?session=&lt;id&gt; given in the URL.</p>",
+      "fac.error.noToken_html": "<p>This link is missing its facilitator token (<code>&amp;token=...</code> after the session ID). Use the private Facilitator link for this session, not a room-display or participant link — this page can't control the exercise without it.</p>",
+      "fac.error.actionFailed": "Action failed: {message}",
+      "fac.controls.lock": "Lock this inject",
+      "fac.roster.addDeptNotLoaded": "Add department failed: session not loaded yet.",
+      "fac.roster.deptExists": "\"{name}\" is already in the department list.",
+      "fac.roster.addDeptFailed": "Add department failed: {message}",
+      "fac.setup.roomsNotLoaded": "Set rooms failed: session not loaded yet.",
+      "fac.setup.roomsFailed": "Set rooms failed: {message}",
+      "fac.msg.ended": "The exercise has ended — messages can no longer be sent.",
+      "fac.msg.sending": "Sending…",
+      "fac.broadcast.sent": "Sent to everyone at {time} ✓",
+      "fac.msg.contextAfterEnd": "after the end",
+      "fac.msg.contextBeforeStart": "before start",
+      "fac.msg.contextDuringTitled": "during \"{title}\"",
+      "fac.msg.contextDuringInject": "during inject {number}",
+      "fac.broadcast.logEmpty": "No messages sent yet.",
+      "fac.msg.logFailed": "Couldn't load sent messages: {message}",
+      "fac.msg.logTo": "to {target}",
+      "fac.deptMsg.sent": "Sent to {department} at {time} ✓",
+      "fac.deptMsg.logEmpty": "No department messages sent yet.",
+      "fac.obsMsg.roomOption": "Room {room} Observers",
+      "fac.obsMsg.roomOptionYours": "Room {room} Observers (your room)",
+      "fac.obsMsg.warnNone": "No Observer has joined this exercise yet.",
+      "fac.obsMsg.warnNoneInRoom": "No Observer has joined in Room {room} yet.",
+      "fac.obsMsg.sent": "Sent to {target} at {time} ✓",
+      "fac.obsMsg.notSentNetwork": "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again.",
+      "fac.obsMsg.notSent": "Not sent: {message}",
+      "fac.obsMsg.logEarlierRun": "earlier run",
+      "fac.obsMsg.logEmpty": "No messages sent to Observers yet.",
+      "fac.inbox.badge": {"one":"{count} new","other":"{count} new"},
+      "fac.inbox.observerTag": "OBSERVER",
+      "fac.inbox.earlierRun": "Earlier run",
+      "fac.inbox.reply": "Reply",
+      "fac.inbox.unknownDept": "unknown department",
+      "fac.inbox.loadFailed": "Couldn't load messages: {message}",
+      "fac.tower.loadFailed": "Couldn't load who is online: {message}",
+      "fac.roster.loadFailed": "Couldn't load roster/status: {message}",
+      "fac.status.notRequired": "Not required",
+      "fac.status.notRequiredInput": "Not required (input received)",
+      "fac.status.notRequiredLate": "Not required — added after this inject started",
+      "fac.status.notRequiredLateInput": "Not required — added after this inject started (input received)",
+      "fac.status.submittedOnTime": "Submitted on time",
+      "fac.status.submittedLate": "Submitted after the time",
+      "fac.status.waitingDrafting": "Waiting — drafting",
+      "fac.status.waiting": "Waiting",
+      "fac.status.draftCaptured": "Draft captured, not submitted",
+      "fac.status.noResponse": "No response",
+      "fac.status.noParticipants": "No participants registered before this inject",
+      "fac.status.allOnTime": {"one":"All {count} submitted on time","other":"All {count} submitted on time"},
+      "fac.status.waitingNoneOf": "Waiting — 0 of {total} submitted",
+      "fac.status.someSubmitted": "{done} of {total} submitted",
+      "fac.status.someOnTime": "{done} of {total} submitted on time",
+      "fac.status.someOnTimeDrafts": {"one":"{done} of {total} submitted on time · {count} draft not submitted","other":"{done} of {total} submitted on time · {count} drafts not submitted"},
+      "fac.endCheck.statusDrafting": "drafting",
+      "fac.endCheck.statusNothing": "nothing submitted yet",
+      "fac.endCheck.statusNoneOf": "0 of {total} submitted",
+      "fac.endCheck.deptIssue": "{department}: {status} (current inject).",
+      "fac.status.allDepartments": "All departments",
+      "fac.status.notStarted": "Statuses appear here once the exercise starts.",
+      "fac.status.unlockedNoDeadline": "Unlocked — no deadline",
+      "fac.status.timeLeft": "{time} left",
+      "fac.status.timesUp": "Time's up",
+      "fac.status.currentHead": "Inject {number} — {title}",
+      "fac.status.taskIndividual": "Individual task",
+      "fac.status.taskGroup": "Group task",
+      "fac.status.responsible": "Responsible: {departments}",
+      "fac.status.message": "Message",
+      "fac.status.earlierHeading": "Earlier injects",
+      "fac.status.deptColumn": "Department",
+      "fac.status.historyTip.group": "{title} — group",
+      "fac.status.historyTip.individual": "{title} — individual",
+      "fac.status.historyCol": "#{number}",
+      "fac.status.historyColIndividual": "#{number} (ind.)",
+      "fac.presence.notConnected": "not connected yet",
+      "fac.presence.online": "online",
+      "fac.presence.notSeenSince": "not seen since {time}",
+      "fac.presence.offlineLastSeen": "offline — last seen {time}",
+      "fac.tower.inject": "inject {number}",
+      "fac.tower.injectNamed": "inject {number} \"{title}\"",
+      "fac.tower.shownLobby": "the waiting screen",
+      "fac.tower.shownEnded": "the end screen",
+      "fac.tower.shownNothing": "nothing yet",
+      "fac.tower.onlineCount": "{online} of {total} online",
+      "fac.tower.notSeenCount": {"one":"{count} not seen for a minute","other":"{count} not seen for a minute"},
+      "fac.tower.offlineCount": {"one":"{count} offline or not connected yet","other":"{count} offline or not connected yet"},
+      "fac.tower.allConnected": "everyone is connected",
+      "fac.tower.noOne": "No one has joined yet",
+      "fac.tower.warnDeptNobody": "{department}: nobody online",
+      "fac.tower.notRespondingLastSeen": "not responding — last seen {time}",
+      "fac.tower.behindShowing": "behind — showing {what}",
+      "fac.tower.onlineShowing": "online, showing {what}",
+      "fac.tower.catchingUp": "(catching up…)",
+      "fac.tower.soundOn": "sound on",
+      "fac.tower.soundOff": "sound off — needs a tap on \"Tap to begin\"",
+      "fac.tower.maySleep": "may go to sleep",
+      "fac.tower.livePoll": "live connection down — updating every 15 seconds",
+      "fac.tower.reloadSent": "Full reload sent — waiting for the screen (up to 20 seconds)",
+      "fac.tower.refreshSent": "Refresh sent — waiting for the screen (up to 20 seconds)",
+      "fac.tower.reloadedAt": "reloaded at {time}",
+      "fac.tower.refreshedAt": "refreshed at {time}",
+      "fac.tower.refreshBtn": "Refresh this screen",
+      "fac.tower.reloadBtn": "Full reload",
+      "fac.tower.warnNotResponding": "{screen} is not responding. Ask the room to refresh it (or reopen the room display link).",
+      "fac.tower.warnBehind": "{screen} is behind. Press \"Refresh this screen\"; if that doesn't help, \"Full reload\".",
+      "fac.tower.roomScreen": "Room {room} screen",
+      "fac.tower.roomScreenNumbered": "Room {room} screen {number}",
+      "fac.tower.singleScreen": "Room screen",
+      "fac.tower.singleScreenNumbered": "Room screen {number}",
+      "fac.tower.screenNoRoom": "Screen {number} (room not chosen yet)",
+      "fac.tower.noScreen": "no screen connected",
+      "fac.tower.warnRoomNoScreen": "Room {room}: no room screen is connected.",
+      "fac.tower.warnNoScreen": "No room screen is connected.",
+      "fac.tower.observerInRoom": "Room {room} — {name}",
+      "fac.tower.warnRoomNoObserver": "Room {room}: no Observer is online.",
+      "fac.tower.confirmReload": "Reload this screen completely? If this laptop was not set up to allow sound, someone in the room will need to tap \"Tap to begin\" again for sound. The inject and the countdown come back by themselves.",
+      "fac.tower.sendFailed": "Couldn't send to the screen: {message}",
+      "fac.roster.empty": "No one has joined yet.",
+      "fac.roster.roomName": "Room {room}",
+      "fac.roster.noRoom": "No room",
+      "fac.roster.participantCount": {"one":"{count} participant","other":"{count} participants"},
+      "fac.roster.observerCount": {"one":"{count} observer","other":"{count} observers"},
+      "fac.roster.observerBadge": "OBSERVER",
+      "fac.roster.remove": "Remove",
+      "fac.roster.confirmRemove": "Remove {name} from the roster? They'll need to rejoin with the correct department.",
+      "fac.roster.removeFailed": "Remove failed: {message}",
+      "fac.notes.loadFailed": "Couldn't load notes: {message}",
+      "fac.notes.badge": {"one":"{count} new","other":"{count} new"},
+      "fac.notes.badgeCritical": {"one":"{count} new · {critical} critical","other":"{count} new · {critical} critical"},
+      "fac.notes.countNotes": {"one":"{count} note","other":"{count} notes"},
+      "fac.notes.countCritical": {"one":"{count} critical gap","other":"{count} critical gaps"},
+      "fac.notes.countImprovement": {"one":"{count} needs improvement","other":"{count} needs improvement"},
+      "fac.notes.countPositive": {"one":"{count} positive","other":"{count} positive"},
+      "fac.notes.countEarlier": {"one":"{count} from an earlier run","other":"{count} from an earlier run"},
+      "fac.notes.countWithdrawn": {"one":"{count} withdrawn (hidden)","other":"{count} withdrawn (hidden)"},
+      "fac.notes.edit": "Edit",
+      "fac.notes.withdraw": "Withdraw",
+      "fac.notes.withdrawAgain": "Click again to withdraw",
+      "fac.notes.empty": "No notes yet.",
+      "fac.notes.withdrawing": "Withdrawing…",
+      "fac.notes.withdrawFailed": "Withdraw failed: {message}",
+      "fac.notesClose.closed_html": "<strong>✓ Notes complete</strong> — closed {time}. No more notes can be added or changed.",
+      "fac.notesClose.notYet_html": "<strong>Notes complete</strong> becomes available once you end the exercise. After the end, Observers can add or edit notes for one hour, and you for 48 hours.",
+      "fac.notesClose.auto_html": "<strong>Notes closed</strong> automatically 48 hours after the exercise ended.",
+      "fac.notesClose.openBoth_html": "Notes are open — Observers until {observers}, you until {you}. When everyone has finished, press <strong>Notes complete</strong>.",
+      "fac.notesClose.openYou_html": "Notes are open — Observers closed (one hour after the end), you until {you}. When everyone has finished, press <strong>Notes complete</strong>.",
+      "fac.notesClose.sure": "Are you sure? This closes notes for everyone, for good.",
+      "fac.notesClose.closing": "Closing…",
+      "fac.notesClose.yes": "Yes, close notes",
+      "fac.notesClose.cancel": "Cancel",
+      "fac.notesClose.button": "Notes complete",
+      "fac.notesClose.failed": "Notes complete failed: {message}",
+      "fac.startCheck.noPresence": "Who is online could not be checked just now (no answer from the server).",
+      "fac.startCheck.noScreen": "{screen}: no screen connected.",
+      "fac.startCheck.notResponding": "{screen}: not responding.",
+      "fac.startCheck.soundOff": "{screen}: sound off — someone needs to tap \"Tap to begin\".",
+      "fac.startCheck.maySleep": "{screen}: may go to sleep — plug it in and switch off battery saver.",
+      "fac.startCheck.roomNotChosen": "A room screen has not chosen its room yet.",
+      "fac.startCheck.noParticipants": "No participants have joined yet.",
+      "fac.startCheck.deptNobody": "{department}: nobody online.",
+      "fac.startCheck.offlineOfOne": "{count} of {total} registered participant is not online.",
+      "fac.startCheck.offlineOfMany": {"one":"{count} of {total} registered participants is not online.","other":"{count} of {total} registered participants are not online."},
+      "fac.resume.label": "Resume at inject {number}",
+      "fac.resume.title": "Resume at inject {number}?",
+      "fac.resume.clockUnlocked": "The inject is unlocked, so it has no deadline until you lock it or move on.",
+      "fac.resume.clockNoLimit": "This inject has no time limit.",
+      "fac.resume.clockTimesUp": "Its time had already run out when you ended, so it comes back as \"Time's up\". Press \"+5 min for this inject\" if teams need more time; answers sent then count as after the time.",
+      "fac.resume.clockCarriesOn": "Its countdown carries on from where it stopped: {time} left. It is not given its full time again.",
+      "fac.resume.notesClosed": "Notes were marked complete and stay closed.",
+      "fac.resume.body": "The thank-you screens go and every device returns to inject {number} of {total} — \"{title}\". Earlier injects are not replayed, and this inject's sound is not played again. The exercise then carries on from here.",
+      "fac.endCheck.injectsLeft": {"one":"You are on inject {number} of {total}: {count} inject has not been played.","other":"You are on inject {number} of {total}: {count} injects have not been played."},
+      "fac.endCheck.notStarted": "The exercise has not started yet. Ending now closes it without any inject played.",
+      "fac.endCheck.allSubmitted": "Every responsible department has submitted the current inject.",
+      "fac.endStrip.notesComplete": "Notes complete: notes and Observer messages are closed for everyone.",
+      "fac.endStrip.observersUntil": "Observers can add or edit notes and message you until {time} ({left}).",
+      "fac.endStrip.observersOver": "Observers' hour is over: their notes and message box are closed.",
+      "fac.endStrip.ownUntil": "Your own notes stay open until {time}, or until you press \"Notes complete\".",
+      "fac.endStrip.ownClosed": "Your own notes closed 48 hours after the end.",
+      "fac.endStrip.panelsLive": "Every panel on this page stays live: control tower, response status, Observer notes, messages and the attendee list.",
+      "fac.endStrip.resume": "Ended by mistake? Press \"{button}\" to return everyone to the inject that was showing, with the time that was left and without its sound.",
+      "fac.endStrip.ended": "Exercise ended. Every device now shows the thank-you screen.",
+      "fac.endStrip.endedAt": "Exercise ended at {time}. Every device now shows the thank-you screen.",
+      "fac.sessionStatus.lobby": "lobby",
+      "fac.sessionStatus.running": "running",
+      "fac.sessionStatus.ended": "ended",
+      "fac.statusLine.index": "{number} of {total}",
+      "fac.statusLine.indexLast": "{number} of {total} — last inject",
+      "fac.statusLine.notStarted": {"one":"not started ({count} injects)","other":"not started ({count} injects)"},
+      "fac.current.durationExtended": "{base} + {extra} extended = {total} min",
+      "fac.current.duration": "{minutes} min",
+      "fac.current.unlocked": "UNLOCKED for participants",
+      "fac.current.sfx": "sfx: {name}",
+      "fac.current.video": "video: {title}",
+      "fac.current.none": "none",
+      "fac.current.lastInject": "this is the last inject; click \"End exercise\" to finish",
+      "fac.current.noInject": "No current inject.",
+      // ---- Connection check (check.html) ----
+      "check.page.title": "PlanProof — Connection check",
+      "check.page.context": "Connection check",
+      "check.page.heading": "PlanProof connection check",
+      "check.page.lead": "Run this on the network and device you will use for the exercise (meeting-room WiFi, room screen laptop, a phone). It takes about 20 seconds and reads no company data.",
+      "check.page.fallbackNote": "If something fails and the advice below doesn't help, a phone's mobile data hotspot is a quick fallback for the room screen and the facilitator's laptop.",
+      "check.checking": "Checking…",
+      "check.site.heading": "PlanProof website",
+      "check.site.reachable": "Reachable ({ms} ms).",
+      "check.site.notReachable": "Not reachable ({reason}).",
+      "check.data.heading": "Exercise data service",
+      "check.data.reachable": "Reachable ({ms} ms).",
+      "check.data.notReachable": "Not reachable ({reason}).",
+      "check.live.heading": "Live updates (WebSocket)",
+      "check.live.checking": "Checking… (up to 12 seconds)",
+      "check.live.working": "Working ({ms} ms).",
+      "check.live.blocked": "Live updates are blocked on this network ({reason}). Screens would only refresh every 15 seconds.",
+      "check.clock.heading": "Device clock",
+      "check.clock.noServerTime": "Could not read the server time to compare.",
+      "check.clock.setAutomaticallyFix": "Make sure the device's date and time are set automatically.",
+      "check.clock.correct": "Correct (within {count} s).",
+      "check.clock.fast": "This device's clock is {count} seconds fast.",
+      "check.clock.slow": "This device's clock is {count} seconds slow.",
+      "check.clock.wrongFix": "Turn on 'Set time automatically' in the device's date and time settings — inject countdowns use the device clock.",
+      "check.clock.notChecked": "Not checked (the website was not reachable).",
+      "check.browser.heading": "Browser",
+      "check.browser.missing": "This browser is missing: {list}.",
+      "check.browser.missingFix": "Use an up-to-date Chrome, Edge, Safari or Firefox.",
+      "check.browser.upToDate": "Up to date.",
+      "check.awake.heading": "Staying awake",
+      "check.awake.ok": "This device can be kept awake during the exercise.",
+      "check.awake.lockAdvice": "On a company laptop used as a room screen, also ask IT to make the automatic screen lock longer than the exercise — a website cannot override a forced lock.",
+      "check.awake.maySleep": "This device may go to sleep during the exercise ({reason}).",
+      "check.awake.maySleepFix": "Keep it plugged in, switch off battery saver, and set the screen to stay on for the length of the exercise. On a company laptop used as a room screen, also ask IT to make the automatic screen lock longer than the exercise — a website cannot override a forced lock.",
+      "check.awake.notSupported": "not supported by this browser",
+      "check.autoSound.heading": "Sound without a tap (room screens only)",
+      "check.autoSound.allowed": "Allowed — after a full reload this room screen will start its sound by itself.",
+      "check.autoSound.notAllowed": "Not allowed yet — after a full reload this room screen needs one tap on \"Tap to begin\". The exercise still works. To avoid the tap:",
+      "check.autoSound.notCheckable": "Could not be checked on this browser. After a full reload the room screen may need one tap.",
+      "check.autoSound.adviceEdge": "Microsoft Edge: type edge://settings/content/mediaAutoplay in the address bar (or open Settings and search for \"autoplay\"), set Media autoplay to Allow, then reload this page.",
+      "check.autoSound.adviceFirefox": "Firefox: click the autoplay icon in the address bar (or Page Info → Permissions) and set Autoplay to Allow Audio and Video for plan-proof.com. Then reload this page. Help: support.mozilla.org/kb/block-autoplay",
+      "check.autoSound.adviceSafari": "Safari on Mac: click the Page menu button in the address bar, choose Website Settings, and set Auto-Play to Allow All Auto-Play. Then reload this page.",
+      "check.autoSound.adviceChrome": "Chrome has no simple switch for this. It usually starts allowing it once this laptop has played the exercise sounds a few times; otherwise use Microsoft Edge, Firefox or Safari for the room screen, or ask IT to add https://plan-proof.com to Chrome's AutoplayAllowlist policy.",
+      "check.sound.heading": "Sound (room screens only)",
+      "check.sound.instructions": "Press the button, then say whether you heard a phone ringing.",
+      "check.sound.playButton": "Play test sound",
+      "check.sound.heardYes": "Yes, I heard it",
+      "check.sound.heardNo": "No sound",
+      "check.sound.refused": "The browser refused to play sound ({reason}).",
+      "check.sound.refusedFix": "Check the device isn't muted and allow sound for plan-proof.com in the browser.",
+      "check.sound.works": "Sound works.",
+      "check.sound.notHeard": "No sound was heard.",
+      "check.sound.notHeardFix": "Check the volume, the selected speaker/HDMI audio output, and that the browser tab isn't muted.",
+      "check.allowFix": "Ask your IT team to allow https://plan-proof.com and https://{host}, including WebSocket (wss://) connections to {host}, for the exercise devices — or use mobile data.",
+      "check.err.timedOut": "timed out",
+      "check.summary.notReady": "Not ready yet — fix the red items below (the advice under each one says how), then run the check again.",
+      "check.summary.warning": "Ready, with a warning — see the amber item.",
+      "check.summary.ready": "Ready — this device and network can run the exercise.",
+      "check.actions.copy": "Copy results",
+      "check.actions.copied": "Copied",
+      "check.actions.copyPrompt": "Copy the results:",
+      "check.actions.email": "Email results to PlanProof",
+      "check.actions.again": "Run again",
+      "check.report.subject": "Connection check results",
+      "check.report.title": "PlanProof connection check — {date}",
+      "check.report.device": "Device: {device}",
+      "check.report.line": "{name}: {state} — {message}",
+      "check.report.lineNotRun": "{name}: not run",
+      "check.report.name.site": "Website",
+      "check.report.name.data": "Data service",
+      "check.report.name.live": "Live updates",
+      "check.report.name.clock": "Clock",
+      "check.report.name.browser": "Browser",
+      "check.report.name.awake": "Staying awake",
+      "check.report.name.autoSound": "Sound without a tap",
+      "check.report.name.sound": "Sound",
+      "check.report.state.ok": "OK",
+      "check.report.state.warn": "WARN",
+      "check.report.state.bad": "BAD",
+      "check.report.state.info": "INFO",
+      // ---- Printable backup pack (print.html) ----
+      "print.page.title": "PlanProof — Printable backup pack",
+      "print.toolbar.heading": "Printable backup pack",
+      "print.toolbar.printButton": "Print / Save as PDF",
+      "print.toolbar.injects": "{count} injects",
+      "print.toolbar.departments": "{count} departments",
+      "print.loading": "Loading…",
+      "print.err.openFromFacilitator": "Open this pack from the facilitator page (it needs the private facilitator link).",
+      "print.err.loadFailed": "Couldn't load the session: {message}",
+      "print.err.notFound": "Session not found.",
+      "print.defaultTitle": "Tabletop exercise",
+      "print.docTitle": "Backup pack — {title}",
+      "print.cover.eyebrow": "PlanProof · Backup pack · Facilitator copy",
+      "print.cover.organisation": "Organisation",
+      "print.cover.injects": "Injects",
+      "print.cover.injectsWithTime": "{injects} (about {count} minutes of answer time)",
+      "print.cover.departments": "Departments",
+      "print.cover.printed": "Printed",
+      "print.cover.failHeading": "If the screens or the network fail",
+      "print.cover.failStep1": "Tell the room calmly: the exercise continues on paper. Nothing already submitted is lost.",
+      "print.cover.failStep2": "Hand each department its answer sheets (last pages — copy as many as needed).",
+      "print.cover.failStep3": "Read the current inject aloud from this pack, then the task. Start a phone timer for the time shown.",
+      "print.cover.failStep4": "Teams write their answer, the time they finished, and their department on the sheet.",
+      "print.cover.failStep5": "At the end of each inject, collect the sheets and note the inject number on the back.",
+      "print.cover.failStep6": "When the system is back, carry on from the next inject on screen. Paper answers are typed into the report afterwards — mark them \"paper\" in the evidence.",
+      "print.cover.sayHeading": "Say this to the room before you start",
+      "print.cover.sayStep1": "This exercise tests the plan, not individuals. Findings are reported at team level.",
+      "print.cover.sayStep2": "Please switch your phone to Do Not Disturb or keep it silent during the exercise. Do not use flight mode.",
+      "print.cover.sayStep3": "Keep your phone or laptop plugged in if you can, and leave the exercise page open in front.",
+      "print.cover.sayStep4": "If you step away or take a call, the page catches up by itself when you come back.",
+      "print.cover.foot": "Confidential — prepared by PlanProof for this exercise only. This exercise tests the plan, not individuals.",
+      "print.list.heading": "Inject list",
+      "print.list.inject": "Inject",
+      "print.list.responsible": "Responsible",
+      "print.list.answer": "Answer",
+      "print.list.time": "Time",
+      "print.list.individual": "Individual",
+      "print.list.group": "Group",
+      "print.list.minutes": "{count} min",
+      "print.inject.eyebrow": "Inject {number} of {total}",
+      "print.inject.fallbackTitle": "Inject {number}",
+      "print.inject.responsible": "Responsible",
+      "print.inject.answer": "Answer",
+      "print.inject.answerIndividual": "Individual — everyone answers on their own sheet",
+      "print.inject.answerGroup": "Group — one answer per department",
+      "print.inject.timeAllowed": "Time allowed",
+      "print.inject.minutes": "{count} minutes",
+      "print.inject.noTimeLimit": "No time limit",
+      "print.inject.task_html": "<strong>Task:</strong> {task}",
+      "print.inject.sound": "Sound on the room screen: {sounds} (not needed on paper).",
+      "print.inject.notesHeading": "Facilitator notes",
+      "print.sheet.eyebrow": "Answer sheet — copy as many as needed",
+      "print.sheet.heading": "Department answer sheet",
+      "print.sheet.department": "Department",
+      "print.sheet.injectNumber": "Inject number",
+      "print.sheet.timeFinished": "Time finished",
+      "print.sheet.answerType": "Answer type",
+      "print.sheet.groupAnswer": "☐ Group answer",
+      "print.sheet.individualAnswer": "☐ Individual answer (name not required)",
+      "print.sheet.yourAnswer": "Your answer",
+      "print.sheet.foot": "This exercise tests the plan, not individuals. Findings are reported at team level.",
+      // EN_STRINGS>>
+    },
+    // Refusal messages written by the database, in English. The page looks
+    // the message up here to show it in the exercise's language; a message
+    // that is not listed is shown as it came (never blank). An entry is the
+    // exact text, or "re:" + a pattern with the changing parts captured and
+    // "text" giving the sentence with $1, $2 … in their place.
+    db: [
+      // <<EN_DB
+      { match: "No such exercise session." },
+      { match: "Please complete both your first name and family name." },
+      { match: "Please enter your job title." },
+      { match: "re:^room must be between 1 and (.+) for this session\\.$", text: "room must be between 1 and $1 for this session." },
+      { match: "This exercise has already ended — joining is no longer possible." },
+      { match: "This exercise has already ended — submissions are no longer accepted." },
+      { match: "Unknown participant for this session — please rejoin the exercise." },
+      { match: "Not authorised: this needs the facilitator link." },
+      { match: "Notes can only be closed after the exercise has ended." },
+      { match: "A message can be up to 280 characters." },
+      { match: "Message limit reached for this exercise." },
+      { match: "Missing message id." },
+      { match: "Please choose or type a message." },
+      { match: "That room is not part of this exercise." },
+      { match: "This message could not be sent. Please try again." },
+      { match: "That screen is not connected to this exercise." },
+      { match: "Unknown command." },
+      { match: "The exercise language can only be changed before the exercise starts." },
+      { match: "Only people registered as Observers can use this channel. Please rejoin as an Observer, or ask the facilitator." },
+      { match: "Missing device id." },
+      { match: "This device is not registered in this exercise." },
+      { match: "Too many room screens for this exercise." },
+      { match: "Unknown device kind." },
+      { match: "A note can be up to 500 characters." },
+      { match: "Missing note id." },
+      { match: "Not authorised: notes need an Observer registration or the facilitator link." },
+      { match: "Note limit reached for this exercise." },
+      { match: "Notes can only be logged against injects that have been played." },
+      { match: "Only people registered as Observers can log notes. Please rejoin as an Observer, or ask the facilitator." },
+      { match: "Please choose a topic." },
+      { match: "Please choose a type: Positive, Needs improvement or Critical gap." },
+      { match: "Please choose the department the note is about." },
+      { match: "Please choose who the note is about." },
+      { match: "Please tick at least two departments." },
+      { match: "Please type the topic." },
+      { match: "Please type who the external party is (for example Civil Defence or Police)." },
+      { match: "Please write the note." },
+      { match: "That inject is not part of this exercise." },
+      { match: "The external party can be up to 80 characters." },
+      { match: "The topic can be up to 60 characters." },
+      { match: "This note belongs to someone else." },
+      { match: "This note is from an earlier run of the exercise and can no longer be changed." },
+      { match: "This note was withdrawn and can no longer be changed." },
+      { match: "re:^Unknown department \"(.+)\"\\. Ask the facilitator to add it first\\.$", text: "Unknown department \"$1\". Ask the facilitator to add it first." },
+      { match: "Answers can only be saved for injects that have been played." },
+      { match: "The answer is too long (20,000 characters at most)." },
+      { match: "The exercise has moved on from this inject, so its submitted answer can no longer be changed. Ask the facilitator if it needs changing." },
+      { match: "The time for this inject is over, so the submitted answer can no longer be changed. Ask the facilitator to unlock the inject if it needs changing." },
+      { match: "This answer has already been submitted. To change it, use \"Edit answer\" while the time for this inject is still running; after that, ask the facilitator to unlock the inject." },
+      { match: "Unknown answer status." },
+      { match: "You are not registered as a participant in this exercise. Please join again, or ask the facilitator." },
+      { match: "You can attach at most 3 documents." },
+      { match: "Message limit reached for this exercise. Please speak to the facilitator directly." },
+      { match: "This exercise has already ended — messages can no longer be sent." },
+      { match: "Note not found." },
+      { match: "Only the person who wrote this note can withdraw it." },
+      { match: "Notes are closed for this exercise." },
+      { match: "Notes closed 48 hours after the exercise ended." },
+      { match: "Notes open when the exercise starts." },
+      { match: "Observer notes closed one hour after the exercise ended." },
+      { match: "Messages are closed: notes are complete for this exercise." },
+      { match: "Messages between Observers and the facilitator closed one hour after the exercise ended." },
+      // EN_DB>>
+    ],
+  };
+
+  var packs = { en: EN };
+  var current = "en";
+
+  function sessionId() {
+    try { return new URLSearchParams(window.location.search).get("session") || ""; } catch (e) { return ""; }
+  }
+  function cacheKey() { return "pp_lang_" + sessionId(); }
+  function readCache() { try { return window.localStorage.getItem(cacheKey()) || ""; } catch (e) { return ""; } }
+  function writeCache(code) {
+    try {
+      // English leaves no trace: only another language is remembered.
+      if (code === "en") window.localStorage.removeItem(cacheKey());
+      else window.localStorage.setItem(cacheKey(), code);
+      return true;
+    } catch (e) { return false; }
+  }
+  function validCode(code) { return typeof code === "string" && /^[a-z]{2}$/.test(code); }
+
+  function pickForm(value, params, lang) {
+    if (value === null || typeof value !== "object") return value;
+    var n = params ? Number(params.count) : NaN;
+    if (!isNaN(n) && value["=" + n] !== undefined) return value["=" + n];
+    var form = "other";
+    try { form = new Intl.PluralRules(lang).select(n); } catch (e) { form = n === 1 ? "one" : "other"; }
+    return value[form] !== undefined ? value[form] : value.other;
+  }
+  // Slots are filled as given. Outside English each filled value is also
+  // wrapped in invisible "isolate" marks, so a name, a department or a
+  // number keeps its own direction inside a right-to-left sentence.
+  function fill(text, params, lang) {
+    if (!params || typeof text !== "string") return text;
+    var isolate = lang !== "en";
+    return text.replace(/\{(\w+)\}/g, function (whole, name) {
+      var v = params[name];
+      if (v === undefined || v === null) return whole;
+      return isolate ? "\u2068" + String(v) + "\u2069" : String(v);
+    });
+  }
+
+  // The wording for a key, in the exercise's language. A key missing from
+  // that language falls back to English; a key missing everywhere shows the
+  // key itself (and warns), never an empty space.
+  function T(key, params) {
+    var pack = packs[current];
+    var value = pack && pack.strings ? pack.strings[key] : undefined;
+    var lang = current;
+    if (value === undefined) { value = EN.strings[key]; lang = "en"; }
+    if (value === undefined) {
+      if (window.console && console.warn) console.warn("[lang] no wording for key: " + key);
+      return key;
+    }
+    return fill(pickForm(value, params, lang), params, current);
+  }
+  function has(key) { return EN.strings[key] !== undefined; }
+
+  // Static markup: data-i18n (text), data-i18n-html (markup),
+  // data-i18n-attr="placeholder:key; title:key2", and data-i18n-nodes="k1; k2"
+  // for an element that mixes its own text with child elements: its direct
+  // pieces of text that contain letters take the keys in order, and the child
+  // elements are left alone. In English none of this is ever run — the
+  // inline English stays exactly as written in the page.
+  function apply(root) {
+    root = root || document;
+    var i, list, el;
+    list = root.querySelectorAll("[data-i18n]");
+    for (i = 0; i < list.length; i++) { el = list[i]; el.textContent = T(el.getAttribute("data-i18n")); }
+    list = root.querySelectorAll("[data-i18n-html]");
+    for (i = 0; i < list.length; i++) { el = list[i]; el.innerHTML = T(el.getAttribute("data-i18n-html")); }
+    list = root.querySelectorAll("[data-i18n-attr]");
+    for (i = 0; i < list.length; i++) {
+      el = list[i];
+      el.getAttribute("data-i18n-attr").split(";").forEach(function (pair) {
+        var at = pair.indexOf(":");
+        if (at < 1) return;
+        var attr = pair.slice(0, at).trim(), key = pair.slice(at + 1).trim();
+        if (attr && key) el.setAttribute(attr, T(key));
+      });
+    }
+    list = root.querySelectorAll("[data-i18n-nodes]");
+    for (i = 0; i < list.length; i++) {
+      el = list[i];
+      var keys = el.getAttribute("data-i18n-nodes").split(";").map(function (k) { return k.trim(); }).filter(Boolean);
+      for (var n = el.firstChild; n && keys.length; n = n.nextSibling) {
+        if (n.nodeType !== 3 || !/[A-Za-z\u0600-\u06FF]/.test(n.nodeValue)) continue;
+        var lead = /^\s*/.exec(n.nodeValue)[0], trail = /\s*$/.exec(n.nodeValue)[0];
+        n.nodeValue = lead + T(keys.shift()) + trail;
+      }
+    }
+  }
+
+  // A language is switched on once, while the page is still loading and
+  // before its own scripts run, so the page draws itself in that language.
+  function activate(code) {
+    var pack = packs[code];
+    if (!pack) return false;
+    current = code;
+    document.documentElement.lang = code;
+    document.documentElement.dir = pack.dir === "rtl" ? "rtl" : "ltr";
+    if (code !== "en") apply(document);
+    return true;
+  }
+
+  // The language this page starts in: what this device last learned from
+  // the exercise itself, otherwise the hint in the link (&lang=xx).
+  var hint = "";
+  try { hint = new URLSearchParams(window.location.search).get("lang") || ""; } catch (e) { hint = ""; }
+  var wanted = readCache();
+  if (!validCode(wanted)) wanted = hint;
+  if (!validCode(wanted)) wanted = "en";
+
+  function register(code, pack) {
+    if (!validCode(code) || !pack || !pack.strings) return;
+    packs[code] = pack;
+    if (code === wanted && current !== code) activate(code);
+  }
+
+  // Called with the exercise's own language every time the exercise is
+  // fetched. English exercise on an English page: nothing happens at all.
+  // Otherwise the page is opened again once, with the language in its link,
+  // so it draws itself from the start in the exercise's language.
+  function useSessionLanguage(code) {
+    if (!validCode(code)) code = "en";
+    if (code === current) {
+      if (code !== "en" || readCache()) writeCache(code);
+      return Promise.resolve(false);
+    }
+    writeCache(code);
+    // Already tried with this language in the link (its file would not
+    // load): stay as we are — English — rather than reload for ever.
+    if (hint === code) return Promise.resolve(false);
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.set("lang", code);
+      window.location.replace(url.toString());
+      return new Promise(function () { /* the page is reloading */ });
+    } catch (e) {
+      return Promise.resolve(false);
+    }
+  }
+
+  // A database refusal message, in the exercise's language.
+  function dbMessage(text) {
+    if (current === "en" || typeof text !== "string" || !text) return text;
+    var list = (packs[current] && packs[current].db) || [];
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i];
+      if (!entry || !entry.match) continue;
+      if (entry.match.slice(0, 3) === "re:") {
+        var m;
+        try { m = new RegExp(entry.match.slice(3)).exec(text); } catch (e) { m = null; }
+        if (m) return String(entry.text || text).replace(/\$(\d)/g, function (w, n) { return m[Number(n)] === undefined ? "" : m[Number(n)]; });
+      } else if (entry.match === text) {
+        return entry.text || text;
+      }
+    }
+    return text;
+  }
+
+  window.PPLang = {
+    T: T,
+    has: has,
+    apply: apply,
+    register: register,
+    useSessionLanguage: useSessionLanguage,
+    dbMessage: dbMessage,
+    packs: packs,
+    lang: function () { return current; },
+    dir: function () { return (packs[current] && packs[current].dir) === "rtl" ? "rtl" : "ltr"; },
+    // For dates and times: [] in English keeps each device's own format,
+    // exactly as before; another language formats in that language.
+    locales: function () { return current === "en" ? [] : [current]; },
+  };
+  window.T = T;
+
+  // Another language is fetched before the rest of the page's scripts run, so
+  // the page draws itself once, in the right language. English never does this.
+  if (wanted !== "en") {
+    try {
+      document.write('<script src="./lang-' + wanted + '.js"><\/script>');
+    } catch (e) { /* stays English */ }
+  }
+})();

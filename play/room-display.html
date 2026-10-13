@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PlanProof — Exercise room display</title>
+<title data-i18n="room.page.title">PlanProof — Exercise room display</title>
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="./theme.css" />
@@ -22,10 +22,11 @@
   .timer-row .value {
     display: block; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums;
     font-size: clamp(3.2rem, 9vw, 6.5rem); line-height: 1.1; color: var(--text);
+    direction: ltr; unicode-bidi: isolate;
   }
   .timer-row .value.warn { color: var(--amber); }
-  .timer-row .value.up { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; }
-  .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; }
+  .timer-row .value.up { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; direction: inherit; unicode-bidi: normal; }
+  .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; direction: inherit; unicode-bidi: normal; }
   .video-card {
     width: min(720px, 90vw); aspect-ratio: 16/9;
     background: linear-gradient(135deg, var(--panel-raised), var(--bg));
@@ -60,14 +61,14 @@
   .sound-gate .room-buttons button.sel { background: var(--text); color: var(--bg); border-color: var(--text); }
   .screen-room { font-size: 0.95rem; color: var(--text-muted); font-family: var(--font-body); font-weight: 500; }
   .screen-room button {
-    margin-left: 6px; font: inherit; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+    margin-inline-start: 6px; font: inherit; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; cursor: pointer;
     background: transparent; color: inherit; border: 1px solid var(--border-strong);
   }
   /* Shows what the last sound attempt actually did (playing / blocked / no
      file) right on screen, so a sound problem can be diagnosed on the room's
      own laptop without opening dev tools. */
   #sfxStatus {
-    position: fixed; left: 12px; bottom: 12px; font-size: 0.8rem; font-family: var(--font-mono);
+    position: fixed; inset-inline-start: 12px; bottom: 12px; font-size: 0.8rem; font-family: var(--font-mono);
     color: var(--text-muted); opacity: 0.8; z-index: 5;
   }
   /* Facilitator broadcast (added 5 October 2026). A strip between the header
@@ -83,7 +84,7 @@
   .broadcast-banner .label { font-size: 0.95rem; font-weight: 600; opacity: 0.8; }
   .broadcast-banner .text { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; }
   .broadcast-banner .timebar {
-    position: absolute; left: 0; bottom: 0; height: 5px; width: 100%;
+    position: absolute; inset-inline-start: 0; bottom: 0; height: 5px; width: 100%;
     background: rgba(32,20,4,0.5); transform-origin: left center;
   }
   @keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
@@ -108,7 +109,7 @@
   body.observer-mode .broadcast-banner .text { font-size: 1.15rem; }
   body.observer-mode #sfxStatus { display: none; }
   body.observer-mode footer { display: none; }
-  .observer-who { display: block; font-family: var(--font-body); font-size: 0.85rem; font-weight: 400; color: var(--text-muted); text-align: right; }
+  .observer-who { display: block; font-family: var(--font-body); font-size: 0.85rem; font-weight: 400; color: var(--text-muted); text-align: end; }
   .observer-panel { padding: 8px 16px 64px; max-width: 720px; width: 100%; margin: 0 auto; }
   .observer-panel h2 { font-size: 1.1rem; margin: 18px 0 8px; }
   .observer-panel .mine { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 6px 16px; }
@@ -137,14 +138,14 @@
   }
   .obs-jump .arrow { color: var(--amber); }
   .obs-badge {
-    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+    display: inline-block; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px;
     background: var(--amber); color: var(--amber-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
   }
   .obs-thread { list-style: none; margin: 0; padding: 2px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
   .obs-thread li { padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
   .obs-thread li:first-child { border-top: none; }
   .obs-thread .meta { display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); }
-  .obs-thread li.from-fac { border-left: 3px solid var(--amber); margin-left: -16px; padding-left: 13px; }
+  .obs-thread li.from-fac { border-inline-start: 3px solid var(--amber); margin-inline-start: -16px; padding-inline-start: 13px; }
   .obs-thread li.unread { font-weight: 600; }
   .obs-thread li.mine-sent { color: var(--text-muted); }
   .obs-thread .empty { color: var(--text-muted); font-size: 0.9rem; }
@@ -154,7 +155,7 @@
   .obs-msg-card label { margin-top: 12px; }
   .obs-msg-card textarea { min-height: 76px; resize: vertical; border-width: 2px; }
   .obs-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .obs-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); }
+  .obs-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
   .obs-msg-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
   .obs-msg-feedback.ok { color: var(--teal-soft); }
   .obs-msg-feedback.err { color: var(--red-soft); }
@@ -163,19 +164,19 @@
 <body>
 
 <div class="sound-gate" id="soundGate">
-  <span class="pp-brand large"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
-  <div class="gate-title">Exercise room display</div>
+  <span class="pp-brand large" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <div class="gate-title" data-i18n="room.gate.title">Exercise room display</div>
   <div class="room-pick" id="roomPick" hidden>
-    <div class="q">Which room is this screen in?</div>
+    <div class="q" data-i18n="room.gate.question">Which room is this screen in?</div>
     <div class="room-buttons" id="roomButtons"></div>
   </div>
-  <button class="pp-btn" id="startBtn">Tap to begin (enables sound)</button>
+  <button class="pp-btn" id="startBtn" data-i18n="room.gate.begin">Tap to begin (enables sound)</button>
 </div>
 
 <header class="pp-top">
-  <span class="pp-brand"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <span class="pp-brand" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
   <div class="room-context">
-    <span><span id="clientLabel">PlanProof</span></span>
+    <span><span id="clientLabel" data-i18n-skip>PlanProof</span></span>
     <span class="screen-room" id="screenRoom" hidden></span>
   </div>
 </header>
@@ -183,55 +184,56 @@
 <div class="obs-banner" id="obsBanner" role="status" aria-live="polite" hidden>
   <div class="obs-banner-inner">
     <div>
-      <div class="label">Message from the facilitator <span id="obsBannerTime"></span></div>
+      <div class="label" data-i18n-nodes="room.obsBanner.label">Message from the facilitator <span id="obsBannerTime"></span></div>
       <div class="text" id="obsBannerText"></div>
     </div>
-    <button type="button" id="obsBannerOk">Got it</button>
+    <button type="button" id="obsBannerOk" data-i18n="room.obsBanner.gotIt">Got it</button>
   </div>
 </div>
 
 <div class="broadcast-banner" id="broadcastBanner" role="status" aria-live="polite">
-  <div class="label">Message from the facilitator</div>
+  <div class="label" data-i18n="room.broadcast.label">Message from the facilitator</div>
   <div class="text" id="broadcastText"></div>
   <div class="timebar" id="broadcastTimebar"></div>
 </div>
 
 <main id="main">
-  <div class="lobby">Waiting for the facilitator to start the exercise…</div>
+  <div class="lobby" data-i18n="room.lobby.waiting">Waiting for the facilitator to start the exercise…</div>
 </main>
 
-<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes and messages">
+<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes and messages" data-i18n-attr="aria-label:room.observer.panelLabel">
   <a class="obs-jump" id="obsJump" href="#obsMessages">
-    <span>Message the facilitator<span class="obs-badge" id="obsJumpBadge" hidden></span></span>
+    <span data-i18n-nodes="room.msg.jump">Message the facilitator<span class="obs-badge" id="obsJumpBadge" hidden></span></span>
     <span class="arrow" aria-hidden="true">&darr;</span>
   </a>
-  <h2>Your notes</h2>
+  <h2 data-i18n="room.notes.heading">Your notes</h2>
   <div id="noteForm"></div>
-  <h2>Notes you've logged</h2>
-  <div class="mine" id="myNotes"><div class="empty">None yet.</div></div>
+  <h2 data-i18n="room.notes.loggedHeading">Notes you've logged</h2>
+  <div class="mine" id="myNotes"><div class="empty" data-i18n="room.notes.noneYet">None yet.</div></div>
 
-  <h2 id="obsMessages">Messages with the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
-  <ul class="obs-thread" id="obsThread"><li class="empty">No messages yet.</li></ul>
+  <h2 id="obsMessages" data-i18n-nodes="room.msg.heading">Messages with the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
+  <ul class="obs-thread" id="obsThread"><li class="empty" data-i18n="room.msg.none">No messages yet.</li></ul>
   <div class="obs-msg-card pp-form">
-    <h3>Message the facilitator</h3>
-    <p class="pp-hint" id="obsMsgHint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
-    <label for="obsMsgPreset">Choose a ready-made message</label>
-    <select id="obsMsgPreset"><option value="">— Choose a ready-made message —</option></select>
-    <label for="obsMsgText">Or type your own message</label>
-    <textarea id="obsMsgText" maxlength="280" placeholder="Tap here and type your message"></textarea>
+    <h3 data-i18n="room.msg.cardTitle">Message the facilitator</h3>
+    <p class="pp-hint" id="obsMsgHint" data-i18n="room.msg.hint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
+    <label for="obsMsgPreset" data-i18n="room.msg.presetLabel">Choose a ready-made message</label>
+    <select id="obsMsgPreset"><option value="" data-i18n="room.msg.presetChoose">— Choose a ready-made message —</option></select>
+    <label for="obsMsgText" data-i18n="room.msg.textLabel">Or type your own message</label>
+    <textarea id="obsMsgText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:room.msg.textPlaceholder"></textarea>
     <div class="obs-msg-row">
       <span class="count" id="obsMsgCount">0 / 280</span>
-      <button type="button" class="pp-btn" id="obsMsgSendBtn" disabled>Send &rarr;</button>
+      <button type="button" class="pp-btn" id="obsMsgSendBtn" disabled data-i18n="room.msg.send">Send &rarr;</button>
     </div>
     <div class="obs-msg-feedback" id="obsMsgFeedback"></div>
   </div>
 </section>
 
-<footer>Exercise room display</footer>
-<div id="sfxStatus">sound: —</div>
+<footer data-i18n="room.page.footer">Exercise room display</footer>
+<div id="sfxStatus" data-i18n="room.sound.idle">sound: —</div>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script src="./notes.js"></script>
 <script>
@@ -249,7 +251,7 @@
     }
     if (!observer || observer.role !== "observer" || !observer.attendeeId) {
       location.replace(`./join.html?session=${encodeURIComponent(sessionId)}`);
-      throw new Error("No Observer registration on this device — sent back to the join page.");
+      throw new Error("No Observer registration on this device — sent back to the join page."); // i18n-ok: developer only (the page is already leaving for the join page)
     }
     document.body.classList.add("observer-mode");
     document.getElementById("soundGate").style.display = "none";
@@ -258,7 +260,9 @@
       `<span class="observer-who" id="observerWho"></span>`
     );
     document.getElementById("observerWho").textContent =
-      `Observer: ${observer.name} — ${observer.department}${observer.room ? ` — Room ${observer.room}` : ""}`;
+      observer.room
+        ? T("room.observer.whoRoom", { name: String(observer.name), department: String(observer.department), room: observer.room })
+        : T("room.observer.who", { name: String(observer.name), department: String(observer.department) });
     document.getElementById("observerPanel").hidden = false;
   }
   const mainEl = document.getElementById("main");
@@ -280,11 +284,11 @@
   const screenId = observerMode || !sessionId ? null : loadScreenIdentity(sessionId);
 
   setSfxStatusHandler((msg) => {
-    sfxStatusEl.textContent = `sound: ${msg}`;
+    sfxStatusEl.textContent = T("room.sound.status", { msg });
   });
 
   if (!sessionId) {
-    mainEl.innerHTML = `<div class="lobby">No ?session=&lt;id&gt; given in the URL.</div>`;
+    mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.error.noSession"))}</div>`;
   } else {
     // ---- Start gate, room question and sound (item 6, 11 October 2026) ---
     // A shared room screen has no registration, so it keeps its own id in
@@ -306,15 +310,15 @@
       roomPickEl.hidden = !many;
       if (many) {
         roomButtonsEl.innerHTML = Array.from({ length: roomsKnown }, (_, i) => i + 1)
-          .map((n) => `<button type="button" data-room="${n}" class="${screenId.me.room === n ? "sel" : ""}">Room ${n}${n === 1 ? " (facilitator's)" : ""}</button>`)
+          .map((n) => `<button type="button" data-room="${n}" class="${screenId.me.room === n ? "sel" : ""}">${escapeHtml(n === 1 ? T("room.gate.roomFacilitator", { n }) : T("room.gate.room", { n }))}</button>`)
           .join("");
       }
       startBtnEl.disabled = roomNeeded();
-      startBtnEl.textContent = audioUnlocked ? "Done" : "Tap to begin (enables sound)";
+      startBtnEl.textContent = audioUnlocked ? T("room.gate.done") : T("room.gate.begin");
       gateEl.style.display = gateOpen ? "" : "none";
       screenRoomEl.hidden = !(many && screenId.me.room && !gateOpen);
       if (!screenRoomEl.hidden) {
-        screenRoomEl.innerHTML = `Room ${screenId.me.room} <button type="button" id="changeRoomBtn">change</button>`;
+        screenRoomEl.innerHTML = `${escapeHtml(T("room.screen.room", { room: screenId.me.room }))} <button type="button" id="changeRoomBtn">${escapeHtml(T("room.screen.change"))}</button>`;
       }
     }
     // Called on every session update: a room count that grew or shrank can
@@ -344,7 +348,7 @@
 
     function onSoundUnlocked() {
       audioUnlocked = true;
-      sfxStatusEl.textContent = "sound: unlocked ✓";
+      sfxStatusEl.textContent = T("room.sound.unlocked");
       // Catch up on the sound for whatever inject was already showing
       // before sound was on, since its own playSfx() attempt was blocked.
       if (pendingSfx) {
@@ -383,7 +387,7 @@
       tryUnlockSound(0)
         .then(onSoundUnlocked)
         .catch((err) => {
-          sfxStatusEl.textContent = `sound: unlock failed — ${err.message}`;
+          sfxStatusEl.textContent = T("room.sound.unlockFailed", { message: err.message });
         });
     });
 
@@ -466,17 +470,17 @@
         handleCheckinReply(reply, {
           sync,
           getRow: () => latestRow,
-          onSoft: () => showToast("Refreshed by the facilitator.", 6000),
+          onSoft: () => showToast(T("room.toast.refreshed"), 6000),
         }),
       onRefused: observerMode
-        ? () => setNotice("regNotice", "You are no longer registered in this exercise. Please join again from the join link.")
+        ? () => setNotice("regNotice", T("room.notice.notRegistered"))
         : null,
     });
 
     try {
       if (sessionStorage.getItem("pp_reloaded_by_facilitator")) {
         sessionStorage.removeItem("pp_reloaded_by_facilitator");
-        showToast("Reloaded by the facilitator.", 6000);
+        showToast(T("room.toast.reloaded"), 6000);
       }
     } catch { /* ignore */ }
 
@@ -497,7 +501,7 @@
         return catchUpBroadcast(row, false);
       })
       .catch((err) => {
-        mainEl.innerHTML = `<div class="lobby">Couldn't load session: ${err.message}</div>`;
+        mainEl.innerHTML = `<div class="lobby">${T("room.error.loadSession", { message: err.message })}</div>`;
       });
   }
 
@@ -525,7 +529,7 @@
     // Restart the countdown bar's animation from full.
     bannerBarEl.style.animation = "none";
     void bannerBarEl.offsetWidth;
-    bannerBarEl.style.animation = `shrink ${durationMs}ms linear forwards`;
+    bannerBarEl.style.animation = `shrink ${durationMs}ms linear forwards`; // i18n-ok: CSS animation value
     bannerEl.classList.add("show");
     bannerTimer = setTimeout(hideBroadcast, durationMs);
     return true;
@@ -604,7 +608,7 @@
       // shared room screen never shows a person's name.
       mainEl.innerHTML = observerMode
         ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
-        : `<div class="lobby">Waiting for the facilitator to start the exercise…</div>`;
+        : `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
       lastRenderedIndex = null;
       return;
     }
@@ -635,7 +639,7 @@
     const idx = row.current_inject_index;
     const inject = injects[idx];
     if (!inject) {
-      mainEl.innerHTML = `<div class="lobby">No inject at index ${idx}.</div>`;
+      mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.error.noInject", { idx: String(idx) }))}</div>`;
       return;
     }
 
@@ -643,7 +647,7 @@
     lastRenderedIndex = idx;
 
     const videoBlock = inject.video
-      ? `<div class="video-card"><div class="tag">Now playing</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
+      ? `<div class="video-card"><div class="tag">${escapeHtml(T("room.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
       : "";
 
     mainEl.innerHTML = `
@@ -652,7 +656,7 @@
       <div class="inject-desc">${escapeHtml(inject.desc)}</div>
       <div class="timer-row">
         <div>
-          <span class="label">Time left for this inject</span>
+          <span class="label">${escapeHtml(T("room.timer.label"))}</span>
           <span class="value" id="injectTimerValue">--:--</span>
           <span class="label" id="injectTimerNote" style="margin-top:4px;"></span>
         </div>
@@ -664,7 +668,7 @@
     // injectWasResumed) — also on a screen that was reloaded meanwhile.
     if (isNewInject && inject.sfx && !observerMode && injectWasResumed(row, idx)) {
       pendingSfx = null;
-      sfxStatusEl.textContent = `sound: — resumed inject, ${inject.sfx} not played again`;
+      sfxStatusEl.textContent = T("room.sound.resumed", { name: inject.sfx });
     } else if (isNewInject && inject.sfx && !observerMode) {
       if (audioUnlocked) {
         playSfx(inject.sfx);
@@ -672,7 +676,7 @@
         // Don't attempt a doomed play() before the gate is tapped — queue
         // it so the unlock handler above can play it the moment it can.
         pendingSfx = inject.sfx;
-        sfxStatusEl.textContent = `sound: ⏸ waiting for "Tap to begin" to play ${inject.sfx}`;
+        sfxStatusEl.textContent = T("room.sound.waiting", { name: inject.sfx });
       }
     }
 
@@ -688,12 +692,12 @@
   function startInjectTimer(deadlineMs, extraMinutes) {
     clearInjectTimer();
     const noteEl = document.getElementById("injectTimerNote");
-    if (noteEl) noteEl.textContent = extraMinutes > 0 ? `includes +${extraMinutes} min extra time` : "";
+    if (noteEl) noteEl.textContent = extraMinutes > 0 ? T("room.timer.extra", { count: extraMinutes }) : "";
     function tick() {
       const el = document.getElementById("injectTimerValue");
       if (!el) return;
       if (!deadlineMs) {
-        el.textContent = "No time limit";
+        el.textContent = T("room.timer.noLimit");
         el.className = "value nolimit";
         return;
       }
@@ -701,7 +705,7 @@
       if (remainingMs <= 0) {
         // Phones lock at this point; the room screen says so rather than
         // counting into negative time.
-        el.textContent = "Time's up";
+        el.textContent = T("room.timer.up");
         el.className = "value warn up";
         return;
       }
@@ -709,7 +713,7 @@
       const s = Math.floor((remainingMs % 60000) / 1000);
       el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
       // Amber in the last minute, as on the phones.
-      el.className = remainingMs < 60000 ? "value warn" : "value";
+      el.className = remainingMs < 60000 ? "value warn" : "value"; // i18n-ok: CSS class names
     }
     tick();
     if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
@@ -809,7 +813,7 @@
     const win = notesWindow(latestRow, "observer");
     const visible = myNotes.filter((n) => !n.withdrawn).slice().reverse();
     if (!visible.length) {
-      box.innerHTML = `<div class="empty">${win.open || latestRow.status === "lobby" ? "None yet." : "Notes are closed — your notes have been sent and cleared from this phone."}</div>`;
+      box.innerHTML = `<div class="empty">${escapeHtml(win.open || latestRow.status === "lobby" ? T("room.notes.noneYet") : T("room.notes.closedCleared"))}</div>`;
       return;
     }
     box.innerHTML = visible
@@ -824,8 +828,8 @@
           {
             row: latestRow,
             actionsHtml: win.open
-              ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">Edit</button>` +
-                `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${withdrawArmed === n.id ? "Tap again to withdraw" : "Withdraw"}</button>`
+              ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">${escapeHtml(T("room.notes.edit"))}</button>` +
+                `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${escapeHtml(withdrawArmed === n.id ? T("room.notes.withdrawConfirm") : T("room.notes.withdraw"))}</button>`
               : "",
           }
         )
@@ -854,14 +858,14 @@
       }
       withdrawArmed = null;
       btn.disabled = true;
-      btn.textContent = "Withdrawing…";
+      btn.textContent = T("room.notes.withdrawing");
       try {
         await withdrawObserverNote(sessionId, note.id, { attendeeId: observer.attendeeId });
         note.withdrawn = true;
         storeMyNotes(myNotes);
         noteForm.cancelEditIf(note.id);
       } catch (err) {
-        alertNote(err.message);
+        alertNote(PPLang.dbMessage(err.message));
       }
       renderMyNotes();
     });
@@ -975,7 +979,7 @@
 
   function renderObserverMessages() {
     const unread = obsMessages.filter(obsIsUnread);
-    const badge = unread.length === 1 ? "1 new" : `${unread.length} new`;
+    const badge = T("room.msg.newCount", { count: unread.length });
     obsBadgeEl.hidden = unread.length === 0;
     obsBadgeEl.textContent = badge;
     obsJumpBadgeEl.hidden = unread.length === 0;
@@ -989,19 +993,19 @@
           .map((m) => {
             const fromFac = obsFromFacilitator(m);
             const who = fromFac
-              ? `From the facilitator${m.room ? ` · to Room ${m.room} Observers` : " · to all Observers"}`
-              : observer.room ? `Sent from Room ${observer.room}` : "Sent to the facilitator";
+              ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
+              : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
             return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}</li>`;
           })
           .join("")
-      : `<li class="empty">No messages yet.</li>`;
+      : `<li class="empty">${escapeHtml(T("room.msg.none"))}</li>`;
 
     // The banner: the newest reply not yet acknowledged. It stays until
     // "Got it" — it does not hide by itself.
     const newest = unread[unread.length - 1];
     if (newest) {
       obsBannerTextEl.textContent = newest.body;
-      obsBannerTimeEl.textContent = `· ${formatMessageTime(newest.created_at)}${unread.length > 1 ? ` · ${unread.length} new` : ""}`;
+      obsBannerTimeEl.textContent = `· ${formatMessageTime(newest.created_at)}${unread.length > 1 ? ` · ${T("room.msg.newCount", { count: unread.length })}` : ""}`;
       obsBannerEl.hidden = false;
     } else {
       obsBannerEl.hidden = true;
@@ -1078,7 +1082,7 @@
       obsSending = true;
       updateObserverMessageControls();
       obsMsgFeedbackEl.className = "obs-msg-feedback";
-      obsMsgFeedbackEl.textContent = "Sending…";
+      obsMsgFeedbackEl.textContent = T("room.msg.sending");
       try {
         await sendObserverMessage(sessionId, { id: obsDraft.id, body, presetKey, attendeeId: observer.attendeeId });
         obsDraft = { id: null, text: "", presetKey: "" };
@@ -1086,14 +1090,14 @@
         obsMsgTextEl.value = "";
         obsMsgPresetEl.value = "";
         obsMsgFeedbackEl.className = "obs-msg-feedback ok";
-        obsMsgFeedbackEl.textContent = `Sent to the facilitator at ${formatMessageTime(new Date().toISOString())} ✓`;
+        obsMsgFeedbackEl.textContent = T("room.msg.sentAt", { time: formatMessageTime(new Date().toISOString()) });
         loadObserverMessages(false);
       } catch (err) {
         // Whatever went wrong, the text stays in the box and on the phone.
         obsMsgFeedbackEl.className = "obs-msg-feedback err";
         obsMsgFeedbackEl.textContent = err.network
-          ? "Not sent — couldn't reach the server. Your message is still here: check the connection and press Send again."
-          : `Not sent: ${err.message}`;
+          ? T("room.msg.notSentNetwork")
+          : T("room.msg.notSent", { message: PPLang.dbMessage(err.message) });
       } finally {
         obsSending = false;
         updateObserverMessageControls();

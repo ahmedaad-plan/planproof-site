@@ -1,6 +1,13 @@
 [functions]
   directory = "netlify/functions"
 
+# Wording guard for the exercise player (language foundation, 13 October 2026).
+# Every word a person sees on play/* lives in play/lang.js. This check stops
+# the deploy if wording has been typed into a page instead (it needs nothing
+# installed — plain Node). Run it by hand with: node tools/check-lang.js
+[build]
+  command = "node tools/check-lang.js"
+
 [build.environment]
   # play/shared.js embeds the Supabase anon key for client-side use — that's
   # expected and safe (it's the same public key already used by the form
