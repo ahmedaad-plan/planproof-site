@@ -60,6 +60,18 @@
     font-size: 0.8rem; padding: 4px 10px; border-color: var(--red); color: var(--red-soft); background: transparent;
   }
   .roster-dept .title { color: var(--text-muted); }
+  /* Joining alone, remotely (item 9, 16 October 2026): the REMOTE mark and the
+     "Mark as remote / in a room" control beside Remove; on a phone the
+     controls wrap under the name. */
+  .roster-dept li { flex-wrap: wrap; }
+  .roster-dept li > span:first-child { flex: 1 1 200px; min-width: 0; }
+  .roster-actions { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
+  .roster-dept li .markRemoteBtn { border-color: var(--border-strong); color: var(--text); }
+  .roster-dept li .markInRoomSel {
+    font: inherit; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px;
+    background: var(--field); color: var(--text); border: 1px solid var(--border-strong); max-width: 170px;
+  }
+  .roster-badge.remote { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
 
   /* Response status (Ahmed, 4 October 2026): four states per department,
      only for the departments the inject names as responsible. */
@@ -268,6 +280,10 @@
     <div id="towerObserversWrap" hidden>
       <h3 data-i18n="fac.tower.observersHeading">Observers</h3>
       <div id="towerObservers"></div>
+    </div>
+    <div id="towerRemoteWrap" hidden>
+      <h3 data-i18n="fac.tower.remoteHeading">Remote participants (joining alone)</h3>
+      <div id="towerRemote"></div>
     </div>
     <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
     <div class="tower-legend">
@@ -1357,6 +1373,8 @@
     const towerScreensEl = document.getElementById("towerScreens");
     const towerObserversWrapEl = document.getElementById("towerObserversWrap");
     const towerObserversEl = document.getElementById("towerObservers");
+    const towerRemoteWrapEl = document.getElementById("towerRemoteWrap");
+    const towerRemoteEl = document.getElementById("towerRemote");
     const towerErrorEl = document.getElementById("towerError");
     const rosterGroupEl = document.getElementById("rosterGroup");
     let lastPresence = null;   // { now, devices: [...] }
@@ -1540,6 +1558,31 @@
         }
       }
 
+      // ---- Remote participants (item 9, 16 October 2026) ----
+      // Each one with their sound: the facilitator cannot hear a remote
+      // device, so "sound off" is what to act on before Start and whenever
+      // it shows while the exercise runs.
+      const remotes = states.filter((x) => x.a.role !== "observer" && x.a.remote);
+      towerRemoteWrapEl.hidden = remotes.length === 0;
+      if (remotes.length) {
+        remotes.sort((x, y) => x.a.name.localeCompare(y.a.name));
+        towerRemoteEl.innerHTML = remotes.map((x) => {
+          const colour = x.state === "green" ? "green" : x.state === "amber" ? "amber" : "grey";
+          const extras = [];
+          if (x.state === "green" && x.d) {
+            if (x.d.sound === "on") extras.push(escapeHtml(T("fac.tower.remoteSoundOn")));
+            else if (x.d.sound === "muted") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.remoteSoundMuted"))}</span>`);
+            else extras.push(`<span class="bad">${escapeHtml(T("fac.tower.remoteSoundOff"))}</span>`);
+            if (x.d.awake === "off") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.maySleep"))}</span>`);
+            if (currentRow && currentRow.status === "running") {
+              if (x.d.sound === "muted") warnings.push({ red: false, text: T("fac.tower.warnRemoteMuted", { name: x.a.name }) });
+              else if (x.d.sound !== "on") warnings.push({ red: false, text: T("fac.tower.warnRemoteSoundOff", { name: x.a.name }) });
+            }
+          }
+          return `<div class="tower-row"><i class="dot ${colour}"></i><span class="what"><b>${escapeHtml(T("fac.tower.remotePerson", { name: x.a.name, department: x.a.department }))}:</b> ${escapeHtml(seenText(x.d, x.state))}${extras.length ? " · " + extras.join(" · ") : ""}</span></div>`;
+        }).join("");
+      }
+
       towerWarningsEl.innerHTML = warnings
         .map((w) => `<div class="tower-warn${w.red ? " red" : ""}">${escapeHtml(w.text)}</div>`)
         .join("");
@@ -1589,7 +1632,7 @@
       const byRoom = rosterGroupBy === "room";
       const byDept = {};
       attendees.forEach((a) => {
-        const key = byRoom ? (a.room ? T("fac.roster.roomName", { room: a.room }) : T("fac.roster.noRoom")) : a.department;
+        const key = byRoom ? (a.remote ? T("fac.roster.remoteGroup") : a.room ? T("fac.roster.roomName", { room: a.room }) : T("fac.roster.noRoom")) : a.department;
         (byDept[key] = byDept[key] || []).push(a);
       });
       const depts = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
@@ -1597,8 +1640,25 @@
       // Observer but shouldn't be one can be spotted and removed here — the
       // only check against that, since joining has no login.
       const nObservers = attendees.filter((a) => a.role === "observer").length;
+      // Remote participants (item 9): marked and counted, so the facilitator
+      // can compare "how many remote" with reality after the headcount, and
+      // correct anyone who picked the wrong option — in either direction.
+      const nRemote = attendees.filter((a) => a.role !== "observer" && a.remote).length;
+      const markControl = (a) => {
+        if (a.role === "observer") return "";
+        if (a.remote) {
+          if (rooms > 1) {
+            return `<select class="markInRoomSel" data-id="${a.id}" data-name="${escapeHtml(a.name)}" aria-label="${escapeHtml(T("fac.roster.markInRoom"))}">
+              <option value="" selected disabled>${escapeHtml(T("fac.roster.markInRoomChoose"))}</option>
+              ${Array.from({ length: rooms }, (_, i) => i + 1).map((r) => `<option value="${r}">${escapeHtml(T("fac.roster.markInRoomOption", { room: r }))}</option>`).join("")}
+            </select>`;
+          }
+          return `<button class="markRemoteBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}" data-remote="0">${escapeHtml(T("fac.roster.markInRoom"))}</button>`;
+        }
+        return `<button class="markRemoteBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}" data-remote="1">${escapeHtml(T("fac.roster.markRemote"))}</button>`;
+      };
       rosterEl.innerHTML =
-        `<div class="roster-summary">${escapeHtml(T("fac.roster.participantCount", { count: attendees.length - nObservers }))} · ${escapeHtml(T("fac.roster.observerCount", { count: nObservers }))}</div>` +
+        `<div class="roster-summary">${escapeHtml(T("fac.roster.participantCount", { count: attendees.length - nObservers }))} · ${escapeHtml(T("fac.roster.observerCount", { count: nObservers }))}${nRemote ? ` · ${escapeHtml(T("fac.roster.remoteCount", { count: nRemote }))}` : ""}</div>` +
         depts
         .map((dept) => `
           <div class="roster-dept">
@@ -1609,15 +1669,42 @@
                   (a) => `
                 <li>
                   <span>
-                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">${escapeHtml(T("fac.roster.observerBadge"))}</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — ${escapeHtml(T("fac.roster.roomName", { room: a.room }))}` : ""}${personSeenHtml(a)}
+                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">${escapeHtml(T("fac.roster.observerBadge"))}</span>` : ""}${a.remote ? ` <span class="roster-badge remote">${escapeHtml(T("fac.roster.remoteBadge"))}</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — ${escapeHtml(T("fac.roster.roomName", { room: a.room }))}` : ""}${personSeenHtml(a)}
                   </span>
-                  <button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">${escapeHtml(T("fac.roster.remove"))}</button>
+                  <span class="roster-actions">${markControl(a)}<button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">${escapeHtml(T("fac.roster.remove"))}</button></span>
                 </li>`
                 )
                 .join("")}
             </ul>
           </div>`)
         .join("");
+      // "Mark as remote" / "Mark as in a room" (item 9): a confirmation
+      // naming the person, then the checked database route. The person's
+      // device follows within one check-in and tells them what changed.
+      async function markRemote(el, remote, room) {
+        const name = el.dataset.name;
+        const question = remote
+          ? T("fac.roster.confirmMarkRemote", { name })
+          : room ? T("fac.roster.confirmMarkInRoomN", { name, room }) : T("fac.roster.confirmMarkInRoom", { name });
+        if (!confirm(question)) { if (el.tagName === "SELECT") el.value = ""; return; }
+        el.disabled = true;
+        rosterErrorEl.style.display = "none";
+        try {
+          await setAttendeeRemote(sessionId, el.dataset.id, remote, room, facilitatorToken);
+          await refreshRoster();
+        } catch (err) {
+          rosterErrorEl.textContent = T("fac.roster.markFailed", { message: PPLang.dbMessage(err.message) });
+          rosterErrorEl.style.display = "block";
+          el.disabled = false;
+          if (el.tagName === "SELECT") el.value = "";
+        }
+      }
+      rosterEl.querySelectorAll(".markRemoteBtn").forEach((btn) => {
+        btn.addEventListener("click", () => markRemote(btn, btn.dataset.remote === "1", null));
+      });
+      rosterEl.querySelectorAll(".markInRoomSel").forEach((sel) => {
+        sel.addEventListener("change", () => { if (sel.value) markRemote(sel, false, Number(sel.value)); });
+      });
       rosterEl.querySelectorAll(".removeAttendeeBtn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const ok = confirm(
@@ -1928,6 +2015,14 @@
       });
       Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
         if (!byDept[dept].includes("green")) issues.push(T("fac.startCheck.deptNobody", { department: dept }));
+      });
+      // Remote participants (item 9): the facilitator can't hear their
+      // device, so sound off or muted is listed before Start.
+      participants.filter((a) => a.remote).forEach((a) => {
+        const d = personPresence(a.id);
+        if (!d || presenceState(d.last_seen, now) !== "green") return; // "not online" is counted below
+        if (d.sound === "muted") issues.push(T("fac.startCheck.remoteMuted", { name: a.name, department: a.department }));
+        else if (d.sound !== "on") issues.push(T("fac.startCheck.remoteSoundOff", { name: a.name, department: a.department }));
       });
       const offline = participants.filter((a) => { const d = personPresence(a.id); return !d || presenceState(d.last_seen, now) !== "green"; }).length;
       if (offline && participants.length) issues.push(participants.length === 1

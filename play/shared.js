@@ -164,7 +164,10 @@ async function patchSession(sessionId, fields) {
 // That id is what ties an individual answer to this person (see
 // saveSubmission). Random UUIDs aren't guessable, and nothing public lists
 // them.
-async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room }) {
+// remote (item 9, 16 October 2026): the participant is joining alone, with no
+// shared room screen — their own device plays the sounds. Participants only;
+// a remote registration never carries a room (the database enforces both).
+async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room, remote }) {
   assertValidSessionId(sessionId);
   // withRetry wraps only the network call, not the outcome check below —
   // a dropped packet is worth retrying, but a rejected join (wrong room,
@@ -191,7 +194,8 @@ async function joinSession(sessionId, { id, firstName, familyName, title, depart
         job_title: title,
         department,
         role,
-        room: room ?? null,
+        room: remote ? null : room ?? null,
+        remote: !!remote,
       }),
     })
   );
@@ -437,7 +441,7 @@ async function fetchAttendees(sessionId, facilitatorToken) {
   const res = await withRetry(() =>
     fetch(
       `${SUPABASE_URL}/rest/v1/attendees?session_id=eq.${sessionId}` +
-        `&select=id,name,first_name,family_name,job_title,department,role,room,joined_at&order=joined_at.asc`,
+        `&select=id,name,first_name,family_name,job_title,department,role,room,remote,joined_at&order=joined_at.asc`,
       {
         headers: {
           apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -477,6 +481,28 @@ async function deleteAttendee(attendeeId, facilitatorToken) {
   if (rows.length === 0) {
     throw new Error(T("shared.error.removeRejected"));
   }
+}
+
+// The Facilitator's correction of "in a room / joining remotely" (item 9,
+// 16 October 2026), in either direction, through the checked database
+// function facilitator_set_remote (token). Marking someone "in a room" in a
+// multi-room exercise needs the room they are in. The person's device learns
+// the change in the reply to its next check-in (within about 20 seconds).
+async function setAttendeeRemote(sessionId, attendeeId, remote, room, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_set_remote`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId, p_attendee_id: attendeeId, p_remote: !!remote, p_room: room ?? null }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
 }
 
 // Fires `callback` whenever this device looks like it just came back —

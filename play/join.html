@@ -48,6 +48,11 @@
   .brief strong { display: block; color: var(--text); font-weight: 600; text-wrap: balance; margin-bottom: 2px; }
   .brief.nofault { border-top: 3px solid var(--teal); }
   .brief.phone { border-top: 3px solid var(--amber); }
+  /* Joining alone, remotely (item 9, 16 October 2026): the two "where" options
+     stack on a phone (the labels are longer than the role buttons). */
+  .where-options { display: flex; flex-direction: column; gap: 8px; }
+  .where-options label { text-align: start; padding: 11px 14px; }
+  .brief.remote { border-top: 3px solid var(--blue); margin-top: 10px; }
   /* Department list: fixed, never typed. With more than 10 departments a
      search box narrows the list; the list itself stays the only way to pick. */
   .dept-search { margin-bottom: 8px; }
@@ -212,7 +217,22 @@
           <input type="radio" name="role" value="observer" /> ${escapeHtml(T("join.role.observer"))}
         </label>
       </div>
-      ${roomField}
+      <div id="whereBlock">
+        <label>${escapeHtml(T("join.where.label"))}</label>
+        <div class="role-options where-options">
+          <label id="whereInRoomLabel" class="checked">
+            <input type="radio" name="where" value="inroom" checked /> ${escapeHtml(T("join.where.inRoom"))}
+          </label>
+          <label id="whereRemoteLabel">
+            <input type="radio" name="where" value="remote" /> ${escapeHtml(T("join.where.remote"))}
+          </label>
+        </div>
+        <div class="brief remote" id="remoteNote" hidden>
+          <strong>${escapeHtml(T("join.where.remoteTitle"))}</strong>
+          ${escapeHtml(T("join.where.remoteText"))}
+        </div>
+      </div>
+      <div id="roomBlock">${roomField}</div>
       <button class="pp-btn full" id="registerBtn">${escapeHtml(T("join.form.register"))}</button>
       <div class="pp-error error" id="errorBox"></div>
     `;
@@ -226,8 +246,46 @@
       radio.addEventListener("change", () => {
         Object.values(roleLabels).forEach((l) => l.classList.remove("checked"));
         roleLabels[radio.value].classList.add("checked");
+        updateWhere();
       });
     });
+
+    // Joining alone, remotely (item 9, 16 October 2026) — participants only:
+    // an Observer is always in a room, observing a group. Default: in a room.
+    // A remote participant is in no room, so the room question goes.
+    const whereBlockEl = document.getElementById("whereBlock");
+    const whereRadios = cardEl.querySelectorAll('input[name="where"]');
+    const whereLabels = {
+      inroom: document.getElementById("whereInRoomLabel"),
+      remote: document.getElementById("whereRemoteLabel"),
+    };
+    const remoteNoteEl = document.getElementById("remoteNote");
+    const roomBlockEl = document.getElementById("roomBlock");
+    function isRemote() {
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      const where = cardEl.querySelector('input[name="where"]:checked');
+      return role === "participant" && !!where && where.value === "remote";
+    }
+    function updateWhere() {
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      if (role !== "participant") {
+        // back to the default, so a switch to Observer never carries "remote"
+        whereRadios.forEach((r) => { r.checked = r.value === "inroom"; });
+        Object.values(whereLabels).forEach((l) => l.classList.remove("checked"));
+        whereLabels.inroom.classList.add("checked");
+      }
+      whereBlockEl.hidden = role !== "participant";
+      remoteNoteEl.hidden = !isRemote();
+      roomBlockEl.hidden = isRemote();
+    }
+    whereRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        Object.values(whereLabels).forEach((l) => l.classList.remove("checked"));
+        whereLabels[radio.value].classList.add("checked");
+        updateWhere();
+      });
+    });
+    updateWhere();
 
     const firstNameEl = document.getElementById("firstName");
     const familyNameEl = document.getElementById("familyName");
@@ -277,7 +335,8 @@
       const title = jobTitleEl.value.trim();
       const department = departmentEl.value;
       const role = cardEl.querySelector('input[name="role"]:checked').value;
-      const room = roomEl ? Number(roomEl.value) : null;
+      const remote = isRemote();
+      const room = roomEl && !remote ? Number(roomEl.value) : null;
 
       // Nobody is registered until first name, family name, job title and
       // department are all filled in (Ahmed, 4 October 2026).
@@ -296,7 +355,7 @@
         problems.push(T("join.validate.department"));
         departmentEl.classList.add("invalid");
       }
-      if (roomEl && !roomEl.value) {
+      if (roomEl && !remote && !roomEl.value) {
         problems.push(T("join.validate.room"));
         roomEl.classList.add("invalid");
       }
@@ -307,12 +366,13 @@
       }
       errorBoxEl.style.display = "none";
 
-      pending = { firstName, familyName, title, department, role, room };
+      pending = { firstName, familyName, title, department, role, room, remote };
       confirmDetailsEl.innerHTML = `
         <dt>${escapeHtml(T("join.confirm.name"))}</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
         <dt>${escapeHtml(T("join.confirm.jobTitle"))}</dt><dd>${escapeHtml(title)}</dd>
         <dt>${escapeHtml(T("join.confirm.department"))}</dt><dd><strong>${escapeHtml(department)}</strong></dd>
         <dt>${escapeHtml(T("join.confirm.role"))}</dt><dd>${escapeHtml(role === "participant" ? T("join.role.participant") : T("join.role.observer"))}</dd>
+        ${role === "participant" ? `<dt>${escapeHtml(T("join.confirm.where"))}</dt><dd>${escapeHtml(remote ? T("join.confirm.whereRemote") : T("join.confirm.whereInRoom"))}</dd>` : ""}
         ${room ? `<dt>${escapeHtml(T("join.confirm.room"))}</dt><dd>${escapeHtml(T("join.confirm.roomValue", { n: room }))}</dd>` : ""}`;
       confirmQuestionEl.textContent =
         T("join.confirm.question", { department });
@@ -355,6 +415,7 @@
               department: pending.department,
               role: pending.role,
               room: pending.room,
+              remote: !!pending.remote,
             })
           );
         } catch {

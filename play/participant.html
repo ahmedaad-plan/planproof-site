@@ -65,6 +65,44 @@
     padding: 10px 14px; font-size: 0.9rem; margin-top: 14px;
   }
   .center-note { text-align: center; color: var(--text); padding: 72px 20px; font-size: 1.15rem; text-wrap: balance; }
+  /* Joining alone, remotely (roadmap item 9, 16 October 2026). A remote
+     participant has no room screen, so this device plays the inject sounds
+     and the facilitator's chimes: a one-time "Tap to start" step (browsers
+     allow sound only after a tap), a thin bar with a mute button, and the
+     "Now playing" video card the room screen shows. In-room devices are
+     unchanged (silent). */
+  .remote-bar {
+    background: var(--blue-dim); border-bottom: 1px solid var(--border);
+  }
+  .remote-bar-inner {
+    max-width: 640px; margin: 0 auto; padding: 8px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.85rem; color: var(--text);
+  }
+  .remote-bar-inner span { min-width: 0; overflow-wrap: anywhere; }
+  .remote-bar button {
+    flex: 0 0 auto; font: inherit; font-size: 0.82rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--text); border: 1.5px solid var(--border-strong);
+  }
+  .remote-bar button.attention { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+  .remote-gate {
+    position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; z-index: 20; padding: 24px; text-align: center;
+  }
+  .remote-gate[hidden] { display: none; }
+  body.gate-open { overflow: hidden; height: 100vh; }
+  .remote-gate .gate-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; text-wrap: balance; }
+  .remote-gate .gate-text { color: var(--text-muted); max-width: 440px; text-wrap: balance; }
+  .remote-gate .pp-btn { font-size: 1.15rem; padding: 16px 28px; border-radius: 10px; }
+  .remote-gate .gate-error { color: var(--red-soft); font-size: 0.9rem; max-width: 440px; }
+  .video-card {
+    width: 100%; aspect-ratio: 16/9;
+    background: linear-gradient(135deg, var(--panel-raised), var(--bg));
+    border: 2px solid var(--amber); border-radius: 12px; margin-bottom: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .video-card .tag { color: var(--amber); font-size: 0.85rem; font-weight: 600; border: none; padding: 0; }
+  .video-card .title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; padding: 0 20px; text-align: center; text-wrap: balance; }
+  .remote-welcome-note { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: -6px; text-wrap: balance; }
   .center-note a { color: var(--amber); }
 
   /* Facilitator messages (added 5 October 2026). The banner and the list sit
@@ -114,6 +152,18 @@
     <span class="pp-brand small" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
     <div class="pp-context"><strong id="clientLabel" data-i18n-skip>PlanProof</strong><div id="whoLabel"></div></div>
   </header>
+  <div class="remote-bar" id="remoteBar" hidden>
+    <div class="remote-bar-inner">
+      <span id="remoteBarText"></span>
+      <button type="button" id="remoteSoundBtn"></button>
+    </div>
+  </div>
+  <div class="remote-gate" id="remoteGate" hidden role="dialog" aria-labelledby="remoteGateTitle">
+    <div class="gate-title" id="remoteGateTitle" data-i18n="part.remote.gateTitle">You are joining remotely</div>
+    <div class="gate-text" data-i18n="part.remote.gateText">Your device will play the exercise sounds and the facilitator's chimes. Use a headset if you can, and find a quiet place.</div>
+    <button class="pp-btn" id="remoteGateBtn" data-i18n="part.remote.gateButton">Tap to start — turn sound on</button>
+    <div class="gate-error" id="remoteGateError" hidden></div>
+  </div>
   <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
     <div class="msg-banner-inner">
       <div>
@@ -155,6 +205,12 @@
   const mainEl = document.getElementById("main");
   const clientLabelEl = document.getElementById("clientLabel");
   const whoLabelEl = document.getElementById("whoLabel");
+  const remoteBarEl = document.getElementById("remoteBar");
+  const remoteBarTextEl = document.getElementById("remoteBarText");
+  const remoteSoundBtn = document.getElementById("remoteSoundBtn");
+  const remoteGateEl = document.getElementById("remoteGate");
+  const remoteGateBtn = document.getElementById("remoteGateBtn");
+  const remoteGateErrorEl = document.getElementById("remoteGateError");
 
   let identity = null;
   let survey = null; // the feedback survey under the thank-you (survey.js)
@@ -207,6 +263,16 @@
   let currentFileInput = null;
   let currentSubmitBtn = null;
   let currentSaveStatusEl = null;
+  // Joining alone, remotely (item 9, 16 October 2026). `remote` follows the
+  // registration: chosen on the join page, corrected only by the Facilitator
+  // (the check-in reply carries the current value). While remote, this
+  // device plays the inject sounds and chimes — after one tap.
+  let remote = false;
+  let audioUnlocked = false;
+  let pendingSfx = null;     // an inject's sound that could not play before the tap
+  let muted = false;         // the person's own choice, kept on this device
+  let autoStartTried = false;
+  let checkins = null;
 
   if (!sessionId) {
     mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.error.noSession"))}</div>`;
@@ -227,9 +293,10 @@
       mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.gate.registerAgain"))}
         <br/><a href="${joinLink}">${escapeHtml(T("part.gate.register"))}</a></div>`;
     } else {
-      whoLabelEl.textContent = identity.room
-        ? T("part.who.withRoom", { name: String(identity.name), department: String(identity.department), room: identity.room })
-        : T("part.who.noRoom", { name: String(identity.name), department: String(identity.department) });
+      remote = !!identity.remote;
+      try { muted = localStorage.getItem(`pp_remote_muted_${sessionId}`) === "1"; } catch { muted = false; }
+      drawWho();
+      initRemote();
       init();
     }
   }
@@ -247,6 +314,7 @@
       onRow: (row) => {
         render(row);
         awake.update();
+        maybeAutoStartSound();
         if (checkins) checkins.beatSoon();
       },
       onRecovered: () => loadMessages(false), // pick up any message missed while disconnected
@@ -263,7 +331,7 @@
 
     // Check-ins for the control tower; the reply also shows where the
     // exercise really is, so a page that missed an update corrects itself.
-    const checkins = startCheckins({
+    checkins = startCheckins({
       sessionId,
       kind: "person",
       attendeeId: identity.attendeeId,
@@ -271,11 +339,16 @@
         page: "participant",
         shownStatus: latestRow ? latestRow.status : null,
         shownInject: latestRow && latestRow.status === "running" ? latestRow.current_inject_index : null,
-        sound: "na",
+        // A remote device reports its sound (the tower and the readiness
+        // check show it); an in-room device has none to report.
+        sound: remote ? (muted ? "muted" : audioUnlocked ? "on" : "off") : "na",
         awake: awake.state(),
         live: sync.liveState(),
       }),
-      onReply: (reply) => handleCheckinReply(reply, { sync, getRow: () => latestRow }),
+      onReply: (reply) => {
+        applyRemoteFromReply(reply);
+        handleCheckinReply(reply, { sync, getRow: () => latestRow });
+      },
       onRefused: () =>
         setNotice("regNotice", T("part.notice.notRegistered")),
     });
@@ -439,6 +512,8 @@
         } catch {
           /* not supported — the banner is enough */
         }
+        // A remote device has no room screen to chime for it (item 9).
+        if (remote && audioUnlocked && !muted) playChime();
       }
     } catch (err) {
       console.warn("Couldn't load messages:", err.message);
@@ -619,6 +694,8 @@
 
     if (row.status === "ended") {
       clearInjectTimer();
+      stopSfx(); // a remote device's inject sound must not carry on over the thank-you
+      pendingSfx = null;
       // Item 8 (11 October 2026): keep what is on screen on this device
       // first — if End was pressed by mistake and the exercise carries on,
       // the answer boxes come back with their text instead of blank.
@@ -644,7 +721,8 @@
     cancelAnswersCleanup();
     if (row.status === "lobby") {
       clearInjectTimer();
-      mainEl.innerHTML = welcomeScreenHtml({ name: greetingName(identity) });
+      mainEl.innerHTML = welcomeScreenHtml({ name: greetingName(identity) }) +
+        (remote ? `<p class="remote-welcome-note">${escapeHtml(T("part.remote.welcomeNote"))}</p>` : "");
       formIdx = null;
       formInject = null;
       editingSubmitted = false;
@@ -726,6 +804,7 @@
 
       renderForm(inject, idx, { answerText });
       armTimer();
+      playInjectSound(row, idx, inject);
 
       if (lostEdit && currentSaveStatusEl) {
         currentSaveStatusEl.textContent = T("part.status.lostEdit");
@@ -804,6 +883,7 @@
           <div class="pp-clock-bar"><i id="injectTimerBar"></i></div>
         </div>
       </div>
+      ${remote && inject.video ? `<div class="video-card"><div class="tag">${escapeHtml(T("part.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>` : ""}
       <div class="inject-card">
         <div class="task-tags">
           <span class="tag ${individual ? "individual" : ""}">${escapeHtml(individual ? T("part.task.individual") : T("part.task.group"))}</span>
@@ -1255,6 +1335,142 @@
   function clearInjectTimer() {
     if (injectTimerInterval) clearInterval(injectTimerInterval);
     injectTimerInterval = null;
+  }
+
+  // ---- Joining alone, remotely (roadmap item 9, 16 October 2026) --------
+  // Design: design-notes.md → "Joining alone, remotely". Participants only.
+  // The flag belongs to the registration; this device follows it. Sound on a
+  // web page needs one tap, so a remote device shows a "Tap to start" step
+  // (again after a reload, unless this browser allows sound without a tap —
+  // then it starts by itself, like a room screen). Muting is this person's
+  // own choice and is remembered on the device; unmuting is itself a tap, so
+  // it also turns sound on.
+
+  function drawWho() {
+    whoLabelEl.textContent = remote
+      ? T("part.who.remote", { name: String(identity.name), department: String(identity.department) })
+      : identity.room
+        ? T("part.who.withRoom", { name: String(identity.name), department: String(identity.department), room: identity.room })
+        : T("part.who.noRoom", { name: String(identity.name), department: String(identity.department) });
+  }
+  function drawRemoteUi() {
+    remoteBarEl.hidden = !remote;
+    // The gate: only while remote, not muted, and sound not yet allowed.
+    remoteGateEl.hidden = !(remote && !muted && !audioUnlocked);
+    document.body.classList.toggle("gate-open", !remoteGateEl.hidden); // nothing scrolls out from under the step
+    if (!remote) return;
+    remoteBarTextEl.textContent = muted ? T("part.remote.barMuted") : audioUnlocked ? T("part.remote.bar") : T("part.remote.barOff");
+    remoteSoundBtn.textContent = muted ? T("part.remote.unmute") : audioUnlocked ? T("part.remote.mute") : T("part.remote.turnOn");
+    remoteSoundBtn.classList.toggle("attention", muted || !audioUnlocked);
+  }
+  function storeIdentity() {
+    try { localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identity)); } catch { /* storage blocked */ }
+  }
+  // One real clip for an instant: silent (volume 0) inside the tap, so sound
+  // is allowed for the rest of the exercise; barely audible (0.01) after a
+  // reload, so the browser's own answer is truthful.
+  function tryUnlockSound(volume) {
+    unlockChime();
+    const unlock = new Audio(SFX_FILES["siren-ambulance"]);
+    unlock.volume = volume;
+    return unlock.play().then(() => { unlock.pause(); });
+  }
+  function onSoundUnlocked() {
+    audioUnlocked = true;
+    remoteGateErrorEl.hidden = true;
+    if (pendingSfx && remote && !muted) {
+      const toPlay = pendingSfx;
+      pendingSfx = null;
+      playSfx(toPlay);
+    }
+    drawRemoteUi();
+    if (checkins) checkins.beatSoon();
+  }
+  function initRemote() {
+    remoteGateBtn.addEventListener("click", () => {
+      remoteGateErrorEl.hidden = true;
+      tryUnlockSound(0)
+        .then(() => {
+          try { localStorage.setItem(`pp_remote_started_${sessionId}`, "1"); } catch { /* ignore */ }
+          onSoundUnlocked();
+        })
+        .catch((err) => {
+          remoteGateErrorEl.textContent = T("part.remote.gateFailed", { message: String(err.message) });
+          remoteGateErrorEl.hidden = false;
+        });
+    });
+    remoteSoundBtn.addEventListener("click", () => {
+      if (muted) {
+        muted = false;
+        try { localStorage.setItem(`pp_remote_muted_${sessionId}`, "0"); } catch { /* ignore */ }
+        if (!audioUnlocked) {
+          // this click is the tap the browser wants
+          tryUnlockSound(0).then(onSoundUnlocked).catch(() => drawRemoteUi());
+        }
+      } else if (!audioUnlocked) {
+        tryUnlockSound(0).then(onSoundUnlocked).catch(() => drawRemoteUi());
+      } else {
+        muted = true;
+        stopSfx();
+        pendingSfx = null;
+        try { localStorage.setItem(`pp_remote_muted_${sessionId}`, "1"); } catch { /* ignore */ }
+      }
+      drawRemoteUi();
+      if (checkins) checkins.beatSoon();
+    });
+    drawRemoteUi();
+  }
+  // After a reload a remote device that was already started tries to start
+  // itself (no tap possible yet): it works only where this browser allows
+  // sound for the site without a tap; otherwise the gate stays.
+  function maybeAutoStartSound() {
+    if (!remote || muted || audioUnlocked || autoStartTried) return;
+    let started = false;
+    try { started = localStorage.getItem(`pp_remote_started_${sessionId}`) === "1"; } catch { started = false; }
+    if (!started) return;
+    autoStartTried = true;
+    tryUnlockSound(0.01).then(onSoundUnlocked).catch(() => { /* the browser wants a tap — the gate stays */ });
+  }
+  // The inject's sound on a remote device: a new inject plays it (once sound
+  // is allowed — otherwise it waits for the tap); a resumed inject comes back
+  // without it, as on the room screen (12 October 2026). In-room devices
+  // stay silent.
+  function playInjectSound(row, idx, inject) {
+    if (!remote || !inject || !inject.sfx) return;
+    if (injectWasResumed(row, idx)) { pendingSfx = null; return; }
+    if (muted) { pendingSfx = null; return; }
+    if (audioUnlocked) playSfx(inject.sfx);
+    else pendingSfx = inject.sfx;
+  }
+  // The check-in reply carries the registration's current "remote" value:
+  // a correction by the Facilitator (either direction) reaches this device
+  // here, within one check-in, with a message saying what changed.
+  function applyRemoteFromReply(reply) {
+    if (!reply || typeof reply.remote !== "boolean") return;
+    const nextRoom = reply.room === undefined ? identity.room : (reply.room === null ? null : reply.room);
+    const roomChanged = (identity.room || null) !== (nextRoom || null);
+    if (reply.remote === remote && !roomChanged) return;
+    const was = remote;
+    remote = reply.remote;
+    identity.remote = remote;
+    identity.room = nextRoom;
+    storeIdentity();
+    drawWho();
+    if (was && !remote) {
+      stopSfx();
+      pendingSfx = null;
+      showToast(T("part.remote.nowInRoom"), 40000);
+    } else if (!was && remote) {
+      showToast(T(audioUnlocked && !muted ? "part.remote.nowRemoteOn" : "part.remote.nowRemote"), 40000);
+      // the inject already showing gets its sound — now, if sound is already
+      // allowed on this device, otherwise once the person taps
+      if (latestRow && latestRow.status === "running" && formInject && formInject.sfx && !injectWasResumed(latestRow, formIdx) && !muted) {
+        if (audioUnlocked) playSfx(formInject.sfx); else pendingSfx = formInject.sfx;
+      }
+    }
+    if (latestRow) render(latestRow);
+    drawRemoteUi();
+    if (checkins) checkins.beatSoon();
   }
 
   function escapeHtml(str) {
