@@ -217,6 +217,8 @@ a { color: var(--amber); }
 .pp-thanks.everyone .pp-thanks-lead { font-size: clamp(1.3rem, 2.8vw, 2.1rem); }
 .pp-thanks.everyone .pp-thanks-label { font-size: clamp(1rem, 1.8vw, 1.4rem); }
 .pp-thanks.everyone .pp-thanks-nofault { font-size: clamp(1.05rem, 2vw, 1.5rem); max-width: 34em; padding: 16px 20px; }
+/* The room screen's invitation to the feedback survey (16 October 2026). */
+.pp-thanks-survey { margin: 18px auto 0; max-width: 32em; color: var(--amber); font-weight: 600; font-size: clamp(1.05rem, 2vw, 1.6rem); text-wrap: balance; }
 @media (max-width: 520px) {
   .pp-thanks { margin-top: 20px; padding: 26px 18px 24px; }
   .pp-thanks.everyone { padding: 30px 18px 28px; }

@@ -2097,8 +2097,25 @@
     // ended, and how long Observers and the facilitator still have. It hides
     // nothing — every panel below stays live.
     const endStripEl = document.getElementById("endStrip");
-    function renderEndStrip() {
-      if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; return; }
+    // How many have answered the feedback survey — a count only, never an
+    // answer (16 October 2026). Fetched with the strip, at most every 10 s.
+    let feedbackCount = null;
+    let feedbackFetching = false;
+    let feedbackFetchedAt = 0;
+    async function refreshFeedbackCount() {
+      if (feedbackFetching || Date.now() - feedbackFetchedAt < 9000) return;
+      feedbackFetching = true;
+      try {
+        const r = await callNotesRpc("facilitator_feedback_count", { p_session_id: sessionId }, facilitatorToken);
+        feedbackCount = r;
+        feedbackFetchedAt = Date.now();
+        renderEndStrip(true);
+      } catch { /* the strip simply shows no count until the next try */ }
+      finally { feedbackFetching = false; }
+    }
+    function renderEndStrip(fromFetch) {
+      if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; feedbackCount = null; feedbackFetchedAt = 0; return; }
+      if (!fromFetch) refreshFeedbackCount();
       hideEndCheck();
       const fmtDay = (ms) => new Date(ms).toLocaleString(PPLang.locales(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       const endedMs = currentRow.ended_at ? Date.parse(currentRow.ended_at) : NaN;
@@ -2114,6 +2131,11 @@
         lines.push(fac.open && fac.closesAt
           ? T("fac.endStrip.ownUntil", { time: fmtDay(fac.closesAt) })
           : T("fac.endStrip.ownClosed"));
+      }
+      if (feedbackCount) {
+        lines.push(feedbackCount.open
+          ? T("fac.endStrip.feedback", { count: feedbackCount.answered, registered: feedbackCount.registered })
+          : T("fac.endStrip.feedbackClosed", { count: feedbackCount.answered, registered: feedbackCount.registered }));
       }
       lines.push(T("fac.endStrip.panelsLive"));
       if (canResume()) lines.push(T("fac.endStrip.resume", { button: resumeLabel() }));

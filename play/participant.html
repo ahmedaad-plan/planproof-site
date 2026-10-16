@@ -149,6 +149,7 @@
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./survey.js"></script>
 <script>
   const sessionId = getSessionId();
   const mainEl = document.getElementById("main");
@@ -156,6 +157,7 @@
   const whoLabelEl = document.getElementById("whoLabel");
 
   let identity = null;
+  let survey = null; // the feedback survey under the thank-you (survey.js)
   let formIdx = null; // which inject index the on-screen form currently represents
   let formInject = null; // the inject object for formIdx (kept separately so leaving an inject saves under ITS group/individual type, not the next one's)
   let attachments = []; // attachments already uploaded for the current inject
@@ -621,7 +623,14 @@
       // first — if End was pressed by mistake and the exercise carries on,
       // the answer boxes come back with their text instead of blank.
       if (formIdx !== null) storeAnswers();
-      mainEl.innerHTML = endScreenHtml({ name: greetingName(identity) });
+      // The feedback survey sits under the thank-you (16 October 2026). The
+      // end screen is drawn once, so a refresh never wipes a tap in progress;
+      // the "close this page" line belongs to the survey card from here on.
+      if (!mainEl.querySelector(".pp-thanks-end")) {
+        mainEl.innerHTML = endScreenHtml({ name: greetingName(identity), close: false }) + '<div id="surveyRoot" hidden></div>';
+        survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: identity.attendeeId, observer: false });
+      }
+      survey.refresh(row);
       formIdx = null;
       formInject = null;
       editingSubmitted = false;

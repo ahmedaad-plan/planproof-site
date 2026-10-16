@@ -236,6 +236,7 @@
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
 <script src="./notes.js"></script>
+<script src="./survey.js"></script>
 <script>
   const sessionId = getSessionId();
   // Observer mode: only when the join page sent this device here as an
@@ -243,6 +244,7 @@
   // room-display link is always the shared room screen, unchanged.
   const observerMode = new URLSearchParams(location.search).get("observer") === "1";
   let observer = null;
+  let survey = null; // the Observer's feedback survey under the thank-you (survey.js)
   if (observerMode && sessionId) {
     try {
       observer = JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null");
@@ -621,15 +623,26 @@
       if (!observerMode) {
         stopSfx();
         pendingSfx = null;
-        mainEl.innerHTML = endScreenHtml({ everyone: true, label: row.label || "", close: false });
-      } else {
+        // The room screen carries one line inviting everyone to the feedback
+        // survey on their own device (16 October 2026).
         mainEl.innerHTML = endScreenHtml({
-          name: greetingName(observer),
-          compact: true,
-          close: false,
-          extraHtml: `<p class="pp-thanks-window" id="obsEndWindow" role="status"></p>`,
+          everyone: true, label: row.label || "", close: false,
+          extraHtml: `<p class="pp-thanks-survey">${escapeHtml(T("room.end.survey"))}</p>`,
         });
+      } else {
+        // Drawn once: the feedback survey under the card keeps its taps, and
+        // the notes area below is never covered or moved (16 October 2026).
+        if (!mainEl.querySelector(".pp-thanks-end")) {
+          mainEl.innerHTML = endScreenHtml({
+            name: greetingName(observer),
+            compact: true,
+            close: false,
+            extraHtml: `<p class="pp-thanks-window" id="obsEndWindow" role="status"></p>`,
+          }) + '<div id="surveyRoot" hidden></div>';
+          survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: observer.attendeeId, observer: true });
+        }
         updateObserverEndWindow();
+        survey.refresh(row);
       }
       lastRenderedIndex = null;
       return;
