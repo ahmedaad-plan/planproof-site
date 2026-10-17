@@ -158,6 +158,7 @@
       "notes.form.saving": "Saving…",
       "notes.form.saveChanges": "Save changes",
       "notes.dept.choose": "— Choose —",
+      "notes.dept.all": "All departments",
       "notes.dept.several": "Several departments",
       "notes.dept.external": "External party",
       "notes.window.endedFacilitator": "The exercise has ended. You can add notes until {time}, or until you press \"Notes complete\". Choose an inject or \"Whole exercise\".",

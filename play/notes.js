@@ -108,6 +108,7 @@
 
   const SEVERAL = "__several__";
   const EXTERNAL = "__external__";
+  const ALL = "__all__"; // "All departments": saved as "several" with every department
 
   // opts: { role: "observer"|"facilitator", draftKey, getRow(), save(payload) -> Promise,
   //         onSaved(result, payload, wasEditing)? }
@@ -225,6 +226,7 @@
         `<option value="">${esc(T("notes.dept.choose"))}</option>` +
         depts.map((d) => `<option value="${esc(d)}">${esc(d)}</option>`).join("") +
         `<option disabled>──────────</option>` +
+        (depts.length >= 2 ? `<option value="${ALL}">${esc(T("notes.dept.all"))}</option>` : "") +
         `<option value="${SEVERAL}">${esc(T("notes.dept.several"))}</option>` +
         `<option value="${EXTERNAL}">${esc(T("notes.dept.external"))}</option>`;
       E.checks.innerHTML = depts
@@ -234,7 +236,11 @@
     }
 
     function syncDept() {
-      if (state.scope === "several") E.dept.value = SEVERAL;
+      // "All departments" (Ahmed, 17 October 2026) is "several" with every
+      // box ticked; unticking one shows "Several departments" again.
+      const all = departments();
+      if (state.scope === "several" && all.length >= 2 && all.every((d) => state.depts.includes(d))) E.dept.value = ALL;
+      else if (state.scope === "several") E.dept.value = SEVERAL;
       else if (state.scope === "external") E.dept.value = EXTERNAL;
       else if (state.scope === "one" && departments().includes(state.dept)) E.dept.value = state.dept;
       else E.dept.value = "";
@@ -255,6 +261,10 @@
       if (resp.length === 1 && depts.includes(resp[0])) {
         state.scope = "one";
         state.dept = resp[0];
+      } else if (inj && injectResponsible(inj).some((d) => String(d).toLowerCase() === "all") && depts.length >= 2) {
+        state.scope = "several"; // an inject for all departments: "All departments", all ticked
+        state.dept = "";
+        state.depts = depts.slice();
       } else {
         state.scope = "";
         state.dept = "";
@@ -367,7 +377,8 @@
     E.dept.addEventListener("change", () => {
       touch();
       const v = E.dept.value;
-      if (v === SEVERAL) state.scope = "several";
+      if (v === ALL) { state.scope = "several"; state.depts = departments().slice(); }
+      else if (v === SEVERAL) state.scope = "several";
       else if (v === EXTERNAL) state.scope = "external";
       else if (v) { state.scope = "one"; state.dept = v; }
       else { state.scope = ""; state.dept = ""; }
@@ -379,6 +390,7 @@
       touch();
       state.depts = Array.from(E.checks.querySelectorAll("input:checked")).map((cb) => cb.value);
       persist();
+      syncDept();
     });
     E.external.addEventListener("input", () => { touch(); state.externalParty = E.external.value; persist(); });
     E.body.addEventListener("input", () => {
