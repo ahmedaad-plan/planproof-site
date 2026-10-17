@@ -286,6 +286,7 @@
   // never re-read from the server. Lost on a page reload; the server copy
   // is unaffected either way.
   const answersCache = {};
+  let firstInjectDrawn = true; // true until this page has shown its first inject
   // State used by init(), which runs just below — declared here, before it.
   let storedRun = null;          // which run of the exercise the answers kept on this phone belong to
   let restoredFromPhone = {};    // inject index -> true: brought back from this phone after a reload
@@ -912,6 +913,7 @@
     cancelAnswersCleanup();
     if (row.status === "lobby") {
       clearInjectTimer();
+      firstInjectDrawn = false; // seen waiting here: the first inject is new to this person
       mainEl.innerHTML = welcomeScreenHtml({ name: greetingName(identity) }) +
         (remote ? `<p class="remote-welcome-note">${escapeHtml(T("part.remote.welcomeNote"))}</p>` : "");
       formIdx = null;
@@ -997,7 +999,17 @@
       renderForm(inject, idx, { answerText });
       armTimer();
       playInjectSound(row, idx, inject);
-      if (tabsApi && !tabsApi.isCurrent("inject")) tabsApi.dot("inject", true);
+      // A new inject opens the Inject tab by itself (Ahmed, 17 October 2026:
+      // a phone left on Messages showed no answer box). Only a message being
+      // typed keeps Messages open; then the Inject tab gets its dot.
+      if (tabsApi && !tabsApi.isCurrent("inject")) {
+        const box = document.getElementById("replyText");
+        const typing = box && (document.activeElement === box || box.value.trim());
+        // the first inject drawn after opening or reloading the page keeps
+        // the tab the person had open (it is not new to them)
+        if (typing || firstInjectDrawn) tabsApi.dot("inject", true); else tabsApi.show("inject");
+      }
+      firstInjectDrawn = false;
       if (!isIndividual(inject)) checkWriter(idx);
 
       if (lostEdit && currentSaveStatusEl) {
@@ -1551,6 +1563,10 @@
       const remainingMs = updateClock();
       if (remainingMs !== null && remainingMs <= 0 && !expired) {
         expired = true;
+        // Time's up: the inject's sound stops and never starts late
+        // (Ahmed, 17 October 2026: a siren played over "Time's up").
+        stopSfx();
+        pendingSfx = null;
         onTimeUp();
       }
     }
@@ -1609,19 +1625,19 @@
   function storeIdentity() {
     try { localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identity)); } catch { /* storage blocked */ }
   }
-  // One real clip for an instant: silent (volume 0) inside the tap, so sound
-  // is allowed for the rest of the exercise; barely audible (0.01) after a
-  // reload, so the browser's own answer is truthful.
+  // A silent clip for an instant inside the tap, so sound is allowed for the
+  // rest of the exercise; after a reload the browser's own answer says
+  // whether this site may play sound without a tap.
   function tryUnlockSound(volume) {
     unlockChime();
-    const unlock = new Audio(SFX_FILES["siren-ambulance"]);
+    const unlock = new Audio(SFX_SILENT);
     unlock.volume = volume;
     return unlock.play().then(() => { unlock.pause(); });
   }
   function onSoundUnlocked() {
     audioUnlocked = true;
     remoteGateErrorEl.hidden = true;
-    if (pendingSfx && remote && !muted) {
+    if (pendingSfx && remote && !muted && latestRow && formInject && timeLeftFor(latestRow, formInject)) {
       const toPlay = pendingSfx;
       pendingSfx = null;
       playSfx(toPlay);
@@ -1678,10 +1694,15 @@
   // is allowed — otherwise it waits for the tap); a resumed inject comes back
   // without it, as on the room screen (12 October 2026). In-room devices
   // stay silent.
+  function timeLeftFor(row, inject) {
+    const deadline = injectDeadlineMs(row, inject);
+    return !deadline || deadline > Date.now();
+  }
   function playInjectSound(row, idx, inject) {
     if (!remote || !inject || !inject.sfx) return;
     if (injectWasResumed(row, idx)) { pendingSfx = null; return; }
     if (muted) { pendingSfx = null; return; }
+    if (!timeLeftFor(row, inject)) { pendingSfx = null; return; } // time's up: no sound
     if (audioUnlocked) playSfx(inject.sfx);
     else pendingSfx = inject.sfx;
   }
@@ -1707,7 +1728,7 @@
       showToast(T(audioUnlocked && !muted ? "part.remote.nowRemoteOn" : "part.remote.nowRemote"), 40000);
       // the inject already showing gets its sound — now, if sound is already
       // allowed on this device, otherwise once the person taps
-      if (latestRow && latestRow.status === "running" && formInject && formInject.sfx && !injectWasResumed(latestRow, formIdx) && !muted) {
+      if (latestRow && latestRow.status === "running" && formInject && formInject.sfx && !injectWasResumed(latestRow, formIdx) && !muted && timeLeftFor(latestRow, formInject)) {
         if (audioUnlocked) playSfx(formInject.sfx); else pendingSfx = formInject.sfx;
       }
     }

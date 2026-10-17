@@ -203,7 +203,12 @@
       let recognition;
       try { recognition = new SpeechRecognitionAPI(); } catch { say(labels.failed, "err"); return; }
       recognition.lang = (window.PPLang && PPLang.speechLang()) || "en-US";
-      recognition.continuous = true;
+      // Phones (Android Chrome, iPhone Safari) repeat earlier words in
+      // "continuous" listening — Ahmed's test, 17 October 2026: "the health
+      // locate the plan the health and safety team…". There, listen one
+      // sentence at a time; the loop below starts the next one at once.
+      const phoneLike = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "") || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent || ""));
+      recognition.continuous = !phoneLike;
       recognition.interimResults = false;
       let stopped = false;
       let silenceTimer = null;

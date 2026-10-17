@@ -215,6 +215,10 @@
   .ci-task { font-size: 0.92rem; color: var(--text); background: var(--amber-dim); border-inline-start: 3px solid var(--amber); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
   .ci-meta { font-size: 0.8rem; color: var(--text-muted); }
   .current-inject { background: transparent; border: 0; padding: 0; max-width: none; }
+  .reset-card { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .reset-card h2 { margin: 0 0 2px; }
+  .reset-card .sub { margin: 0; }
+  .reset-card .body { flex: 1 1 260px; min-width: 0; }
   .setup-card summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1rem; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .setup-card summary::-webkit-details-marker { display: none; }
   .setup-card summary::before { content: "▸"; color: var(--amber); }
@@ -362,9 +366,16 @@
 
   <!-- ===== People ===== -->
   <section id="tabPeople" class="pp-cols" hidden>
+    <div class="pp-card reset-card">
+      <div class="body">
+        <h2 data-i18n="fac.reset.heading">Start over</h2>
+        <div class="sub" data-i18n="fac.reset.sub">Sends every device back to the waiting screen, ready to start again from the first inject.</div>
+      </div>
+      <button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Reset to lobby…</button>
+    </div>
     <div class="pp-col">
       <details class="pp-card setup-card" id="setupDetails" open>
-        <summary><span data-i18n="fac.setup.heading">Setup</span> <span class="setup-folded" id="setupFolded" data-i18n="fac.setup.folded">— rooms, links and QR codes, departments, reset</span></summary>
+        <summary><span data-i18n="fac.setup.heading">Setup</span> <span class="setup-folded" id="setupFolded" data-i18n="fac.setup.folded">— rooms, links and QR codes, departments</span></summary>
         <div class="setup-body">
           <div class="note" id="roomCountNote" style="margin-bottom:10px;" data-i18n="fac.setup.roomsNote">
             How many rooms are running this exercise? Room 1 is always your own
@@ -428,8 +439,6 @@
           </div>
           <div id="rosterError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
 
-          <h3 data-i18n="fac.reset.heading">Start over</h3>
-          <div class="add-dept-row"><button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Reset to lobby…</button></div>
         </div>
       </details>
 
@@ -1272,13 +1281,10 @@
       tabsApi.show("messages");
       msgTextEl.focus();
     });
-    // The mic on the compose box (voice notes): the facilitator link is the
-    // credential; the exercise's departments and names are the vocabulary.
-    const composeMic = PPMic.attach(msgTextEl, {
-      who: { sessionId, facilitatorToken },
-      labels: micLabels(),
-      vocabulary: () => speechVocabulary(),
-    });
+    // No mic on the message box (Ahmed, 17 October 2026): a voice note is a
+    // note, never a message — something spoken must not reach participants
+    // by mistake. The mic lives only on the Notes tab.
+    const composeMic = null;
 
     document.body.addEventListener("click", unlockChime, { once: true });
 

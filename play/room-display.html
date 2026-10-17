@@ -333,6 +333,7 @@
   const clientLabelEl = document.getElementById("clientLabel");
   const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
+  let obsPageFresh = true; // true until this page has shown the lobby or an inject
   let injectTimerInterval = null;
   // Audio can only play after a user gesture. If this page loads (or
   // reloads) while an inject is already showing — not starting fresh from
@@ -431,7 +432,7 @@
     // this site without a tap.
     function tryUnlockSound(volume) {
       unlockChime();
-      const unlock = new Audio(SFX_FILES["siren-ambulance"]);
+      const unlock = new Audio(SFX_SILENT);
       unlock.volume = volume;
       return unlock.play().then(() => {
         unlock.pause();
@@ -678,6 +679,7 @@
         ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
         : `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
       lastRenderedIndex = null;
+      obsPageFresh = false; // seen waiting here: the first inject is new
       return;
     }
     if (row.status === "ended") {
@@ -743,7 +745,15 @@
       ? T("room.inject.allDepartments")
       : (respList.length > 1 ? T("room.inject.listAnd", { list: respList.slice(0, -1).join(T("room.inject.listSep")), last: respList[respList.length - 1] }) : respList.join(""));
     const posLine = T("room.inject.line", { number: idx + 1, total: injects.length, who, kind: injectOutput(inject) === "individual" ? T("room.inject.individual") : T("room.inject.group") });
-    if (isNewInject && tabsApi && !tabsApi.isCurrent("exercise")) tabsApi.dot("exercise", true);
+    // A new inject opens the Exercise tab by itself (17 October 2026),
+    // unless the Observer is in the middle of a note or a message.
+    if (isNewInject && tabsApi && !tabsApi.isCurrent("exercise")) {
+      const boxes = [document.querySelector("#noteForm textarea"), document.getElementById("obsMsgText")];
+      const typing = boxes.some((b) => b && (document.activeElement === b || b.value.trim()));
+      // the first inject after opening or reloading keeps the remembered tab
+      if (typing || obsPageFresh) tabsApi.dot("exercise", true); else tabsApi.show("exercise");
+    }
+    obsPageFresh = false;
     mainEl.innerHTML = `
       ${videoBlock}
       <div class="inject-pos">${escapeHtml(posLine)}</div>
@@ -1204,12 +1214,9 @@
     const replyNow = () => { markObserverMessagesRead(); if (tabsApi) tabsApi.show("messages", { user: true }); if (!obsMsgTextEl.disabled) obsMsgTextEl.focus(); };
     document.getElementById("obsBannerReply").addEventListener("click", replyNow);
     obsThreadEl.addEventListener("click", (e) => { if (e.target.closest(".msg-reply-btn")) replyNow(); });
-    // The mic on the message box (voice notes): the Observer's registration is the credential.
-    const obsMsgMic = PPMic.attach(obsMsgTextEl, {
-      who: { sessionId, attendeeId: observer.attendeeId },
-      labels: micLabels(),
-      vocabulary: () => speechVocabulary(),
-    });
+    // No mic on the message box (Ahmed, 17 October 2026): the mic is for
+    // notes only, on the Notes tab, so a voice note is never sent as a message.
+    const obsMsgMic = null;
     obsMsgSendBtn.addEventListener("click", async () => {
       const body = obsMsgTextEl.value.trim();
       if (!body || obsSending) return;

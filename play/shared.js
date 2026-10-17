@@ -1045,6 +1045,12 @@ function closeObserverNotes(sessionId, facilitatorToken) {
 // Smartsound), replacing the earlier synthesized placeholders. Every inject
 // references its effect by this same short name ("sfx"), so adding a new
 // sound later is just: drop the file in play/sfx/ and add one line here.
+// A short silent clip used only to unlock sound inside a tap (17 October
+// 2026). It used to be a real siren at volume 0 — but an iPhone ignores the
+// volume setting, so the siren was heard for a moment on every "turn sound
+// on" tap and after a reload, even with no inject sound due.
+const SFX_SILENT = "sfx/silence.wav";
+
 const SFX_FILES = {
   "siren-firetruck": "sfx/siren-firetruck.mp3",
   "siren-ambulance": "sfx/siren-ambulance.mp3",
