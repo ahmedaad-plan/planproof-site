@@ -131,12 +131,23 @@
     flex: 0 0 auto; font: inherit; font-weight: 700; padding: 9px 14px; border-radius: 8px; cursor: pointer;
     background: var(--amber-ink); color: var(--amber); border: none;
   }
-  .obs-jump {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 0;
-    padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--panel);
-    color: var(--text); text-decoration: none; font-weight: 600; font-size: 0.95rem;
+  /* Tabs (17 October 2026): Exercise / Notes / Messages on a phone (bottom
+     bar); on a laptop the exercise stays on the left and Notes / Messages
+     are tabs on the right. The shared room screen is unchanged: the wrapper
+     adds nothing outside Observer mode. */
+  body.observer-mode .observer-panel { padding-bottom: 24px; }
+  body.observer-mode .obs-banner { top: 44px; }
+  body.observer-mode .obs-thread li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--amber); background: none; border: 1px solid var(--amber); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  body.observer-mode .inject-pos { font-size: 0.9rem; color: var(--text-muted); }
+  .inject-pos { font-size: clamp(1rem, 1.8vw, 1.5rem); color: var(--amber); font-weight: 600; letter-spacing: 0.01em; }
+  @media (min-width: 900px) {
+    body.observer-mode .obs-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+    body.observer-mode .obs-cols > .pp-col { min-width: 0; }
+    body.observer-mode .obs-right { min-width: 0; }
+    body.observer-mode .obs-right .pp-tabs { padding: 0; }
+    body.observer-mode .observer-panel { padding-inline: 0; }
+    body.observer-mode main { padding-inline: 0; }
   }
-  .obs-jump .arrow { color: var(--amber); }
   .obs-badge {
     display: inline-block; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px;
     background: var(--amber); color: var(--amber-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
@@ -170,7 +181,7 @@
     <div class="q" data-i18n="room.gate.question">Which room is this screen in?</div>
     <div class="room-buttons" id="roomButtons"></div>
   </div>
-  <button class="pp-btn" id="startBtn" data-i18n="room.gate.begin">Tap to begin (enables sound)</button>
+  <button class="pp-btn" id="startBtn" data-i18n="room.gate.begin">Tap to start — this turns sound on</button>
 </div>
 
 <header class="pp-top">
@@ -187,6 +198,7 @@
       <div class="label" data-i18n-nodes="room.obsBanner.label">Message from the facilitator <span id="obsBannerTime"></span></div>
       <div class="text" id="obsBannerText"></div>
     </div>
+    <button type="button" id="obsBannerReply" data-i18n="room.obsBanner.reply">Reply</button>
     <button type="button" id="obsBannerOk" data-i18n="room.obsBanner.gotIt">Got it</button>
   </div>
 </div>
@@ -197,27 +209,38 @@
   <div class="timebar" id="broadcastTimebar"></div>
 </div>
 
+<!-- The Observer's slim header (17 October 2026): who, where the exercise is, the clock. -->
+<div class="pp-slim" id="slimBar" hidden>
+  <span class="who" id="slimWho"></span>
+  <span class="pos" id="slimPos"></span>
+  <span class="pp-cmd-clock" id="slimClock" data-state="none" hidden></span>
+</div>
+<div class="obs-cols" id="obsCols">
+<section id="tabExercise" class="pp-col">
 <main id="main">
   <div class="lobby" data-i18n="room.lobby.waiting">Waiting for the facilitator to start the exercise…</div>
 </main>
-
-<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes and messages" data-i18n-attr="aria-label:room.observer.panelLabel">
-  <a class="obs-jump" id="obsJump" href="#obsMessages">
-    <span data-i18n-nodes="room.msg.jump">Message the facilitator<span class="obs-badge" id="obsJumpBadge" hidden></span></span>
-    <span class="arrow" aria-hidden="true">&darr;</span>
-  </a>
+</section>
+<div class="obs-right">
+<nav class="pp-tabs" id="obsTabs" hidden aria-label="Sections" data-i18n-attr="aria-label:room.tabs.aria"></nav>
+<section id="tabNotes" class="pp-col" hidden>
+<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes" data-i18n-attr="aria-label:room.observer.panelLabel">
+  <div id="obsEndRoot"></div>
   <h2 data-i18n="room.notes.heading">Your notes</h2>
   <div id="noteForm"></div>
   <h2 data-i18n="room.notes.loggedHeading">Notes you've logged</h2>
   <div class="mine" id="myNotes"><div class="empty" data-i18n="room.notes.noneYet">None yet.</div></div>
-
+</section>
+</section>
+<section id="tabMessages" class="pp-col" hidden>
+<section class="observer-panel" id="observerMsgPanel" hidden aria-label="Messages with the facilitator" data-i18n-attr="aria-label:room.observer.msgPanelLabel">
   <h2 id="obsMessages" data-i18n-nodes="room.msg.heading">Messages with the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
   <ul class="obs-thread" id="obsThread"><li class="empty" data-i18n="room.msg.none">No messages yet.</li></ul>
   <div class="obs-msg-card pp-form">
     <h3 data-i18n="room.msg.cardTitle">Message the facilitator</h3>
     <p class="pp-hint" id="obsMsgHint" data-i18n="room.msg.hint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
-    <label for="obsMsgPreset" data-i18n="room.msg.presetLabel">Choose a ready-made message</label>
-    <select id="obsMsgPreset"><option value="" data-i18n="room.msg.presetChoose">— Choose a ready-made message —</option></select>
+    <div class="pp-label" data-i18n="room.msg.presetLabel">Ready-made</div>
+    <div class="pp-chips" id="obsMsgPresets"></div>
     <label for="obsMsgText" data-i18n="room.msg.textLabel">Or type your own message</label>
     <textarea id="obsMsgText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:room.msg.textPlaceholder"></textarea>
     <div class="obs-msg-row">
@@ -227,6 +250,9 @@
     <div class="obs-msg-feedback" id="obsMsgFeedback"></div>
   </div>
 </section>
+</section>
+</div>
+</div>
 
 <footer data-i18n="room.page.footer">Exercise room display</footer>
 <div id="sfxStatus" data-i18n="room.sound.idle">sound: —</div>
@@ -235,6 +261,8 @@
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./layout.js"></script>
+<script src="./mic.js"></script>
 <script src="./notes.js"></script>
 <script src="./survey.js"></script>
 <script>
@@ -266,6 +294,40 @@
         ? T("room.observer.whoRoom", { name: String(observer.name), department: String(observer.department), room: observer.room })
         : T("room.observer.who", { name: String(observer.name), department: String(observer.department) });
     document.getElementById("observerPanel").hidden = false;
+    document.getElementById("observerMsgPanel").hidden = false;
+    document.body.classList.add("pp-has-tabs");
+    document.getElementById("obsTabs").hidden = false;
+    document.getElementById("slimBar").hidden = false;
+    document.getElementById("slimWho").textContent = observer.room
+      ? T("room.slim.whoRoom", { room: observer.room })
+      : T("room.slim.who");
+  }
+  // Tabs (17 October 2026), Observer mode only: Exercise / Notes / Messages.
+  // On a laptop the exercise is pinned on the left; the open tab is
+  // remembered on the device. Opening Messages counts as reading them.
+  let tabsApi = null;
+  if (observerMode) {
+    tabsApi = PPLayout.tabs({
+      nav: document.getElementById("obsTabs"),
+      storageKey: `pp_obstab_${sessionId}`,
+      pinned: (id) => id === "exercise",
+      tabs: [
+        { id: "exercise", label: T("room.tabs.exercise"), panel: document.getElementById("tabExercise") },
+        { id: "notes", label: T("room.tabs.notes"), panel: document.getElementById("tabNotes") },
+        { id: "messages", label: T("room.tabs.messages"), panel: document.getElementById("tabMessages") },
+      ],
+      onShow: (id) => { if (id === "messages") markObserverMessagesRead(); if (id === "exercise") tabsApi.dot("exercise", false); updateSlim(); },
+    });
+    PPLayout.watchKeyboard();
+  }
+  function updateSlim() {
+    if (!observerMode || !latestRow) return;
+    const injects = (latestRow.scenario && latestRow.scenario.injects) || [];
+    const idx = latestRow.current_inject_index;
+    document.getElementById("slimPos").textContent = latestRow.status === "running" && idx >= 0
+      ? T("room.slim.inject", { number: idx + 1, total: injects.length })
+      : latestRow.status === "ended" ? T("room.slim.ended") : T("room.slim.waiting");
+    document.getElementById("slimClock").hidden = !(latestRow.status === "running" && tabsApi && !tabsApi.isCurrent("exercise"));
   }
   const mainEl = document.getElementById("main");
   const clientLabelEl = document.getElementById("clientLabel");
@@ -588,12 +650,14 @@
     }
   }
 
+  let wasEnded = false;
   function render(row) {
     if (!row) return;
     latestRow = row;
     if (observerMode) {
       refreshObserverNotes();
       updateObserverMessageControls();
+      updateSlim();
     }
     clientLabelEl.textContent = row.label || "PlanProof";
 
@@ -604,6 +668,8 @@
       if (row.status === "ended" || msgContext !== rowContext(row)) hideBroadcast();
     }
 
+    if (observerMode && wasEnded) { document.getElementById("obsEndRoot").innerHTML = ""; survey = null; }
+    wasEnded = false;
     if (row.status === "lobby") {
       clearInjectTimer();
       // An Observer is greeted by name on their own device (item 8); the
@@ -630,20 +696,28 @@
           extraHtml: `<p class="pp-thanks-survey">${escapeHtml(T("room.end.survey"))}</p>`,
         });
       } else {
-        // Drawn once: the feedback survey under the card keeps its taps, and
-        // the notes area below is never covered or moved (16 October 2026).
-        if (!mainEl.querySelector(".pp-thanks-end")) {
-          mainEl.innerHTML = endScreenHtml({
+        // Drawn once, at the top of the Notes tab (17 October 2026): the
+        // feedback survey under the card keeps its taps, and the notes area
+        // below is never covered or moved (16 October 2026). The Exercise
+        // tab says where to look.
+        const endRoot = document.getElementById("obsEndRoot");
+        if (!endRoot.querySelector(".pp-thanks-end")) {
+          endRoot.innerHTML = endScreenHtml({
             name: greetingName(observer),
             compact: true,
             close: false,
             extraHtml: `<p class="pp-thanks-window" id="obsEndWindow" role="status"></p>`,
           }) + '<div id="surveyRoot" hidden></div>';
           survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: observer.attendeeId, observer: true });
+          // Simplicity (17 October 2026): no second, larger thank-you beside
+          // the Observer's own card — one plain line pointing to it.
+          mainEl.innerHTML = `<p class="pp-hint obs-ended-line">${escapeHtml(T("room.observer.endedSeeNotes"))}</p>`;
         }
         updateObserverEndWindow();
         survey.refresh(row);
+        if (!wasEnded && tabsApi) tabsApi.show("notes");
       }
+      wasEnded = true;
       lastRenderedIndex = null;
       return;
     }
@@ -663,8 +737,16 @@
       ? `<div class="video-card"><div class="tag">${escapeHtml(T("room.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
       : "";
 
+    // "Inject 7 of 20 · Finance and IT to respond · Group answer" (17 October 2026).
+    const respList = injectResponsible(inject);
+    const who = respList.some((d) => String(d).toLowerCase() === "all")
+      ? T("room.inject.allDepartments")
+      : (respList.length > 1 ? T("room.inject.listAnd", { list: respList.slice(0, -1).join(T("room.inject.listSep")), last: respList[respList.length - 1] }) : respList.join(""));
+    const posLine = T("room.inject.line", { number: idx + 1, total: injects.length, who, kind: injectOutput(inject) === "individual" ? T("room.inject.individual") : T("room.inject.group") });
+    if (isNewInject && tabsApi && !tabsApi.isCurrent("exercise")) tabsApi.dot("exercise", true);
     mainEl.innerHTML = `
       ${videoBlock}
+      <div class="inject-pos">${escapeHtml(posLine)}</div>
       <div class="inject-title">${escapeHtml(inject.title)}</div>
       <div class="inject-desc">${escapeHtml(inject.desc)}</div>
       <div class="timer-row">
@@ -706,12 +788,14 @@
     clearInjectTimer();
     const noteEl = document.getElementById("injectTimerNote");
     if (noteEl) noteEl.textContent = extraMinutes > 0 ? T("room.timer.extra", { count: extraMinutes }) : "";
+    const slim = document.getElementById("slimClock");
     function tick() {
       const el = document.getElementById("injectTimerValue");
       if (!el) return;
       if (!deadlineMs) {
         el.textContent = T("room.timer.noLimit");
         el.className = "value nolimit";
+        if (slim) { slim.textContent = el.textContent; slim.dataset.state = "none"; }
         return;
       }
       const remainingMs = deadlineMs - Date.now();
@@ -720,6 +804,7 @@
         // counting into negative time.
         el.textContent = T("room.timer.up");
         el.className = "value warn up";
+        if (slim) { slim.textContent = el.textContent; slim.dataset.state = "up"; }
         return;
       }
       const m = Math.floor(remainingMs / 60000);
@@ -727,6 +812,8 @@
       el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
       // Amber in the last minute, as on the phones.
       el.className = remainingMs < 60000 ? "value warn" : "value"; // i18n-ok: CSS class names
+      // The Observer's slim header carries the same clock.
+      if (slim) { slim.textContent = el.textContent; slim.dataset.state = remainingMs < 60000 ? "warn" : "run"; }
     }
     tick();
     if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
@@ -770,6 +857,20 @@
     } catch { /* storage blocked — the list just won't survive a reload */ }
   }
   let myNotes = observer ? loadMyNotes() : [];
+  let noteMic = null;
+  // Voice notes: wording for the mic, and the exercise's own words for the speech service.
+  function micLabels() {
+    return {
+      title: T("shared.mic.title"), tapToSpeak: T("shared.mic.tapToSpeak"), listening: T("shared.mic.listening"),
+      working: T("shared.mic.working"), refused: T("shared.mic.refused"), noConnection: T("shared.mic.noConnection"),
+      unsupported: T("shared.mic.unsupported"), nothingHeard: T("shared.mic.nothingHeard"), failed: T("shared.mic.failed"),
+    };
+  }
+  function speechVocabulary() {
+    const words = ["PlanProof", "RTO", "RPO", "BCM", "NCEMA", "inject"]; // i18n-ok: words for the speech service, not shown
+    if (latestRow) { if (latestRow.label) words.push(latestRow.label); sessionDepartments(latestRow).forEach((d) => words.push(d)); }
+    return words;
+  }
 
   function refreshObserverNotes() {
     if (!observerMode || !latestRow) return;
@@ -779,6 +880,7 @@
         draftKey,
         getRow: () => latestRow,
         save: (payload) => saveObserverNote(sessionId, payload, { attendeeId: observer.attendeeId }),
+        beforeSave: () => { if (noteMic) noteMic.stop(); },
         onSaved: (result, payload) => {
           const entry = Object.assign({}, payload, {
             runNumber: result && result.run_number,
@@ -793,6 +895,13 @@
           storeMyNotes(myNotes);
           renderMyNotes();
         },
+      });
+    }
+    if (!noteMic) {
+      noteMic = PPMic.attach(noteForm.textarea, {
+        who: { sessionId, attendeeId: observer.attendeeId },
+        labels: micLabels(),
+        vocabulary: () => speechVocabulary(),
       });
     }
     noteForm.refresh();
@@ -913,8 +1022,8 @@
   const obsBannerTimeEl = document.getElementById("obsBannerTime");
   const obsThreadEl = document.getElementById("obsThread");
   const obsBadgeEl = document.getElementById("obsBadge");
-  const obsJumpBadgeEl = document.getElementById("obsJumpBadge");
-  const obsMsgPresetEl = document.getElementById("obsMsgPreset");
+  const obsMsgPresetsEl = document.getElementById("obsMsgPresets");
+  let obsPresetKey = "";
   const obsMsgTextEl = document.getElementById("obsMsgText");
   const obsMsgCountEl = document.getElementById("obsMsgCount");
   const obsMsgSendBtn = document.getElementById("obsMsgSendBtn");
@@ -995,8 +1104,7 @@
     const badge = T("room.msg.newCount", { count: unread.length });
     obsBadgeEl.hidden = unread.length === 0;
     obsBadgeEl.textContent = badge;
-    obsJumpBadgeEl.hidden = unread.length === 0;
-    obsJumpBadgeEl.textContent = badge;
+    if (tabsApi) tabsApi.badge("messages", unread.length, "");
     document.title = unread.length ? `(${unread.length}) ${obsBaseTitle}` : obsBaseTitle;
 
     obsThreadEl.innerHTML = obsMessages.length
@@ -1008,7 +1116,8 @@
             const who = fromFac
               ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
               : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
-            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}</li>`;
+            const canReply = fromFac && observerChannel(latestRow).open;
+            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}${canReply ? `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("room.msg.reply"))}</button></div>` : ""}</li>`;
           })
           .join("")
       : `<li class="empty">${escapeHtml(T("room.msg.none"))}</li>`;
@@ -1031,7 +1140,7 @@
     const closed = !!latestRow && !chan.open;
     const len = obsMsgTextEl.value.trim().length;
     obsMsgCountEl.textContent = `${obsMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
-    obsMsgPresetEl.disabled = closed;
+    obsMsgPresetsEl.querySelectorAll("button").forEach((b) => { b.disabled = closed; b.setAttribute("aria-pressed", String(b.dataset.preset === obsPresetKey)); });
     obsMsgTextEl.disabled = closed;
     obsMsgSendBtn.disabled = obsSending || len === 0 || closed || !latestRow;
     if (closed) {
@@ -1048,16 +1157,14 @@
   }
 
   if (observerMode) {
-    OBSERVER_TO_FACILITATOR_PRESETS.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = p.text;
-      obsMsgPresetEl.appendChild(opt);
-    });
+    // Ready-made messages as tap chips (17 October 2026), worded as the room
+    // ("Our room needs more time"): one tap fills the box, which stays editable.
+    obsMsgPresetsEl.innerHTML = OBSERVER_TO_FACILITATOR_PRESETS.map((p) =>
+      `<button type="button" class="pp-chip" data-preset="${p.key}" aria-pressed="false">${escapeHtml(p.text)}</button>`).join("");
     // An unsent message comes back after a reload.
     if (obsDraft.text) {
       obsMsgTextEl.value = obsDraft.text;
-      obsMsgPresetEl.value = obsDraft.presetKey || "";
+      obsPresetKey = obsDraft.presetKey || "";
     }
     const clearFeedback = () => {
       if (obsMsgFeedbackEl.dataset.closed) return;
@@ -1070,27 +1177,45 @@
       // sent again (a retry) keeps its id, so it is saved once.
       if (text !== obsDraft.text || !obsDraft.id) obsDraft.id = crypto.randomUUID();
       obsDraft.text = text;
-      obsDraft.presetKey = obsMsgPresetEl.value;
+      obsDraft.presetKey = obsPresetKey;
       storeObsDraft();
     }
-    obsMsgPresetEl.addEventListener("change", () => {
-      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
-      if (preset) obsMsgTextEl.value = preset.text;
+    obsMsgPresetsEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-preset]");
+      if (!b || b.disabled) return;
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === b.dataset.preset);
+      if (!preset) return;
+      obsPresetKey = preset.key;
+      obsMsgTextEl.value = preset.text;
       clearFeedback();
       keepDraft();
       updateObserverMessageControls();
       obsMsgTextEl.focus();
     });
     obsMsgTextEl.addEventListener("input", () => {
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsPresetKey);
+      if (preset && preset.text !== obsMsgTextEl.value) obsPresetKey = "";
       clearFeedback();
       keepDraft();
       updateObserverMessageControls();
     });
+    // Reply (17 October 2026): on the banner and under a message — opens
+    // the Messages tab with the box ready.
+    const replyNow = () => { markObserverMessagesRead(); if (tabsApi) tabsApi.show("messages", { user: true }); if (!obsMsgTextEl.disabled) obsMsgTextEl.focus(); };
+    document.getElementById("obsBannerReply").addEventListener("click", replyNow);
+    obsThreadEl.addEventListener("click", (e) => { if (e.target.closest(".msg-reply-btn")) replyNow(); });
+    // The mic on the message box (voice notes): the Observer's registration is the credential.
+    const obsMsgMic = PPMic.attach(obsMsgTextEl, {
+      who: { sessionId, attendeeId: observer.attendeeId },
+      labels: micLabels(),
+      vocabulary: () => speechVocabulary(),
+    });
     obsMsgSendBtn.addEventListener("click", async () => {
       const body = obsMsgTextEl.value.trim();
       if (!body || obsSending) return;
+      if (obsMsgMic) obsMsgMic.stop();
       if (!obsDraft.id || obsDraft.text !== obsMsgTextEl.value) keepDraft();
-      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsPresetKey);
       const presetKey = preset && preset.text === body ? preset.key : null;
       obsSending = true;
       updateObserverMessageControls();
@@ -1101,7 +1226,7 @@
         obsDraft = { id: null, text: "", presetKey: "" };
         storeObsDraft();
         obsMsgTextEl.value = "";
-        obsMsgPresetEl.value = "";
+        obsPresetKey = "";
         obsMsgFeedbackEl.className = "obs-msg-feedback ok";
         obsMsgFeedbackEl.textContent = T("room.msg.sentAt", { time: formatMessageTime(new Date().toISOString()) });
         loadObserverMessages(false);

@@ -17,6 +17,11 @@
   :root { --navy:#0b1f3a; --amber:#c9831f; --ink:#1b2430; --muted:#5d6874; --line:#c9ced6; }
   * { box-sizing:border-box; }
   body { margin:0; color:var(--ink); background:#e9ecef; font:11pt/1.45 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  .qr-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:18px; }
+  .qr-cell { text-align:center; }
+  .qr-cell .qr { width:60mm; height:60mm; margin:0 auto 10px; }
+  .qr-cell .qr svg { width:100%; height:100%; }
+  .qr-cell .url { font-family:ui-monospace, Consolas, monospace; font-size:8.5pt; overflow-wrap:anywhere; direction:ltr; }
   .toolbar { position:sticky; top:0; background:#10151b; color:#e7eaee; padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; z-index:2; }
   .toolbar button { font:inherit; font-weight:700; border:0; border-radius:6px; padding:8px 14px; background:#e2a63b; color:#201404; cursor:pointer; }
   .page { background:#fff; width:210mm; min-height:297mm; margin:12px auto; padding:18mm 16mm; box-shadow:0 1px 6px rgba(0,0,0,.15); page-break-after:always; break-after:page; }
@@ -49,8 +54,10 @@
 <div class="toolbar"><strong data-i18n="print.toolbar.heading">Printable backup pack</strong><span id="tbInfo"></span><button id="printBtn" data-i18n="print.toolbar.printButton">Print / Save as PDF</button></div>
 <div id="out"><p class="err" data-i18n="print.loading">Loading…</p></div>
 
+<script src="/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./layout.js"></script>
 <script>
   const out = document.getElementById("out");
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -129,6 +136,21 @@
       </section>`);
     });
 
+    // The two public QR codes (roadmap item 11, 17 October 2026): one sheet
+    // to pin up in each room, or to hold up to the camera.
+    const langHint = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
+    const joinUrl = `${location.origin}/play/join.html?session=${sessionId}${langHint}`;
+    const displayUrl = `${location.origin}/play/room-display.html?session=${sessionId}${langHint}`;
+    pages.push(`<section class="page qr-page">
+      <div class="eyebrow">${esc(T("print.qr.eyebrow"))}</div>
+      <h1>${esc(title)}</h1>
+      <div class="qr-grid">
+        <div class="qr-cell"><div class="qr" id="printJoinQr"></div><h2>${esc(T("print.qr.joinHeading"))}</h2><p>${esc(T("print.qr.joinText"))}</p><p class="url">${esc(joinUrl)}</p></div>
+        <div class="qr-cell"><div class="qr" id="printDisplayQr"></div><h2>${esc(T("print.qr.displayHeading"))}</h2><p>${esc(T("print.qr.displayText"))}</p><p class="url">${esc(displayUrl)}</p></div>
+      </div>
+      <p class="foot">${esc(T("print.qr.foot"))}</p>
+    </section>`);
+
     pages.push(`<section class="page">
       <div class="eyebrow">${esc(T("print.sheet.eyebrow"))}</div>
       <h1>${esc(T("print.sheet.heading"))}</h1>
@@ -143,6 +165,8 @@
       <p class="foot">${esc(T("print.sheet.foot"))}</p>
     </section>`);
     out.innerHTML = pages.join("");
+    PPLayout.qr(document.getElementById("printJoinQr"), joinUrl, { cellSize: 6 });
+    PPLayout.qr(document.getElementById("printDisplayQr"), displayUrl, { cellSize: 6 });
   })();
 </script>
 </body>

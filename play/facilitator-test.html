@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title data-i18n="fac.page.title">PlanProof — Facilitator Test Controls (prototype)</title>
+<title data-i18n="fac.page.title">PlanProof — Facilitator</title>
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="./theme.css" />
@@ -199,41 +199,81 @@
   .roster-group { margin: 6px 0 10px; font-size: 0.86rem; color: var(--text-muted); }
   .roster-group button { font-size: 0.82rem; padding: 3px 10px; border-radius: 6px; }
   .roster-group button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Screen layout and usability (17 October 2026): the tabbed layout. */
+  .fac-main { padding: 16px 20px 40px; max-width: 1280px; }
+  .fac-checks { padding-top: 0; padding-bottom: 0; }
+  .fac-checks:empty { display: none; }
+  .start-check { margin: 12px 0 0; max-width: none; }
+  .end-strip { max-width: none; }
+  .pp-card.status-section, .pp-card.roster-section, .pp-card.tower-section, .pp-card.inbox-section, .pp-card.notes-section, .pp-card.broadcast-section { margin-top: 0; max-width: none; }
+  .pp-card.status-section { margin-top: 14px; }
+  .pp-card h2 { font-size: 1rem; margin: 0 0 8px; }
+  .pp-card h3 { font-size: 0.92rem; margin: 16px 0 6px; color: var(--amber); }
+  .ci-title { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; margin-bottom: 6px; }
+  .ci-desc { font-size: 0.95rem; white-space: pre-line; margin-bottom: 8px; }
+  .ci-task { font-size: 0.92rem; color: var(--text); background: var(--amber-dim); border-inline-start: 3px solid var(--amber); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
+  .ci-meta { font-size: 0.8rem; color: var(--text-muted); }
+  .current-inject { background: transparent; border: 0; padding: 0; max-width: none; }
+  .setup-card summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1rem; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .setup-card summary::-webkit-details-marker { display: none; }
+  .setup-card summary::before { content: "▸"; color: var(--amber); }
+  .setup-card[open] summary::before { content: "▾"; }
+  .setup-card .setup-folded { font-family: var(--font-body); font-weight: 400; font-size: 0.86rem; color: var(--text-muted); }
+  .setup-card[open] .setup-folded { display: none; }
+  .setup-body { margin-top: 10px; }
+  .exp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 0.92rem; }
+  .exp-row:first-child { border-top: 0; }
+  .exp-row input.bad { border-color: var(--red); }
+  .exp-row input { width: 84px; padding: 6px 8px; border-radius: 6px; border: 1.5px solid var(--border-strong); background: var(--field); color: var(--text); font: inherit; font-size: 1rem; text-align: center; direction: ltr; }
+  .exp-flag { font-size: 0.8rem; font-weight: 500; margin-inline-start: 6px; }
+  .exp-flag.ok { color: var(--teal-soft); }
+  .exp-flag.warn { color: var(--amber); }
+  .roster-summary .exp-flag { display: inline-block; }
+  .inbox-list { max-height: none; }
+  .inbox-list li.sent { color: var(--text-muted); border-inline-start: 3px solid var(--border-strong); }
+  .inbox-list li:not(.sent) { border-inline-start: 3px solid var(--amber); }
+  .inbox-list li.unread { background: var(--amber-dim); }
+  .msg-actions { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .msg-actions .msg-dept-btn { font-weight: 600; color: var(--amber); border-color: var(--amber); }
+  .broadcast-section textarea { width: 100%; min-height: 72px; resize: vertical; margin-top: 6px; }
+  .pp-chips { margin-top: 4px; }
+  .field-label { margin-top: 10px; }
+  .notes-list { max-height: 60vh; }
+  .roster-group button[hidden] { display: none; }
+  @media (max-width: 899px) { .fac-main { padding: 12px 12px 90px; } .fac-main.fac-checks { padding-bottom: 0; } .notes-list { max-height: none; } }
 </style>
 </head>
-<body>
+<body class="pp-has-tabs">
   <header class="pp-top">
     <span class="pp-brand" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
     <div class="pp-context"><strong id="facLabel" data-i18n="fac.header.label">Facilitator</strong><div data-i18n="fac.header.private">Facilitator page. Private link, do not share it.</div></div>
   </header>
-  <div class="fac-main">
-  <h1 data-i18n="fac.page.heading">Facilitator test controls (prototype)</h1>
-  <div class="note" data-i18n="fac.page.intro">
-    This page drives the demo session directly — it stands in for the real
-    facilitator view (lobby/roster, criteria capture, submissions feed) which
-    isn't built yet. Its only job here is to prove that an action taken here
-    shows up instantly on the room display.
-  </div>
 
-  <div class="status" data-i18n-nodes="fac.statusLine.status; fac.statusLine.inject">Status: <b id="statusVal" data-i18n="fac.statusLine.loading">loading…</b> · Inject: <b id="indexVal">—</b></div>
-
-  <div class="controls">
-    <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
-    <button id="prevBtn" data-i18n="fac.controls.previous">&larr; Previous inject</button>
-    <button id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
-    <button id="extendBtn" data-i18n="fac.controls.extend">+5 min for this inject</button>
-    <button id="unlockBtn" data-i18n="fac.controls.unlock">Unlock this inject</button>
-    <button id="endBtn" data-i18n="fac.controls.end">End exercise</button>
-    <button id="resetBtn" data-i18n="fac.controls.reset">Reset to lobby</button>
+  <!-- The command bar: inject, clock, the buttons. It never moves (17 October 2026). -->
+  <div class="pp-cmd" id="cmdBar">
+    <span class="pp-cmd-pos" id="indexVal" data-i18n="fac.cmd.lobby">Lobby</span>
+    <span class="pp-cmd-clock" id="cmdClock" data-state="none" role="timer"></span>
+    <span class="pp-cmd-status" id="statusVal" data-i18n="fac.statusLine.loading">loading…</span>
+    <span class="pp-cmd-who" id="cmdWho"></span>
+    <span class="pp-cmd-spacer"></span>
+    <div class="pp-cmd-btns">
+      <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
+      <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
+      <button class="danger" id="endBtn" data-i18n="fac.controls.end">End exercise</button>
+      <button type="button" class="pp-cmd-more" id="cmdMoreBtn" aria-expanded="false" data-i18n="fac.cmd.more">More &#9662;</button>
+    </div>
+    <div class="pp-cmd-secondary" id="cmdSecondary">
+      <button id="prevBtn" data-i18n="fac.controls.previous">&larr; Previous inject</button>
+      <button id="extendBtn" data-i18n="fac.controls.extend">+5 min for everyone</button>
+      <button id="unlockBtn" data-i18n="fac.controls.unlock">Unlock this inject</button>
+    </div>
   </div>
-  <div class="note" style="margin-top:4px; margin-bottom:0;" data-i18n-html="fac.controls.unlockNote_html">
-    "Unlock this inject" re-opens participant submissions for whichever inject
-    is current right now — including one they already submitted, or one that
-    timed out — until you click "Lock this inject" again or move on. To
-    revisit and unlock an <em>earlier</em> inject, use Previous to make it
-    current again, then Unlock.
-  </div>
+  <!-- The alert strip: urgent things, on every tab. -->
+  <div class="pp-alerts" id="alertStrip" hidden role="status" aria-live="polite"></div>
 
+  <div class="fac-main fac-checks">
+  <div id="errorBox" style="display:none; margin-top:12px; color:var(--red-soft); font-size:0.9rem;"></div>
   <div class="start-check" id="startCheck" hidden role="alertdialog" aria-labelledby="startCheckTitle">
     <div class="t" id="startCheckTitle" data-i18n="fac.startCheck.title">Not everything is ready</div>
     <ul id="startCheckList"></ul>
@@ -262,198 +302,239 @@
     </div>
   </div>
 
+  <div class="start-check" id="resetCheck" hidden role="alertdialog" aria-labelledby="resetCheckTitle">
+    <div class="t" id="resetCheckTitle" data-i18n="fac.reset.title">Reset to the lobby?</div>
+    <div class="why" data-i18n="fac.reset.why">Every device returns to the waiting screen and the exercise starts again from the first inject when you press Start. Notes and messages already written are kept and labelled "Earlier run". This is for testing and for starting over — not for a short pause.</div>
+    <div class="b">
+      <button id="resetBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
+      <button id="resetConfirmBtn" class="danger" data-i18n="fac.reset.confirm">Reset to lobby</button>
+    </div>
+  </div>
+
   <div class="end-strip" id="endStrip" hidden role="status"></div>
-
-  <div class="current-inject" id="currentInject">—</div>
-  <div id="errorBox" style="display:none; margin-top:12px; color:var(--red-soft); font-size:0.9rem;"></div>
-
-  <div class="tower-section" id="towerSection">
-    <h2 data-i18n="fac.tower.heading">Control tower</h2>
-    <div class="sub" data-i18n="fac.tower.sub">
-      Who is connected right now. Every screen and phone checks in every 20
-      seconds; this is a live indicator, not the attendance record.
-    </div>
-    <div class="tower-headline" id="towerHeadline" data-i18n="fac.common.loading">Loading…</div>
-    <div id="towerWarnings"></div>
-    <h3 data-i18n="fac.tower.screensHeading">Room screens</h3>
-    <div id="towerScreens"></div>
-    <div id="towerObserversWrap" hidden>
-      <h3 data-i18n="fac.tower.observersHeading">Observers</h3>
-      <div id="towerObservers"></div>
-    </div>
-    <div id="towerRemoteWrap" hidden>
-      <h3 data-i18n="fac.tower.remoteHeading">Remote participants (joining alone)</h3>
-      <div id="towerRemote"></div>
-    </div>
-    <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
-    <div class="tower-legend">
-      <span data-i18n-html="fac.tower.legendOnline_html"><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
-      <span data-i18n-html="fac.tower.legendNotSeen_html"><i class="dot amber"></i> Not seen for up to 2 minutes</span>
-      <span data-i18n-html="fac.tower.legendOffline_html"><i class="dot grey"></i> Offline, or not connected yet</span>
-      <span data-i18n-html="fac.tower.legendAttention_html"><i class="dot red"></i> Needs attention</span>
-    </div>
   </div>
 
-  <div class="broadcast-section" id="broadcastSection">
-    <h2 data-i18n="fac.broadcast.heading">Message everyone</h2>
-    <div class="sub" data-i18n="fac.broadcast.sub">
-      Shows on every participant's page and as a banner on every room display
-      (for 30 seconds there, or until you move to the next inject). Choose a
-      ready-made message, or type your own.
+  <nav class="pp-tabs" id="facTabs" aria-label="Sections" data-i18n-attr="aria-label:fac.tabs.aria"></nav>
+
+  <div class="fac-main">
+
+  <!-- ===== Exercise ===== -->
+  <section id="tabExercise" class="pp-cols wide">
+    <div class="pp-col">
+      <div class="pp-card" id="currentInjectCard">
+        <h2 data-i18n="fac.exercise.currentHeading">Current inject</h2>
+        <div class="current-inject" id="currentInject">—</div>
+      </div>
+      <div class="pp-card status-section">
+        <h2 data-i18n="fac.status.heading">Response status</h2>
+        <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
+        <div class="legend">
+          <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
+          <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
+          <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
+          <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
+        </div>
+      </div>
     </div>
-    <label for="msgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
-    <select id="msgPreset">
-      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
-    </select>
-    <textarea id="msgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
-    <div class="broadcast-row">
-      <span class="count" id="msgCount">0 / 280</span>
-      <button class="primary" id="msgSendBtn" disabled data-i18n="fac.broadcast.send">Send to everyone</button>
+    <div class="pp-col">
+      <div class="pp-card tower-section" id="towerSection">
+        <h2 data-i18n="fac.tower.screensHeading">Room screens</h2>
+        <div id="towerScreens"></div>
+        <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
+        <div class="tower-legend">
+          <span data-i18n-html="fac.tower.legendOnline_html"><i class="dot green"></i> Online (seen in the last 45 seconds)</span>
+          <span data-i18n-html="fac.tower.legendNotSeen_html"><i class="dot amber"></i> Not seen for up to 2 minutes</span>
+          <span data-i18n-html="fac.tower.legendOffline_html"><i class="dot grey"></i> Offline, or not connected yet</span>
+          <span data-i18n-html="fac.tower.legendAttention_html"><i class="dot red"></i> Needs attention</span>
+        </div>
+      </div>
+      <div class="pp-card" id="readyCard">
+        <h2 data-i18n="fac.exercise.readyHeading">Before you start</h2>
+        <div class="sub" data-i18n="fac.exercise.readySub">Press "Start exercise" when the rooms are ready. Start first checks the room screens, who is online and the expected attendance, and tells you what is missing — it never blocks you.</div>
+        <div class="sub" data-i18n-nodes="fac.links.before; fac.links.checkNote; fac.links.printNote">
+          Before the exercise:
+          <a id="checkLink" target="_blank" rel="noopener" data-i18n="fac.links.check">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
+          <a id="printLink" target="_blank" rel="noopener" data-i18n="fac.links.print">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
+        </div>
+      </div>
     </div>
-    <div class="broadcast-feedback" id="msgFeedback"></div>
-    <ul class="broadcast-log" id="msgLog"></ul>
+  </section>
+
+  <!-- ===== People ===== -->
+  <section id="tabPeople" class="pp-cols" hidden>
+    <div class="pp-col">
+      <details class="pp-card setup-card" id="setupDetails" open>
+        <summary><span data-i18n="fac.setup.heading">Setup</span> <span class="setup-folded" id="setupFolded" data-i18n="fac.setup.folded">— rooms, links and QR codes, departments, reset</span></summary>
+        <div class="setup-body">
+          <div class="note" id="roomCountNote" style="margin-bottom:10px;" data-i18n="fac.setup.roomsNote">
+            How many rooms are running this exercise? Room 1 is always your own
+            (the facilitator's) room, so "3" means your room plus 2 more. You can
+            change this as many times as you like before clicking "Start
+            exercise" — it locks once the exercise is running.
+          </div>
+          <div class="add-dept-row">
+            <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;" data-i18n="fac.setup.roomsLabel">Rooms:</label>
+            <select id="roomCountSelect" style="flex:0 0 auto;">
+              <option value="1" data-i18n="fac.setup.roomsOne">1 (no room question at check-in)</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+          <div id="roomCountError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
+
+          <h3 data-i18n="fac.links.heading">Links and QR codes</h3>
+          <div class="pp-linkrow">
+            <div class="pp-qr" id="joinQr" aria-hidden="true"></div>
+            <div class="body">
+              <div class="lbl" data-i18n="fac.links.joinLabel">Participant / Observer join link</div>
+              <input id="joinLink" readonly />
+              <div class="acts"><button type="button" data-copy="joinLink" data-i18n="fac.links.copy">Copy link</button><button type="button" data-qr="join" data-i18n="fac.links.showQr">Show large</button><span class="pp-ok" data-copied="joinLink" hidden data-i18n="fac.links.copied">Copied</span></div>
+              <div class="pp-hint" data-i18n="fac.links.joinHint">Share with participants and Observers — they scan the QR code from the room screen or a printed sheet, or tap the link you send them.</div>
+            </div>
+          </div>
+          <div class="pp-linkrow">
+            <div class="pp-qr" id="displayQr" aria-hidden="true"></div>
+            <div class="body">
+              <div class="lbl" data-i18n="fac.links.displayLabel">Room screen link</div>
+              <input id="displayLink" readonly />
+              <div class="acts"><button type="button" data-copy="displayLink" data-i18n="fac.links.copy">Copy link</button><button type="button" data-qr="display" data-i18n="fac.links.showQr">Show large</button><span class="pp-ok" data-copied="displayLink" hidden data-i18n="fac.links.copied">Copied</span></div>
+              <div class="pp-hint" data-i18n="fac.links.displayHint">Open on each room's laptop (type or paste it). It has no facilitator token and cannot control the exercise.</div>
+            </div>
+          </div>
+          <div class="pp-linkrow">
+            <div class="body">
+              <div class="lbl" data-i18n="fac.links.facLabel">Your facilitator link (private)</div>
+              <input id="facLink" readonly />
+              <div class="acts"><button type="button" data-copy="facLink" data-i18n="fac.links.copy">Copy link</button><span class="pp-ok" data-copied="facLink" hidden data-i18n="fac.links.copied">Copied</span></div>
+              <div class="pp-hint" data-i18n="fac.links.facHint">Never show or share this one — it controls the exercise. No QR code on purpose.</div>
+            </div>
+          </div>
+          <div id="linkError" class="err-line" hidden></div>
+
+          <h3 data-i18n="fac.roster.addDeptHeading">Departments</h3>
+          <div class="note" id="addDeptNote" style="margin-bottom:10px;" data-i18n="fac.roster.addDeptNote">
+            Add any department missing from the list — at any time, also during
+            the exercise. Only you can add one, so nobody can invent a department.
+            A department added during the exercise shows "Not required" for the
+            injects it missed (including the one running when you add it), and
+            is counted like every other department from the next inject on.
+          </div>
+          <div class="add-dept-row">
+            <input type="text" id="newDeptInput" placeholder="e.g. Marketing" data-i18n-attr="placeholder:fac.roster.newDeptPlaceholder" />
+            <button id="addDeptBtn" data-i18n="fac.roster.addDept">Add department</button>
+          </div>
+          <div id="rosterError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
+
+          <h3 data-i18n="fac.reset.heading">Start over</h3>
+          <div class="add-dept-row"><button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Reset to lobby…</button></div>
+        </div>
+      </details>
+
+      <div class="pp-card" id="expectedCard">
+        <h2 data-i18n="fac.expected.heading">Expected attendance (optional)</h2>
+        <div class="sub" data-i18n="fac.expected.sub">Fill in what you expect — a week ahead or on the day — and the list on the right shows who is missing or extra. Advice only: Start is never blocked. You can change the numbers at any time.</div>
+        <div id="expectedRows"></div>
+        <div class="pp-mic-line" id="expectedStatus"></div>
+      </div>
+    </div>
+
+    <div class="pp-col">
+      <div class="pp-card roster-section" id="peopleCard">
+        <h2 data-i18n="fac.people.heading">Who is here</h2>
+        <div class="tower-headline" id="towerHeadline" data-i18n="fac.common.loading">Loading…</div>
+        <div id="towerWarnings"></div>
+        <div class="roster-group" id="rosterGroup" data-i18n-nodes="fac.roster.groupBy">
+          Show:
+          <button type="button" data-group="department" class="on" data-i18n="fac.roster.groupDepartment">Department</button>
+          <button type="button" data-group="room" data-i18n="fac.roster.groupRoom">Room</button>
+          <button type="button" data-filter="online" data-i18n="fac.people.filterOnline">Online</button>
+          <button type="button" data-filter="offline" data-i18n="fac.people.filterOffline">Offline</button>
+          <button type="button" data-filter="remote" data-i18n="fac.people.filterRemote">Remote</button>
+          <button type="button" data-filter="observer" data-i18n="fac.people.filterObservers">Observers</button>
+        </div>
+        <div id="roster" data-i18n="fac.common.loading">Loading…</div>
+        <div id="towerObserversWrap" hidden>
+          <h3 data-i18n="fac.tower.observersHeading">Observers</h3>
+          <div id="towerObservers"></div>
+        </div>
+        <div id="towerRemoteWrap" hidden>
+          <h3 data-i18n="fac.tower.remoteHeading">Remote participants (joining alone)</h3>
+          <div id="towerRemote"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Messages ===== -->
+  <section id="tabMessages" class="pp-cols wide" hidden>
+    <div class="pp-col">
+      <div class="pp-card inbox-section" id="inboxSection">
+        <h2 data-i18n="fac.convo.heading">Conversation</h2>
+        <div class="sub" data-i18n="fac.convo.sub">Everything received and sent, newest first. Reply under a message answers that department or that room's Observers; "+5 min for everyone" sits beside a request for more time.</div>
+        <ul class="inbox-list" id="inboxList"><li class="muted-line" data-i18n="fac.inbox.empty">No messages yet.</li></ul>
+      </div>
+    </div>
+    <div class="pp-col">
+      <div class="pp-card broadcast-section" id="composeCard">
+        <h2 data-i18n="fac.compose.heading">Send a message</h2>
+        <div class="field-label" data-i18n="fac.compose.to">To</div>
+        <div class="pp-chips" id="composeTo" role="radiogroup"></div>
+        <div class="field-label" data-i18n="fac.compose.presets">Ready-made</div>
+        <div class="pp-chips" id="composePresets"></div>
+        <label for="msgText" class="field-label" data-i18n="fac.compose.orType">Or type your own</label>
+        <textarea id="msgText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:fac.compose.placeholder"></textarea>
+        <div class="broadcast-row">
+          <span class="count" id="msgCount">0 / 280</span>
+          <button class="primary" id="msgSendBtn" disabled data-i18n="fac.msg.send">Send &rarr;</button>
+        </div>
+        <div class="obs-msg-warn" id="obsMsgWarn" hidden></div>
+        <div class="broadcast-feedback" id="msgFeedback"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Notes ===== -->
+  <section id="tabNotes" class="pp-cols wide" hidden>
+    <div class="pp-col">
+      <div class="pp-card notes-section" id="notesSection">
+        <h2 data-i18n-nodes="fac.notes.heading">Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
+        <div class="sub" data-i18n="fac.notes.sub">
+          Every note from Observers and from you, newest first — only this
+          facilitator link can read them. Critical gaps are marked in red and
+          chime when they arrive. Click anywhere in this panel to mark notes as seen.
+        </div>
+        <div class="notes-counts" id="notesCounts"></div>
+        <div class="notes-list" id="notesList"><div class="empty" data-i18n="fac.common.loading">Loading…</div></div>
+        <div class="notes-close" id="notesClose"></div>
+      </div>
+    </div>
+    <div class="pp-col">
+      <div class="pp-card notes-own" id="notesOwn">
+        <h2 data-i18n="fac.notes.addOwn">Add your own note</h2>
+        <div id="facNoteForm"></div>
+      </div>
+    </div>
+  </section>
+
   </div>
 
-  <div class="dept-msg-section" id="deptMsgSection">
-    <h2 data-i18n="fac.deptMsg.heading">Message a department</h2>
-    <div class="sub" data-i18n="fac.deptMsg.sub">
-      Reaches everyone registered in that department's phones — not the
-      shared room screen. Choose a ready-made message, or type your own.
-    </div>
-    <label for="deptMsgDept" class="field-label" data-i18n="fac.deptMsg.deptLabel">Department</label>
-    <select id="deptMsgDept"><option value="" data-i18n="fac.deptMsg.chooseDept">— Choose a department —</option></select>
-    <label for="deptMsgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
-    <select id="deptMsgPreset">
-      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
-    </select>
-    <textarea id="deptMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
-    <div class="dept-msg-row">
-      <span class="count" id="deptMsgCount">0 / 280</span>
-      <button class="primary" id="deptMsgSendBtn" disabled data-i18n="fac.msg.send">Send &rarr;</button>
-    </div>
-    <div class="dept-msg-feedback" id="deptMsgFeedback"></div>
-    <ul class="dept-msg-log" id="deptMsgLog"></ul>
-  </div>
-
-  <div class="obs-msg-section" id="obsMsgSection">
-    <h2 data-i18n="fac.obsMsg.heading">Message Observers</h2>
-    <div class="sub" data-i18n="fac.obsMsg.sub">
-      Reaches Observers' phones only — never participants or the room
-      screen. Observers can write to you too; their messages arrive in the
-      inbox below, marked with their room. This channel stays open after
-      End until the Observers' notes window closes.
-    </div>
-    <label for="obsMsgRoom" class="field-label" data-i18n="fac.obsMsg.roomLabel">Send to</label>
-    <select id="obsMsgRoom"><option value="" data-i18n="fac.obsMsg.allObservers">All Observers</option></select>
-    <label for="obsMsgPreset" class="field-label" data-i18n="fac.msg.presetLabel">Ready-made messages (optional)</label>
-    <select id="obsMsgPreset">
-      <option value="" data-i18n="fac.msg.presetChoose">— Choose a ready-made message —</option>
-    </select>
-    <textarea id="obsMsgText" maxlength="280" placeholder="Type a message, or choose one above and edit it" data-i18n-attr="placeholder:fac.msg.placeholder"></textarea>
-    <div class="dept-msg-row">
-      <span class="count" id="obsMsgCount">0 / 280</span>
-      <button class="primary" id="obsMsgSendBtn" disabled data-i18n="fac.msg.send">Send &rarr;</button>
-    </div>
-    <div class="obs-msg-warn" id="obsMsgWarn" hidden></div>
-    <div class="dept-msg-feedback" id="obsMsgFeedback"></div>
-    <ul class="dept-msg-log" id="obsMsgLog"></ul>
-  </div>
-
-  <div class="inbox-section" id="inboxSection">
-    <h2 data-i18n-nodes="fac.inbox.heading">Messages from departments and Observers <span class="inbox-badge" id="inboxBadge" hidden></span></h2>
-    <div class="sub" data-i18n="fac.inbox.sub">Requests and replies from participants and from Observers (marked with their room), newest first.</div>
-    <ul class="inbox-list" id="inboxList"><li class="muted-line" data-i18n="fac.inbox.empty">No messages yet.</li></ul>
-  </div>
-
-  <div class="notes-section" id="notesSection">
-    <h2 data-i18n-nodes="fac.notes.heading">Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
-    <div class="sub" data-i18n="fac.notes.sub">
-      Every note from Observers and from you, newest first — only this
-      facilitator link can read them. Critical gaps are marked in red and
-      chime when they arrive. Click anywhere in this panel to mark notes as seen.
-    </div>
-    <div class="notes-counts" id="notesCounts"></div>
-    <div class="notes-list" id="notesList"><div class="empty" data-i18n="fac.common.loading">Loading…</div></div>
-    <div class="notes-close" id="notesClose"></div>
-    <details class="notes-own" id="notesOwn">
-      <summary data-i18n="fac.notes.addOwn">Add your own note</summary>
-      <div id="facNoteForm"></div>
-    </details>
-  </div>
-
-  <div class="status-section">
-    <h2 data-i18n="fac.status.heading">Response status</h2>
-    <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
-    <div class="legend">
-      <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
-      <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
-      <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
-      <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
-    </div>
-  </div>
-
-  <div class="roster-section">
-    <h2 data-i18n="fac.setup.heading">Session setup</h2>
-    <div class="note" id="roomCountNote" style="margin-bottom:10px;" data-i18n="fac.setup.roomsNote">
-      How many rooms are running this exercise? Room 1 is always your own
-      (the facilitator's) room, so "3" means your room plus 2 more. You can
-      change this as many times as you like before clicking "Start
-      exercise" — it locks once the exercise is running.
-    </div>
-    <div class="add-dept-row">
-      <label for="roomCountSelect" style="align-self:center; font-size:0.95rem;" data-i18n="fac.setup.roomsLabel">Rooms:</label>
-      <select id="roomCountSelect" style="flex:0 0 auto;">
-        <option value="1" data-i18n="fac.setup.roomsOne">1 (no room question at check-in)</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
-    </div>
-    <div id="roomCountError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
-
-    <h2 data-i18n="fac.roster.heading">Registered participants &amp; observers</h2>
-    <div class="note" id="addDeptNote" style="margin-bottom:10px;" data-i18n="fac.roster.addDeptNote">
-      Add any department missing from the list — at any time, also during
-      the exercise. Only you can add one, so nobody can invent a department.
-      A department added during the exercise shows "Not required" for the
-      injects it missed (including the one running when you add it), and
-      is counted like every other department from the next inject on.
-    </div>
-    <div class="add-dept-row">
-      <input type="text" id="newDeptInput" placeholder="e.g. Marketing" data-i18n-attr="placeholder:fac.roster.newDeptPlaceholder" />
-      <button id="addDeptBtn" data-i18n="fac.roster.addDept">Add department</button>
-    </div>
-    <div id="rosterError" style="display:none; margin-bottom:10px; color:var(--red-soft); font-size:0.9rem;"></div>
-    <div class="roster-group" id="rosterGroup" hidden data-i18n-nodes="fac.roster.groupBy">
-      Group by:
-      <button type="button" data-group="department" class="on" data-i18n="fac.roster.groupDepartment">Department</button>
-      <button type="button" data-group="room" data-i18n="fac.roster.groupRoom">Room</button>
-    </div>
-    <div id="roster" data-i18n="fac.common.loading">Loading…</div>
-  </div>
-
-  <div class="link-row" data-i18n-nodes="fac.links.join">
-    Participant/Observer join link for this session (share this one — it has no facilitator token):
-    <input id="joinLink" readonly />
-  </div>
-  <div class="link-row" data-i18n-nodes="fac.links.display">
-    Room display link for this session (open on the room screen, or in another tab to test — this link has no facilitator token and cannot control the exercise):
-    <input id="displayLink" readonly />
-  </div>
-  <div class="link-row" data-i18n-nodes="fac.links.before; fac.links.checkNote; fac.links.printNote">
-    Before the exercise (added 9 October 2026):
-    <a id="checkLink" target="_blank" rel="noopener" data-i18n="fac.links.check">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
-    <a id="printLink" target="_blank" rel="noopener" data-i18n="fac.links.print">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
-  </div>
-
+  <div class="pp-qr-large" id="qrLarge" hidden role="dialog" aria-modal="true">
+    <div class="t" id="qrLargeTitle"></div>
+    <div class="pp-qr" id="qrLargeCode"></div>
+    <div class="u" id="qrLargeUrl"></div>
+    <button type="button" id="qrLargeClose" data-i18n="fac.links.qrClose">Close</button>
   </div>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./layout.js"></script>
+<script src="./mic.js"></script>
 <script src="./notes.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -484,10 +565,17 @@
     const andLang = langHint ? `&${langHint}` : "";
     displayLinkEl.value = `${location.origin}/play/room-display.html?session=${sessionId}${andLang}`;
     joinLinkEl.value = `${location.origin}/play/join.html?session=${sessionId}${andLang}`;
+    document.getElementById("facLink").value = location.href;
+    // QR codes (roadmap item 11, folded in 17 October 2026): the two public
+    // links only — the facilitator link never gets one. Drawn by the
+    // self-hosted library; if it is missing the link alone remains.
+    PPLayout.qr(document.getElementById("joinQr"), joinLinkEl.value);
+    PPLayout.qr(document.getElementById("displayQr"), displayLinkEl.value);
     document.getElementById("checkLink").href = `${location.origin}/play/check.html${langHint ? `?${langHint}` : ""}`;
     document.getElementById("printLink").href = `${location.origin}/play/print.html?session=${sessionId}&token=${encodeURIComponent(facilitatorToken)}${andLang}`;
 
     let currentRow = null;
+    let lastSetupStatus = null;
     let actionBusy = false; // an action is being sent — the background check waits
     let refreshSeq = 0;     // see refresh()
     const startBtn = document.getElementById("startBtn");
@@ -512,6 +600,277 @@
       return String(str).replace(/[&<>"']/g, (c) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
       })[c]);
+    }
+
+    // ---- Tabs, badges, the alert strip (17 October 2026) ------------------
+    // Four tabs — Exercise, People, Messages, Notes — under the command bar;
+    // a bottom bar on a phone. The open tab is remembered on this device.
+    const tabsApi = PPLayout.tabs({
+      nav: document.getElementById("facTabs"),
+      storageKey: `pp_factab_${sessionId}`,
+      tabs: [
+        { id: "exercise", label: T("fac.tabs.exercise"), panel: document.getElementById("tabExercise") },
+        { id: "people", label: T("fac.tabs.people"), panel: document.getElementById("tabPeople") },
+        { id: "messages", label: T("fac.tabs.messages"), panel: document.getElementById("tabMessages") },
+        { id: "notes", label: T("fac.tabs.notes"), panel: document.getElementById("tabNotes") },
+      ],
+      onShow: (id) => {
+        // Opening a tab counts as having seen what it holds.
+        if (id === "messages") markInboxRead();
+        if (id === "notes") markNotesRead();
+      },
+    });
+    PPLayout.watchKeyboard();
+    const alertsApi = PPLayout.alerts(document.getElementById("alertStrip"), { moreLabel: (n) => T("fac.alerts.more", { count: n }) });
+    // What needs the facilitator's attention right now, whatever tab is open:
+    // room screens behind or silent, a department with nobody online, a
+    // remote device with sound off (from the tower), a request for more time
+    // (from the conversation), a Critical gap (from the notes). Each with
+    // "Open" to the right tab; a more-time request also offers "+5 min".
+    function renderAlerts() {
+      if (!currentRow) { alertsApi.set([]); return; }
+      const list = [];
+      (lastTowerWarnings || []).forEach((w, i) => list.push({
+        id: `tower-${i}`, tone: w.red ? "red" : "amber", text: w.text,
+        actions: [{ label: T("fac.alerts.open"), run: () => tabsApi.show(w.tab || "people", { user: true }) }],
+      }));
+      unreadMessages().filter(isMoreTimeRequest).slice(-3).forEach((m) => list.push({
+        id: `time-${m.id}`, tone: "amber",
+        text: T("fac.alerts.moreTime", { who: m.direction === "from_observer" ? observerRoomLabel(m.room) : (m.department || T("fac.inbox.unknownDept")), text: m.body }),
+        actions: [
+          { label: T("fac.alerts.extend"), run: () => runAction(extendFive) },
+          { label: T("fac.alerts.open"), run: () => tabsApi.show("messages", { user: true }) },
+        ],
+      }));
+      if (unreadCriticalNotes.length) list.push({
+        id: "critical", tone: "red",
+        text: T("fac.alerts.critical", { count: unreadCriticalNotes.length }),
+        actions: [{ label: T("fac.alerts.open"), run: () => tabsApi.show("notes", { user: true }) }],
+      });
+      // Most urgent first, so the one a phone shows (or the three a laptop
+      // shows) are the ones that matter: a Critical gap, then a request for
+      // more time, then red tower items (a screen behind or silent), then the rest.
+      const rank = (a) => (a.id === "critical" ? 0 : a.id.startsWith("time-") ? 1 : a.tone === "red" ? 2 : 3);
+      list.sort((a, b) => rank(a) - rank(b));
+      alertsApi.set(list);
+    }
+
+    // ---- The command bar ---------------------------------------------------
+    // Inject N of M, the same countdown the phones show, who must respond,
+    // and the buttons. Re-drawn every second with the response status.
+    const cmdClockEl = document.getElementById("cmdClock");
+    const cmdWhoEl = document.getElementById("cmdWho");
+    const cmdMoreBtn = document.getElementById("cmdMoreBtn");
+    const cmdSecondaryEl = document.getElementById("cmdSecondary");
+    cmdMoreBtn.addEventListener("click", () => {
+      const open = !cmdSecondaryEl.classList.contains("open");
+      cmdSecondaryEl.classList.toggle("open", open);
+      cmdMoreBtn.setAttribute("aria-expanded", String(open));
+      cmdMoreBtn.textContent = open ? T("fac.cmd.less") : T("fac.cmd.more");
+    });
+    function renderCommandBar() {
+      if (!currentRow) return;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const idx = currentRow.current_inject_index;
+      const inj = injects[idx];
+      let clock = "", state = "none", who = "";
+      if (currentRow.status === "running" && inj) {
+        if (currentRow.inject_force_unlocked) { clock = T("fac.cmd.unlocked"); state = "none"; }
+        else {
+          const deadline = injectDeadlineMs(currentRow, inj);
+          if (deadline === null) { clock = T("fac.cmd.noLimit"); state = "none"; }
+          else {
+            const left = deadline - Date.now();
+            if (left <= 0) { clock = T("fac.cmd.timesUp"); state = "up"; }
+            else { clock = `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}`; state = left < 60000 ? "warn" : "run"; }
+          }
+        }
+        who = `${T("fac.status.responsible", { departments: responsibleText(inj) })} · ${injectOutput(inj) === "individual" ? T("fac.status.taskIndividual") : T("fac.status.taskGroup")}`;
+      } else if (currentRow.status === "lobby") {
+        clock = T("fac.cmd.waiting");
+      } else if (currentRow.status === "ended") {
+        clock = T("fac.cmd.ended");
+      }
+      if (cmdClockEl.textContent !== clock) cmdClockEl.textContent = clock;
+      cmdClockEl.dataset.state = state;
+      if (cmdWhoEl.textContent !== who) cmdWhoEl.textContent = who;
+    }
+
+    // ---- Links: copy, and the large QR code -------------------------------
+    document.querySelectorAll("[data-copy]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const input = document.getElementById(btn.dataset.copy);
+        const ok = await PPLayout.copyText(input.value);
+        const tick = document.querySelector(`[data-copied="${btn.dataset.copy}"]`);
+        const errEl = document.getElementById("linkError");
+        if (ok) { tick.hidden = false; errEl.hidden = true; setTimeout(() => { tick.hidden = true; }, 2500); }
+        else { errEl.textContent = T("fac.links.copyFailed"); errEl.hidden = false; input.focus(); input.select(); }
+      });
+    });
+    const qrLargeEl = document.getElementById("qrLarge");
+    document.querySelectorAll("[data-qr]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const join = btn.dataset.qr === "join";
+        const url = join ? joinLinkEl.value : displayLinkEl.value;
+        document.getElementById("qrLargeTitle").textContent = join ? T("fac.links.qrTitleJoin") : T("fac.links.qrTitleDisplay");
+        document.getElementById("qrLargeUrl").textContent = url;
+        PPLayout.qr(document.getElementById("qrLargeCode"), url, { cellSize: 8 });
+        qrLargeEl.hidden = false;
+        document.getElementById("qrLargeClose").focus();
+      });
+    });
+    document.getElementById("qrLargeClose").addEventListener("click", () => { qrLargeEl.hidden = true; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") qrLargeEl.hidden = true; });
+
+    // ---- Voice notes: wording for the mic and the exercise's vocabulary ----
+    function micLabels() {
+      return {
+        title: T("shared.mic.title"), tapToSpeak: T("shared.mic.tapToSpeak"), listening: T("shared.mic.listening"),
+        working: T("shared.mic.working"), refused: T("shared.mic.refused"), noConnection: T("shared.mic.noConnection"),
+        unsupported: T("shared.mic.unsupported"), nothingHeard: T("shared.mic.nothingHeard"), failed: T("shared.mic.failed"),
+      };
+    }
+    function speechVocabulary() {
+      const words = ["PlanProof", "RTO", "RPO", "BCM", "NCEMA", "inject"]; // i18n-ok: words for the speech service, not shown
+      if (currentRow) { if (currentRow.label) words.push(currentRow.label); allDepartments().forEach((d) => words.push(d)); }
+      return words;
+    }
+
+    // ---- Expected attendance (17 October 2026) ------------------------------
+    // Numbers the facilitator expects — per department, joining remotely,
+    // Observers per room — entered any time and compared with the roster.
+    // Advice only: nothing blocks. Saved on the exercise record (facilitator
+    // link only) as it is typed, after a short pause.
+    const expectedRowsEl = document.getElementById("expectedRows");
+    const expectedStatusEl = document.getElementById("expectedStatus");
+    let expectedSig = "";
+    let expectedSaveTimer = null;
+    function expectedCounts() { return (currentRow && currentRow.expected_counts) || {}; }
+    function expectedNumber(kind, key) {
+      const ec = expectedCounts();
+      const v = kind === "remote" ? ec.remote : kind === "dept" ? (ec.departments || {})[key] : (ec.observers || {})[String(key)];
+      return Number.isInteger(v) ? v : null;
+    }
+    function renderExpected() {
+      if (!currentRow) return;
+      const rooms = currentRow.room_count || 1;
+      const depts = [...scenarioDepartments(currentRow), ...(currentRow.extra_departments || [])].filter((d, i, a) => a.indexOf(d) === i);
+      const rows = depts.map((d) => ({ kind: "dept", key: d, label: d }));
+      rows.push({ kind: "remote", key: "", label: T("fac.expected.remote") });
+      for (let r = 1; r <= rooms; r++) rows.push({ kind: "obs", key: String(r), label: rooms > 1 ? T("fac.expected.observersRoom", { room: r }) : T("fac.expected.observers") });
+      const sig = JSON.stringify(rows);
+      if (sig !== expectedSig) {
+        expectedSig = sig;
+        expectedRowsEl.innerHTML = rows.map((r) =>
+          `<label class="exp-row"><span class="exp-label">${escapeHtml(r.label)}</span><input type="number" min="0" max="500" inputmode="numeric" data-kind="${r.kind}" data-key="${escapeHtml(r.key)}" /></label>`).join("");
+      }
+      // Never put the saved numbers back over ones still being typed or saved.
+      if (expectedSaveTimer || expectedSaving) return;
+      expectedRowsEl.querySelectorAll("input").forEach((inp) => {
+        if (document.activeElement === inp) return;
+        const v = expectedNumber(inp.dataset.kind, inp.dataset.key);
+        const want = v === null ? "" : String(v);
+        if (inp.value !== want) inp.value = want;
+      });
+    }
+    // A number the database would refuse (below 0, above 500, not whole) is
+    // never quietly changed into another number: nothing is saved and the
+    // page says why, with the box outlined.
+    let expectedBad = false;
+    let expectedSaving = false;
+    function readExpectedFromInputs() {
+      const out = {};
+      expectedBad = false;
+      expectedRowsEl.querySelectorAll("input").forEach((inp) => {
+        const raw = inp.value.trim();
+        inp.classList.remove("bad");
+        if (raw === "") return;
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 0 || n > 500) { expectedBad = true; inp.classList.add("bad"); return; }
+        if (inp.dataset.kind === "remote") out.remote = n;
+        else if (inp.dataset.kind === "dept") (out.departments = out.departments || {})[inp.dataset.key] = n;
+        else (out.observers = out.observers || {})[inp.dataset.key] = n;
+      });
+      return out;
+    }
+    expectedRowsEl.addEventListener("input", () => {
+      if (expectedSaveTimer) clearTimeout(expectedSaveTimer);
+      expectedStatusEl.textContent = "";
+      expectedStatusEl.className = "pp-mic-line";
+      expectedSaveTimer = setTimeout(saveExpected, 800);
+    });
+    expectedRowsEl.addEventListener("change", () => { if (expectedSaveTimer) clearTimeout(expectedSaveTimer); saveExpected(); });
+    async function saveExpected() {
+      expectedSaveTimer = null;
+      if (!currentRow) return;
+      const next = readExpectedFromInputs();
+      if (expectedBad) {
+        expectedStatusEl.textContent = T("fac.expected.failed", { message: PPLang.dbMessage("Expected attendance must be whole numbers between 0 and 500.") }); // i18n-ok: looked up in the database-message catalogue
+        expectedStatusEl.className = "pp-mic-line err";
+        return;
+      }
+      if (JSON.stringify(next) === JSON.stringify(expectedCounts())) return;
+      expectedSaving = true;
+      try {
+        await patchSession(sessionId, { expected_counts: next });
+        currentRow.expected_counts = next;
+        expectedStatusEl.textContent = T("fac.expected.saved");
+        expectedStatusEl.className = "pp-mic-line";
+        if (lastAttendees) renderRoster(lastAttendees);
+      } catch (err) {
+        expectedStatusEl.textContent = T("fac.expected.failed", { message: PPLang.dbMessage(err.message) });
+        expectedStatusEl.className = "pp-mic-line err";
+      } finally {
+        expectedSaving = false;
+        // Something typed while this was being saved: save that too.
+        if (JSON.stringify(readExpectedFromInputs()) !== JSON.stringify(expectedCounts()) && !expectedBad && !expectedSaveTimer) expectedSaveTimer = setTimeout(saveExpected, 300);
+      }
+    }
+    // The flag beside a group in the roster: ✓, "1 missing", "1 more than expected".
+    function expectedFlagHtml(kind, key, attendees) {
+      const flags = expectedFlags(kind, key, attendees);
+      return flags.map((f) => ` <span class="exp-flag ${f.ok ? "ok" : "warn"}">${escapeHtml(f.text)}</span>`).join("");
+    }
+    function expectedFlags(kind, key, attendees) {
+      const out = [];
+      if (kind === "dept") {
+        const expected = expectedNumber("dept", key);
+        if (expected === null) return out;
+        const actual = attendees.filter((a) => a.role !== "observer" && sameDept(a.department, key)).length;
+        out.push(flagFor(actual, expected, key));
+      } else if (kind === "remote") {
+        const expected = expectedNumber("remote");
+        if (expected === null) return out;
+        const actual = attendees.filter((a) => a.role !== "observer" && a.remote).length;
+        out.push(flagFor(actual, expected, T("fac.expected.remote")));
+      } else if (kind === "observers") {
+        const rooms = (currentRow && currentRow.room_count) || 1;
+        for (let r = 1; r <= rooms; r++) {
+          const expected = expectedNumber("obs", r);
+          if (expected === null) continue;
+          const actual = attendees.filter((a) => a.role === "observer" && (rooms <= 1 || a.room === r)).length;
+          const label = rooms > 1 ? T("fac.expected.observersRoom", { room: r }) : T("fac.expected.observers");
+          out.push(expected > 0 && actual === 0 ? { ok: false, text: T("fac.expected.flagObsNone", { what: label, expected }) } : flagFor(actual, expected, label));
+        }
+      }
+      return out;
+    }
+    function flagFor(actual, expected, what) {
+      if (actual === expected) return { ok: true, what, text: T("fac.expected.flagOk", { what, actual, expected }) };
+      if (actual < expected) return { ok: false, what, text: T("fac.expected.flagMissing", { what, actual, expected, count: expected - actual }) };
+      return { ok: false, what, text: T("fac.expected.flagExtra", { what, actual, expected, count: actual - expected }) };
+    }
+    // The same comparison, as lines for the readiness check before Start.
+    function expectedIssues() {
+      if (!lastAttendees || !currentRow) return [];
+      const issues = [];
+      const depts = [...scenarioDepartments(currentRow), ...(currentRow.extra_departments || [])].filter((d, i, a) => a.indexOf(d) === i);
+      // Away from the roster the line must say what it is about ("Finance: 2 of 3 — 1 missing").
+      const line = (f) => (f.what ? T("fac.expected.flagNamed", { what: f.what, flag: f.text }) : f.text);
+      depts.forEach((d) => expectedFlags("dept", d, lastAttendees).filter((f) => !f.ok).forEach((f) => issues.push(line(f))));
+      expectedFlags("remote", null, lastAttendees).filter((f) => !f.ok).forEach((f) => issues.push(line(f)));
+      expectedFlags("observers", null, lastAttendees).filter((f) => !f.ok).forEach((f) => issues.push(line(f)));
+      return issues;
     }
 
     // Wraps a button's click handler so that: (1) every click fully finishes
@@ -551,8 +910,12 @@
       const atEnd = !currentRow || currentRow.current_inject_index >= injects.length - 1;
       const isRunning = currentRow && currentRow.status === "running";
       startBtn.disabled = false;
-      // After End the same button brings the exercise back (Resume).
+      // After End the same button brings the exercise back (Resume). While
+      // the exercise runs it is not shown at all: Next is the primary button
+      // (a Start pressed mid-exercise would have sent everyone back to inject 1).
       startBtn.textContent = canResume() ? resumeLabel() : T("fac.controls.start");
+      startBtn.hidden = !!isRunning;
+      nextBtn.hidden = !isRunning;
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
@@ -583,10 +946,8 @@
       roomCountSelectEl.style.display = canSetRoomCount ? "" : "none";
       roomCountSelectEl.disabled = !canSetRoomCount;
 
-      updateMsgControls();
-      updateDeptMsgControls();
-      updateObsMsgRooms();
-      updateObsMsgControls();
+      updateCompose();
+      renderCommandBar();
     }
 
     addDeptBtn.addEventListener("click", async () => {
@@ -647,407 +1008,47 @@
       }
     });
 
-    // ---- Message everyone (broadcast, added 5 October 2026) ---------------
-    // The dropdown only fills the text box; the facilitator can edit it or
-    // type anything. preset_key is recorded only if the preset is sent
-    // exactly as offered.
-    const msgPresetEl = document.getElementById("msgPreset");
+    // ---- Messages: one conversation, one compose box (17 October 2026) ----
+    // Replaces the three send boxes (everyone / a department / Observers) and
+    // their three logs plus the inbox. Everything received and sent is one
+    // list, newest first; Reply under a received message chooses where to
+    // send; "+5 min for everyone" sits beside a request for more time on the
+    // current inject. Rules unchanged: messages to everyone and to a
+    // department close at End; the Observer channel stays open until the
+    // Observers' notes window closes (item 7, rule 2).
+    const inboxListEl = document.getElementById("inboxList");
     const msgTextEl = document.getElementById("msgText");
     const msgCountEl = document.getElementById("msgCount");
     const msgSendBtn = document.getElementById("msgSendBtn");
     const msgFeedbackEl = document.getElementById("msgFeedback");
-    const msgLogEl = document.getElementById("msgLog");
-    let msgSending = false;
-
-    BROADCAST_PRESETS.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = p.text;
-      msgPresetEl.appendChild(opt);
-    });
-
-    function updateMsgControls() {
-      const len = msgTextEl.value.trim().length;
-      msgCountEl.textContent = `${msgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
-      const ended = currentRow && currentRow.status === "ended";
-      msgSendBtn.disabled = msgSending || len === 0 || ended || !currentRow;
-      msgPresetEl.disabled = ended;
-      msgTextEl.disabled = ended;
-      const endedText = T("fac.msg.ended");
-      if (ended) msgFeedbackEl.textContent = endedText;
-      else if (msgFeedbackEl.textContent === endedText) msgFeedbackEl.textContent = ""; // running again after End
-    }
-
-    msgPresetEl.addEventListener("change", () => {
-      const preset = BROADCAST_PRESETS.find((p) => p.key === msgPresetEl.value);
-      if (preset) msgTextEl.value = preset.text;
-      msgFeedbackEl.textContent = "";
-      msgFeedbackEl.className = "broadcast-feedback";
-      updateMsgControls();
-      msgTextEl.focus();
-    });
-    msgTextEl.addEventListener("input", () => {
-      msgFeedbackEl.textContent = "";
-      msgFeedbackEl.className = "broadcast-feedback";
-      updateMsgControls();
-    });
-
-    msgSendBtn.addEventListener("click", async () => {
-      const body = msgTextEl.value.trim();
-      if (!body) return;
-      const preset = BROADCAST_PRESETS.find((p) => p.key === msgPresetEl.value);
-      const presetKey = preset && preset.text === body ? preset.key : null;
-      msgSending = true;
-      updateMsgControls();
-      msgFeedbackEl.className = "broadcast-feedback";
-      msgFeedbackEl.textContent = T("fac.msg.sending");
-      try {
-        await sendBroadcast(sessionId, { body, presetKey });
-        msgTextEl.value = "";
-        msgPresetEl.value = "";
-        msgFeedbackEl.className = "broadcast-feedback ok";
-        msgFeedbackEl.textContent = T("fac.broadcast.sent", { time: formatMessageTime(new Date().toISOString()) });
-        await refreshMessageLog();
-      } catch (err) {
-        // Keep the text so nothing typed is lost if the send failed.
-        msgFeedbackEl.className = "broadcast-feedback err";
-        msgFeedbackEl.textContent = PPLang.dbMessage(err.message);
-      } finally {
-        msgSending = false;
-        updateMsgControls();
-      }
-    });
-
-    function messageContextLabel(m) {
-      if (m.inject_index === null || m.inject_index === undefined) {
-        // Observer messages can also arrive after End (item 7).
-        const ended = currentRow && currentRow.status === "ended" && currentRow.ended_at;
-        if (ended && new Date(m.created_at).getTime() >= Date.parse(currentRow.ended_at)) return T("fac.msg.contextAfterEnd");
-        return T("fac.msg.contextBeforeStart");
-      }
-      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
-      const inj = injects[m.inject_index];
-      return inj ? T("fac.msg.contextDuringTitled", { title: inj.title }) : T("fac.msg.contextDuringInject", { number: m.inject_index });
-    }
-
-    async function refreshMessageLog() {
-      try {
-        const msgs = (await fetchSentMessages(sessionId)).filter((m) => !m.department);
-        msgLogEl.innerHTML = msgs.length
-          ? msgs
-              .slice()
-              .reverse()
-              .map(
-                (m) => `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
-              )
-              .join("")
-          : `<li class="muted-line">${escapeHtml(T("fac.broadcast.logEmpty"))}</li>`;
-      } catch (err) {
-        msgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
-      }
-    }
-
-    // ---- Message a department (roadmap item 4, added 7 October 2026) ------
-    // Same editable-dropdown pattern as "Message everyone", plus a department
-    // selector. Uses sendBroadcast with a department — the database checks
-    // the facilitator token the same way either way.
-    const deptMsgDeptEl = document.getElementById("deptMsgDept");
-    const deptMsgPresetEl = document.getElementById("deptMsgPreset");
-    const deptMsgTextEl = document.getElementById("deptMsgText");
-    const deptMsgCountEl = document.getElementById("deptMsgCount");
-    const deptMsgSendBtn = document.getElementById("deptMsgSendBtn");
-    const deptMsgFeedbackEl = document.getElementById("deptMsgFeedback");
-    const deptMsgLogEl = document.getElementById("deptMsgLog");
-    let deptMsgSending = false;
-
-    FACILITATOR_TO_DEPARTMENT_PRESETS.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = p.text;
-      deptMsgPresetEl.appendChild(opt);
-    });
-
-    // Keeps the department dropdown in sync with the same department list
-    // the response-status panel uses (scenario + extra_departments +
-    // anyone who's actually joined). Preserves the current selection when
-    // possible, rather than resetting it on every 5-second roster poll.
-    function updateDeptMsgOptions() {
-      const prev = deptMsgDeptEl.value;
-      const depts = allDepartments();
-      deptMsgDeptEl.innerHTML =
-        `<option value="">${escapeHtml(T("fac.deptMsg.chooseDept"))}</option>` +
-        depts.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
-      if (depts.includes(prev)) deptMsgDeptEl.value = prev;
-    }
-
-    function updateDeptMsgControls() {
-      const len = deptMsgTextEl.value.trim().length;
-      deptMsgCountEl.textContent = `${deptMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
-      const ended = currentRow && currentRow.status === "ended";
-      deptMsgSendBtn.disabled = deptMsgSending || len === 0 || ended || !currentRow || !deptMsgDeptEl.value;
-      deptMsgPresetEl.disabled = ended;
-      deptMsgTextEl.disabled = ended;
-      deptMsgDeptEl.disabled = ended;
-      const endedText = T("fac.msg.ended");
-      if (ended) deptMsgFeedbackEl.textContent = endedText;
-      else if (deptMsgFeedbackEl.textContent === endedText) deptMsgFeedbackEl.textContent = ""; // running again after End
-    }
-
-    deptMsgDeptEl.addEventListener("change", () => {
-      deptMsgFeedbackEl.textContent = "";
-      deptMsgFeedbackEl.className = "dept-msg-feedback";
-      updateDeptMsgControls();
-    });
-    deptMsgPresetEl.addEventListener("change", () => {
-      const preset = FACILITATOR_TO_DEPARTMENT_PRESETS.find((p) => p.key === deptMsgPresetEl.value);
-      if (preset) deptMsgTextEl.value = preset.text;
-      deptMsgFeedbackEl.textContent = "";
-      deptMsgFeedbackEl.className = "dept-msg-feedback";
-      updateDeptMsgControls();
-      deptMsgTextEl.focus();
-    });
-    deptMsgTextEl.addEventListener("input", () => {
-      deptMsgFeedbackEl.textContent = "";
-      deptMsgFeedbackEl.className = "dept-msg-feedback";
-      updateDeptMsgControls();
-    });
-
-    deptMsgSendBtn.addEventListener("click", async () => {
-      const body = deptMsgTextEl.value.trim();
-      const department = deptMsgDeptEl.value;
-      if (!body || !department) return;
-      const preset = FACILITATOR_TO_DEPARTMENT_PRESETS.find((p) => p.key === deptMsgPresetEl.value);
-      const presetKey = preset && preset.text === body ? preset.key : null;
-      deptMsgSending = true;
-      updateDeptMsgControls();
-      deptMsgFeedbackEl.className = "dept-msg-feedback";
-      deptMsgFeedbackEl.textContent = T("fac.msg.sending");
-      try {
-        await sendBroadcast(sessionId, { body, presetKey, department });
-        deptMsgTextEl.value = "";
-        deptMsgPresetEl.value = "";
-        deptMsgFeedbackEl.className = "dept-msg-feedback ok";
-        deptMsgFeedbackEl.textContent = T("fac.deptMsg.sent", { department, time: formatMessageTime(new Date().toISOString()) });
-        await refreshDeptMsgLog();
-      } catch (err) {
-        deptMsgFeedbackEl.className = "dept-msg-feedback err";
-        deptMsgFeedbackEl.textContent = PPLang.dbMessage(err.message);
-      } finally {
-        deptMsgSending = false;
-        updateDeptMsgControls();
-      }
-    });
-
-    // Clicking "Message" on an amber/red department row scrolls to this
-    // section and pre-selects that department, ready to type or pick a
-    // preset. Delegated on the stable section container, since the status
-    // list's innerHTML is rebuilt every second.
-    document.getElementById("statusSection").addEventListener("click", (e) => {
-      const btn = e.target.closest(".msg-dept-btn");
-      if (!btn) return;
-      updateDeptMsgOptions();
-      deptMsgDeptEl.value = btn.dataset.dept;
-      updateDeptMsgControls();
-      document.getElementById("deptMsgSection").scrollIntoView({ behavior: "smooth", block: "center" });
-      deptMsgTextEl.focus();
-    });
-
-    async function refreshDeptMsgLog() {
-      try {
-        const msgs = (await fetchSentMessages(sessionId)).filter((m) => !!m.department);
-        deptMsgLogEl.innerHTML = msgs.length
-          ? msgs
-              .slice()
-              .reverse()
-              .map(
-                (m) =>
-                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.msg.logTo", { target: m.department }))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
-              )
-              .join("")
-          : `<li class="muted-line">${escapeHtml(T("fac.deptMsg.logEmpty"))}</li>`;
-      } catch (err) {
-        deptMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
-      }
-    }
-
-    // ---- Message Observers (roadmap item 7, 11 October 2026) ---------------
-    // Design: design-notes.md → "Observer ↔ Facilitator — design". The same
-    // editable-dropdown pattern as "Message a department". Goes to all
-    // Observers or to one room's; it never reaches participants or the room
-    // screen. Unlike every other message box, it stays usable after End,
-    // until the Observers' notes window closes (rule 2).
-    const obsMsgRoomEl = document.getElementById("obsMsgRoom");
-    const obsMsgPresetEl = document.getElementById("obsMsgPreset");
-    const obsMsgTextEl = document.getElementById("obsMsgText");
-    const obsMsgCountEl = document.getElementById("obsMsgCount");
-    const obsMsgSendBtn = document.getElementById("obsMsgSendBtn");
     const obsMsgWarnEl = document.getElementById("obsMsgWarn");
-    const obsMsgFeedbackEl = document.getElementById("obsMsgFeedback");
-    const obsMsgLogEl = document.getElementById("obsMsgLog");
-    let obsMsgSending = false;
-    // The id of the message being written: the same text sent again (a
-    // retry after a dropped connection) keeps it, so it is saved once.
-    let obsMsgPending = { id: null, key: "" };
-
-    FACILITATOR_TO_OBSERVER_PRESETS.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = p.text;
-      obsMsgPresetEl.appendChild(opt);
-    });
-
-    // "All Observers", plus one entry per room when there is more than one.
-    function updateObsMsgRooms() {
-      const rooms = (currentRow && currentRow.room_count) || 1;
-      const want = rooms > 1 ? rooms : 0;
-      if (obsMsgRoomEl.options.length === want + 1) return;
-      const prev = obsMsgRoomEl.value;
-      obsMsgRoomEl.innerHTML =
-        `<option value="">${escapeHtml(T("fac.obsMsg.allObservers"))}</option>` +
-        Array.from({ length: want }, (_, i) => i + 1)
-          .map((n) => `<option value="${n}">${escapeHtml(n === 1 ? T("fac.obsMsg.roomOptionYours", { room: n }) : T("fac.obsMsg.roomOption", { room: n }))}</option>`)
-          .join("");
-      if (prev && Number(prev) <= want) obsMsgRoomEl.value = prev;
-    }
-
-    function updateObsMsgControls() {
-      const chan = observerChannel(currentRow);
-      const closed = !!currentRow && !chan.open;
-      const len = obsMsgTextEl.value.trim().length;
-      obsMsgCountEl.textContent = `${obsMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
-      obsMsgSendBtn.disabled = obsMsgSending || len === 0 || closed || !currentRow;
-      obsMsgRoomEl.disabled = closed;
-      obsMsgPresetEl.disabled = closed;
-      obsMsgTextEl.disabled = closed;
-      if (closed) {
-        obsMsgFeedbackEl.className = "dept-msg-feedback";
-        obsMsgFeedbackEl.textContent = chan.reason;
-        obsMsgFeedbackEl.dataset.closed = "1";
-      } else if (obsMsgFeedbackEl.dataset.closed) {
-        delete obsMsgFeedbackEl.dataset.closed; // open again (a new run)
-        obsMsgFeedbackEl.textContent = "";
-      }
-      // Nobody to receive it? Say so (it can still be sent: an Observer who
-      // joins later sees it).
-      let warn = "";
-      if (!closed && lastAttendees) {
-        const observers = lastAttendees.filter((a) => a.role === "observer");
-        const room = obsMsgRoomEl.value ? Number(obsMsgRoomEl.value) : null;
-        if (!observers.length) warn = T("fac.obsMsg.warnNone");
-        else if (room && !observers.some((a) => a.room === room)) warn = T("fac.obsMsg.warnNoneInRoom", { room });
-      }
-      obsMsgWarnEl.hidden = !warn;
-      obsMsgWarnEl.textContent = warn;
-    }
-
-    function clearObsMsgFeedback() {
-      if (obsMsgFeedbackEl.dataset.closed) return;
-      obsMsgFeedbackEl.textContent = "";
-      obsMsgFeedbackEl.className = "dept-msg-feedback";
-    }
-    obsMsgRoomEl.addEventListener("change", () => { clearObsMsgFeedback(); updateObsMsgControls(); });
-    obsMsgPresetEl.addEventListener("change", () => {
-      const preset = FACILITATOR_TO_OBSERVER_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
-      if (preset) obsMsgTextEl.value = preset.text;
-      clearObsMsgFeedback();
-      updateObsMsgControls();
-      obsMsgTextEl.focus();
-    });
-    obsMsgTextEl.addEventListener("input", () => { clearObsMsgFeedback(); updateObsMsgControls(); });
-
-    obsMsgSendBtn.addEventListener("click", async () => {
-      const body = obsMsgTextEl.value.trim();
-      if (!body || obsMsgSending) return;
-      const room = obsMsgRoomEl.value ? Number(obsMsgRoomEl.value) : null;
-      const preset = FACILITATOR_TO_OBSERVER_PRESETS.find((p) => p.key === obsMsgPresetEl.value);
-      const presetKey = preset && preset.text === body ? preset.key : null;
-      const key = `${room || "all"}|${body}`;
-      if (!obsMsgPending.id || obsMsgPending.key !== key) obsMsgPending = { id: crypto.randomUUID(), key };
-      obsMsgSending = true;
-      updateObsMsgControls();
-      obsMsgFeedbackEl.className = "dept-msg-feedback";
-      obsMsgFeedbackEl.textContent = T("fac.msg.sending");
-      try {
-        await sendToObservers(sessionId, { id: obsMsgPending.id, body, presetKey, room });
-        obsMsgPending = { id: null, key: "" };
-        obsMsgTextEl.value = "";
-        obsMsgPresetEl.value = "";
-        obsMsgFeedbackEl.className = "dept-msg-feedback ok";
-        obsMsgFeedbackEl.textContent = T("fac.obsMsg.sent", { target: observerTargetLabel(room), time: formatMessageTime(new Date().toISOString()) });
-        await refreshObsMsgLog();
-      } catch (err) {
-        obsMsgFeedbackEl.className = "dept-msg-feedback err";
-        obsMsgFeedbackEl.textContent = err.network
-          ? T("fac.obsMsg.notSentNetwork")
-          : T("fac.obsMsg.notSent", { message: PPLang.dbMessage(err.message) });
-      } finally {
-        obsMsgSending = false;
-        updateObsMsgControls();
-      }
-    });
-
-    async function refreshObsMsgLog() {
-      try {
-        const msgs = await fetchSentObserverMessages(sessionId);
-        obsMsgLogEl.innerHTML = msgs.length
-          ? msgs
-              .slice()
-              .reverse()
-              .map(
-                (m) =>
-                  `<li><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.msg.logTo", { target: observerTargetLabel(m.room) }))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · ${escapeHtml(T("fac.obsMsg.logEarlierRun"))}` : ""}</span>${escapeHtml(m.body)}</li>`
-              )
-              .join("")
-          : `<li class="muted-line">${escapeHtml(T("fac.obsMsg.logEmpty"))}</li>`;
-      } catch (err) {
-        obsMsgLogEl.innerHTML = `<li style="color:var(--red-soft);">${escapeHtml(T("fac.msg.logFailed", { message: PPLang.dbMessage(err.message) }))}</li>`;
-      }
-    }
-
-    // A message from before the latest Reset (same label as Observer notes).
-    function isEarlierRun(m) {
-      return !!(currentRow && m.run_number && currentRow.run_number && m.run_number < currentRow.run_number);
-    }
-
-    // "Reply" on an Observer's message in the inbox: jumps to the box above
-    // with that room chosen.
-    document.getElementById("inboxList").addEventListener("click", (e) => {
-      const btn = e.target.closest(".msg-obs-btn");
-      if (!btn) return;
-      updateObsMsgRooms();
-      obsMsgRoomEl.value = btn.dataset.room && obsMsgRoomEl.querySelector(`option[value="${btn.dataset.room}"]`) ? btn.dataset.room : "";
-      updateObsMsgControls();
-      document.getElementById("obsMsgSection").scrollIntoView({ behavior: "smooth", block: "center" });
-      obsMsgTextEl.focus();
-    });
-
-    // ---- Messages from departments and Observers (incoming, items 4 and 7) --
-    // An Observer's message is shown by its room ("Room 2 Observer"), never by
-    // a name — none is stored.
-    // Unread tracking follows the same localStorage pattern participant.html
-    // uses: the newest acknowledged created_at, so a reload doesn't re-light
-    // everything already seen. A chime plays on live arrival (unlocked by
-    // the first click anywhere on this page, same as the room display's
-    // "tap to begin" gesture, since the facilitator clicks things
-    // immediately — see unlockChime() call below).
-    const inboxListEl = document.getElementById("inboxList");
-    const inboxBadgeEl = document.getElementById("inboxBadge");
+    const composeToEl = document.getElementById("composeTo");
+    const composePresetsEl = document.getElementById("composePresets");
     const inboxReadKey = `pp_facinbox_read_${sessionId}`;
-    let inboxMessages = [];
+    let allMessages = [];      // every direction, oldest first (facilitator_message_log)
     let inboxLastReadAt = null;
+    let msgSending = false;
+    let composeTarget = { kind: "everyone" }; // { kind: "everyone" } | { kind: "dept", dept } | { kind: "observers", room }
+    let composePresetKey = "";
+    // The id of the Observer message being written: the same text sent again
+    // (a retry after a dropped connection) keeps it, so it is saved once.
+    let obsMsgPending = { id: null, key: "" };
     try {
       const stored = localStorage.getItem(inboxReadKey);
       inboxLastReadAt = stored ? Number(stored) : null;
     } catch {
       inboxLastReadAt = null;
     }
+    const isIncoming = (m) => m.direction === "to_facilitator" || m.direction === "from_observer";
     const inboxMsgTime = (m) => new Date(m.created_at).getTime();
     function isInboxUnread(m) {
-      return inboxLastReadAt === null || inboxMsgTime(m) > inboxLastReadAt;
+      return isIncoming(m) && (inboxLastReadAt === null || inboxMsgTime(m) > inboxLastReadAt);
     }
+    function unreadMessages() { return allMessages.filter(isInboxUnread); }
     function markInboxRead() {
-      if (inboxMessages.length) {
-        inboxLastReadAt = Math.max(...inboxMessages.map(inboxMsgTime));
+      const incoming = allMessages.filter(isIncoming);
+      if (incoming.length) {
+        inboxLastReadAt = Math.max(...incoming.map(inboxMsgTime));
         try {
           localStorage.setItem(inboxReadKey, String(inboxLastReadAt));
         } catch {
@@ -1056,40 +1057,89 @@
       }
       renderInbox();
     }
-    document.getElementById("inboxSection").addEventListener("click", () => {
-      // Any click in the panel counts as having seen the current list —
-      // simplest "mark read" gesture for a page the facilitator is actively
-      // watching, matching the participant page's "tap the history" pattern.
+    // A click in the conversation counts as having seen it (the simplest
+    // "mark read" gesture for a page the facilitator is actively watching).
+    document.getElementById("inboxSection").addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
       markInboxRead();
     });
-
+    // A message from before the latest Reset (same label as Observer notes).
+    function isEarlierRun(m) {
+      return !!(currentRow && m.run_number && currentRow.run_number && m.run_number < currentRow.run_number);
+    }
+    function messageContextLabel(m) {
+      if (m.inject_index === null || m.inject_index === undefined) {
+        const ended = currentRow && currentRow.status === "ended" && currentRow.ended_at;
+        if (ended && new Date(m.created_at).getTime() >= Date.parse(currentRow.ended_at)) return T("fac.msg.contextAfterEnd");
+        return T("fac.msg.contextBeforeStart");
+      }
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      const inj = injects[m.inject_index];
+      return inj ? T("fac.msg.contextDuringTitled", { title: inj.title }) : T("fac.msg.contextDuringInject", { number: m.inject_index + 1 });
+    }
+    // A request for more time about the inject showing now, while running:
+    // "+5 min for everyone" can be given straight from the message.
+    function isMoreTimeRequest(m) {
+      return isIncoming(m) && (m.preset_key === "few_more_minutes" || m.preset_key === "obs_need_more_time")
+        && !!currentRow && currentRow.status === "running" && m.inject_index === currentRow.current_inject_index && !isEarlierRun(m);
+    }
+    function targetLabelOf(t) {
+      if (!t || t.kind === "everyone") return T("fac.compose.toEveryone");
+      if (t.kind === "dept") return t.dept;
+      return t.room ? observerTargetLabel(t.room) : T("fac.compose.toAllObservers");
+    }
+    function sentTargetLabel(m) {
+      if (m.direction === "to_observers") return observerTargetLabel(m.room);
+      return m.department || T("fac.compose.toEveryone");
+    }
     function renderInbox() {
-      const unread = inboxMessages.filter(isInboxUnread);
-      inboxBadgeEl.hidden = unread.length === 0;
-      inboxBadgeEl.textContent = T("fac.inbox.badge", { count: unread.length });
-      inboxListEl.innerHTML = inboxMessages.length
-        ? inboxMessages
+      const unread = unreadMessages();
+      tabsApi.badge("messages", unread.length, "");
+      const canReplyObs = observerChannel(currentRow).open;
+      const ended = currentRow && currentRow.status === "ended";
+      inboxListEl.innerHTML = allMessages.length
+        ? allMessages
             .slice()
             .reverse()
-            .map(
-              (m) =>
-                m.direction === "from_observer"
-                  ? `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="observer"><span class="meta"><span class="from-tag">${escapeHtml(T("fac.inbox.observerTag"))}</span>${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(observerRoomLabel(m.room))} · ${escapeHtml(messageContextLabel(m))}${isEarlierRun(m) ? ` · <span class="earlier">${escapeHtml(T("fac.inbox.earlierRun"))}</span>` : ""}</span>${escapeHtml(m.body)}${isEarlierRun(m) || !observerChannel(currentRow).open ? "" : `<button type="button" class="msg-dept-btn msg-obs-btn" data-room="${m.room || ""}">${escapeHtml(T("fac.inbox.reply"))}</button>`}</li>`
-                  : `<li class="${isInboxUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(m.department || T("fac.inbox.unknownDept"))} · ${escapeHtml(messageContextLabel(m))}</span>${escapeHtml(m.body)}</li>`
-            )
+            .map((m) => {
+              const earlier = isEarlierRun(m);
+              const earlierHtml = earlier ? ` · <span class="earlier">${escapeHtml(T("fac.inbox.earlierRun"))}</span>` : "";
+              if (!isIncoming(m)) {
+                return `<li class="sent" data-kind="sent"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.convo.you", { target: sentTargetLabel(m) }))} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}</li>`;
+              }
+              const observer = m.direction === "from_observer";
+              const who = observer ? observerRoomLabel(m.room) : (m.department || T("fac.inbox.unknownDept"));
+              const canReply = !earlier && (observer ? canReplyObs : !ended);
+              const actions =
+                (canReply ? `<button type="button" class="msg-dept-btn msg-reply-btn" data-kind="${observer ? "observers" : "dept"}" data-room="${m.room || ""}" data-dept="${escapeHtml(m.department || "")}">${escapeHtml(T("fac.convo.reply"))}</button>` : "") +
+                (isMoreTimeRequest(m) ? `<button type="button" class="msg-dept-btn msg-extend-btn">${escapeHtml(T("fac.convo.extendHere"))}</button>` : "");
+              return `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="${observer ? "observer" : "department"}"><span class="meta">${observer ? `<span class="from-tag">${escapeHtml(T("fac.inbox.observerTag"))}</span>` : ""}${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}${actions ? `<div class="msg-actions">${actions}</div>` : ""}</li>`;
+            })
             .join("")
         : `<li class="muted-line">${escapeHtml(T("fac.inbox.empty"))}</li>`;
+      renderAlerts();
     }
+    inboxListEl.addEventListener("click", (e) => {
+      const reply = e.target.closest(".msg-reply-btn");
+      if (reply) {
+        composeSetTarget(reply.dataset.kind === "observers"
+          ? { kind: "observers", room: reply.dataset.room ? Number(reply.dataset.room) : null }
+          : { kind: "dept", dept: reply.dataset.dept });
+        markInboxRead(); // answering a message is reading it
+        msgTextEl.focus();
+        return;
+      }
+      if (e.target.closest(".msg-extend-btn")) { markInboxRead(); runAction(extendFive); }
+    });
 
-    // fromRing = the doorbell said a department or an Observer has just sent something:
-    // chime if a message really is new (as the live inbox always did).
+    // fromRing = the doorbell said something arrived: chime if a message really is new.
     let inboxLoadedOnce = false;
     async function refreshInbox(fromRing) {
       try {
-        const known = new Set(inboxMessages.map((m) => m.id));
-        const fresh = await fetchFacilitatorMessages(sessionId);
-        const gotNew = fresh.some((m) => !known.has(m.id));
-        inboxMessages = fresh;
+        const known = new Set(allMessages.map((m) => m.id));
+        const fresh = await fetchAllMessages(sessionId);
+        const gotNew = fresh.some((m) => isIncoming(m) && !known.has(m.id));
+        allMessages = fresh;
         renderInbox();
         if (gotNew && inboxLoadedOnce) playChime();
         inboxLoadedOnce = true;
@@ -1098,9 +1148,138 @@
       }
     }
 
-    // First click anywhere unlocks the chime (browsers block audio without
-    // a user gesture) — the facilitator clicks a control almost immediately,
-    // so this is a near-invisible "tap to begin" equivalent.
+    // ---- The compose box ----
+    function composeTargets() {
+      const list = [{ kind: "everyone" }];
+      allDepartments().forEach((d) => list.push({ kind: "dept", dept: d }));
+      list.push({ kind: "observers", room: null });
+      const rooms = (currentRow && currentRow.room_count) || 1;
+      if (rooms > 1) for (let r = 1; r <= rooms; r++) list.push({ kind: "observers", room: r });
+      return list;
+    }
+    const sameTarget = (a, b) => a.kind === b.kind && (a.kind !== "dept" || sameDept(a.dept, b.dept)) && (a.kind !== "observers" || (a.room || null) === (b.room || null));
+    function composePresetsFor(t) {
+      return t.kind === "everyone" ? BROADCAST_PRESETS : t.kind === "dept" ? FACILITATOR_TO_DEPARTMENT_PRESETS : FACILITATOR_TO_OBSERVER_PRESETS;
+    }
+    function composeSetTarget(t) {
+      composeTarget = t;
+      composePresetKey = "";
+      updateCompose();
+    }
+    let composeSig = "";
+    function updateCompose() {
+      const targets = composeTargets();
+      if (!targets.some((t) => sameTarget(t, composeTarget))) composeTarget = targets[0];
+      const sig = JSON.stringify(targets) + "|" + JSON.stringify(composeTarget) + "|" + composePresetKey;
+      if (sig !== composeSig) {
+        composeSig = sig;
+        composeToEl.innerHTML = targets.map((t, i) =>
+          `<button type="button" class="pp-chip" role="radio" data-target="${i}" aria-checked="${sameTarget(t, composeTarget)}">${escapeHtml(targetLabelOf(t))}</button>`).join("");
+        composePresetsEl.innerHTML = composePresetsFor(composeTarget).map((p) =>
+          `<button type="button" class="pp-chip" data-preset="${p.key}" aria-pressed="${p.key === composePresetKey}">${escapeHtml(p.text)}</button>`).join("");
+      }
+      const len = msgTextEl.value.trim().length;
+      msgCountEl.textContent = `${msgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+      const ended = !!currentRow && currentRow.status === "ended";
+      const chan = observerChannel(currentRow);
+      const closed = composeTarget.kind === "observers" ? (!!currentRow && !chan.open) : ended;
+      msgSendBtn.disabled = msgSending || len === 0 || closed || !currentRow;
+      msgTextEl.disabled = closed;
+      composePresetsEl.querySelectorAll("button").forEach((b) => { b.disabled = closed; });
+      const closedText = composeTarget.kind === "observers" ? (chan.reason || "") : T("fac.msg.ended");
+      if (closed) { msgFeedbackEl.className = "broadcast-feedback"; msgFeedbackEl.textContent = closedText; msgFeedbackEl.dataset.closed = "1"; }
+      else if (msgFeedbackEl.dataset.closed) { delete msgFeedbackEl.dataset.closed; msgFeedbackEl.textContent = ""; }
+      // Nobody to receive an Observer message? Say so (it can still be sent:
+      // an Observer who joins later sees it).
+      let warn = "";
+      if (!closed && composeTarget.kind === "observers" && lastAttendees) {
+        const observers = lastAttendees.filter((a) => a.role === "observer");
+        if (!observers.length) warn = T("fac.obsMsg.warnNone");
+        else if (composeTarget.room && !observers.some((a) => a.room === composeTarget.room)) warn = T("fac.obsMsg.warnNoneInRoom", { room: composeTarget.room });
+      }
+      obsMsgWarnEl.hidden = !warn;
+      obsMsgWarnEl.textContent = warn;
+    }
+    function clearMsgFeedback() {
+      if (msgFeedbackEl.dataset.closed) return;
+      msgFeedbackEl.textContent = "";
+      msgFeedbackEl.className = "broadcast-feedback";
+    }
+    composeToEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-target]");
+      if (!b) return;
+      const t = composeTargets()[Number(b.dataset.target)];
+      if (t) { composeSetTarget(t); clearMsgFeedback(); }
+    });
+    composePresetsEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-preset]");
+      if (!b || b.disabled) return;
+      const preset = composePresetsFor(composeTarget).find((p) => p.key === b.dataset.preset);
+      if (!preset) return;
+      composePresetKey = preset.key;
+      msgTextEl.value = preset.text;
+      clearMsgFeedback();
+      updateCompose();
+      msgTextEl.focus();
+    });
+    msgTextEl.addEventListener("input", () => {
+      const preset = composePresetsFor(composeTarget).find((p) => p.key === composePresetKey);
+      if (preset && preset.text !== msgTextEl.value) composePresetKey = "";
+      clearMsgFeedback();
+      updateCompose();
+    });
+    msgSendBtn.addEventListener("click", async () => {
+      if (composeMic) composeMic.stop();
+      const body = msgTextEl.value.trim();
+      if (!body || msgSending) return;
+      const target = composeTarget;
+      const preset = composePresetsFor(target).find((p) => p.key === composePresetKey);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      msgSending = true;
+      updateCompose();
+      msgFeedbackEl.className = "broadcast-feedback";
+      msgFeedbackEl.textContent = T("fac.msg.sending");
+      try {
+        if (target.kind === "observers") {
+          const key = `${target.room || "all"}|${body}`;
+          if (!obsMsgPending.id || obsMsgPending.key !== key) obsMsgPending = { id: crypto.randomUUID(), key };
+          await sendToObservers(sessionId, { id: obsMsgPending.id, body, presetKey, room: target.room });
+          obsMsgPending = { id: null, key: "" };
+        } else {
+          await sendBroadcast(sessionId, { body, presetKey, department: target.kind === "dept" ? target.dept : null });
+        }
+        msgTextEl.value = "";
+        composePresetKey = "";
+        msgFeedbackEl.className = "broadcast-feedback ok";
+        msgFeedbackEl.textContent = T("fac.compose.sentTo", { target: targetLabelOf(target), time: formatMessageTime(new Date().toISOString()) });
+        await refreshInbox();
+      } catch (err) {
+        // Keep the text so nothing typed is lost if the send failed.
+        msgFeedbackEl.className = "broadcast-feedback err";
+        msgFeedbackEl.textContent = err.network ? T("fac.obsMsg.notSentNetwork") : PPLang.dbMessage(err.message);
+      } finally {
+        msgSending = false;
+        updateCompose();
+      }
+    });
+    // Clicking "Message" on an amber/red department row chooses that
+    // department in the compose box and opens the Messages tab. Delegated on
+    // the stable section container, since the status list is rebuilt every second.
+    document.getElementById("statusSection").addEventListener("click", (e) => {
+      const btn = e.target.closest(".msg-dept-btn");
+      if (!btn) return;
+      composeSetTarget({ kind: "dept", dept: btn.dataset.dept });
+      tabsApi.show("messages");
+      msgTextEl.focus();
+    });
+    // The mic on the compose box (voice notes): the facilitator link is the
+    // credential; the exercise's departments and names are the vocabulary.
+    const composeMic = PPMic.attach(msgTextEl, {
+      who: { sessionId, facilitatorToken },
+      labels: micLabels(),
+      vocabulary: () => speechVocabulary(),
+    });
+
     document.body.addEventListener("click", unlockChime, { once: true });
 
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -1164,11 +1343,11 @@
         renderRoster(attendees);
         renderTower();
         renderStatus();
-        // The department picker depends on currentRow (scenario
-        // departments) and lastAttendees — refresh() and refreshRoster()
-        // both start at page load with no guaranteed order, so update it
-        // here too rather than waiting for the next 5-second interval tick.
-        updateDeptMsgOptions();
+        renderExpected();
+        // The "To" chips depend on currentRow (scenario departments) and
+        // lastAttendees — refresh() and refreshRoster() both start at page
+        // load with no guaranteed order, so update them here too.
+        updateCompose();
       } catch (err) {
         rosterErrorEl.textContent = T("fac.roster.loadFailed", { message: PPLang.dbMessage(err.message) });
         rosterErrorEl.style.display = "block";
@@ -1296,6 +1475,7 @@
     }
 
     function renderStatus() {
+      renderCommandBar();
       if (!currentRow || !lastSubmissions || !lastAttendees) return;
       const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
       const depts = allDepartments();
@@ -1323,7 +1503,7 @@
         }
         html += `
           <div class="status-current">
-            <div class="status-head">${escapeHtml(T("fac.status.currentHead", { number: curIdx, title: inj.title }))}</div>
+            <div class="status-head">${escapeHtml(T("fac.status.currentHead", { number: curIdx + 1, title: inj.title }))}</div>
             <div class="status-sub">${escapeHtml(injectOutput(inj) === "individual" ? T("fac.status.taskIndividual") : T("fac.status.taskGroup"))} · ${escapeHtml(T("fac.status.responsible", { departments: responsibleText(inj) }))}${escapeHtml(timeText)}</div>
             <ul class="status-list">
               ${depts
@@ -1344,7 +1524,7 @@
           <div class="history-wrap">
             <table class="history">
               <thead><tr><th>${escapeHtml(T("fac.status.deptColumn"))}</th>${past
-                .map((i) => `<th title="${escapeHtml(T("fac.status.historyTip." + injectOutput(injects[i]), { title: injects[i].title }))}">${escapeHtml(injectOutput(injects[i]) === "individual" ? T("fac.status.historyColIndividual", { number: i }) : T("fac.status.historyCol", { number: i }))}</th>`)
+                .map((i) => `<th title="${escapeHtml(T("fac.status.historyTip." + injectOutput(injects[i]), { title: injects[i].title }))}">${escapeHtml(injectOutput(injects[i]) === "individual" ? T("fac.status.historyColIndividual", { number: i + 1 }) : T("fac.status.historyCol", { number: i + 1 }))}</th>`)
                 .join("")}</tr></thead>
               <tbody>
                 ${depts
@@ -1512,9 +1692,9 @@
         // After a minute behind or silent, say what to do.
         if (currentRow && currentRow.status !== "ended") {
           if (state === "grey" || (state === "amber" && age > PROMPT_AFTER_MS)) {
-            warnings.push({ red: true, text: T("fac.tower.warnNotResponding", { screen: label }) });
+            warnings.push({ red: true, tab: "exercise", text: T("fac.tower.warnNotResponding", { screen: label }) });
           } else if (behind && sinceChange > PROMPT_AFTER_MS) {
-            warnings.push({ red: true, text: T("fac.tower.warnBehind", { screen: label }) });
+            warnings.push({ red: true, tab: "exercise", text: T("fac.tower.warnBehind", { screen: label }) });
           }
         }
       };
@@ -1524,7 +1704,7 @@
           if (!inRoom.length) {
             rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>${escapeHtml(T("fac.tower.roomScreen", { room: r }))}:</b> <span class="soft">${escapeHtml(T("fac.tower.noScreen"))}</span></span></div>`);
             if (currentRow && currentRow.status === "running") {
-              warnings.push({ red: false, text: T("fac.tower.warnRoomNoScreen", { room: r }) });
+              warnings.push({ red: false, tab: "exercise", text: T("fac.tower.warnRoomNoScreen", { room: r }) });
             }
           }
           inRoom.forEach((d, i) => screenRow(d, inRoom.length > 1 ? T("fac.tower.roomScreenNumbered", { room: r, number: i + 1 }) : T("fac.tower.roomScreen", { room: r })));
@@ -1532,7 +1712,7 @@
         screens.filter((d) => !d.room).forEach((d, i) => screenRow(d, T("fac.tower.screenNoRoom", { number: i + 1 })));
       } else if (!screens.length) {
         rowsHtml.push(`<div class="tower-row"><i class="dot grey"></i><span class="what"><b>${escapeHtml(T("fac.tower.singleScreen"))}:</b> <span class="soft">${escapeHtml(T("fac.tower.noScreen"))}</span></span></div>`);
-        if (currentRow && currentRow.status === "running") warnings.push({ red: false, text: T("fac.tower.warnNoScreen") });
+        if (currentRow && currentRow.status === "running") warnings.push({ red: false, tab: "exercise", text: T("fac.tower.warnNoScreen") });
       } else {
         screens.forEach((d, i) => screenRow(d, screens.length > 1 ? T("fac.tower.singleScreenNumbered", { number: i + 1 }) : T("fac.tower.singleScreen")));
       }
@@ -1586,7 +1766,11 @@
       towerWarningsEl.innerHTML = warnings
         .map((w) => `<div class="tower-warn${w.red ? " red" : ""}">${escapeHtml(w.text)}</div>`)
         .join("");
+      lastTowerWarnings = warnings;
+      tabsApi.badge("people", warnings.length, "");
+      renderAlerts();
     }
+    let lastTowerWarnings = [];
 
     // "Refresh this screen" (soft: no reload, sound stays on) and, offered
     // only after that, "Full reload". They reach the screen in the reply to
@@ -1609,20 +1793,41 @@
         btn.disabled = false;
       }
     });
+    // "Show:" — group by department or room, or filter to online / offline /
+    // remote / Observers (17 October 2026). A filter is a toggle.
+    let rosterFilter = "";
     rosterGroupEl.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-group]");
+      const btn = e.target.closest("button[data-group], button[data-filter]");
       if (!btn) return;
-      rosterGroupBy = btn.dataset.group;
-      rosterGroupEl.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+      if (btn.dataset.group) rosterGroupBy = btn.dataset.group;
+      else rosterFilter = rosterFilter === btn.dataset.filter ? "" : btn.dataset.filter;
+      rosterGroupEl.querySelectorAll("button[data-group]").forEach((b) => b.classList.toggle("on", b.dataset.group === rosterGroupBy));
+      rosterGroupEl.querySelectorAll("button[data-filter]").forEach((b) => b.classList.toggle("on", b.dataset.filter === rosterFilter));
       if (lastAttendees) renderRoster(lastAttendees);
     });
 
-    function renderRoster(attendees) {
+    function renderRoster(all) {
       const rooms = (currentRow && currentRow.room_count) || 1;
-      rosterGroupEl.hidden = rooms <= 1;
+      rosterGroupEl.querySelectorAll("button[data-group]").forEach((b) => { b.hidden = rooms <= 1; });
       if (rooms <= 1) rosterGroupBy = "department";
-      if (attendees.length === 0) {
+      rosterGroupEl.querySelector('[data-filter="remote"]').hidden = !all.some((a) => a.remote);
+      rosterGroupEl.querySelector('[data-filter="observer"]').hidden = !all.some((a) => a.role === "observer");
+      const attendees = all.filter((a) => {
+        if (!rosterFilter) return true;
+        const d = personPresence(a.id);
+        const st = d ? presenceState(d.last_seen, towerNowMs()) : "never";
+        if (rosterFilter === "online") return st === "green";
+        if (rosterFilter === "offline") return st !== "green";
+        if (rosterFilter === "remote") return !!a.remote;
+        if (rosterFilter === "observer") return a.role === "observer";
+        return true;
+      });
+      if (all.length === 0) {
         rosterEl.innerHTML = `<p>${escapeHtml(T("fac.roster.empty"))}</p>`;
+        return;
+      }
+      if (attendees.length === 0) {
+        rosterEl.innerHTML = `<p>${escapeHtml(T("fac.people.filterNone"))}</p>`;
         return;
       }
       // Grouped by department (not one alphabetical list of names) so the
@@ -1658,11 +1863,11 @@
         return `<button class="markRemoteBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}" data-remote="1">${escapeHtml(T("fac.roster.markRemote"))}</button>`;
       };
       rosterEl.innerHTML =
-        `<div class="roster-summary">${escapeHtml(T("fac.roster.participantCount", { count: attendees.length - nObservers }))} · ${escapeHtml(T("fac.roster.observerCount", { count: nObservers }))}${nRemote ? ` · ${escapeHtml(T("fac.roster.remoteCount", { count: nRemote }))}` : ""}</div>` +
+        `<div class="roster-summary">${escapeHtml(T("fac.roster.participantCount", { count: all.length - all.filter((a) => a.role === "observer").length }))} · ${escapeHtml(T("fac.roster.observerCount", { count: all.filter((a) => a.role === "observer").length }))}${all.some((a) => a.role !== "observer" && a.remote) ? ` · ${escapeHtml(T("fac.roster.remoteCount", { count: all.filter((a) => a.role !== "observer" && a.remote).length }))}` : ""}${rosterFilter || byRoom ? "" : expectedFlagHtml("remote", null, all) + expectedFlagHtml("observers", null, all)}</div>` +
         depts
         .map((dept) => `
           <div class="roster-dept">
-            <h3>${escapeHtml(dept)} (${byDept[dept].length})</h3>
+            <h3>${escapeHtml(dept)} (${byDept[dept].length})${byRoom || rosterFilter ? "" : expectedFlagHtml("dept", dept, all)}</h3>
             <ul>
               ${byDept[dept]
                 .map(
@@ -1738,6 +1943,7 @@
     const notesOwnEl = document.getElementById("notesOwn");
     const notesReadKey = `pp_facnotes_read_${sessionId}`;
     let allNotes = null;
+    let unreadCriticalNotes = [];
     let notesLoadedOnce = false;
     const seenNoteIds = new Set();
     let noteWithdrawArmed = null;
@@ -1757,6 +1963,12 @@
       getRow: () => currentRow,
       save: (payload) => saveObserverNote(sessionId, payload, { facilitatorToken }),
       onSaved: () => refreshNotes(),
+      beforeSave: () => { if (noteMic) noteMic.stop(); },
+    });
+    const noteMic = PPMic.attach(facNoteForm.textarea, {
+      who: { sessionId, facilitatorToken },
+      labels: micLabels(),
+      vocabulary: () => speechVocabulary(),
     });
 
     const noteTime = (n) => Date.parse(n.created_at);
@@ -1808,6 +2020,9 @@
       notesBadgeEl.textContent = unreadCritical
         ? T("fac.notes.badgeCritical", { count: unread.length, critical: unreadCritical })
         : T("fac.notes.badge", { count: unread.length });
+      tabsApi.badge("notes", unread.length, unreadCritical ? "red" : "");
+      unreadCriticalNotes = unread.filter((n) => n.note_type === "critical");
+      renderAlerts();
 
       const count = (k) => thisRun.filter((n) => n.note_type === k).length;
       const withdrawn = allNotes.filter((n) => n.withdrawn).length;
@@ -1840,7 +2055,6 @@
       const n = allNotes.find((x) => x.id === btn.dataset.id);
       if (!n) return;
       if (btn.dataset.act === "edit") {
-        notesOwnEl.open = true;
         facNoteForm.edit({
           id: n.id, injectIndex: n.inject_index, topic: n.topic, topicOther: n.topic_other,
           noteType: n.note_type, scope: n.department_scope, departments: n.departments,
@@ -1930,20 +2144,13 @@
 
     refresh();
     refreshRoster();
-    refreshMessageLog();
-    refreshDeptMsgLog();
-    refreshObsMsgLog();
     refreshInbox();
-    updateDeptMsgOptions();
+    updateCompose();
     setInterval(refreshRoster, 5000);
-    setInterval(refreshMessageLog, 5000);
-    setInterval(refreshDeptMsgLog, 5000);
-    setInterval(refreshObsMsgLog, 5000);
-    setInterval(updateObsMsgControls, 5000); // the channel closes on the clock
-    setInterval(updateDeptMsgOptions, 5000);
-    // The inbox is refreshed at once by the doorbell (above) — this poll is
-    // the safety net for a missed ring.
-    setInterval(() => refreshInbox(), 15000);
+    setInterval(updateCompose, 5000); // the Observer channel closes on the clock
+    // The conversation is refreshed at once by the doorbell (above) — this
+    // poll is the safety net for a missed ring.
+    setInterval(() => refreshInbox(), 5000);
     // The session itself, in case it was changed from another device and
     // the ring was missed.
     setInterval(() => { if (!actionBusy) refresh().catch(() => {}); }, 15000);
@@ -1953,9 +2160,6 @@
     // "time's up" happen on time, between the 5-second data polls.
     setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
-    onReconnect(refreshMessageLog);
-    onReconnect(refreshDeptMsgLog);
-    onReconnect(refreshObsMsgLog);
     onReconnect(() => refreshInbox());
 
     // Same reasoning as the room display: a dropped connection or a
@@ -2028,6 +2232,8 @@
       if (offline && participants.length) issues.push(participants.length === 1
         ? T("fac.startCheck.offlineOfOne", { count: offline, total: participants.length })
         : T("fac.startCheck.offlineOfMany", { count: offline, total: participants.length }));
+      // Expected attendance (17 October 2026): the flags, as advice.
+      expectedIssues().forEach((t) => issues.push(T("fac.startCheck.expected", { flag: t })));
       return issues;
     }
     // ---- Resume after End (Ahmed, 11 October 2026) ------------------------
@@ -2124,6 +2330,11 @@
         inject_force_unlocked: false,
       });
     });
+    function extendFive() {
+      if (!currentRow) return;
+      const extended = (currentRow.inject_extra_minutes || 0) + 5;
+      return patchSession(sessionId, { inject_extra_minutes: extended });
+    }
     onClick(document.getElementById("extendBtn"), () => {
       if (!currentRow) return;
       // Participants should never need to be told "the facilitator added
@@ -2241,14 +2452,23 @@
       endStripEl.hidden = false;
     }
     setInterval(renderEndStrip, 10000);
-    onClick(document.getElementById("resetBtn"), () =>
-      patchSession(sessionId, {
+    const resetCheckEl = document.getElementById("resetCheck");
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      startCheckEl.hidden = true; endCheckEl.hidden = true; resumeCheckEl.hidden = true;
+      resetCheckEl.hidden = false;
+      window.scrollTo({ top: 0 });
+      document.getElementById("resetBackBtn").focus();
+    });
+    document.getElementById("resetBackBtn").addEventListener("click", () => { resetCheckEl.hidden = true; });
+    document.getElementById("resetConfirmBtn").addEventListener("click", () => {
+      resetCheckEl.hidden = true;
+      runAction(() => patchSession(sessionId, {
         status: "lobby",
         current_inject_index: -1,
         inject_extra_minutes: 0,
         inject_force_unlocked: false,
-      })
-    );
+      }));
+    });
 
     // Only the most recently started refresh is applied (refreshSeq), so the
     // 15-second check can never put an older copy of the session back after
@@ -2257,8 +2477,13 @@
       const seq = ++refreshSeq;
       const row = await fetchSession(sessionId);
       if (seq !== refreshSeq) return;
+      const prevRun = currentRow && currentRow.run_number;
+      const prevStatus = currentRow && currentRow.status;
       currentRow = row;
       updateButtonAvailability();
+      // A Reset (new run) or a change of state relabels the conversation
+      // ("Earlier run", Reply shown or not) without waiting for a new message.
+      if (row && (row.run_number !== prevRun || row.status !== prevStatus) && typeof renderInbox === "function") renderInbox();
       if (!currentRow) return;
       // Reflect the session's real room_count in the selector. refresh()
       // only ever runs after an action settles (a button click, reconnect,
@@ -2270,27 +2495,44 @@
       document.getElementById("facLabel").textContent = currentRow.label || T("fac.header.label");
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;
-      indexVal.textContent = currentRow.current_inject_index >= 0
-        ? (isLast
+      indexVal.textContent = currentRow.status === "lobby" || currentRow.current_inject_index < 0
+        ? T("fac.cmd.lobby")
+        : (isLast
           ? T("fac.statusLine.indexLast", { number: currentRow.current_inject_index + 1, total: injects.length })
-          : T("fac.statusLine.index", { number: currentRow.current_inject_index + 1, total: injects.length }))
-        : T("fac.statusLine.notStarted", { count: injects.length });
+          : T("fac.statusLine.index", { number: currentRow.current_inject_index + 1, total: injects.length }));
       const inject = injects[currentRow.current_inject_index];
       const extra = currentRow.inject_extra_minutes || 0;
       const durationText = extra > 0
         ? T("fac.current.durationExtended", { base: String(inject && inject.durationMinutes), extra, total: (inject && inject.durationMinutes || 0) + extra })
         : T("fac.current.duration", { minutes: String(inject && inject.durationMinutes) });
       const unlockText = currentRow.inject_force_unlocked ? ` — ${T("fac.current.unlocked")}` : "";
-      currentInjectEl.textContent = inject
-        ? `${inject.title} — ${T("fac.current.sfx", { name: inject.sfx || T("fac.current.none") })} — ${T("fac.current.video", { title: String(inject.video ? inject.video.title : T("fac.current.none")) })} — ${durationText}${unlockText}${isLast ? ` — ${T("fac.current.lastInject")}` : ""}`
-        : T("fac.current.noInject");
+      const meta = inject
+        ? `${T("fac.current.sfx", { name: inject.sfx || T("fac.current.none") })} — ${T("fac.current.video", { title: String(inject.video ? inject.video.title : T("fac.current.none")) })} — ${durationText}${unlockText}${isLast ? ` — ${T("fac.current.lastInject")}` : ""}`
+        : "";
+      // The current inject as the room sees it: title, text, task, then the
+      // technical line (sound, video, duration).
+      currentInjectEl.innerHTML = inject && currentRow.status !== "lobby"
+        ? `<div class="ci-title">${escapeHtml(inject.title)}</div>` +
+          (inject.desc ? `<div class="ci-desc">${escapeHtml(inject.desc)}</div>` : "") +
+          (injectTaskText(inject) ? `<div class="ci-task">${escapeHtml(T("fac.exercise.task", { task: injectTaskText(inject) }))}</div>` : "") +
+          `<div class="ci-meta">${escapeHtml(meta)}</div>`
+        : `<div class="ci-meta">${escapeHtml(currentRow.status === "lobby" ? T("fac.exercise.noInject") : T("fac.current.noInject"))}</div>`;
+      // Setup folds away once the exercise has started (and opens again in the lobby).
+      const setupEl = document.getElementById("setupDetails");
+      if (lastSetupStatus !== currentRow.status) {
+        if (currentRow.status === "lobby") setupEl.open = true;
+        else if (lastSetupStatus === "lobby" || lastSetupStatus === null) setupEl.open = false;
+        lastSetupStatus = currentRow.status;
+      }
+      document.getElementById("readyCard").hidden = currentRow.status !== "lobby";
       renderStatus();
       renderTower();
       renderEndStrip();
       if (currentRow.status !== "running" && currentRow.status !== "lobby") hideEndCheck();
       if (!canResume()) document.getElementById("resumeCheck").hidden = true;
       awake.update();
-      updateDeptMsgOptions();
+      updateCompose();
+      renderExpected();
       facNoteForm.refresh();
       renderNotesClose();
       renderNotes();

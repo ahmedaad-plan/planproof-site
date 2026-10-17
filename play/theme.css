@@ -199,6 +199,7 @@ a { color: var(--amber); }
   background: var(--amber-dim); border: 1px solid rgba(226,166,59,0.45);
   font-size: 1rem; color: var(--text); text-wrap: balance;
 }
+.pp-thanks-phone { margin: 0 auto 14px; max-width: 32em; font-size: 0.95rem; color: var(--text-muted); text-wrap: balance; }
 .pp-thanks-wait, .pp-thanks-close { margin: 0; color: var(--text-muted); font-size: 0.98rem; text-wrap: balance; }
 .pp-thanks-window {
   margin: 0 auto; max-width: 32em; padding: 12px 14px; border-radius: 10px; text-align: start;
@@ -224,3 +225,165 @@ a { color: var(--amber); }
   .pp-thanks.everyone { padding: 30px 18px 28px; }
 }
 
+
+/* ---- Screen layout and usability (17 October 2026) ------------------------
+   Tabs, badges, the command bar, the alert strip, the slim header, the
+   two-column laptop layout, tap chips, the mic button and QR codes. One
+   flexible layout: under 900px the page is a phone (bottom tab bar, one
+   column), from 900px a laptop (tabs on top, columns). Start/end, never
+   left/right. */
+
+/* Tabs: a bar of buttons. On a phone it is fixed to the bottom of the screen;
+   on a laptop it sits in the page flow under the command bar. */
+.pp-tabs {
+  display: flex; background: #121a23; border-top: 1px solid var(--border);
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pp-tab {
+  flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 4px; min-height: 52px; border: 0; border-top: 3px solid transparent; background: transparent;
+  color: var(--text-muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.pp-tab[aria-selected="true"] { color: var(--text); border-top-color: var(--amber); background: #182230; }
+.pp-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-tab-badge {
+  display: inline-block; min-width: 20px; height: 20px; line-height: 20px; padding: 0 6px; border-radius: 10px;
+  background: var(--amber); color: var(--amber-ink); font-size: 12px; font-weight: 700; text-align: center;
+  direction: ltr; unicode-bidi: isolate;
+}
+.pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); display: inline-block; }
+/* While a typing box has the keyboard on a phone, the bar steps aside. */
+body.pp-kbd .pp-tabs { display: none; }
+.pp-tabs.pp-tabs-none { display: none; }
+/* Room for the bar under the page's content on a phone. */
+body.pp-has-tabs { padding-bottom: 72px; }
+@media (min-width: 900px) {
+  .pp-tabs { position: static; border-top: 0; border-bottom: 1px solid var(--border); padding: 0 16px; }
+  .pp-tab { flex: 0 0 auto; padding: 12px 18px; min-height: 0; border-top: 0; border-bottom: 3px solid transparent; font-size: 15px; }
+  .pp-tab[aria-selected="true"] { border-bottom-color: var(--amber); background: transparent; }
+  body.pp-has-tabs { padding-bottom: 24px; }
+}
+
+/* The Facilitator's command bar: never moves. */
+.pp-cmd {
+  position: sticky; top: 0; z-index: 30; background: #0f1a24; border-bottom: 2px solid var(--amber);
+  padding: 8px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+}
+.pp-cmd-pos { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+.pp-cmd-clock {
+  font-family: var(--font-mono); font-weight: 600; font-size: 1.5rem; color: var(--amber); font-variant-numeric: tabular-nums;
+  direction: ltr; unicode-bidi: isolate; line-height: 1;
+}
+.pp-cmd-clock[data-state="warn"] { color: var(--amber); }
+.pp-cmd-clock[data-state="up"] { color: var(--red-soft); font-family: var(--font-display); font-size: 1.05rem; direction: inherit; unicode-bidi: normal; }
+.pp-cmd-clock[data-state="none"] { color: var(--text-muted); font-family: var(--font-display); font-size: 1rem; direction: inherit; unicode-bidi: normal; }
+.pp-cmd-who { font-size: 0.86rem; color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
+.pp-cmd-status { display: none; }
+.pp-cmd-spacer { flex: 1 1 auto; }
+.pp-cmd-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pp-cmd-btns button { font-size: 0.95rem; padding: 9px 14px; }
+.pp-cmd-secondary { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-cmd-secondary button { font-size: 0.82rem; padding: 6px 10px; color: var(--text-muted); font-weight: 500; }
+.pp-cmd-more { display: none; }
+@media (max-width: 899px) {
+  .pp-cmd { padding: 8px 10px; gap: 6px 10px; }
+  .pp-cmd-who { flex-basis: 100%; order: 5; font-size: 0.8rem; }
+  .pp-cmd-btns { flex-basis: 100%; order: 6; }
+  .pp-cmd-btns > button { flex: 1 1 auto; }
+  .pp-cmd-more { display: inline-block; flex: 0 0 auto; }
+  .pp-cmd-secondary { display: none; flex-basis: 100%; }
+  .pp-cmd-secondary.open { display: flex; }
+}
+
+/* The alert strip under the command bar: visible on every tab. */
+.pp-alerts {
+  background: #2a1d12; border-bottom: 1px solid #5a3a1a; padding: 6px 12px;
+  display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.88rem; align-items: center;
+}
+.pp-alert { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pp-alert::before { content: "⚠"; color: var(--amber); }
+.pp-alert.red::before { content: "●"; color: var(--red-soft); }
+.pp-alert.red .pp-alert-text { color: #ffd3cb; font-weight: 600; }
+.pp-alert-btn {
+  font: inherit; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 6px; cursor: pointer;
+  border: 1px solid #7a5a2a; background: transparent; color: var(--amber);
+}
+.pp-alert-btn.more { border-color: var(--border-strong); color: var(--text-muted); }
+
+/* The slim header on a participant's or Observer's device: who, where, the clock. */
+.pp-slim {
+  position: sticky; top: 0; z-index: 30; background: #0f1a24; border-bottom: 1px solid var(--amber);
+  padding: 7px 12px; display: flex; align-items: center; gap: 10px; font-size: 0.86rem;
+}
+.pp-slim .who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-slim .pos { white-space: nowrap; color: var(--text-muted); }
+.pp-slim .pp-cmd-clock { font-size: 1.15rem; }
+
+/* Two columns on a laptop. */
+.pp-cols { display: grid; gap: 14px; align-items: start; }
+@media (min-width: 900px) {
+  .pp-cols { grid-template-columns: 1fr 1fr; }
+  .pp-cols.wide { grid-template-columns: 3fr 2fr; }
+  .pp-cols > .pp-col { min-width: 0; }
+  .pp-cols > .pp-col.sticky { position: sticky; top: 64px; }
+}
+.pp-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.pp-card + .pp-card { margin-top: 14px; }
+.pp-card h2, .pp-card h3 { margin: 0 0 8px; font-size: 1rem; }
+
+/* Tap chips: ready-made messages and "To". */
+.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-chip {
+  font: inherit; font-size: 0.86rem; padding: 6px 12px; border-radius: 16px; cursor: pointer;
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text); max-width: 100%; text-align: start;
+}
+.pp-chip[aria-pressed="true"], .pp-chip[aria-checked="true"], .pp-chip.on { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); font-weight: 600; }
+.pp-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* The mic button sits in the corner of a typing box. */
+.pp-micwrap { position: relative; }
+.pp-micwrap textarea { padding-inline-end: 48px; }
+.pp-mic {
+  position: absolute; inset-inline-end: 8px; bottom: 8px; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--panel-raised); color: var(--amber); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.pp-mic svg { width: 18px; height: 18px; }
+.pp-mic.on { background: var(--red); border-color: var(--red); color: #fff; animation: pp-pulse 1.2s ease-in-out infinite; }
+.pp-mic.busy { color: var(--text-muted); }
+@keyframes pp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(216,74,58,0.5); } 50% { box-shadow: 0 0 0 8px rgba(216,74,58,0); } }
+.pp-mic-line { font-size: 0.82rem; color: var(--text-muted); min-height: 1.2em; margin-top: 4px; }
+.pp-mic-line.err { color: var(--red-soft); }
+
+/* QR codes: a small one beside each public link, a large one over the page. */
+.pp-qr { width: 112px; height: 112px; background: #fff; padding: 6px; border-radius: 8px; flex: 0 0 auto; }
+.pp-qr svg { width: 100%; height: 100%; display: block; }
+.pp-qr-large {
+  position: fixed; inset: 0; z-index: 60; background: #fff; color: #111; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center;
+}
+.pp-qr-large .pp-qr { width: min(70vmin, 560px); height: min(70vmin, 560px); padding: 0; }
+.pp-qr-large .t { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.4rem, 4vw, 2.4rem); color: #111; }
+.pp-qr-large .u { font-family: var(--font-mono); font-size: clamp(0.8rem, 2vw, 1.1rem); overflow-wrap: anywhere; color: #333; direction: ltr; unicode-bidi: isolate; }
+.pp-qr-large button { font: inherit; font-size: 1rem; padding: 10px 20px; border-radius: 8px; border: 1px solid #999; background: #f2f2f2; color: #111; cursor: pointer; }
+.pp-linkrow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
+.pp-linkrow:first-child { border-top: 0; }
+.pp-linkrow .body { flex: 1 1 auto; min-width: 0; }
+.pp-linkrow .lbl { font-weight: 600; font-size: 0.92rem; margin-bottom: 4px; }
+.pp-linkrow input { width: 100%; font-family: var(--font-mono); font-size: 0.78rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--field); color: var(--text); direction: ltr; }
+.pp-linkrow .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pp-linkrow .acts button { font-size: 0.82rem; padding: 5px 10px; }
+.pp-ok { color: var(--teal-soft); font-size: 0.82rem; }
+/* On a phone the bottom tab bar owns the bottom edge: the live pill and
+   notices sit above it, and the top bar is compact. */
+@media (max-width: 899px) {
+  body.pp-has-tabs #liveStatus { bottom: 64px !important; }
+  body.pp-has-tabs .pp-notice-fixed { bottom: 90px !important; }
+  body.pp-has-tabs .pp-top { padding: 8px 12px; }
+  body.pp-has-tabs .pp-top .pp-brand { font-size: 16px; gap: 7px; }
+  body.pp-has-tabs .pp-top .pp-brand svg { width: 24px; height: 24px; }
+  body.pp-has-tabs .pp-top .pp-context { font-size: 12px; }
+  body.pp-has-tabs .pp-top .pp-context > div { display: none; }
+}

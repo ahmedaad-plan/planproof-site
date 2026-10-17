@@ -13,6 +13,9 @@
 //     pressed twice or a retried send saves it once;
 //   - departments come only from the session's list (never typed); the only
 //     free typing is "External party" (who) and the topic "Other".
+// Since 17 October 2026 (screen layout and usability): the type comes first,
+// then the note text (with the mic for voice notes), the department (pre-filled
+// when the inject names one), and the topic last and optional ("General").
 
 (function () {
   const CSS = /* i18n-ok: the form's CSS, not wording */ `
@@ -89,8 +92,9 @@
 
   function injectLabel(row, idx) {
     if (idx === null) return T("notes.inject.whole");
+    // Counted from 1, as every screen does (17 October 2026).
     const t = injectTitle(row, idx);
-    return t ? T("notes.inject.withTitle", { n: String(idx), title: t }) : T("notes.inject.number", { n: String(idx) });
+    return t ? T("notes.inject.withTitle", { n: String(idx + 1), title: t }) : T("notes.inject.number", { n: String(idx + 1) });
   }
 
   function formatTime(ms) {
@@ -127,17 +131,15 @@
           </div>
         </div>
         <div class="ppn-field">
-          <span class="ppn-label" id="ppn-topic-${uid}">${esc(T("notes.form.topicLabel"))}</span>
-          <div class="ppn-chips" role="radiogroup" aria-labelledby="ppn-topic-${uid}" data-el="topics">
-            ${NOTE_TOPICS.map((t) => `<button type="button" role="radio" aria-checked="false" class="ppn-chip" data-topic="${t.key}">${esc(t.label)}</button>`).join("")}
-          </div>
-          <input type="text" data-el="topicOther" maxlength="${NOTE_TOPIC_OTHER_MAX}" placeholder="${esc(T("notes.form.topicOtherPlaceholder"))}" aria-label="${esc(T("notes.form.topicOtherAria"))}" hidden />
-        </div>
-        <div class="ppn-field">
           <span class="ppn-label" id="ppn-type-${uid}">${esc(T("notes.form.typeLabel"))}</span>
           <div class="ppn-chips" role="radiogroup" aria-labelledby="ppn-type-${uid}" data-el="types">
             ${NOTE_TYPES.map((t) => `<button type="button" role="radio" aria-checked="false" class="ppn-chip ppn-type-${t.key}" data-type="${t.key}">${esc(t.label)}</button>`).join("")}
           </div>
+        </div>
+        <div class="ppn-field">
+          <label class="ppn-label" for="ppn-body-${uid}">${esc(T("notes.form.bodyLabel"))}</label>
+          <textarea id="ppn-body-${uid}" data-el="body" maxlength="${NOTE_MAX_LENGTH}" placeholder="${esc(T("notes.form.bodyPlaceholder"))}"></textarea>
+          <div class="ppn-hint">${esc(T("notes.form.bodyHint"))}</div>
         </div>
         <div class="ppn-field">
           <label class="ppn-label" for="ppn-dept-${uid}">${esc(T("notes.form.deptLabel"))}</label>
@@ -146,9 +148,11 @@
           <input type="text" data-el="external" maxlength="${NOTE_EXTERNAL_MAX}" placeholder="${esc(T("notes.form.externalPlaceholder"))}" aria-label="${esc(T("notes.form.externalAria"))}" hidden />
         </div>
         <div class="ppn-field">
-          <label class="ppn-label" for="ppn-body-${uid}">${esc(T("notes.form.bodyLabel"))}</label>
-          <textarea id="ppn-body-${uid}" data-el="body" maxlength="${NOTE_MAX_LENGTH}" placeholder="${esc(T("notes.form.bodyPlaceholder"))}"></textarea>
-          <div class="ppn-hint">${esc(T("notes.form.bodyHint"))}</div>
+          <label class="ppn-label" for="ppn-topic-${uid}">${esc(T("notes.form.topicLabel"))}</label>
+          <select id="ppn-topic-${uid}" data-el="topics">
+            ${NOTE_TOPICS.map((t) => `<option value="${t.key}">${esc(t.label)}</option>`).join("")}
+          </select>
+          <input type="text" data-el="topicOther" maxlength="${NOTE_TOPIC_OTHER_MAX}" placeholder="${esc(T("notes.form.topicOtherPlaceholder"))}" aria-label="${esc(T("notes.form.topicOtherAria"))}" hidden />
         </div>
         <div class="ppn-row">
           <span class="ppn-count" data-el="count">0 / ${NOTE_MAX_LENGTH}</span>
@@ -172,7 +176,7 @@
         editing: false,
         // undefined = not chosen yet (follows what's showing); null = whole exercise
         injectIndex: undefined,
-        topic: null, topicOther: "", noteType: null,
+        topic: "general", topicOther: "", noteType: null,
         scope: "", dept: "", depts: [], externalParty: "",
         body: "", touched: false, runNumber: null,
       };
@@ -265,7 +269,7 @@
     }
 
     function renderFields() {
-      E.topics.querySelectorAll("[data-topic]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.topic === state.topic)));
+      if (E.topics.value !== (state.topic || "general")) E.topics.value = state.topic || "general";
       E.topicOther.hidden = state.topic !== "other";
       if (E.topicOther.value !== state.topicOther) E.topicOther.value = state.topicOther;
       E.types.querySelectorAll("[data-type]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.type === state.noteType)));
@@ -344,11 +348,9 @@
     }
 
     // ---- input handlers -------------------------------------------------
-    E.topics.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-topic]");
-      if (!b) return;
+    E.topics.addEventListener("change", () => {
       touch();
-      state.topic = b.dataset.topic;
+      state.topic = E.topics.value || "general";
       persist();
       renderFields();
       if (state.topic === "other") E.topicOther.focus();
@@ -405,9 +407,8 @@
     }
 
     function validate() {
-      if (!state.topic) return fail(T("notes.validate.topic"));
-      if (state.topic === "other" && !state.topicOther.trim()) return fail(T("notes.validate.topicOther"));
       if (!state.noteType) return fail(T("notes.validate.type"));
+      if (state.topic === "other" && !state.topicOther.trim()) return fail(T("notes.validate.topicOther"));
       if (!state.scope) return fail(T("notes.validate.dept"));
       if (state.scope === "one" && !state.dept) return fail(T("notes.validate.dept"));
       if (state.scope === "several" && state.depts.length < 2) return fail(T("notes.validate.several"));
@@ -418,6 +419,7 @@
 
     E.log.addEventListener("click", async () => {
       if (saving) return;
+      if (opts.beforeSave) opts.beforeSave(); // e.g. stop the mic (voice notes)
       const row = opts.getRow();
       if (!validate()) return;
       let injectIndex = state.injectIndex;
@@ -427,7 +429,7 @@
       const payload = {
         id: state.id,
         injectIndex,
-        topic: state.topic,
+        topic: state.topic || "general",
         topicOther: state.topic === "other" ? state.topicOther.trim() : "",
         noteType: state.noteType,
         scope: state.scope,
@@ -465,13 +467,15 @@
 
     return {
       refresh,
+      // The note's typing box — the page puts the mic button on it (voice notes).
+      textarea: E.body,
       // Load one of the writer's own notes back into the form to change it.
       edit(note) {
         state = Object.assign(blank(), {
           id: note.id,
           editing: true,
           injectIndex: note.injectIndex === undefined ? null : note.injectIndex,
-          topic: note.topic,
+          topic: note.topic || "general",
           topicOther: note.topicOther || "",
           noteType: note.noteType,
           scope: note.scope,

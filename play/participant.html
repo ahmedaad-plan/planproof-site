@@ -13,7 +13,7 @@
   main { max-width: 640px; margin: 0 auto; padding: 0 16px 24px; }
   /* The countdown stays at the top of the screen while the person scrolls
      down to type, so the time left is always in sight. */
-  .clock-wrap { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 10px; }
+  .clock-wrap { position: sticky; top: 44px; z-index: 5; background: var(--bg); padding: 12px 0 10px; }
   /* Countdown digits never reverse in a right-to-left language. */
   #injectTimerValue { direction: ltr; unicode-bidi: isolate; }
   .inject-card {
@@ -120,8 +120,27 @@
     flex: 0 0 auto; border: 1.5px solid var(--amber-ink); background: transparent; color: var(--amber-ink);
     border-radius: 8px; padding: 9px 13px; font: inherit; font-weight: 600; cursor: pointer; font-size: 0.92rem;
   }
-  .msg-history { max-width: 640px; margin: 0 auto; padding: 0 16px 20px; }
-  .msg-history summary { cursor: pointer; font-size: 0.95rem; padding: 8px 0; }
+  .msg-history { max-width: 640px; margin: 0 auto; padding: 16px 16px 12px; }
+  .msg-history h2 { font-size: 1.05rem; margin: 0 0 6px; }
+  .msg-list li.sent { color: var(--text-muted); }
+  .msg-list li.sent .meta { font-style: italic; }
+  .msg-list li.muted { color: var(--text-muted); border-top: 0; }
+  .msg-list li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--amber); background: none; border: 1px solid var(--amber); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  .pp-chips { margin: 0 0 10px; }
+  /* Tabs (17 October 2026): one column on a phone with a bottom bar; on a
+     laptop the inject stays on the left and the messages sit on the right. */
+  .part-cols { max-width: 640px; margin: 0 auto; }
+  @media (min-width: 900px) {
+    .part-cols { max-width: 1180px; grid-template-columns: 3fr 2fr; padding: 0 16px; }
+    .part-cols main { padding-inline: 0; }
+    .msg-history, .msg-reply { padding-inline: 0; }
+    #partTabs { display: none; }
+  }
+  /* One writer per department (17 October 2026): a colleague is writing. */
+  .writer-card { background: var(--panel); border: 1px solid var(--amber); border-radius: 12px; padding: 18px; }
+  .writer-card .t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; }
+  .writer-card .d { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 12px; }
+  .writer-line { font-size: 0.85rem; color: var(--amber); margin: 0 0 8px; }
   .msg-badge {
     display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
     background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
@@ -134,7 +153,7 @@
   /* Message the facilitator (roadmap item 4, added 7 October 2026). Since
      11 October 2026 the typing box has its own label and a clear edge, so it
      is recognisable as a place to type on a phone. */
-  .msg-reply { max-width: 640px; margin: 0 auto; padding: 0 16px 72px; }
+  .msg-reply { max-width: 640px; margin: 0 auto; padding: 0 16px 24px; }
   .msg-reply-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 18px; }
   .msg-reply-label { font-size: 1.05rem; margin: 0 0 12px; }
   .msg-reply-card label { margin-top: 12px; }
@@ -147,7 +166,7 @@
   .msg-reply-feedback.err { color: var(--red-soft); }
 </style>
 </head>
-<body>
+<body class="pp-has-tabs part-page">
   <header class="pp-top">
     <span class="pp-brand small" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
     <div class="pp-context"><strong id="clientLabel" data-i18n-skip>PlanProof</strong><div id="whoLabel"></div></div>
@@ -161,8 +180,14 @@
   <div class="remote-gate" id="remoteGate" hidden role="dialog" aria-labelledby="remoteGateTitle">
     <div class="gate-title" id="remoteGateTitle" data-i18n="part.remote.gateTitle">You are joining remotely</div>
     <div class="gate-text" data-i18n="part.remote.gateText">Your device will play the exercise sounds and the facilitator's chimes. Use a headset if you can, and find a quiet place.</div>
-    <button class="pp-btn" id="remoteGateBtn" data-i18n="part.remote.gateButton">Tap to start — turn sound on</button>
+    <button class="pp-btn" id="remoteGateBtn" data-i18n="part.remote.gateButton">Tap to start — this turns sound on</button>
     <div class="gate-error" id="remoteGateError" hidden></div>
+  </div>
+  <!-- The slim header (17 October 2026): who, where the exercise is, the clock — on every tab. -->
+  <div class="pp-slim" id="slimBar" hidden>
+    <span class="who" id="slimWho"></span>
+    <span class="pos" id="slimPos"></span>
+    <span class="pp-cmd-clock" id="slimClock" data-state="none" hidden></span>
   </div>
   <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
     <div class="msg-banner-inner">
@@ -170,35 +195,44 @@
         <div class="msg-label" data-i18n-nodes="part.msg.bannerLabel">Message from the facilitator <span id="msgBannerTime"></span></div>
         <div class="msg-text" id="msgBannerText"></div>
       </div>
+      <button id="msgBannerReply" data-i18n="part.msg.reply">Reply</button>
       <button id="msgBannerOk" data-i18n="part.msg.gotIt">Got it</button>
     </div>
   </div>
-  <main id="main" data-i18n-nodes="part.loading">Loading…</main>
-  <section class="msg-history" id="msgHistory" hidden>
-    <details id="msgHistoryDetails">
-      <summary data-i18n-nodes="part.msg.historyTitle">Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></summary>
-      <ul class="msg-list" id="msgList"></ul>
-    </details>
-  </section>
-  <section class="msg-reply" id="msgReply" hidden>
-    <div class="msg-reply-card pp-form">
-      <h2 class="msg-reply-label" data-i18n="part.reply.title">Message the facilitator</h2>
-      <label for="replyPreset" data-i18n="part.reply.presetLabel">Choose a ready-made message</label>
-      <select id="replyPreset"><option value="" data-i18n="part.reply.presetPlaceholder">— Choose a ready-made message —</option></select>
-      <label for="replyText" data-i18n="part.reply.textLabel">Or type your own message</label>
-      <textarea id="replyText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:part.reply.textPlaceholder"></textarea>
-      <div class="msg-reply-row">
-        <span class="count" id="replyCount">0 / 280</span>
-        <button class="pp-btn" id="replySendBtn" disabled data-i18n="part.reply.send">Send &rarr;</button>
-      </div>
-      <div class="msg-reply-feedback" id="replyFeedback"></div>
-    </div>
-  </section>
+  <div class="pp-cols part-cols">
+    <section class="pp-col" id="tabInject">
+      <main id="main" data-i18n-nodes="part.loading">Loading…</main>
+    </section>
+    <section class="pp-col" id="tabMessages" hidden>
+      <section class="msg-history" id="msgHistory">
+        <h2 class="msg-reply-label" data-i18n-nodes="part.msg.historyTitle">Messages with the facilitator<span class="msg-badge" id="msgBadge" hidden></span></h2>
+        <ul class="msg-list" id="msgList"><li class="muted" data-i18n="part.msg.none">No messages yet.</li></ul>
+      </section>
+      <section class="msg-reply" id="msgReply">
+        <div class="msg-reply-card pp-form">
+          <h2 class="msg-reply-label" data-i18n="part.reply.title">Message the facilitator</h2>
+          <div class="pp-hint" data-i18n="part.reply.hint">Sent as your department, not under your name.</div>
+          <div class="pp-label" data-i18n="part.reply.presetLabel">Ready-made</div>
+          <div class="pp-chips" id="replyPresets"></div>
+          <label for="replyText" data-i18n="part.reply.textLabel">Or type your own message</label>
+          <textarea id="replyText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:part.reply.textPlaceholder"></textarea>
+          <div class="msg-reply-row">
+            <span class="count" id="replyCount">0 / 280</span>
+            <button class="pp-btn" id="replySendBtn" disabled data-i18n="part.reply.send">Send &rarr;</button>
+          </div>
+          <div class="msg-reply-feedback" id="replyFeedback"></div>
+        </div>
+      </section>
+      <p class="pp-hint reply-closed" id="replyClosed" hidden></p>
+    </section>
+  </div>
+  <nav class="pp-tabs" id="partTabs" aria-label="Sections" data-i18n-attr="aria-label:part.tabs.aria"></nav>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./layout.js"></script>
 <script src="./survey.js"></script>
 <script>
   const sessionId = getSessionId();
@@ -267,6 +301,7 @@
   // registration: chosen on the join page, corrected only by the Facilitator
   // (the check-in reply carries the current value). While remote, this
   // device plays the inject sounds and chimes — after one tap.
+  let tabsApi = null;
   let remote = false;
   let audioUnlocked = false;
   let pendingSfx = null;     // an inject's sound that could not play before the tap
@@ -283,6 +318,19 @@
       identity = null;
     }
     const joinLink = `./join.html?session=${encodeURIComponent(sessionId)}`;
+    // Tabs (17 October 2026): Inject / Messages. On a laptop the inject is
+    // pinned on the left and Messages sits beside it; on a phone a bottom bar.
+    tabsApi = PPLayout.tabs({
+      nav: document.getElementById("partTabs"),
+      storageKey: `pp_parttab_${sessionId}`,
+      pinned: (id) => id === "inject",
+      tabs: [
+        { id: "inject", label: T("part.tabs.inject"), panel: document.getElementById("tabInject") },
+        { id: "messages", label: T("part.tabs.messages"), panel: document.getElementById("tabMessages") },
+      ],
+      onShow: (id) => { if (id === "messages") markAllRead(); if (id === "inject") tabsApi.dot("inject", false); updateSlim(); },
+    });
+    PPLayout.watchKeyboard();
     if (!identity || identity.role !== "participant") {
       mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.gate.needJoin"))}
         <br/><a href="${joinLink}">${escapeHtml(T("part.gate.joinNow"))}</a></div>`;
@@ -318,7 +366,10 @@
         if (checkins) checkins.beatSoon();
       },
       onRecovered: () => loadMessages(false), // pick up any message missed while disconnected
-      onRing: (kind) => { if (kind === "message") loadMessages(true); },
+      onRing: (kind) => {
+        if (kind === "message") loadMessages(true);
+        if (kind === "writer" && Date.now() - writerCheckAt > 800 && formIdx !== null) { writerCheckAt = Date.now(); checkWriter(formIdx); }
+      },
     });
 
     // Keep the phone awake while the exercise is running (item 6): a
@@ -463,9 +514,24 @@
   }
 
   document.getElementById("msgBannerOk").addEventListener("click", markAllRead);
-  document.getElementById("msgHistoryDetails").addEventListener("toggle", (e) => {
-    if (e.target.open) markAllRead();
+  // Reply on the banner (17 October 2026): opens the Messages tab with the box ready.
+  document.getElementById("msgBannerReply").addEventListener("click", () => {
+    markAllRead();
+    tabsApi.show("messages", { user: true });
+    const box = document.getElementById("replyText");
+    if (box && !box.disabled) box.focus();
   });
+  // What this device sent (the facilitator cannot be read back): kept on the
+  // device for this exercise, so the conversation shows both sides.
+  const sentKey = `pp_sent_${sessionId}_${identity ? identity.attendeeId : ""}`;
+  let sentLocal = [];
+  try { sentLocal = JSON.parse(localStorage.getItem(sentKey) || "[]") || []; } catch { sentLocal = []; }
+  function rememberSent(body) {
+    sentLocal.push({ body, created_at: new Date().toISOString(), run: latestRow ? latestRow.run_number : null });
+    sentLocal = sentLocal.slice(-100);
+    try { localStorage.setItem(sentKey, JSON.stringify(sentLocal)); } catch { /* storage blocked */ }
+    renderMessages();
+  }
 
   // Messages for everyone, plus (from roadmap item 4) ones for this person's
   // own department.
@@ -540,23 +606,29 @@
   }
 
   function renderMessages() {
-    msgHistoryEl.hidden = messages.length === 0;
     const unread = messages.filter(isUnread);
     msgBadgeEl.hidden = unread.length === 0;
     msgBadgeEl.textContent = T("part.msg.newCount", { count: unread.length });
+    if (tabsApi) tabsApi.badge("messages", unread.length, "");
     document.title = unread.length ? `(${unread.length}) ${baseTitle}` : baseTitle;
 
-    msgListEl.innerHTML = messages
-      .slice()
-      .reverse()
-      .map(
-        (m) => `<li class="${isUnread(m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))}</span>${escapeHtml(m.body)}</li>`
-      )
-      .join("");
+    // One conversation, newest first: the facilitator's messages (to everyone
+    // or to this department) and what this device sent for the department.
+    const ended = latestRow && latestRow.status === "ended";
+    const run = latestRow ? latestRow.run_number : null;
+    const items = messages.map((m) => ({ t: msgTime(m), in: true, m }))
+      .concat(sentLocal.filter((x) => run === null || x.run === null || x.run === run).map((x) => ({ t: Date.parse(x.created_at), in: false, x })))
+      .sort((a, b) => b.t - a.t);
+    msgListEl.innerHTML = items.length
+      ? items.map((it) => it.in
+          ? `<li class="${isUnread(it.m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(it.m.created_at))} · ${escapeHtml(it.m.department ? T("part.msg.toDepartment", { department: it.m.department }) : T("part.msg.toEveryone"))}</span>${escapeHtml(it.m.body)}${ended ? "" : `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("part.msg.reply"))}</button></div>`}</li>`
+          : `<li class="sent"><span class="meta">${escapeHtml(formatMessageTime(it.x.created_at))} · ${escapeHtml(T("part.msg.sentAs", { department: String(identity.department) }))}</span>${escapeHtml(it.x.body)}</li>`)
+        .join("")
+      : `<li class="muted">${escapeHtml(T("part.msg.none"))}</li>`;
 
     // Banner: the newest unread message, only while its inject is still
     // the one showing (and never after the exercise has ended).
-    const ended = latestRow && latestRow.status === "ended";
+    // (ended: declared above)
     const newestUnread = unread[unread.length - 1];
     if (!ended && newestUnread && msgContext(newestUnread) === currentContext()) {
       msgBannerTextEl.textContent = newestUnread.body;
@@ -567,6 +639,12 @@
     }
   }
 
+  msgListEl.addEventListener("click", (e) => {
+    if (!e.target.closest(".msg-reply-btn")) return;
+    const box = document.getElementById("replyText");
+    if (box && !box.disabled) box.focus();
+  });
+
   // ---- Message the facilitator (roadmap item 4, added 7 October 2026) ---
   // Same editable-dropdown pattern as the facilitator's own message boxes.
   // Sent as this person's department (self-declared, no individual stored —
@@ -575,39 +653,50 @@
   // name.
   function initReply() {
     const sectionEl = document.getElementById("msgReply");
-    const presetEl = document.getElementById("replyPreset");
+    const presetsEl = document.getElementById("replyPresets");
     const textEl = document.getElementById("replyText");
+    let presetKey = "";
     const countEl = document.getElementById("replyCount");
     const sendBtn = document.getElementById("replySendBtn");
     const feedbackEl = document.getElementById("replyFeedback");
     let sending = false;
 
-    DEPARTMENT_TO_FACILITATOR_PRESETS.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = p.text;
-      presetEl.appendChild(opt);
-    });
+    // Ready-made messages as tap chips (17 October 2026): one tap fills the
+    // box, which stays editable. Worded as the department ("We need…").
+    presetsEl.innerHTML = DEPARTMENT_TO_FACILITATOR_PRESETS.map((p) =>
+      `<button type="button" class="pp-chip" data-preset="${p.key}" aria-pressed="false">${escapeHtml(p.text)}</button>`).join("");
 
     function updateControls() {
       const len = textEl.value.trim().length;
       countEl.textContent = `${textEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
       const ended = latestRow && latestRow.status === "ended";
       sendBtn.disabled = sending || len === 0 || ended;
-      presetEl.disabled = ended;
+      presetsEl.querySelectorAll("button").forEach((b) => { b.disabled = ended; b.setAttribute("aria-pressed", String(b.dataset.preset === presetKey)); });
       textEl.disabled = ended;
       if (ended) feedbackEl.textContent = T("part.reply.ended");
+      // At End the message box goes (a greyed-out box is only noise, item 8);
+      // the thread stays readable with one line saying why it closed.
+      sectionEl.hidden = !!ended;
+      const closedEl = document.getElementById("replyClosed");
+      closedEl.hidden = !ended;
+      closedEl.textContent = ended ? T("part.reply.ended") : "";
     }
 
-    presetEl.addEventListener("change", () => {
-      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetEl.value);
-      if (preset) textEl.value = preset.text;
+    presetsEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-preset]");
+      if (!b || b.disabled) return;
+      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === b.dataset.preset);
+      if (!preset) return;
+      presetKey = preset.key;
+      textEl.value = preset.text;
       feedbackEl.textContent = "";
       feedbackEl.className = "msg-reply-feedback";
       updateControls();
       textEl.focus();
     });
     textEl.addEventListener("input", () => {
+      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetKey);
+      if (preset && preset.text !== textEl.value) presetKey = "";
       feedbackEl.textContent = "";
       feedbackEl.className = "msg-reply-feedback";
       updateControls();
@@ -616,16 +705,17 @@
     sendBtn.addEventListener("click", async () => {
       const body = textEl.value.trim();
       if (!body) return;
-      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetEl.value);
-      const presetKey = preset && preset.text === body ? preset.key : null;
+      const preset = DEPARTMENT_TO_FACILITATOR_PRESETS.find((p) => p.key === presetKey);
+      const sentPresetKey = preset && preset.text === body ? preset.key : null;
       sending = true;
       updateControls();
       feedbackEl.className = "msg-reply-feedback";
       feedbackEl.textContent = T("part.reply.sending");
       try {
-        await sendDepartmentRequest(sessionId, { body, presetKey, department: identity.department });
+        await sendDepartmentRequest(sessionId, { body, presetKey: sentPresetKey, department: identity.department });
         textEl.value = "";
-        presetEl.value = "";
+        presetKey = "";
+        rememberSent(body);
         feedbackEl.className = "msg-reply-feedback ok";
         feedbackEl.textContent = T("part.reply.sent", { time: formatMessageTime(new Date().toISOString()) });
       } catch (err) {
@@ -639,7 +729,6 @@
 
     replyReady = true;
     refreshReplyControls = updateControls;
-    sectionEl.hidden = !!(latestRow && latestRow.status === "ended");
     updateControls();
     // Re-checked on every session row update (render() calls renderMessages,
     // which doesn't touch this section) — status changing to "ended" should
@@ -650,6 +739,109 @@
   function isIndividual(inject) {
     return injectOutput(inject) === "individual";
   }
+
+  // ---- One writer per department (17 October 2026) -----------------------
+  // Design: design-notes.md → "Screen layout and usability → One writer".
+  // The first colleague to type holds the department's group answer; the
+  // others see who is writing, with "Take over". A claim is renewed by every
+  // save and every 20 seconds while the form is open; one silent for 90
+  // seconds is stale and simply continued by the next person. The database
+  // refuses a save from anyone else while a live claim is held
+  // (save_submission), so two phones can no longer overwrite each other.
+  let writerHeld = null;   // { writer_name, tookOver } when a colleague holds the answer on screen
+  let writerMine = false;  // this device holds it
+  let writerInject = null; // the inject the claim is about
+  let writerTimer = null;
+  let writerCheckAt = 0;
+  function writerCall(action, idx) {
+    return callNotesRpc("group_writer", { p_session_id: sessionId, p_attendee_id: identity.attendeeId, p_inject_index: idx, p_action: action });
+  }
+  async function claimWriter(idx) {
+    if (writerMine && writerInject === idx) return;
+    try {
+      const r = await writerCall("claim", idx);
+      if (idx !== formIdx) return;
+      if (r && r.status === "yours") { writerMine = true; writerInject = idx; writerHeld = null; drawWriterLine(); }
+      else if (r && r.status === "held") applyHeld(r, idx);
+    } catch { /* a dropped call: the next save renews or the check below catches up */ }
+  }
+  function drawWriterLine() {
+    const line = document.querySelector(".writer-line");
+    if (writerMine && !line && currentAnswerEl && formInject && !isIndividual(formInject)) {
+      const el = document.createElement("div");
+      el.className = "writer-line";
+      el.textContent = T("part.writer.youAreWriting", { department: String(identity.department) });
+      currentAnswerEl.parentNode.insertBefore(el, currentAnswerEl.previousElementSibling);
+    }
+  }
+  function applyHeld(r, idx, tookOver) {
+    if (idx !== formIdx || !formInject || isIndividual(formInject)) return;
+    const was = writerHeld;
+    writerHeld = { writer_name: r.writer_name, tookOver: !!tookOver || !!(was && was.tookOver) };
+    writerMine = false;
+    clearTimeout(saveTimer);
+    if (!was || was.writer_name !== r.writer_name) {
+      snapshotCurrent(); storeAnswers();
+      renderForm(formInject, idx, {});
+    }
+  }
+  // Where the answer stands right now — on a new inject, on a doorbell ring
+  // ("writer"), after a refused save, and every 20 seconds as the renewal.
+  async function checkWriter(idx, { renew } = {}) {
+    if (idx === null || idx === undefined || !formInject || isIndividual(formInject)) return;
+    if (!latestRow || latestRow.status !== "running") return;
+    const action = renew && writerMine && writerInject === idx ? "claim" : "status";
+    try {
+      const r = await writerCall(action, idx);
+      if (idx !== formIdx) return;
+      if (!r) return;
+      if (r.status === "held" && !r.stale) { if (!writerHeld || writerHeld.writer_name !== r.writer_name) applyHeld(r, idx, !!writerMine); else writerHeld.writer_name = r.writer_name; }
+      else if (r.status === "yours") { writerMine = true; writerInject = idx; if (writerHeld) { writerHeld = null; renderForm(formInject, idx, { answerText: (answersCache[idx] || {}).answerText || "" }); } else drawWriterLine(); }
+      else { // free, or a stale claim: the form is open to this device
+        if (writerHeld) { writerHeld = null; writerMine = false; renderForm(formInject, idx, { answerText: (answersCache[idx] || {}).answerText || "" }); if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.writer.wentQuiet"); }
+      }
+    } catch { /* checked again on the next ring or renewal */ }
+  }
+  async function takeOver(idx, inject) {
+    const name = writerHeld ? writerHeld.writer_name : "";
+    if (!confirm(T("part.writer.confirmTakeover", { name: String(name), department: String(identity.department) }))) return;
+    const btn = document.getElementById("takeOverBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const r = await writerCall("takeover", idx);
+      if (idx !== formIdx) return;
+      if (!r || r.status !== "yours") { if (btn) btn.disabled = false; return; }
+      writerHeld = null; writerMine = true; writerInject = idx;
+      // The colleague's text travels with the answer.
+      const draft = r.draft || {};
+      const cached = answersCache[idx] || {};
+      const submitted = draft.status === "submitted";
+      answersCache[idx] = Object.assign({}, cached, {
+        answerText: draft.answer_text !== undefined ? draft.answer_text : (cached.answerText || ""),
+        attachments: Array.isArray(draft.attachments) ? draft.attachments.slice() : (cached.attachments || []),
+        submitted, locked: submitted, dirty: true, editing: false, baseline: null,
+      });
+      attachments = answersCache[idx].attachments.slice();
+      submittedForCurrent = submitted;
+      injectLocked = submitted;
+      dirtyForCurrent = true;
+      editingSubmitted = false; editBaseline = null; editDirty = false;
+      renderForm(inject, idx, { answerText: answersCache[idx].answerText });
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.writer.youTookOver", { name: String(r.took_over_from || name), department: String(identity.department) });
+      storeAnswers();
+      if (currentAnswerEl && !submitted) currentAnswerEl.focus();
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.saveFailed", { detail: String(PPLang.dbMessage(err.message)) });
+    }
+  }
+  function resetWriter(idx) {
+    const hadIt = writerMine && writerInject !== null && writerInject !== idx;
+    const oldIdx = writerInject;
+    writerHeld = null; writerMine = false; writerInject = null;
+    if (hadIt) writerCall("release", oldIdx).catch(() => {});
+  }
+  if (!writerTimer) writerTimer = setInterval(() => { if (formIdx !== null) checkWriter(formIdx, { renew: true }); }, 20000);
 
   // Every save goes through here so a group inject is saved as the
   // department's shared answer and an individual inject as this person's
@@ -688,9 +880,8 @@
 
     // The "Message the facilitator" box belongs to a running exercise or the
     // lobby; under the thank-you screen it would only be a greyed-out box.
-    const replySectionEl = document.getElementById("msgReply");
-    if (replySectionEl && replyReady) replySectionEl.hidden = row.status === "ended";
-    if (refreshReplyControls) refreshReplyControls(); // open again at once if the exercise carries on after End
+    if (refreshReplyControls) refreshReplyControls(); // closes at End, opens again at once if the exercise carries on
+    updateSlim();
 
     if (row.status === "ended") {
       clearInjectTimer();
@@ -762,6 +953,7 @@
       }
 
       reopenedSubmitted = false;
+      resetWriter(idx);
       formIdx = idx;
       formInject = inject;
       currentExtraMinutes = row.inject_extra_minutes || 0;
@@ -805,6 +997,8 @@
       renderForm(inject, idx, { answerText });
       armTimer();
       playInjectSound(row, idx, inject);
+      if (tabsApi && !tabsApi.isCurrent("inject")) tabsApi.dot("inject", true);
+      if (!isIndividual(inject)) checkWriter(idx);
 
       if (lostEdit && currentSaveStatusEl) {
         currentSaveStatusEl.textContent = T("part.status.lostEdit");
@@ -893,12 +1087,18 @@
         <div class="inject-desc">${escapeHtml(inject.desc)}</div>
         ${injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : ""}
       </div>
+      ${!individual && writerHeld ? `
+      <div class="writer-card" id="writerCard">
+        <div class="t">${escapeHtml(writerHeld.tookOver ? T("part.writer.tookOver", { name: String(writerHeld.writer_name), department: String(identity.department) }) : T("part.writer.held", { name: String(writerHeld.writer_name), department: String(identity.department) }))}</div>
+        <div class="d">${escapeHtml(T("part.writer.heldDesc", { name: String(writerHeld.writer_name) }))}</div>
+        <div class="row-buttons"><button type="button" class="pp-btn ghost" id="takeOverBtn">${escapeHtml(T("part.writer.takeOver"))}</button></div>
+        <div class="save-status" id="saveStatus" role="status"></div>
+        <div class="pp-error error" id="errorBox"></div>
+      </div>` : `
       <div class="answer-card pp-form">
         ${responsible ? "" : `<div class="not-required">${escapeHtml(T("part.form.notRequired"))}</div>`}
+        ${!individual && writerMine ? `<div class="writer-line">${escapeHtml(T("part.writer.youAreWriting", { department: String(identity.department) }))}</div>` : ""}
         <label for="answerText">${escapeHtml(individual ? T("part.form.labelIndividual") : T("part.form.labelGroup", { department: String(identity.department == null ? "" : identity.department) }))}</label>
-        <div class="hint">${escapeHtml(individual
-          ? T("part.form.hintIndividual")
-          : T("part.form.hintGroup", { department: String(identity.department == null ? "" : identity.department) }))}</div>
         <textarea id="answerText" placeholder="${escapeHtml(individual ? T("part.form.placeholderIndividual") : T("part.form.placeholderGroup", { department: String(identity.department == null ? "" : identity.department) }))}">${escapeHtml(initial.answerText || "")}</textarea>
         <div class="attachments">
           <label for="fileInput">${escapeHtml(T("part.form.attachLabel"))}</label>
@@ -909,9 +1109,15 @@
         <div class="save-status" id="saveStatus" role="status"></div>
         <div class="pp-error error" id="errorBox"></div>
         <div id="answerActions"></div>
-      </div>
+      </div>`}
     `;
 
+    if (!individual && writerHeld) {
+      currentAnswerEl = null; currentFileInput = null; currentSubmitBtn = null;
+      currentSaveStatusEl = document.getElementById("saveStatus");
+      document.getElementById("takeOverBtn").addEventListener("click", () => takeOver(idx, inject));
+      return;
+    }
     const answerEl = document.getElementById("answerText");
     const fileInput = document.getElementById("fileInput");
     const saveStatusEl = document.getElementById("saveStatus");
@@ -924,6 +1130,7 @@
     answerEl.addEventListener("input", () => {
       if (injectLocked) return;
       dirtyForCurrent = true;
+      if (!individual) claimWriter(idx);
       storeAnswers(); // on the phone at once; on the server 1.5 seconds after the last keystroke
       if (editingSubmitted) {
         // A submitted answer being changed: nothing goes to the server until
@@ -1021,11 +1228,26 @@
       const running = latestRow && latestRow.status === "running";
       const canEdit = running && !forceUnlocked && timeRemains();
       html = `<div class="submitted-banner">${submittedText}</div>` + (canEdit
-        ? `<div class="row-buttons"><button type="button" class="pp-btn ghost" id="editBtn">${escapeHtml(T("part.edit.editAnswer"))}</button></div>
-           <div class="pp-hint edit-hint">${escapeHtml(currentDeadline()
-             ? T("part.edit.hintUntilTime")
-             : T("part.edit.hintUntilNext"))}</div>`
-        : `<div class="pp-hint edit-hint">${escapeHtml(T("part.edit.hintOver"))}</div>`);
+        ? `<div class="row-buttons"><button type="button" class="pp-btn ghost" id="editBtn">${escapeHtml(T("part.edit.editAnswer"))}</button></div>`
+        : "");
+      // One status line (17 October 2026): the edit hint lives there when
+      // nothing more important is being said.
+      // A hint put there earlier is replaced as the state moves on (e.g. the
+      // time running out); news (saved, brought back…) is kept, and once the
+      // answer can no longer be edited the line says who can reopen it.
+      if (currentSaveStatusEl) {
+        const el = currentSaveStatusEl;
+        const hints = [T("part.edit.hintUntilTime"), T("part.edit.hintUntilNext"), T("part.edit.hintOver")];
+        const isHint = !el.textContent || hints.includes(el.textContent);
+        if (isHint) {
+          el.textContent = canEdit
+            ? (currentDeadline() ? T("part.edit.hintUntilTime") : T("part.edit.hintUntilNext"))
+            : T("part.edit.hintOver");
+        } else if (!canEdit && el.dataset.reopenNote !== el.textContent) {
+          el.textContent = `${el.textContent} ${T("part.edit.reopenOnly")}`;
+          el.dataset.reopenNote = el.textContent;
+        }
+      }
     } else if (injectLocked) {
       html = `<div class="row-buttons"><button type="button" class="pp-btn submit" id="submitBtn" disabled>${escapeHtml(lockLabel)}</button></div>`;
     } else {
@@ -1149,7 +1371,7 @@
     drawState();
     try {
       await saveFor(idx, inject, { answerText: text, attachments: files, status: "submitted" });
-      if (idx === formIdx && currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.timesUpChangesSaved");
+      if (idx === formIdx && currentSaveStatusEl) { currentSaveStatusEl.textContent = `${T("part.status.timesUpChangesSaved")} ${T("part.edit.reopenOnly")}`; currentSaveStatusEl.dataset.reopenNote = currentSaveStatusEl.textContent; }
     } catch (err) {
       if (idx !== formIdx) {
         // Already on another inject: correct what this phone keeps for it.
@@ -1206,6 +1428,7 @@
       if (saveStatusEl) saveStatusEl.textContent = T("part.status.saved");
     } catch (err) {
       if (saveStatusEl) saveStatusEl.textContent = T("part.status.saveFailed", { detail: String(PPLang.dbMessage(err.message)) });
+      if (/Take over/.test(String(err.message))) checkWriter(idx); // i18n-ok: matching the database's refusal
     }
   }
 
@@ -1288,6 +1511,9 @@
         if (barEl) barEl.style.transform = `scaleX(${totalMs > 0 ? Math.min(1, remainingMs / totalMs) : 1})`;
       }
     }
+    // The slim header's clock follows the big one.
+    if (slimClockEl.textContent !== valueEl.textContent) slimClockEl.textContent = valueEl.textContent;
+    slimClockEl.dataset.state = clockEl.dataset.state;
     if (noteEl) {
       const open = remainingMs === null || remainingMs > 0;
       noteEl.textContent = forceUnlocked
@@ -1346,6 +1572,23 @@
   // own choice and is remembered on the device; unmuting is itself a tap, so
   // it also turns sound on.
 
+  // The slim header: who · inject N of M · the clock (the clock only while
+  // the big one is not on screen — on the Messages tab of a phone).
+  const slimBarEl = document.getElementById("slimBar");
+  const slimPosEl = document.getElementById("slimPos");
+  const slimClockEl = document.getElementById("slimClock");
+  function updateSlim() {
+    if (!latestRow) return;
+    slimBarEl.hidden = false;
+    document.getElementById("slimWho").textContent = T("part.slim.who", { name: String(identity.name || ""), department: String(identity.department || "") });
+    const injects = (latestRow.scenario && latestRow.scenario.injects) || [];
+    const idx = latestRow.current_inject_index;
+    slimPosEl.textContent = latestRow.status === "running" && idx >= 0
+      ? T("part.slim.inject", { number: idx + 1, total: injects.length })
+      : latestRow.status === "ended" ? T("part.slim.ended") : T("part.slim.waiting");
+    const showClock = latestRow.status === "running" && tabsApi && !tabsApi.isCurrent("inject");
+    slimClockEl.hidden = !showClock;
+  }
   function drawWho() {
     whoLabelEl.textContent = remote
       ? T("part.who.remote", { name: String(identity.name), department: String(identity.department) })

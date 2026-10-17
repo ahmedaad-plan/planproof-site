@@ -539,7 +539,7 @@ function subscribeToDoorbell(supabaseClient, sessionId, onRing, onStatus) {
     .channel(`pp-${sessionId}`, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "ring" }, (msg) => {
       const kind = msg && msg.payload && msg.payload.kind;
-      onRing(kind === "message" || kind === "inbox" || kind === "observer" ? kind : "session");
+      onRing(kind === "message" || kind === "inbox" || kind === "observer" || kind === "writer" ? kind : "session");
     })
     .subscribe((status) => onStatus && onStatus(status));
 }
@@ -893,7 +893,10 @@ function playChime() {
 // Observer's attendee id, or the facilitator token), the time window, the
 // inject and the department list. These helpers just call those functions.
 
+// Topic is optional since 17 October 2026: a note not classified by the
+// Observer is "General" (the report classifies it afterwards).
 const NOTE_TOPICS = [
+  { key: "general", label: T("shared.noteTopic.general") },
   { key: "decision", label: T("shared.noteTopic.decision") },
   { key: "communication", label: T("shared.noteTopic.communication") },
   { key: "plan", label: T("shared.noteTopic.plan") },
@@ -1560,6 +1563,7 @@ function setNotice(id, text, { tone } = {}) {
   if (!el) {
     el = document.createElement("div");
     el.id = id;
+    el.className = "pp-notice-fixed";
     el.setAttribute("role", "status");
     el.style.cssText = "position:fixed;inset-inline-start:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
       "padding:6px 10px;border-radius:8px;font:500 12px/1.35 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
@@ -1675,6 +1679,7 @@ function welcomeScreenHtml({ name, observer } = {}) {
       <h1 class="pp-thanks-title">${thanksLine(name)}</h1>
       <p class="pp-thanks-lead">${ppEscape(observer ? T("shared.welcome.registeredObserver") : T("shared.welcome.registered"))}</p>
       <p class="pp-thanks-nofault">${ppEscape(T("shared.welcome.noFault"))}</p>
+      <p class="pp-thanks-phone">${ppEscape(T("shared.welcome.phone"))}</p>
       <p class="pp-thanks-wait">${ppEscape(T("shared.welcome.waiting"))}</p>
     </section>`;
 }
