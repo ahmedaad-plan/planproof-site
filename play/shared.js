@@ -115,8 +115,13 @@ async function patchSession(sessionId, fields) {
   if (!facilitatorToken) {
     throw new Error(T("shared.error.noFacilitatorToken"));
   }
+  // Only readable columns are asked for in the reply (17 October 2026): the
+  // public key has column-level SELECT on this table, so a bare
+  // return=representation ("*") fails with "permission denied" the moment
+  // the row has a column it may not read (counts_for_stats, since the
+  // survey) — which refused every Facilitator action on the live system.
   await withRetry(() =>
-    fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}`, {
+    fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}&select=id,status,current_inject_index,updated_at`, {
       method: "PATCH",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
