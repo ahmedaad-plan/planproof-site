@@ -26,6 +26,9 @@
   .name-row { display: flex; gap: 10px; }
   .name-row > div { flex: 1; min-width: 0; }
   .invalid { border-color: var(--red) !important; background: #241615 !important; }
+  .consent-row { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 12px; font-size: 0.92rem; line-height: 1.45; cursor: pointer; border: 1px solid transparent; border-radius: 8px; padding: 6px; }
+  .consent-row input { width: auto; margin: 3px 0 0; flex: 0 0 auto; accent-color: var(--amber); }
+  .consent-row a { color: inherit; text-decoration: underline; }
   .role-options { display: flex; gap: 10px; }
   .role-options label {
     flex: 1; margin: 0; font-weight: 600; text-align: center; padding: 11px 10px;
@@ -229,6 +232,7 @@
         </div>
       </div>
       <div id="roomBlock">${roomField}</div>
+      <label class="consent-row" for="privacyAck"><input type="checkbox" id="privacyAck" /><span>${escapeHtml(T("join.privacy.before"))}<a href="/privacy-policy.html#exercise-player" target="_blank" rel="noopener">${escapeHtml(T("join.privacy.link"))}</a>${escapeHtml(T("join.privacy.after"))}</span></label>
       <button class="pp-btn full" id="registerBtn">${escapeHtml(T("join.form.register"))}</button>
       <div class="pp-error error" id="errorBox"></div>
     `;
@@ -355,6 +359,14 @@
         problems.push(T("join.validate.room"));
         roomEl.classList.add("invalid");
       }
+      // The privacy tick (Ahmed, 18 October 2026: opt-in everywhere) —
+      // never ticked for the person; nobody is registered without it.
+      const privacyEl = document.getElementById("privacyAck");
+      privacyEl.closest(".consent-row").classList.remove("invalid");
+      if (!privacyEl.checked) {
+        problems.push(T("join.validate.privacy"));
+        privacyEl.closest(".consent-row").classList.add("invalid");
+      }
       if (problems.length) {
         errorBoxEl.innerHTML = problems.map(escapeHtml).join("<br/>");
         errorBoxEl.style.display = "block";
@@ -362,7 +374,7 @@
       }
       errorBoxEl.style.display = "none";
 
-      pending = { firstName, familyName, title, department, role, room, remote };
+      pending = { firstName, familyName, title, department, role, room, remote, privacyAck: true };
       confirmDetailsEl.innerHTML = `
         <dt>${escapeHtml(T("join.confirm.name"))}</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
         <dt>${escapeHtml(T("join.confirm.jobTitle"))}</dt><dd>${escapeHtml(title)}</dd>

@@ -193,7 +193,7 @@ async function patchSession(sessionId, fields) {
 // remote (item 9, 16 October 2026): the participant is joining alone, with no
 // shared room screen — their own device plays the sounds. Participants only;
 // a remote registration never carries a room (the database enforces both).
-async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room, remote }) {
+async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room, remote, privacyAck }) {
   assertValidSessionId(sessionId);
   // withRetry wraps only the network call, not the outcome check below —
   // a dropped packet is worth retrying, but a rejected join (wrong room,
@@ -222,6 +222,7 @@ async function joinSession(sessionId, { id, firstName, familyName, title, depart
         role,
         room: remote ? null : room ?? null,
         remote: !!remote,
+        privacy_ack: !!privacyAck, // the person ticked "I have read the privacy notice" (required by the database)
       }),
     })
   );
