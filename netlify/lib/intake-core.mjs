@@ -207,7 +207,13 @@ export async function saveToSupabase(record, deps) {
     what_changed: returning ? clean(data.what_changed, 4000) : null,
     actions_done: returning ? clean(data.actions_done, 4000) : null,
     plan_updated: returning ? clean(data.plan_updated, 300) : null,
-    history_opt_out: !!clean(data.history_opt_out, 10),
+    // Opt-in only (Ahmed, 18 October 2026): history is kept only when the
+    // client ticked "Yes, keep our exercise history". An older page that
+    // still sends history_opt_out is treated the same way (nothing kept
+    // unless opted in).
+    history_opt_out: clean(data.history_opt_in, 10) !== "yes",
+    privacy_ack: clean(data.privacy_ack, 10) === "yes",
+    marketing_opt_in: clean(data.marketing_opt_in, 10) === "yes",
     // Preferred exercise language (12 October 2026). Left out entirely when
     // the form sent no valid answer, so an older page still saves.
     ...(exerciseLanguage ? { exercise_language: exerciseLanguage } : {}),
@@ -249,6 +255,10 @@ export function buildEmail(record, fileResult) {
     lines.push("If it is junk, ignore it and erase it on the admin page.", "");
   }
   lines.push(`New submission: ${formName}`, `Received: ${uaeTime(record.receivedAt)} (UAE time)`);
+  if (clean(data.privacy_ack, 10) !== "yes") {
+    lines.push("PRIVACY POLICY NOT CONFIRMED — sent from an older copy of the page. Confirm the client has read the privacy policy before using these details.");
+  }
+  lines.push(`Marketing emails: ${clean(data.marketing_opt_in, 10) === "yes" ? "YES — opted in" : "No (do not send marketing)"}`);
   if (String(data.exercise_language || "").trim() === "arabic") {
     lines.push("Language: the client would prefer the exercise in ARABIC. Arabic exercises are not offered yet — the form told them it will run in English for now (the report is in both languages).", "");
   }

@@ -376,3 +376,35 @@ test("a request without a language answer, or with a made-up one, still saves (n
   assert.equal(net.emails.length, 1);
 });
 
+
+test("consent (opt-in only, 18 October 2026): the visitor's own ticks are saved and shown in the email", async () => {
+  let net = fakeNet(); let d = deps(net);
+  let body = genericBody(); body.data.privacy_ack = "yes"; body.data.marketing_opt_in = "yes"; body.data.history_opt_in = "yes";
+  let r = await handleIntake(body, d);
+  assert.equal(r.ok, true);
+  let row = net.inserts.submissions[0];
+  assert.equal(row.privacy_ack, true);
+  assert.equal(row.marketing_opt_in, true);
+  assert.equal(row.history_opt_out, false, "history is kept only because the client opted in");
+  assert.match(net.emails[0].text, /Marketing emails: YES — opted in/);
+  assert.doesNotMatch(net.emails[0].text, /PRIVACY POLICY NOT CONFIRMED/);
+
+  net = fakeNet(); d = deps(net);
+  body = genericBody(); body.data.privacy_ack = "yes";
+  r = await handleIntake(body, d);
+  row = net.inserts.submissions[0];
+  assert.equal(row.marketing_opt_in, false, "nothing ticked = no marketing");
+  assert.equal(row.history_opt_out, true, "nothing ticked = no history kept");
+  assert.match(net.emails[0].text, /Marketing emails: No \(do not send marketing\)/);
+});
+
+test("consent: a request from an older copy of the page (no privacy tick) is still delivered, flagged", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const body = genericBody(); body.data.history_opt_out = "yes";
+  const r = await handleIntake(body, d);
+  assert.equal(r.ok, true);
+  const row = net.inserts.submissions[0];
+  assert.equal(row.privacy_ack, false);
+  assert.equal(row.history_opt_out, true);
+  assert.match(net.emails[0].text, /PRIVACY POLICY NOT CONFIRMED/);
+});

@@ -692,6 +692,14 @@
   .intake-card .optout-note a{ color: inherit; }
   @media (max-width: 480px){ .intake-card .choice-row.stack-mobile label{ width: 100%; } }
 
+  /* Consent (18 October 2026): every choice is opt-in — nothing is ticked for the visitor. */
+  .consent{ margin: 18px 0 4px; text-align: start; }
+  .consent-row{ display: flex !important; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; color: var(--text); margin: 0 0 10px !important; cursor: pointer; font-weight: 400; }
+  .consent-row input{ width: auto !important; margin: 3px 0 0 !important; flex: 0 0 auto; accent-color: #d84a3a; }
+  .consent-row a{ color: inherit; text-decoration: underline; }
+  .consent-row .opt{ color: var(--text-muted); }
+  .consent-row input.field-error{ outline: 2px solid #d84a3a; outline-offset: 2px; }
+  .consent-row input.field-error + span{ color: #d84a3a; }
   .field-error{
     border-color: #d84a3a !important;
     background: rgba(216,74,58,0.08) !important;
@@ -1373,6 +1381,11 @@
       <label for="c_email">Email address <span class="opt">(required)</span></label>
       <input type="email" name="email" id="c_email" placeholder="you@company.com">
 
+      <div class="consent" id="c_consent">
+        <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="c_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
+        <label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="c_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional — you can unsubscribe at any time)</span></span></label>
+      </div>
+
       <button type="submit" class="btn-primary" id="submitContact" style="margin-top:18px;background:#d84a3a;color:#fff;">Send</button>
       <p class="empty-note" id="contactMsg"></p>
       <p class="empty-note">Prefer not to use the form, or didn't hear back? Email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
@@ -1567,6 +1580,28 @@ async function uploadPlanFile(file){
 }
 
 // Returns { fileUploadFailed } so the plan form can tell the visitor to email the file.
+// Consent (Ahmed, 18 October 2026: opt-in everywhere — opt-out is against
+// the UAE personal-data law). One required tick (privacy policy) and one
+// optional, unticked marketing tick on every form.
+function consentHTML(p){
+  return '<div class="consent" id="' + p + '_consent">' +
+    '<label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="' + p + '_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>' +
+    '<label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="' + p + '_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional \u2014 you can unsubscribe at any time)</span></span></label>' +
+  '</div>';
+}
+// Marks the privacy tick when it is missing; returns true when it is ticked.
+function checkConsent(p, markInvalid){
+  const el = document.getElementById(p + "_privacy");
+  if(el && el.checked) return true;
+  if(el) markInvalid(el);
+  return false;
+}
+function consentPairs(p){
+  const m = document.getElementById(p + "_marketing");
+  return [["Privacy policy", "Read and agreed (ticked by the visitor)"], ["Marketing emails", m && m.checked ? "Yes \u2014 opted in" : "No"]];
+}
+const CONSENT_MISSING_MSG = "Please tick the box to confirm you have read the privacy policy \u2014 we can't send your request without it.";
+
 async function submitIntake(formData){
   const data = {};
   let formName = null, honeypot = "", fileObj = null;
@@ -1758,6 +1793,7 @@ ${languageHTML("f")}
       <textarea name="remarks" id="f_remarks" rows="2" placeholder="Anything else that would help us design this exercise"></textarea>
 
 ${returningHTML("f")}
+${consentHTML("f")}
       <button type="submit" class="btn-primary" id="submitGeneric" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="genericMsg"></p>
     </form>
@@ -1805,9 +1841,10 @@ ${returningHTML("f")}
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
     checkReturning("f", markInvalid);
+    const consentOk = checkConsent("f", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before.";
+      document.getElementById("genericMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1836,7 +1873,8 @@ ${returningHTML("f")}
         ["Recent incidents/near-misses", document.getElementById("f_incidents").value],
         ["Peak/critical periods", document.getElementById("f_peak").value],
         ["Remarks", document.getElementById("f_remarks").value],
-        ...returningPairs("f")
+        ...returningPairs("f"),
+        ...consentPairs("f")
       ];
       const summaryLines = [
         "New generic scenario request",
@@ -1959,8 +1997,8 @@ function returningHTML(p){ return `
           ${p === "f" ? '<p class="empty-note">If your plan has changed, you can email the new version to exercises@plan-proof.com.</p>' : ''}
         </div>
         <p class="returning-note" id="${p}_returningUnsure" hidden>Thank you — we'll check our records and let you know if your organization has exercised with us before.</p>
-        <label class="optout"><input type="checkbox" name="history_opt_out" value="yes"> Don't keep our exercise history</label>
-        <p class="empty-note optout-note">We keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 5 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Tick to opt out, or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
+        <label class="optout"><input type="checkbox" name="history_opt_in" value="yes"> Yes, keep our exercise history <span class="opt">(optional)</span></label>
+        <p class="empty-note optout-note">If you tick this, we keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 5 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Leave it unticked and we keep none of it after delivery. You can change your mind or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
       </div>`; }
 
 // Puts the two reference boxes together as PP-YYYY-NNNN (the number padded to
@@ -2065,14 +2103,14 @@ function returningPairs(p){
   const val = (id)=>{ const el = document.getElementById(p + id); return el ? el.value.trim() : ""; };
   const used = (document.querySelector("#" + p + "_usedGroup input:checked") || {}).value;
   const retest = (document.querySelector("#" + p + "_returningYes input[name=retest_or_new]:checked") || {}).value;
-  const optOut = document.querySelector("#" + p + "_usedGroup").closest(".returning").querySelector("input[name=history_opt_out]").checked;
+  const optIn = document.querySelector("#" + p + "_usedGroup").closest(".returning").querySelector("input[name=history_opt_in]").checked;
   const pairs = [["Done a PlanProof exercise before", { yes: "Yes", no: "No", not_sure: "Not sure — check our records" }[used] || ""]];
   if(used === "yes"){
     pairs.push(["Client reference", val("_client_ref")], ["Last exercise", val("_last_when")],
       ["Re-test or new risk for this exercise", { retest: "Re-test the same risk as last time", new: "Test a new risk (see the risk concerns above)", unsure: "Not decided yet \u2014 to agree with the client" }[retest] || ""],
       ["What has changed", val("_changed")], ["Actions done since", val("_actions_done")], ["Plan changed", val("_plan_updated")]);
   }
-  pairs.push(["Exercise history", optOut ? "Don't keep (client opted out)" : "Keep for 5 years (default)"]);
+  pairs.push(["Exercise history", optIn ? "Keep for 5 years (client opted in)" : "Don't keep (not opted in)"]);
   return pairs;
 }
 
@@ -2180,6 +2218,7 @@ ${languageHTML("p")}
       <p class="empty-note" style="margin-top:6px;color:#d84a3a;">Maximum file size 8MB. Please redact sensitive details before attaching the file.</p>
 
 ${returningHTML("p")}
+${consentHTML("p")}
       <button type="submit" class="btn-primary" id="submitPlan" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="planMsg"></p>
     </form>
@@ -2230,9 +2269,10 @@ ${returningHTML("p")}
     if(!fileInput.files.length) markInvalid(fileInput);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
     checkReturning("p", markInvalid);
+    const consentOk = checkConsent("p", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before.";
+      document.getElementById("planMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -2267,7 +2307,8 @@ ${returningHTML("p")}
         ["Peak/critical periods", document.getElementById("p_peak").value],
         ["Remarks", document.getElementById("p_remarks").value],
         ["Plan document attached", fileInput.files[0].name],
-        ...returningPairs("p")
+        ...returningPairs("p"),
+        ...consentPairs("p")
       ];
       const summaryLines = [
         "Plan review request",
@@ -2684,6 +2725,10 @@ function renderTeaserEnd(){
           <div><label for="w_email">Email</label><input type="email" name="email" id="w_email" placeholder="you@company.com"></div>
           <div><label for="w_mobile">Mobile number</label><input type="tel" name="mobile" id="w_mobile" placeholder=""></div>
         </div>
+        <div class="consent" id="w_consent">
+          <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="w_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
+          <label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="w_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional — you can unsubscribe at any time)</span></span></label>
+        </div>
         <button type="submit" class="btn-primary" id="submitWalkthrough" style="margin-top:14px;background:#d84a3a;color:#fff;">Get the full demo</button>
         <p class="empty-note" id="walkthroughMsg"></p>
       </form>
@@ -2716,10 +2761,11 @@ function renderTeaserEnd(){
     if(!orgEl.value.trim()) markInvalid(orgEl);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) markInvalid(emailEl);
     if(mobileEl.value.replace(/\D/g, "").length < 10) markInvalid(mobileEl);
+    const consentOk = checkConsent("w", markInvalid);
 
     const msgEl = document.getElementById("walkthroughMsg");
     if(firstInvalid){
-      msgEl.textContent = "All four fields are required — please fill in the highlighted ones (a valid email, and a mobile number with at least 10 digits).";
+      msgEl.textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "All four fields are required — please fill in the highlighted ones (a valid email, and a mobile number with at least 10 digits)." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.focus();
       return;
     }
@@ -2735,7 +2781,7 @@ function renderTeaserEnd(){
         "Company: " + orgEl.value.trim(),
         "Email: " + emailEl.value.trim(),
         "Mobile: " + mobileEl.value.trim()
-      ];
+      ].concat(consentPairs("w").map(([k, v]) => k + ": " + v));
       const formData = new FormData(form);
       formData.append("formatted_summary", summaryLines.join("\n"));
       await submitIntake(formData);
@@ -2899,9 +2945,10 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   const mobileDigits = mobileEl.value.replace(/\D/g, "");
   if(mobileDigits.length < 10) markInvalid(mobileEl);
   if(!emailEl.value.trim()) markInvalid(emailEl);
+  const consentOk = checkConsent("c", markInvalid);
 
   if(firstInvalid){
-    document.getElementById("contactMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits.";
+    document.getElementById("contactMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits." + (consentOk ? "" : " Please also tick the privacy box.");
     firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.focus();
     return;
@@ -2917,7 +2964,7 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
       "Name: " + nameEl.value,
       "Mobile: " + mobileEl.value,
       "Email: " + emailEl.value
-    ];
+    ].concat(consentPairs("c").map(([k, v]) => k + ": " + v));
     contactSummaryText = summaryLines.join("\n");
     const formData = new FormData(e.target);
     formData.append("formatted_summary", contactSummaryText);
