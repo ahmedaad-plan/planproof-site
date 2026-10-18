@@ -25,9 +25,30 @@ function getSessionId() {
 // need to — they only ever read. Reading it here, rather than hardcoding it
 // into facilitator-test.html, keeps the token out of anything that gets
 // cached or shared as a plain session link by mistake.
+// The facilitator link's token. Remembered on this device for this
+// exercise (18 October 2026: a refresh, or the preview's sign-in step,
+// could drop it from the address and the page said "missing token"), and
+// put back into the address so the link stays complete.
 function getFacilitatorToken() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("token");
+  const session = params.get("session") || "";
+  const key = `pp_fac_token_${session}`;
+  let token = params.get("token");
+  try {
+    // Only the Facilitator's own pages use the remembered token — never a
+    // participant, Observer or room screen opened in the same browser.
+    const facPage = /\/(facilitator-test|print)(\.html)?$/.test(location.pathname);
+    if (!facPage) return token;
+    if (token) localStorage.setItem(key, token);
+    else if (session) {
+      token = localStorage.getItem(key);
+      if (token) {
+        params.set("token", token);
+        history.replaceState(null, "", `${location.pathname}?${params.toString()}${location.hash}`);
+      }
+    }
+  } catch { /* storage blocked: the address is the only source */ }
+  return token;
 }
 
 // UUIDs are always 36 characters (32 hex digits + 4 hyphens) in this exact
@@ -757,7 +778,7 @@ async function fetchSentMessages(sessionId) {
 //      the database can check the Observer registration; it is not stored on
 //      the message.
 //   2. This channel stays open after End until the Observers' notes window
-//      closes (one hour after End, or "Notes complete"). Every other message
+//      closes (five hours after End, or "Notes complete"). Every other message
 //      channel still stops at End.
 // The public key cannot read or write these messages in the table: every
 // call goes through a checked database function. Operational traffic only —
@@ -913,9 +934,9 @@ const NOTE_TYPES = [
 const NOTE_MAX_LENGTH = 500;
 const NOTE_TOPIC_OTHER_MAX = 60;
 const NOTE_EXTERNAL_MAX = 80;
-// Observers: one hour after End (Ahmed). Facilitator: 48 hours after End,
+// Observers: five hours after End (Ahmed, 18 October 2026; was one hour). Facilitator: 48 hours after End,
 // or until "Notes complete", whichever comes first.
-const OBSERVER_NOTES_WINDOW_MS = 60 * 60 * 1000;
+const OBSERVER_NOTES_WINDOW_MS = 5 * 60 * 60 * 1000; // five hours (Ahmed, 18 October 2026; was one)
 const FACILITATOR_NOTES_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 function noteTopicLabel(note) {
@@ -1527,11 +1548,12 @@ function keepAwake({ wanted, onChange }) {
         try { await held.release(); } catch { /* already gone */ }
         letGo = false;
       }
+      stopBackup();
       set("na");
       return;
     }
-    if (!supported) { set("off"); return; }
-    if (lock) { set("on"); return; }
+    if (!supported) { backupVideo(); set("off"); return; }
+    if (lock) { set("on"); stopBackup(); return; }
     if (document.hidden || requesting) return;
     requesting = true;
     try {
@@ -1545,21 +1567,70 @@ function keepAwake({ wanted, onChange }) {
         if (!document.hidden) { set("off"); setTimeout(update, 3000); }
       });
       set("on");
+      stopBackup();
     } catch {
       lock = null;
+      // Refused (battery saver, some Android phones): the backup — a tiny
+      // silent video playing in a loop, which phones treat like watching a
+      // video and so keep the screen on (18 October 2026, Ahmed's Android
+      // phone locked mid-test).
+      // The state stays "off" (the control tower and the notice stay
+      // truthful: the backup cannot be confirmed).
+      backupVideo();
       set("off");
     } finally {
       requesting = false;
     }
   }
+  let video = null;
+  function backupVideo() {
+    try {
+      if (!video) {
+        video = document.createElement("video");
+        video.setAttribute("playsinline", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("aria-hidden", "true");
+        video.muted = true; video.loop = true;
+        video.src = new URL("media/keepawake.mp4", document.baseURI).href;
+        video.style.cssText = "position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;inset-inline-start:0;bottom:0;";
+        document.body.appendChild(video);
+      }
+      const p = video.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch { /* no backup on this device */ }
+  }
+  function stopBackup() {
+    if (video) { try { video.pause(); } catch {} }
+  }
   document.addEventListener("visibilitychange", () => { if (!document.hidden) update(); });
   // Some browsers only grant it after the person has touched the page.
   ["click", "touchend", "keydown"].forEach((ev) =>
-    document.addEventListener(ev, () => { if (state === "off") update(); }, { passive: true })
+    document.addEventListener(ev, () => { if (state === "off" || !lock) update(); }, { passive: true })
   );
   setInterval(update, 30000);
   update();
   return { state: () => state, update };
+}
+
+// A person whose registration was removed by the Facilitator (18 October
+// 2026: the phone said "no longer registered" yet kept playing the injects'
+// sounds). The page stops for good: no sound, no inject, no survey — one
+// screen with "Join again". The registration kept on this device is
+// forgotten so the join page starts fresh.
+function showRemovedScreen(sessionId) {
+  if (window.__ppRemoved) return;
+  window.__ppRemoved = true;
+  try { stopSfx(); } catch { /* nothing playing */ }
+  try { localStorage.removeItem(`pp_identity_${sessionId}`); } catch { /* storage blocked */ }
+  const join = `join.html?session=${encodeURIComponent(sessionId)}`;
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  document.body.className = "pp-removed-page";
+  document.body.innerHTML =
+    `<main class="pp-removed" role="alert" style="max-width:440px;margin:18vh auto 0;padding:0 16px;text-align:center;">` +
+      `<h1 style="font-size:1.4rem;margin:0 0 10px;">${esc(T("shared.removed.title"))}</h1>` +
+      `<p style="margin:0 0 20px;opacity:.85;">${esc(T("shared.removed.body"))}</p>` +
+      `<a class="pp-btn" href="${esc(join)}" id="joinAgainBtn">${esc(T("shared.removed.join"))}</a>` +
+    `</main>`;
 }
 
 // A small fixed notice (one per id). text null/"" hides it.

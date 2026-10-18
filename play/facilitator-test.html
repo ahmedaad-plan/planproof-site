@@ -219,6 +219,10 @@
   .reset-card h2 { margin: 0 0 2px; }
   .reset-card .sub { margin: 0; }
   .reset-card .body { flex: 1 1 260px; min-width: 0; }
+  .reset-confirm { flex: 1 1 100%; border: 1px solid var(--red-soft, #e0675c); border-radius: 10px; padding: 12px 14px; }
+  .reset-confirm .t { font-weight: 700; margin-bottom: 4px; }
+  .reset-confirm .why { font-size: 0.9rem; opacity: 0.85; margin-bottom: 10px; }
+  .reset-confirm .b { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
   .setup-card summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1rem; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .setup-card summary::-webkit-details-marker { display: none; }
   .setup-card summary::before { content: "▸"; color: var(--amber); }
@@ -298,7 +302,7 @@
 
   <div class="start-check end-check" id="endCheck" hidden role="alertdialog" aria-labelledby="endCheckTitle">
     <div class="t" id="endCheckTitle" data-i18n="fac.endCheck.title">End the exercise?</div>
-    <div class="why" data-i18n="fac.endCheck.why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for one hour, and everything on this page stays live.</div>
+    <div class="why" data-i18n="fac.endCheck.why">Every phone, laptop and room screen will show the thank-you screen. Answers and department messages close. Observers keep their notes and their message box for five hours, and everything on this page stays live.</div>
     <div id="endCheckBody"></div>
     <div class="b">
       <button id="endBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
@@ -306,14 +310,6 @@
     </div>
   </div>
 
-  <div class="start-check" id="resetCheck" hidden role="alertdialog" aria-labelledby="resetCheckTitle">
-    <div class="t" id="resetCheckTitle" data-i18n="fac.reset.title">Reset to the lobby?</div>
-    <div class="why" data-i18n="fac.reset.why">Every device returns to the waiting screen and the exercise starts again from the first inject when you press Start. Notes and messages already written are kept and labelled "Earlier run". This is for testing and for starting over — not for a short pause.</div>
-    <div class="b">
-      <button id="resetBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
-      <button id="resetConfirmBtn" class="danger" data-i18n="fac.reset.confirm">Reset to lobby</button>
-    </div>
-  </div>
 
   <div class="end-strip" id="endStrip" hidden role="status"></div>
   </div>
@@ -352,6 +348,10 @@
           <span data-i18n-html="fac.tower.legendAttention_html"><i class="dot red"></i> Needs attention</span>
         </div>
       </div>
+      <div class="pp-card notes-own" id="notesOwn">
+        <h2 data-i18n="fac.notes.addOwn">Your note</h2>
+        <div id="facNoteForm"></div>
+      </div>
       <div class="pp-card" id="readyCard">
         <h2 data-i18n="fac.exercise.readyHeading">Before you start</h2>
         <div class="sub" data-i18n="fac.exercise.readySub">Press "Start exercise" when the rooms are ready. Start first checks the room screens, who is online and the expected attendance, and tells you what is missing — it never blocks you.</div>
@@ -372,6 +372,14 @@
         <div class="sub" data-i18n="fac.reset.sub">Sends every device back to the waiting screen, ready to start again from the first inject.</div>
       </div>
       <button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Reset to lobby…</button>
+      <div class="reset-confirm" id="resetCheck" hidden role="alertdialog" aria-labelledby="resetCheckTitle">
+        <div class="t" id="resetCheckTitle" data-i18n="fac.reset.title">Send everyone back to the waiting screen?</div>
+        <div class="why" data-i18n="fac.reset.why">Every device returns to the waiting screen and the exercise starts again from the first inject when you press Start. Notes and messages already written are kept and labelled "Earlier run". This is for testing and for starting over — not for a short pause.</div>
+        <div class="b">
+          <button id="resetBackBtn" type="button" data-i18n="fac.reset.cancel">Cancel</button>
+          <button id="resetConfirmBtn" type="button" class="danger" data-i18n="fac.reset.confirm">Yes, reset everyone</button>
+        </div>
+      </div>
     </div>
     <div class="pp-col">
       <details class="pp-card setup-card" id="setupDetails" open>
@@ -509,21 +517,18 @@
   <section id="tabNotes" class="pp-cols wide" hidden>
     <div class="pp-col">
       <div class="pp-card notes-section" id="notesSection">
-        <h2 data-i18n-nodes="fac.notes.heading">Observer notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
-        <div class="sub" data-i18n="fac.notes.sub">
-          Every note from Observers and from you, newest first — only this
-          facilitator link can read them. Critical gaps are marked in red and
-          chime when they arrive. Click anywhere in this panel to mark notes as seen.
-        </div>
+        <h2 data-i18n-nodes="fac.notes.heading">Observers' notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
+        <div class="sub" data-i18n="fac.notes.sub">Every note from the Observers, newest first — only this facilitator link can read them. Critical gaps are marked in red and chime when they arrive. Click anywhere in this panel to mark notes as seen. Only the Observer who wrote a note can withdraw it.</div>
         <div class="notes-counts" id="notesCounts"></div>
         <div class="notes-list" id="notesList"><div class="empty" data-i18n="fac.common.loading">Loading…</div></div>
         <div class="notes-close" id="notesClose"></div>
       </div>
     </div>
     <div class="pp-col">
-      <div class="pp-card notes-own" id="notesOwn">
-        <h2 data-i18n="fac.notes.addOwn">Add your own note</h2>
-        <div id="facNoteForm"></div>
+      <div class="pp-card notes-mine" id="notesMine">
+        <h2 data-i18n="fac.notes.mineHeading">Your notes</h2>
+        <div class="sub" data-i18n="fac.notes.mineSub">Notes you wrote, newest first. Write new ones on the Exercise tab, under the inject.</div>
+        <div class="notes-list" id="ownNotesList"><div class="empty" data-i18n="fac.notes.mineEmpty">You haven't written a note yet.</div></div>
       </div>
     </div>
   </section>
@@ -906,6 +911,14 @@
     }
     function onClick(button, action) {
       button.addEventListener("click", () => runAction(action));
+    }
+    // Every button takes you to what it acts on (Ahmed, 18 October 2026):
+    // the questions (Start's readiness list, End, Resume) open at the top of
+    // the page; the inject buttons open the Exercise tab.
+    function showTop() { try { window.scrollTo({ top: 0 }); } catch { window.scrollTo(0, 0); } }
+    function showExercise() { tabsApi.show("exercise"); showTop(); }
+    function onInjectClick(button, action) {
+      button.addEventListener("click", () => { showExercise(); runAction(action); });
     }
 
     // Next/Prev being clamped at the ends of the inject list is correct —
@@ -1918,8 +1931,9 @@
       });
       rosterEl.querySelectorAll(".removeAttendeeBtn").forEach((btn) => {
         btn.addEventListener("click", async () => {
+          const running = !!currentRow && currentRow.status === "running";
           const ok = confirm(
-            T("fac.roster.confirmRemove", { name: btn.dataset.name })
+            T(running ? "fac.roster.confirmRemoveRunning" : "fac.roster.confirmRemove", { name: btn.dataset.name })
           );
           if (!ok) return;
           btn.disabled = true;
@@ -1947,6 +1961,7 @@
     const notesCountsEl = document.getElementById("notesCounts");
     const notesCloseEl = document.getElementById("notesClose");
     const notesOwnEl = document.getElementById("notesOwn");
+    const ownNotesListEl = document.getElementById("ownNotesList");
     const notesReadKey = `pp_facnotes_read_${sessionId}`;
     let allNotes = null;
     let unreadCriticalNotes = [];
@@ -2039,28 +2054,39 @@
           (withdrawn ? ` · ${T("fac.notes.countWithdrawn", { count: withdrawn })}` : "")
         : "";
 
+      // Two areas (Ahmed, 18 October 2026): the Observers' notes — read
+      // only here; only their author can withdraw them — and your own,
+      // with Edit and Withdraw.
       const win = notesWindow(currentRow, "facilitator");
-      notesListEl.innerHTML = visible.length
-        ? visible
+      const observers = visible.filter((n) => n.author_role !== "facilitator");
+      const mine = visible.filter((n) => n.author_role === "facilitator");
+      notesListEl.innerHTML = observers.length
+        ? observers.map((n) => noteItemHtml(n, { row: currentRow, showAuthor: true, unread: isNoteUnread(n), actionsHtml: "" })).join("")
+        : `<div class="empty">${escapeHtml(T("fac.notes.empty"))}</div>`;
+      ownNotesListEl.innerHTML = mine.length
+        ? mine
             .map((n) => {
-              const canEdit = win.open && n.author_role === "facilitator" && (!run || n.run_number === run);
+              const canEdit = win.open && (!run || n.run_number === run);
               const actions =
                 (canEdit ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">${escapeHtml(T("fac.notes.edit"))}</button>` : "") +
                 (win.open
                   ? `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${escapeHtml(noteWithdrawArmed === n.id ? T("fac.notes.withdrawAgain") : T("fac.notes.withdraw"))}</button>`
                   : "");
-              return noteItemHtml(n, { row: currentRow, showAuthor: true, unread: isNoteUnread(n), actionsHtml: actions });
+              return noteItemHtml(n, { row: currentRow, showAuthor: false, unread: false, actionsHtml: actions });
             })
             .join("")
-        : `<div class="empty">${escapeHtml(T("fac.notes.empty"))}</div>`;
+        : `<div class="empty">${escapeHtml(T("fac.notes.mineEmpty"))}</div>`;
     }
 
-    notesListEl.addEventListener("click", async (e) => {
+    ownNotesListEl.addEventListener("click", async (e) => {
       const btn = e.target.closest("button[data-act]");
       if (!btn || !allNotes) return;
       const n = allNotes.find((x) => x.id === btn.dataset.id);
-      if (!n) return;
+      if (!n || n.author_role !== "facilitator") return;
       if (btn.dataset.act === "edit") {
+        // the note form lives on the Exercise tab: go there with it filled in
+        tabsApi.show("exercise");
+        setTimeout(() => { try { notesOwnEl.scrollIntoView({ block: "start" }); } catch {} }, 50);
         facNoteForm.edit({
           id: n.id, injectIndex: n.inject_index, topic: n.topic, topicOther: n.topic_other,
           noteType: n.note_type, scope: n.department_scope, departments: n.departments,
@@ -2286,12 +2312,14 @@
       document.getElementById("resumeCheckTitle").textContent = T("fac.resume.title", { number: currentRow.current_inject_index + 1 });
       document.getElementById("resumeConfirmBtn").textContent = resumeLabel();
       resumeCheckEl.hidden = false;
+      showTop();
       document.getElementById("resumeConfirmBtn").focus();
     }
     document.getElementById("resumeBackBtn").addEventListener("click", () => { resumeCheckEl.hidden = true; });
     document.getElementById("resumeConfirmBtn").addEventListener("click", () => {
       resumeCheckEl.hidden = true;
       if (!canResume()) return;
+      showExercise();
       runAction(() => patchSession(sessionId, { status: "running" }));
     });
 
@@ -2301,23 +2329,25 @@
       if (canResume()) { showResumeCheck(); return; }
       resumeCheckEl.hidden = true;
       // Only before a start: a running exercise is never interrupted by this.
-      if (currentRow && currentRow.status === "running") return runAction(startExercise);
+      if (currentRow && currentRow.status === "running") { showExercise(); return runAction(startExercise); }
       startBtn.disabled = true;
       try { await refreshRoster(); } catch { /* the check below says it couldn't look */ }
       const issues = startReadinessIssues();
-      if (!issues.length) return runAction(startExercise);
+      if (!issues.length) { showExercise(); return runAction(startExercise); }
       startCheckListEl.innerHTML = issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
       startCheckEl.hidden = false;
+      showTop();
       startBtn.disabled = false;
     });
     document.getElementById("startAnywayBtn").addEventListener("click", () => {
       startCheckEl.hidden = true;
+      showExercise(); // the exercise opens on the Exercise tab
       runAction(startExercise);
     });
     document.getElementById("startBackBtn").addEventListener("click", () => {
       startCheckEl.hidden = true;
     });
-    onClick(document.getElementById("nextBtn"), () => {
+    onInjectClick(document.getElementById("nextBtn"), () => {
       if (!currentRow) return;
       const max = (currentRow.scenario.injects || []).length - 1;
       const next = Math.min(currentRow.current_inject_index + 1, max);
@@ -2327,7 +2357,7 @@
         inject_force_unlocked: false,
       });
     });
-    onClick(document.getElementById("prevBtn"), () => {
+    onInjectClick(document.getElementById("prevBtn"), () => {
       if (!currentRow) return;
       const prev = Math.max(currentRow.current_inject_index - 1, 0);
       return patchSession(sessionId, {
@@ -2336,22 +2366,34 @@
         inject_force_unlocked: false,
       });
     });
+    // +5 min (Ahmed, 18 October 2026): always 5 full minutes. Still
+    // running → 5 more than what is left; already over → 5 from the moment
+    // of pressing (it used to count from the original end, so a press 3
+    // minutes after time was up gave only 2).
+    function extendedMinutes() {
+      const extra = currentRow.inject_extra_minutes || 0;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const inject = injects[currentRow.current_inject_index];
+      const deadline = injectDeadlineMs(currentRow, inject);
+      if (!deadline || currentRow.inject_force_unlocked) return extra + 5;
+      const overMs = Date.now() - deadline;
+      if (overMs <= 0) return extra + 5;
+      return extra + Math.ceil(overMs / 60000) + 5;
+    }
     function extendFive() {
       if (!currentRow) return;
-      const extended = (currentRow.inject_extra_minutes || 0) + 5;
-      return patchSession(sessionId, { inject_extra_minutes: extended });
+      return patchSession(sessionId, { inject_extra_minutes: extendedMinutes() });
     }
-    onClick(document.getElementById("extendBtn"), () => {
+    onInjectClick(document.getElementById("extendBtn"), () => {
       if (!currentRow) return;
       // Participants should never need to be told "the facilitator added
       // time" out of band — the same realtime row update that already
       // syncs status/current_inject_index everywhere carries this too, so
       // participant.html picks it up and extends (and un-locks, if it had
       // already timed out but not been submitted) automatically.
-      const extended = (currentRow.inject_extra_minutes || 0) + 5;
-      return patchSession(sessionId, { inject_extra_minutes: extended });
+      return extendFive();
     });
-    onClick(document.getElementById("unlockBtn"), () => {
+    onInjectClick(document.getElementById("unlockBtn"), () => {
       if (!currentRow) return;
       // Toggle: re-opens the CURRENT inject's submission for every
       // participant even if they already submitted or timed out, until
@@ -2397,6 +2439,7 @@
           ? `<ul>${issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>`
           : `<div class="none">${escapeHtml(T("fac.endCheck.allSubmitted"))}</div>`;
       endCheckEl.hidden = false;
+      showTop();
       document.getElementById("endBackBtn").focus();
     });
     document.getElementById("endBackBtn").addEventListener("click", hideEndCheck);
@@ -2461,13 +2504,16 @@
     const resetCheckEl = document.getElementById("resetCheck");
     document.getElementById("resetBtn").addEventListener("click", () => {
       startCheckEl.hidden = true; endCheckEl.hidden = true; resumeCheckEl.hidden = true;
+      // The question opens inside the "Start over" box, in place of the
+      // button (18 October 2026: one question, one pair of answers).
       resetCheckEl.hidden = false;
-      window.scrollTo({ top: 0 });
+      resetBtn.hidden = true;
+      resetCheckEl.scrollIntoView({ block: "center" });
       document.getElementById("resetBackBtn").focus();
     });
-    document.getElementById("resetBackBtn").addEventListener("click", () => { resetCheckEl.hidden = true; });
+    document.getElementById("resetBackBtn").addEventListener("click", () => { resetCheckEl.hidden = true; resetBtn.hidden = false; });
     document.getElementById("resetConfirmBtn").addEventListener("click", () => {
-      resetCheckEl.hidden = true;
+      resetCheckEl.hidden = true; resetBtn.hidden = false;
       runAction(() => patchSession(sessionId, {
         status: "lobby",
         current_inject_index: -1,

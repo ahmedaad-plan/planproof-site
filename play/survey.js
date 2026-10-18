@@ -74,9 +74,11 @@
     .ppsv-nps .ppsv-chip { text-align:center; padding:9px 2px; }
   }`;
 
+  // Shown from "Strongly agree" down (Ahmed, 18 October 2026); the saved
+  // number is unchanged (5 = strongly agree).
   const AGREE = [
-    [1, "survey.scale.stronglyDisagree"], [2, "survey.scale.disagree"], [3, "survey.scale.neutral"],
-    [4, "survey.scale.agree"], [5, "survey.scale.stronglyAgree"],
+    [5, "survey.scale.stronglyAgree"], [4, "survey.scale.agree"], [3, "survey.scale.neutral"],
+    [2, "survey.scale.disagree"], [1, "survey.scale.stronglyDisagree"],
   ];
   // The questions, in the order shown. What is SAVED is the key and a code or
   // number; only what is shown comes from the language file.
@@ -290,6 +292,8 @@
         // sent, duplicate (a retry) and already (answered from another device) all mean: done
         state.done = true; save();
         drawnFor = null; refresh();
+        // back to the top, where the thank-you is (18 October 2026)
+        try { window.scrollTo({ top: 0 }); } catch { window.scrollTo(0, 0); }
         if (result && result.status === "already") showToast(T("survey.already"), 6000);
       } catch (e) {
         const msg = e && e.network ? T("survey.notSentOffline") : T("survey.notSent", { detail: PPLang.dbMessage((e && e.message) || "") });

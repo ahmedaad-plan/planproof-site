@@ -205,12 +205,12 @@
     </section>
     <section class="pp-col" id="tabMessages" hidden>
       <section class="msg-history" id="msgHistory">
-        <h2 class="msg-reply-label" data-i18n-nodes="part.msg.historyTitle">Messages with the facilitator<span class="msg-badge" id="msgBadge" hidden></span></h2>
+        <h2 class="msg-reply-label" data-i18n-nodes="part.msg.historyTitle">Messages from the facilitator<span class="msg-badge" id="msgBadge" hidden></span></h2>
         <ul class="msg-list" id="msgList"><li class="muted" data-i18n="part.msg.none">No messages yet.</li></ul>
       </section>
       <section class="msg-reply" id="msgReply">
         <div class="msg-reply-card pp-form">
-          <h2 class="msg-reply-label" data-i18n="part.reply.title">Message the facilitator</h2>
+          <h2 class="msg-reply-label" data-i18n="part.reply.title">Send a message to the facilitator</h2>
           <div class="pp-hint" data-i18n="part.reply.hint">Sent as your department, not under your name.</div>
           <div class="pp-label" data-i18n="part.reply.presetLabel">Ready-made</div>
           <div class="pp-chips" id="replyPresets"></div>
@@ -287,6 +287,7 @@
   // is unaffected either way.
   const answersCache = {};
   let firstInjectDrawn = true; // true until this page has shown its first inject
+  let cameFromLobby = false; // the next inject drawn is the start of the exercise
   // State used by init(), which runs just below — declared here, before it.
   let storedRun = null;          // which run of the exercise the answers kept on this phone belong to
   let restoredFromPhone = {};    // inject index -> true: brought back from this phone after a reload
@@ -377,7 +378,9 @@
     // sleeping phone would stop checking in and look offline on the
     // Facilitator's control tower. Released at the end.
     const awake = keepAwake({
-      wanted: () => !!latestRow && latestRow.status === "running",
+      // from registering until the end — also while waiting in the lobby,
+      // where a phone left alone used to lock (18 October 2026)
+      wanted: () => !!latestRow && (latestRow.status === "running" || latestRow.status === "lobby" || latestRow.status === "paused"),
       onChange: (st) => setNotice("awakeNotice", st === "off" ? AWAKE_NOTICE : null),
     });
 
@@ -401,8 +404,7 @@
         applyRemoteFromReply(reply);
         handleCheckinReply(reply, { sync, getRow: () => latestRow });
       },
-      onRefused: () =>
-        setNotice("regNotice", T("part.notice.notRegistered")),
+      onRefused: () => showRemovedScreen(sessionId),
     });
 
     // Back from a phone call, a locked screen or another app: catch up
@@ -867,7 +869,7 @@
   }
 
   function render(row) {
-    if (!row) return;
+    if (!row || window.__ppRemoved) return;
     // A new run (the facilitator pressed Reset): answers kept on this phone
     // belong to the earlier run — start clean.
     if (storedRun !== null && row.run_number !== undefined && row.run_number !== storedRun) {
@@ -914,6 +916,7 @@
     if (row.status === "lobby") {
       clearInjectTimer();
       firstInjectDrawn = false; // seen waiting here: the first inject is new to this person
+      cameFromLobby = true;
       mainEl.innerHTML = welcomeScreenHtml({ name: greetingName(identity) }) +
         (remote ? `<p class="remote-welcome-note">${escapeHtml(T("part.remote.welcomeNote"))}</p>` : "");
       formIdx = null;
@@ -1007,9 +1010,13 @@
         const typing = box && (document.activeElement === box || box.value.trim());
         // the first inject drawn after opening or reloading the page keeps
         // the tab the person had open (it is not new to them)
-        if (typing || firstInjectDrawn) tabsApi.dot("inject", true); else tabsApi.show("inject");
+        // The start of the exercise always opens the Inject tab (Ahmed,
+        // 18 October 2026) — a half-typed message stays in its box.
+        if (cameFromLobby) tabsApi.show("inject");
+        else if (typing || firstInjectDrawn) tabsApi.dot("inject", true); else tabsApi.show("inject");
       }
       firstInjectDrawn = false;
+      cameFromLobby = false;
       if (!isIndividual(inject)) checkWriter(idx);
 
       if (lostEdit && currentSaveStatusEl) {

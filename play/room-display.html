@@ -18,6 +18,8 @@
     text-align: center; padding: 40px; gap: 26px;
   }
   .timer-row { display: flex; gap: 40px; }
+  .mine-group { margin-bottom: 14px; }
+  .mine-group-title { font-size: 0.95rem; margin: 10px 0 6px; color: var(--text-muted); font-weight: 600; }
   .timer-row .label { font-size: 1rem; color: var(--text-muted); display: block; }
   .timer-row .value {
     display: block; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums;
@@ -233,11 +235,11 @@
 </section>
 </section>
 <section id="tabMessages" class="pp-col" hidden>
-<section class="observer-panel" id="observerMsgPanel" hidden aria-label="Messages with the facilitator" data-i18n-attr="aria-label:room.observer.msgPanelLabel">
-  <h2 id="obsMessages" data-i18n-nodes="room.msg.heading">Messages with the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
+<section class="observer-panel" id="observerMsgPanel" hidden aria-label="Messages from the facilitator" data-i18n-attr="aria-label:room.observer.msgPanelLabel">
+  <h2 id="obsMessages" data-i18n-nodes="room.msg.heading">Messages from the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
   <ul class="obs-thread" id="obsThread"><li class="empty" data-i18n="room.msg.none">No messages yet.</li></ul>
   <div class="obs-msg-card pp-form">
-    <h3 data-i18n="room.msg.cardTitle">Message the facilitator</h3>
+    <h3 data-i18n="room.msg.cardTitle">Send a message to the facilitator</h3>
     <p class="pp-hint" id="obsMsgHint" data-i18n="room.msg.hint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
     <div class="pp-label" data-i18n="room.msg.presetLabel">Ready-made</div>
     <div class="pp-chips" id="obsMsgPresets"></div>
@@ -334,6 +336,7 @@
   const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
   let obsPageFresh = true; // true until this page has shown the lobby or an inject
+  let obsCameFromLobby = false; // the next inject drawn is the start of the exercise
   let injectTimerInterval = null;
   // Audio can only play after a user gesture. If this page loads (or
   // reloads) while an inject is already showing — not starting fresh from
@@ -538,7 +541,7 @@
           onSoft: () => showToast(T("room.toast.refreshed"), 6000),
         }),
       onRefused: observerMode
-        ? () => setNotice("regNotice", T("room.notice.notRegistered"))
+        ? () => showRemovedScreen(sessionId)
         : null,
     });
 
@@ -621,6 +624,7 @@
   let broadcastFetching = false;
   let broadcastAgain = false;
   async function catchUpBroadcast(row, fromRing) {
+    if (observerMode) { if (observer) loadObserverInfo(); return; } // an Observer reads it in Messages, not as the room banner
     if (!row || row.status === "ended") return;
     if (broadcastFetching) {
       // A ring that arrives mid-fetch is never dropped: fetch once more after.
@@ -653,7 +657,7 @@
 
   let wasEnded = false;
   function render(row) {
-    if (!row) return;
+    if (!row || window.__ppRemoved) return;
     latestRow = row;
     if (observerMode) {
       refreshObserverNotes();
@@ -680,6 +684,7 @@
         : `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
       lastRenderedIndex = null;
       obsPageFresh = false; // seen waiting here: the first inject is new
+      obsCameFromLobby = true;
       return;
     }
     if (row.status === "ended") {
@@ -751,21 +756,33 @@
       const boxes = [document.querySelector("#noteForm textarea"), document.getElementById("obsMsgText")];
       const typing = boxes.some((b) => b && (document.activeElement === b || b.value.trim()));
       // the first inject after opening or reloading keeps the remembered tab
-      if (typing || obsPageFresh) tabsApi.dot("exercise", true); else tabsApi.show("exercise");
+      if (obsCameFromLobby) tabsApi.show("exercise"); // the start always opens Exercise (18 October 2026); a draft note is kept
+      else if (typing || obsPageFresh) tabsApi.dot("exercise", true); else tabsApi.show("exercise");
     }
     obsPageFresh = false;
-    mainEl.innerHTML = `
-      ${videoBlock}
-      <div class="inject-pos">${escapeHtml(posLine)}</div>
-      <div class="inject-title">${escapeHtml(inject.title)}</div>
-      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+    obsCameFromLobby = false;
+    const timerBlock = `
       <div class="timer-row">
         <div>
           <span class="label">${escapeHtml(T("room.timer.label"))}</span>
           <span class="value" id="injectTimerValue">--:--</span>
           <span class="label" id="injectTimerNote" style="margin-top:4px;"></span>
         </div>
-      </div>
+      </div>`;
+    // An Observer sees where the exercise is and the time left first, at the
+    // top (Ahmed, 18 October 2026); the room screen keeps its big layout.
+    mainEl.innerHTML = observerMode ? `
+      <div class="inject-pos">${escapeHtml(posLine)}</div>
+      ${timerBlock}
+      <div class="inject-title">${escapeHtml(inject.title)}</div>
+      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+      ${videoBlock}
+    ` : `
+      ${videoBlock}
+      <div class="inject-pos">${escapeHtml(posLine)}</div>
+      <div class="inject-title">${escapeHtml(inject.title)}</div>
+      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+      ${timerBlock}
     `;
 
     // An Observer's phone stays silent: the room's display plays the sound.
@@ -948,7 +965,23 @@
       box.innerHTML = `<div class="empty">${escapeHtml(win.open || latestRow.status === "lobby" ? T("room.notes.noneYet") : T("room.notes.closedCleared"))}</div>`;
       return;
     }
-    box.innerHTML = visible
+    // Grouped under each inject, the latest inject first, "Whole exercise"
+    // last (Ahmed, 18 October 2026), each with Edit and Withdraw.
+    const injects = (latestRow.scenario && latestRow.scenario.injects) || [];
+    const groups = new Map();
+    visible.forEach((n) => {
+      const k = n.injectIndex === null || n.injectIndex === undefined ? "whole" : String(n.injectIndex);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(n);
+    });
+    const keys = Array.from(groups.keys()).sort((a, b) => (a === "whole") - (b === "whole") || Number(b) - Number(a));
+    box.innerHTML = keys.map((k) => {
+      const title = k === "whole"
+        ? T("room.notes.groupWhole")
+        : T("room.notes.groupInject", { number: Number(k) + 1, title: String((injects[Number(k)] || {}).title || "") });
+      return `<div class="mine-group"><h3 class="mine-group-title">${escapeHtml(title)}</h3>` + groupItems(groups.get(k)) + `</div>`;
+    }).join("");
+    function groupItems(list) { return list
       .map((n) =>
         noteItemHtml(
           {
@@ -966,7 +999,7 @@
           }
         )
       )
-      .join("");
+      .join(""); }
   }
 
   if (observerMode) {
@@ -1059,7 +1092,19 @@
     } catch { /* no draft */ }
   }
   const obsMsgTime = (m) => new Date(m.created_at).getTime();
-  const obsFromFacilitator = (m) => m.direction === "to_observers";
+  const obsFromFacilitator = (m) => m.direction === "to_observers" || m.direction === "to_participants";
+  // What the facilitator sent to all participants, shown to the Observer
+  // for information (18 October 2026: it used to flash by as the room
+  // screen's 30-second banner, with no way to read it again or reply).
+  let obsInfo = [];
+  const obsAll = () => obsMessages.concat(obsInfo).sort((a, b) => obsMsgTime(a) - obsMsgTime(b));
+  async function loadObserverInfo() {
+    try {
+      const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+      obsInfo = msgs.map((m) => Object.assign({}, m, { direction: "to_participants" }));
+      renderObserverMessages();
+    } catch (err) { console.warn("Couldn't load messages:", err.message); }
+  }
   function obsIsUnread(m) {
     return obsFromFacilitator(m) && (obsLastReadAt === null || obsMsgTime(m) > obsLastReadAt);
   }
@@ -1101,7 +1146,7 @@
   }
 
   function markObserverMessagesRead() {
-    const fromFac = obsMessages.filter(obsFromFacilitator);
+    const fromFac = obsAll().filter(obsFromFacilitator);
     if (fromFac.length) {
       obsLastReadAt = Math.max(...fromFac.map(obsMsgTime));
       try { localStorage.setItem(obsReadKey, String(obsLastReadAt)); } catch { /* still read for this page */ }
@@ -1110,6 +1155,7 @@
   }
 
   function renderObserverMessages() {
+    const obsMessages = obsAll();
     const unread = obsMessages.filter(obsIsUnread);
     const badge = T("room.msg.newCount", { count: unread.length });
     obsBadgeEl.hidden = unread.length === 0;
@@ -1123,10 +1169,13 @@
           .reverse()
           .map((m) => {
             const fromFac = obsFromFacilitator(m);
-            const who = fromFac
-              ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
-              : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
-            const canReply = fromFac && observerChannel(latestRow).open;
+            const info = m.direction === "to_participants";
+            const who = info
+              ? T("room.msg.fromFacilitatorParticipants")
+              : fromFac
+                ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
+                : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
+            const canReply = fromFac && !info && observerChannel(latestRow).open;
             return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}${canReply ? `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("room.msg.reply"))}</button></div>` : ""}</li>`;
           })
           .join("")
