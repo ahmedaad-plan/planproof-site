@@ -31,26 +31,29 @@
 
 :root {
   /* The website's own palette. */
-  --bg: #10151b;
-  --panel: #1a222c;
-  --panel-raised: #212b36;
+  /* 18 October 2026 (Ahmed): one black for the page and every box; boxes are
+     told apart by a thin border, never by a tinted or metallic fill. */
+  --bg: #0b0f14;
+  --panel: #0b0f14;
+  --panel-raised: #0e1319;
   --border: #2b3642;
   --border-strong: #46566a;
   --text: #e7eaee;
   --text-muted: #9aa5b1;
   --amber: #e2a63b;
   --amber-ink: #201404;
-  --amber-dim: rgba(226,166,59,0.14);
+  --amber-dim: transparent; /* no tinted fills (18 October 2026) */
   --red: #d84a3a;
   --red-soft: #f0907f;
-  --red-dim: rgba(216,74,58,0.16);
+  --red-dim: transparent;
   --teal: #4f9c82;
   --teal-soft: #8fd0b8;
-  --teal-dim: rgba(79,156,130,0.16);
-  --blue: #5b8db8;
-  --blue-soft: #9cc3e4;
-  --blue-dim: rgba(91,141,184,0.14);
-  --field: #0c1116;
+  --teal-dim: transparent;
+  /* no blue: what was blue is now plain grey and white (18 October 2026) */
+  --blue: #46566a;
+  --blue-soft: #c9d1d9;
+  --blue-dim: transparent;
+  --field: #070a0e;
   --shadow: rgba(0,0,0,0.35);
   --font-display: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -158,10 +161,10 @@ a { color: var(--amber); }
 .pp-clock-note { font-size: 13px; color: var(--text-muted); min-height: 1.3em; }
 .pp-clock-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--border); }
 .pp-clock-bar i { display: block; height: 100%; width: 100%; background: var(--teal); transform-origin: left center; }
-.pp-clock[data-state="warn"] { border-color: var(--amber); background: #2a2415; }
+.pp-clock[data-state="warn"] { border-color: var(--amber); background: transparent; }
 .pp-clock[data-state="warn"] .pp-clock-value { color: var(--amber); }
 .pp-clock[data-state="warn"] .pp-clock-bar i { background: var(--amber); }
-.pp-clock[data-state="up"] { border-color: var(--red); background: #2b1a19; }
+.pp-clock[data-state="up"] { border-color: var(--red); background: transparent; }
 .pp-clock[data-state="up"] .pp-clock-value { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 10vw, 2.8rem); line-height: 1.3; direction: inherit; unicode-bidi: normal; }
 .pp-clock[data-state="up"] .pp-clock-bar i { background: var(--red); }
 .pp-clock[data-state="none"] .pp-clock-value { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; line-height: 1.6; color: var(--text-muted); direction: inherit; unicode-bidi: normal; }
@@ -236,7 +239,7 @@ a { color: var(--amber); }
 /* Tabs: a bar of buttons. On a phone it is fixed to the bottom of the screen;
    on a laptop it sits in the page flow under the command bar. */
 .pp-tabs {
-  display: flex; background: #121a23; border-top: 1px solid var(--border);
+  display: flex; background: var(--bg); border-top: 1px solid var(--border);
   position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -245,7 +248,7 @@ a { color: var(--amber); }
   padding: 12px 4px; min-height: 52px; border: 0; border-top: 3px solid transparent; background: transparent;
   color: var(--text-muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
 }
-.pp-tab[aria-selected="true"] { color: var(--text); border-top-color: var(--amber); background: #182230; }
+.pp-tab[aria-selected="true"] { color: var(--amber); border-top-color: var(--amber); background: transparent; }
 .pp-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-tab-badge {
   display: inline-block; min-width: 20px; height: 20px; line-height: 20px; padding: 0 6px; border-radius: 10px;
@@ -260,15 +263,17 @@ body.pp-kbd .pp-tabs { display: none; }
 /* Room for the bar under the page's content on a phone. */
 body.pp-has-tabs { padding-bottom: 72px; }
 @media (min-width: 900px) {
-  .pp-tabs { position: static; border-top: 0; border-bottom: 1px solid var(--border); padding: 0 16px; }
-  .pp-tab { flex: 0 0 auto; padding: 12px 18px; min-height: 0; border-top: 0; border-bottom: 3px solid transparent; font-size: 15px; }
-  .pp-tab[aria-selected="true"] { border-bottom-color: var(--amber); background: transparent; }
+  /* Centred, boxed tabs (Ahmed, 18 October 2026). */
+  .pp-tabs { position: static; border-top: 0; border-bottom: 1px solid var(--border); padding: 12px 16px; justify-content: center; gap: 10px; }
+  .pp-tab { flex: 0 0 auto; padding: 9px 22px; min-height: 0; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 15px; }
+  .pp-tab:hover { border-color: var(--text-muted); color: var(--text); }
+  .pp-tab[aria-selected="true"] { border-color: var(--amber); color: var(--amber); background: transparent; }
   body.pp-has-tabs { padding-bottom: 24px; }
 }
 
 /* The Facilitator's command bar: never moves. */
 .pp-cmd {
-  position: sticky; top: 0; z-index: 30; background: #0f1a24; border-bottom: 2px solid var(--amber);
+  position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 2px solid var(--amber);
   padding: 8px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
 }
 .pp-cmd-pos { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
@@ -299,7 +304,7 @@ body.pp-has-tabs { padding-bottom: 72px; }
 
 /* The alert strip under the command bar: visible on every tab. */
 .pp-alerts {
-  background: #2a1d12; border-bottom: 1px solid #5a3a1a; padding: 6px 12px;
+  background: var(--bg); border-bottom: 1px solid var(--border); padding: 6px 12px;
   display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.88rem; align-items: center;
 }
 .pp-alert { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -314,7 +319,7 @@ body.pp-has-tabs { padding-bottom: 72px; }
 
 /* The slim header on a participant's or Observer's device: who, where, the clock. */
 .pp-slim {
-  position: sticky; top: 0; z-index: 30; background: #0f1a24; border-bottom: 1px solid var(--amber);
+  position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--amber);
   padding: 7px 12px; display: flex; align-items: center; gap: 10px; font-size: 0.86rem;
 }
 .pp-slim .who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -96,7 +96,7 @@
   .remote-gate .gate-error { color: var(--red-soft); font-size: 0.9rem; max-width: 440px; }
   .video-card {
     width: 100%; aspect-ratio: 16/9;
-    background: linear-gradient(135deg, var(--panel-raised), var(--bg));
+    background: var(--panel);
     border: 2px solid var(--amber); border-radius: 12px; margin-bottom: 16px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   }
@@ -211,7 +211,7 @@
       <section class="msg-reply" id="msgReply">
         <div class="msg-reply-card pp-form">
           <h2 class="msg-reply-label" data-i18n="part.reply.title">Send a message to the facilitator</h2>
-          <div class="pp-hint" data-i18n="part.reply.hint">Sent as your department, not under your name.</div>
+          <div class="pp-hint" data-i18n="part.reply.hint">Sent for your department. The facilitator sees your name; other departments do not.</div>
           <div class="pp-label" data-i18n="part.reply.presetLabel">Ready-made</div>
           <div class="pp-chips" id="replyPresets"></div>
           <label for="replyText" data-i18n="part.reply.textLabel">Or type your own message</label>
@@ -288,6 +288,7 @@
   const answersCache = {};
   let firstInjectDrawn = true; // true until this page has shown its first inject
   let cameFromLobby = false; // the next inject drawn is the start of the exercise
+  let wasEndedShown = false; // End has opened the thank-you once on this page
   // State used by init(), which runs just below — declared here, before it.
   let storedRun = null;          // which run of the exercise the answers kept on this phone belong to
   let restoredFromPhone = {};    // inject index -> true: brought back from this phone after a reload
@@ -715,7 +716,7 @@
       feedbackEl.className = "msg-reply-feedback";
       feedbackEl.textContent = T("part.reply.sending");
       try {
-        await sendDepartmentRequest(sessionId, { body, presetKey: sentPresetKey, department: identity.department });
+        await sendDepartmentRequest(sessionId, { body, presetKey: sentPresetKey, department: identity.department, attendeeId: identity.attendeeId });
         textEl.value = "";
         presetKey = "";
         rememberSent(body);
@@ -886,6 +887,7 @@
     if (refreshReplyControls) refreshReplyControls(); // closes at End, opens again at once if the exercise carries on
     updateSlim();
 
+    if (row.status !== "ended") wasEndedShown = false;
     if (row.status === "ended") {
       clearInjectTimer();
       stopSfx(); // a remote device's inject sound must not carry on over the thank-you
@@ -902,6 +904,8 @@
         survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: identity.attendeeId, observer: false });
       }
       survey.refresh(row);
+      // End always opens the thank-you and the survey (18 October 2026).
+      if (!wasEndedShown) { wasEndedShown = true; if (tabsApi) tabsApi.show("inject"); try { window.scrollTo({ top: 0 }); } catch {} }
       formIdx = null;
       formInject = null;
       editingSubmitted = false;
@@ -1012,8 +1016,12 @@
         // the tab the person had open (it is not new to them)
         // The start of the exercise always opens the Inject tab (Ahmed,
         // 18 October 2026) — a half-typed message stays in its box.
-        if (cameFromLobby) tabsApi.show("inject");
-        else if (typing || firstInjectDrawn) tabsApi.dot("inject", true); else tabsApi.show("inject");
+        // From 18 October 2026 (Ahmed): every new inject (and Previous)
+        // opens the Inject tab, even mid-typing — the typed text stays in
+        // its box. Only the first inject drawn after a reload keeps the
+        // tab the person had open.
+        void typing;
+        if (cameFromLobby || !firstInjectDrawn) tabsApi.show("inject"); else tabsApi.dot("inject", true);
       }
       firstInjectDrawn = false;
       cameFromLobby = false;
@@ -1068,6 +1076,7 @@
       if (extraNow !== currentExtraMinutes) {
         const more = extraNow > currentExtraMinutes;
         currentExtraMinutes = extraNow;
+        if (more && tabsApi && !tabsApi.isCurrent("inject")) tabsApi.show("inject"); // extra time: back to the inject (18 October 2026)
         const deadline = injectDeadlineMs(row, inject);
         if (more && !forceUnlocked && !submittedForCurrent && injectLocked && deadline && deadline > Date.now()) {
           unlockForCurrentInject(T("part.status.moreTime"), false, true);

@@ -49,7 +49,9 @@
   .ppn-checks label { display:flex; gap:10px; align-items:center; padding:7px 0; font-size:.95rem; }
   .ppn-checks input { width:20px; height:20px; accent-color:var(--amber); }
   .ppn-hint { font-size:.8rem; color:var(--text-muted); margin-top:4px; }
-  .ppn-row { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; }
+  /* The Log button centred, the character count above it on the right (Ahmed, 18 October 2026). */
+  .ppn-row { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:10px; }
+  .ppn-row .ppn-count { align-self:flex-end; }
   .ppn-count { font-size:.8rem; color:var(--text-muted); font-family:var(--font-mono); direction:ltr; unicode-bidi:isolate; }
   .ppn-log { background:var(--amber); color:var(--amber-ink); border:0; border-radius:8px; padding:12px 22px; font:inherit; font-weight:600;
     font-size:1rem; cursor:pointer; min-height:44px; }
@@ -63,8 +65,11 @@
   .ppn-item:first-child { border-top:none; }
   .ppn-item .meta { font-size:.8rem; color:var(--text-muted); display:block; }
   .ppn-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:700; color:#fff; margin-inline-end:6px; }
-  .ppn-pill.positive { background:#2f8f5b; } .ppn-pill.improvement { background:var(--amber); color:var(--amber-ink); } .ppn-pill.critical { background:var(--red); }
-  .ppn-pill.earlier { background:#5a6673; }
+  /* The type is a coloured word on the black box, not a filled badge
+     (Ahmed, 18 October 2026: "only the word Critical gap in red"). */
+  .ppn-pill { padding:0; border-radius:0; background:none; }
+  .ppn-pill.positive { color:#3fae6c; } .ppn-pill.improvement { color:var(--amber); } .ppn-pill.critical { color:var(--red-soft); }
+  .ppn-pill.earlier { color:var(--text-muted); font-weight:600; }
   .ppn-actions { margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
   .ppn-actions button { font:inherit; font-size:.82rem; background:none; border:0; padding:4px 0; cursor:pointer; text-decoration:underline; color:var(--blue-soft); }
   .ppn-actions button.danger { color:var(--red-soft); }

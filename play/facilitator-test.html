@@ -155,7 +155,7 @@
   .notes-counts { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
   .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; background: var(--bg); }
   .notes-list .ppn-item.unread { background: var(--amber-dim); margin: 0 -12px; padding: 9px 12px; }
-  .notes-list .ppn-item.critical { border-inline-start: 4px solid var(--red); margin-inline-start: -12px; padding-inline-start: 8px; }
+  /* a Critical gap: only the words are red (18 October 2026) */
   .notes-list .ppn-item.unread.critical { background: var(--red-dim); }
   .notes-list .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
   .notes-close { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-raised); font-size: 0.9rem; }
@@ -215,6 +215,7 @@
   .ci-task { font-size: 0.92rem; color: var(--text); background: var(--amber-dim); border-inline-start: 3px solid var(--amber); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
   .ci-meta { font-size: 0.8rem; color: var(--text-muted); }
   .current-inject { background: transparent; border: 0; padding: 0; max-width: none; }
+  body.pp-start-asking #startBtn { display: none !important; }
   .reset-card { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   .reset-card h2 { margin: 0 0 2px; }
   .reset-card .sub { margin: 0; }
@@ -286,8 +287,8 @@
     <div class="t" id="startCheckTitle" data-i18n="fac.startCheck.title">Not everything is ready</div>
     <ul id="startCheckList"></ul>
     <div class="b">
-      <button id="startBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
-      <button id="startAnywayBtn" data-i18n="fac.startCheck.anyway">Start anyway</button>
+      <button id="startBackBtn" data-i18n="fac.common.goBack">Go back</button>
+      <button id="startAnywayBtn" class="primary" data-i18n="fac.startCheck.anyway">Start the exercise anyway</button>
     </div>
   </div>
 
@@ -325,15 +326,9 @@
         <h2 data-i18n="fac.exercise.currentHeading">Current inject</h2>
         <div class="current-inject" id="currentInject">—</div>
       </div>
-      <div class="pp-card status-section">
-        <h2 data-i18n="fac.status.heading">Response status</h2>
-        <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
-        <div class="legend">
-          <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
-          <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
-          <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
-          <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
-        </div>
+      <div class="pp-card notes-own" id="notesOwn">
+        <h2 data-i18n="fac.notes.addOwn">Your note</h2>
+        <div id="facNoteForm"></div>
       </div>
     </div>
     <div class="pp-col">
@@ -348,9 +343,15 @@
           <span data-i18n-html="fac.tower.legendAttention_html"><i class="dot red"></i> Needs attention</span>
         </div>
       </div>
-      <div class="pp-card notes-own" id="notesOwn">
-        <h2 data-i18n="fac.notes.addOwn">Your note</h2>
-        <div id="facNoteForm"></div>
+      <div class="pp-card status-section">
+        <h2 data-i18n="fac.status.heading">Response status — this inject</h2>
+        <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
+        <div class="legend">
+          <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
+          <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
+          <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
+          <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
+        </div>
       </div>
       <div class="pp-card" id="readyCard">
         <h2 data-i18n="fac.exercise.readyHeading">Before you start</h2>
@@ -360,6 +361,17 @@
           <a id="checkLink" target="_blank" rel="noopener" data-i18n="fac.links.check">Connection check</a> — send to the client's IT contact a week before, and open it on each room laptop on the exercise network ·
           <a id="printLink" target="_blank" rel="noopener" data-i18n="fac.links.print">Printable backup pack</a> — print it (or save as PDF) so the exercise can continue on paper if the network or screens fail.
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Responses (18 October 2026): every inject played so far ===== -->
+  <section id="tabResponses" class="pp-cols" hidden>
+    <div class="pp-col" style="grid-column: 1 / -1;">
+      <div class="pp-card">
+        <h2 data-i18n="fac.responses.heading">Responses — every inject so far</h2>
+        <div class="sub" data-i18n="fac.responses.sub">One row per department, one column per inject. The Exercise tab shows the inject running now.</div>
+        <div id="historySection"></div>
       </div>
     </div>
   </section>
@@ -491,6 +503,11 @@
       <div class="pp-card inbox-section" id="inboxSection">
         <h2 data-i18n="fac.convo.heading">Conversation</h2>
         <div class="sub" data-i18n="fac.convo.sub">Everything received and sent, newest first. Reply under a message answers that department or that room's Observers; "+5 min for everyone" sits beside a request for more time.</div>
+        <div class="pp-chips convo-filter" id="convoFilter" role="radiogroup" aria-label="Show" data-i18n-attr="aria-label:fac.convo.filterAria">
+          <button type="button" class="pp-chip" data-filter="all" aria-checked="true" data-i18n="fac.convo.filterAll">All</button>
+          <button type="button" class="pp-chip" data-filter="departments" aria-checked="false" data-i18n="fac.convo.filterDepartments">Departments</button>
+          <button type="button" class="pp-chip" data-filter="observers" aria-checked="false" data-i18n="fac.convo.filterObservers">Observers</button>
+        </div>
         <ul class="inbox-list" id="inboxList"><li class="muted-line" data-i18n="fac.inbox.empty">No messages yet.</li></ul>
       </div>
     </div>
@@ -499,6 +516,8 @@
         <h2 data-i18n="fac.compose.heading">Send a message</h2>
         <div class="field-label" data-i18n="fac.compose.to">To</div>
         <div class="pp-chips" id="composeTo" role="radiogroup"></div>
+        <div class="field-label sub-label" data-i18n="fac.compose.toObservers">Observers only</div>
+        <div class="pp-chips" id="composeToObs" role="radiogroup"></div>
         <div class="field-label" data-i18n="fac.compose.presets">Ready-made</div>
         <div class="pp-chips" id="composePresets"></div>
         <label for="msgText" class="field-label" data-i18n="fac.compose.orType">Or type your own</label>
@@ -514,7 +533,7 @@
   </section>
 
   <!-- ===== Notes ===== -->
-  <section id="tabNotes" class="pp-cols wide" hidden>
+  <section id="tabNotes" class="pp-cols" hidden>
     <div class="pp-col">
       <div class="pp-card notes-section" id="notesSection">
         <h2 data-i18n-nodes="fac.notes.heading">Observers' notes <span class="notes-badge" id="notesBadge" hidden></span></h2>
@@ -624,6 +643,7 @@
       storageKey: `pp_factab_${sessionId}`,
       tabs: [
         { id: "exercise", label: T("fac.tabs.exercise"), panel: document.getElementById("tabExercise") },
+        { id: "responses", label: T("fac.tabs.responses"), panel: document.getElementById("tabResponses") },
         { id: "people", label: T("fac.tabs.people"), panel: document.getElementById("tabPeople") },
         { id: "messages", label: T("fac.tabs.messages"), panel: document.getElementById("tabMessages") },
         { id: "notes", label: T("fac.tabs.notes"), panel: document.getElementById("tabNotes") },
@@ -1048,6 +1068,18 @@
     const composePresetsEl = document.getElementById("composePresets");
     const inboxReadKey = `pp_facinbox_read_${sessionId}`;
     let allMessages = [];      // every direction, oldest first (facilitator_message_log)
+    let senderNames = {};      // message id → the participant's name (facilitator only, 18 October 2026)
+    let convoFilter = "all";   // all | departments | observers
+    const composeToObsEl = document.getElementById("composeToObs");
+    const convoFilterEl = document.getElementById("convoFilter");
+    const isObserverThread = (m) => m.direction === "from_observer" || m.direction === "to_observers";
+    convoFilterEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-filter]");
+      if (!b) return;
+      convoFilter = b.dataset.filter;
+      convoFilterEl.querySelectorAll("[data-filter]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+      renderInbox();
+    });
     let inboxLastReadAt = null;
     let msgSending = false;
     let composeTarget = { kind: "everyone" }; // { kind: "everyone" } | { kind: "dept", dept } | { kind: "observers", room }
@@ -1119,8 +1151,9 @@
       tabsApi.badge("messages", unread.length, "");
       const canReplyObs = observerChannel(currentRow).open;
       const ended = currentRow && currentRow.status === "ended";
-      inboxListEl.innerHTML = allMessages.length
-        ? allMessages
+      const shown = allMessages.filter((m) => convoFilter === "all" || (convoFilter === "observers" ? isObserverThread(m) : !isObserverThread(m)));
+      inboxListEl.innerHTML = shown.length
+        ? shown
             .slice()
             .reverse()
             .map((m) => {
@@ -1130,7 +1163,8 @@
                 return `<li class="sent" data-kind="sent"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.convo.you", { target: sentTargetLabel(m) }))} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}</li>`;
               }
               const observer = m.direction === "from_observer";
-              const who = observer ? observerRoomLabel(m.room) : (m.department || T("fac.inbox.unknownDept"));
+              const who = observer ? observerRoomLabel(m.room)
+                : (m.department || T("fac.inbox.unknownDept")) + (senderNames[m.id] ? ` · ${senderNames[m.id]}` : "");
               const canReply = !earlier && (observer ? canReplyObs : !ended);
               const actions =
                 (canReply ? `<button type="button" class="msg-dept-btn msg-reply-btn" data-kind="${observer ? "observers" : "dept"}" data-room="${m.room || ""}" data-dept="${escapeHtml(m.department || "")}">${escapeHtml(T("fac.convo.reply"))}</button>` : "") +
@@ -1159,9 +1193,10 @@
     async function refreshInbox(fromRing) {
       try {
         const known = new Set(allMessages.map((m) => m.id));
-        const fresh = await fetchAllMessages(sessionId);
+        const [fresh, names] = await Promise.all([fetchAllMessages(sessionId), fetchMessageSenders(sessionId)]);
         const gotNew = fresh.some((m) => isIncoming(m) && !known.has(m.id));
         allMessages = fresh;
+        senderNames = names;
         renderInbox();
         if (gotNew && inboxLoadedOnce) playChime();
         inboxLoadedOnce = true;
@@ -1195,8 +1230,11 @@
       const sig = JSON.stringify(targets) + "|" + JSON.stringify(composeTarget) + "|" + composePresetKey;
       if (sig !== composeSig) {
         composeSig = sig;
-        composeToEl.innerHTML = targets.map((t, i) =>
-          `<button type="button" class="pp-chip" role="radio" data-target="${i}" aria-checked="${sameTarget(t, composeTarget)}">${escapeHtml(targetLabelOf(t))}</button>`).join("");
+        // People (everyone, a department) and, as their own group, Observers
+        // only (18 October 2026: the Observer channel was hard to find).
+        const chip = (t, i) => `<button type="button" class="pp-chip" role="radio" data-target="${i}" aria-checked="${sameTarget(t, composeTarget)}">${escapeHtml(targetLabelOf(t))}</button>`;
+        composeToEl.innerHTML = targets.map((t, i) => (t.kind === "observers" ? "" : chip(t, i))).join("");
+        composeToObsEl.innerHTML = targets.map((t, i) => (t.kind === "observers" ? chip(t, i) : "")).join("");
         composePresetsEl.innerHTML = composePresetsFor(composeTarget).map((p) =>
           `<button type="button" class="pp-chip" data-preset="${p.key}" aria-pressed="${p.key === composePresetKey}">${escapeHtml(p.text)}</button>`).join("");
       }
@@ -1227,12 +1265,12 @@
       msgFeedbackEl.textContent = "";
       msgFeedbackEl.className = "broadcast-feedback";
     }
-    composeToEl.addEventListener("click", (e) => {
+    [composeToEl, composeToObsEl].forEach((el) => el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-target]");
       if (!b) return;
       const t = composeTargets()[Number(b.dataset.target)];
       if (t) { composeSetTarget(t); clearMsgFeedback(); }
-    });
+    }));
     composePresetsEl.addEventListener("click", (e) => {
       const b = e.target.closest("[data-preset]");
       if (!b || b.disabled) return;
@@ -1391,6 +1429,7 @@
     // "On time" is decided by the database at the moment of Submit (see
     // exercise_submissions.on_time), not by this page's clock.
     const statusSectionEl = document.getElementById("statusSection");
+    const historySectionEl = document.getElementById("historySection");
     let lastAttendees = null;
     let lastSubmissions = null;
 
@@ -1504,6 +1543,7 @@
         .sort((a, b) => a - b);
       if (played.length === 0 || depts.length === 0) {
         statusSectionEl.innerHTML = `<p class="muted-line" style="font-size:0.9rem;">${escapeHtml(T("fac.status.notStarted"))}</p>`;
+        historySectionEl.innerHTML = statusSectionEl.innerHTML;
         return;
       }
 
@@ -1536,10 +1576,14 @@
           </div>`;
       }
 
-      const past = played.filter((i) => i !== curIdx);
+      if (curIdx === null) html += `<p class="muted-line" style="font-size:0.9rem;">${escapeHtml(T("fac.status.noneRunning"))}</p>`;
+      statusSectionEl.innerHTML = html;
+      // The full table (every inject played, the current one too) is on the
+      // Responses tab (Ahmed, 18 October 2026).
+      html = "";
+      const past = played;
       if (past.length) {
         html += `
-          <div style="font-size:0.85rem; font-weight:600; margin:4px 0 6px;">${escapeHtml(T("fac.status.earlierHeading"))}</div>
           <div class="history-wrap">
             <table class="history">
               <thead><tr><th>${escapeHtml(T("fac.status.deptColumn"))}</th>${past
@@ -1560,7 +1604,7 @@
             </table>
           </div>`;
       }
-      statusSectionEl.innerHTML = html;
+      historySectionEl.innerHTML = html;
     }
 
     // ---- Control tower (roadmap item 6, 11 October 2026) -----------------
@@ -1944,6 +1988,10 @@
           } catch (err) {
             rosterErrorEl.textContent = T("fac.roster.removeFailed", { message: PPLang.dbMessage(err.message) });
             rosterErrorEl.style.display = "block";
+            // also at the top, where it cannot be missed (18 October 2026)
+            errorBoxEl.textContent = rosterErrorEl.textContent;
+            errorBoxEl.style.display = "block";
+            showTop();
             btn.disabled = false;
           }
         });
@@ -2324,7 +2372,7 @@
     });
 
     document.getElementById("startBtn").addEventListener("click", async () => {
-      startCheckEl.hidden = true;
+      startCheckEl.hidden = true; document.body.classList.remove("pp-start-asking");
       document.getElementById("endCheck").hidden = true;
       if (canResume()) { showResumeCheck(); return; }
       resumeCheckEl.hidden = true;
@@ -2336,16 +2384,19 @@
       if (!issues.length) { showExercise(); return runAction(startExercise); }
       startCheckListEl.innerHTML = issues.map((t) => `<li>${escapeHtml(t)}</li>`).join("");
       startCheckEl.hidden = false;
+      document.body.classList.add("pp-start-asking"); // one Start button at a time (18 October 2026)
       showTop();
       startBtn.disabled = false;
     });
     document.getElementById("startAnywayBtn").addEventListener("click", () => {
       startCheckEl.hidden = true;
+      document.body.classList.remove("pp-start-asking");
       showExercise(); // the exercise opens on the Exercise tab
       runAction(startExercise);
     });
     document.getElementById("startBackBtn").addEventListener("click", () => {
       startCheckEl.hidden = true;
+      document.body.classList.remove("pp-start-asking");
     });
     onInjectClick(document.getElementById("nextBtn"), () => {
       if (!currentRow) return;
@@ -2503,7 +2554,7 @@
     setInterval(renderEndStrip, 10000);
     const resetCheckEl = document.getElementById("resetCheck");
     document.getElementById("resetBtn").addEventListener("click", () => {
-      startCheckEl.hidden = true; endCheckEl.hidden = true; resumeCheckEl.hidden = true;
+      startCheckEl.hidden = true; document.body.classList.remove("pp-start-asking"); endCheckEl.hidden = true; resumeCheckEl.hidden = true;
       // The question opens inside the "Start over" box, in place of the
       // button (18 October 2026: one question, one pair of answers).
       resetCheckEl.hidden = false;

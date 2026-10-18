@@ -31,7 +31,7 @@
   .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; direction: inherit; unicode-bidi: normal; }
   .video-card {
     width: min(720px, 90vw); aspect-ratio: 16/9;
-    background: linear-gradient(135deg, var(--panel-raised), var(--bg));
+    background: var(--panel);
     border: 2px solid var(--amber); border-radius: 12px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
     animation: pulse 2.5s ease-in-out infinite;
@@ -756,8 +756,11 @@
       const boxes = [document.querySelector("#noteForm textarea"), document.getElementById("obsMsgText")];
       const typing = boxes.some((b) => b && (document.activeElement === b || b.value.trim()));
       // the first inject after opening or reloading keeps the remembered tab
-      if (obsCameFromLobby) tabsApi.show("exercise"); // the start always opens Exercise (18 October 2026); a draft note is kept
-      else if (typing || obsPageFresh) tabsApi.dot("exercise", true); else tabsApi.show("exercise");
+      // every new inject opens Exercise (Ahmed, 18 October 2026); a draft
+      // note or message is kept in its box. Only the first inject drawn
+      // after a reload keeps the remembered tab.
+      void typing;
+      if (obsCameFromLobby || !obsPageFresh) tabsApi.show("exercise"); else tabsApi.dot("exercise", true);
     }
     obsPageFresh = false;
     obsCameFromLobby = false;

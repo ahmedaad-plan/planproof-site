@@ -493,7 +493,9 @@ async function deleteAttendee(attendeeId, facilitatorToken) {
     throw new Error(T("shared.error.noFacilitatorToken"));
   }
   const res = await withRetry(() =>
-    fetch(`${SUPABASE_URL}/rest/v1/attendees?id=eq.${attendeeId}`, {
+    // select=id: only the id comes back (18 October 2026 — asking for the
+    // whole row failed once a column the page may not read was added).
+    fetch(`${SUPABASE_URL}/rest/v1/attendees?id=eq.${attendeeId}&select=id`, {
       method: "DELETE",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -672,10 +674,12 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
 
 // Department -> facilitator. No facilitator token exists for a participant,
 // so — like a group answer — anyone who joined under this department can
-// send on its behalf; no individual is recorded, not even hidden. The
+// send on its behalf; only the facilitator sees who sent it (18 October 2026). The
 // database refuses this direction without a department (see migration
 // item4_on_time_rule_department_messaging).
-async function sendDepartmentRequest(sessionId, { body, presetKey, department }) {
+// From 18 October 2026 (Ahmed): the sender's registration goes with it, so
+// the FACILITATOR sees the person's name; departments and Observers never do.
+async function sendDepartmentRequest(sessionId, { body, presetKey, department, attendeeId }) {
   assertValidSessionId(sessionId);
   if (!department) {
     throw new Error(T("shared.error.noDepartment"));
@@ -695,6 +699,7 @@ async function sendDepartmentRequest(sessionId, { body, presetKey, department })
         department,
         body,
         preset_key: presetKey || null,
+        ...(attendeeId ? { sender_attendee_id: attendeeId } : {}),
       }),
     })
   );
@@ -751,6 +756,23 @@ async function fetchAllMessages(sessionId) {
   );
   if (!res.ok) throw new Error(T("shared.error.fetchMessagesFailed", { detail: await readErrorDetail(res) }));
   return res.json();
+}
+
+// The names of the participants who sent department messages (18 October
+// 2026) — for the facilitator only; { messageId: name }. Older databases
+// without the function simply give no names.
+async function fetchMessageSenders(sessionId) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_message_senders`, {
+      method: "POST", cache: "no-store", headers: rpcHeaders(getFacilitatorToken()),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    });
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const map = {};
+    (rows || []).forEach((r) => { map[r.id] = r.sender_name; });
+    return map;
+  } catch { return {}; }
 }
 
 // Messages addressed to the facilitator — from departments and (item 7) from
@@ -1775,7 +1797,6 @@ function endScreenHtml({ name, everyone, compact, label, extraHtml, close } = {}
       <h1 class="pp-thanks-title">${title}</h1>
       <p class="pp-thanks-lead">${ppEscape(T("shared.end.ended"))}</p>
       ${label ? `<p class="pp-thanks-label">${ppEscape(label)}</p>` : ""}
-      <p class="pp-thanks-nofault">${ppEscape(T("shared.end.noFault"))}</p>
       ${extraHtml || ""}
       ${close === false ? "" : `<p class="pp-thanks-close">${ppEscape(T("shared.end.closePage"))}</p>`}
     </section>`;
