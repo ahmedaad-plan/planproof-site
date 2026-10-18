@@ -269,11 +269,13 @@
     <div class="pp-cmd-btns">
       <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
       <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
+      <button id="pauseBtn" data-i18n="fac.controls.pause">Pause</button>
       <button class="danger" id="endBtn" data-i18n="fac.controls.end">End exercise</button>
       <button type="button" class="pp-cmd-more" id="cmdMoreBtn" aria-expanded="false" data-i18n="fac.cmd.more">More &#9662;</button>
     </div>
     <div class="pp-cmd-secondary" id="cmdSecondary">
       <button id="prevBtn" data-i18n="fac.controls.previous">&larr; Previous inject</button>
+      <button id="replayBtn" data-i18n="fac.controls.replay">Replay this inject</button>
       <button id="extendBtn" data-i18n="fac.controls.extend">+5 min for everyone</button>
       <button id="unlockBtn" data-i18n="fac.controls.unlock">Unlock this inject</button>
     </div>
@@ -615,6 +617,8 @@
     const nextBtn = document.getElementById("nextBtn");
     const prevBtn = document.getElementById("prevBtn");
     const extendBtn = document.getElementById("extendBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const replayBtn = document.getElementById("replayBtn");
     const unlockBtn = document.getElementById("unlockBtn");
     const endBtn = document.getElementById("endBtn");
     const resetBtn = document.getElementById("resetBtn");
@@ -709,7 +713,13 @@
       const inj = injects[idx];
       let clock = "", state = "none", who = "";
       if (currentRow.status === "running" && inj) {
-        if (currentRow.inject_force_unlocked) { clock = T("fac.cmd.unlocked"); state = "none"; }
+        if (isPaused(currentRow)) {
+          const deadline = currentRow.inject_force_unlocked ? null : injectDeadlineMs(currentRow, inj);
+          const left = deadline === null ? null : Math.max(0, deadline - Date.now());
+          clock = left === null ? T("fac.cmd.paused")
+            : T("fac.cmd.pausedLeft", { time: `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}` });
+          state = "paused";
+        } else if (currentRow.inject_force_unlocked) { clock = T("fac.cmd.unlocked"); state = "none"; }
         else {
           const deadline = injectDeadlineMs(currentRow, inj);
           if (deadline === null) { clock = T("fac.cmd.noLimit"); state = "none"; }
@@ -962,6 +972,14 @@
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
       unlockBtn.disabled = !isRunning;
+      // Pause / Resume and Replay (18 October 2026).
+      const paused = isPaused(currentRow);
+      pauseBtn.hidden = !isRunning;
+      pauseBtn.disabled = !isRunning || currentRow.current_inject_index < 0;
+      pauseBtn.textContent = paused ? T("fac.controls.resumePause") : T("fac.controls.pause");
+      pauseBtn.classList.toggle("primary", paused);
+      pauseBtn.setAttribute("aria-pressed", String(paused));
+      replayBtn.disabled = !isRunning || currentRow.current_inject_index < 0;
       unlockBtn.textContent = currentRow && currentRow.inject_force_unlocked
         ? T("fac.controls.lock")
         : T("fac.controls.unlock");
@@ -1560,6 +1578,7 @@
             ? ` · ${T("fac.status.timeLeft", { time: `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}` })}`
             : ` · ${T("fac.status.timesUp")}`;
         }
+        if (isPaused(currentRow)) timeText += ` · ${T("fac.status.paused")}`;
         html += `
           <div class="status-current">
             <div class="status-head">${escapeHtml(T("fac.status.currentHead", { number: curIdx + 1, title: inj.title }))}</div>
@@ -2454,6 +2473,26 @@
       // this button only ever acts on whichever inject is current right now.
       return patchSession(sessionId, { inject_force_unlocked: !currentRow.inject_force_unlocked });
     });
+    // ---- Pause / Resume and Replay (Ahmed, 18 October 2026) ---------------
+    // Pause stops the clock on every device (the database records the moment;
+    // Resume moves the inject's start forward by the paused time, so the time
+    // left is kept). While paused, answers can be typed but not sent.
+    // Replay plays the current inject again from the start — sound, room
+    // screens, every phone back on the Inject tab — with its full time again
+    // (+5 and Unlock are cleared). Answers already sent are kept.
+    pauseBtn.addEventListener("click", () => {
+      if (!currentRow || currentRow.status !== "running") return;
+      const paused = isPaused(currentRow);
+      runAction(() => patchSession(sessionId, { paused_at: paused ? null : new Date().toISOString() }));
+    });
+    onInjectClick(replayBtn, () => {
+      if (!currentRow || currentRow.status !== "running") return;
+      return patchSession(sessionId, {
+        inject_replay_count: (currentRow.inject_replay_count || 0) + 1,
+        inject_extra_minutes: 0,
+        inject_force_unlocked: false,
+      });
+    });
     // ---- End, with a confirmation (item 8; Ahmed, 11 October 2026) --------
     // End used to act on one click, on every screen at once. It now asks
     // first, and lists what is still unfinished on the current inject — it
@@ -2594,7 +2633,8 @@
       // the roster's 5-second poll — so this can't clobber a selection the
       // facilitator is still making.
       if (document.activeElement !== roomCountSelectEl) roomCountSelectEl.value = String(currentRow.room_count || 1);
-      statusVal.textContent = PPLang.has("fac.sessionStatus." + currentRow.status) ? T("fac.sessionStatus." + currentRow.status) : currentRow.status;
+      statusVal.textContent = isPaused(currentRow) ? T("fac.sessionStatus.paused")
+        : PPLang.has("fac.sessionStatus." + currentRow.status) ? T("fac.sessionStatus." + currentRow.status) : currentRow.status;
       document.getElementById("facLabel").textContent = currentRow.label || T("fac.header.label");
       const injects = currentRow.scenario.injects || [];
       const isLast = currentRow.current_inject_index === injects.length - 1;

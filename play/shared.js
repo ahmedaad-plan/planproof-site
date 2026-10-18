@@ -408,11 +408,23 @@ function sessionDepartments(row) {
 // reloads mid-inject) agrees with the database's on-time check. null = no
 // deadline (no duration set). Falls back to "now" only for a session row
 // from before start times were recorded.
+//
+// While the facilitator has paused the exercise (18 October 2026) the
+// deadline moves forward with the clock, so "deadline - now" stays at the
+// time that was left when Pause was pressed, on every device, without each
+// countdown having to know about pauses. On Resume the database moves the
+// inject's start forward by the paused time, and the countdown carries on.
 function injectDeadlineMs(row, inject) {
   const minutes = ((inject && inject.durationMinutes) || 0) + ((row && row.inject_extra_minutes) || 0);
   if (!inject || !inject.durationMinutes) return null;
   const start = row && row.inject_started_at ? Date.parse(row.inject_started_at) : Date.now();
-  return start + minutes * 60 * 1000;
+  const pausedFor = isPaused(row) ? Date.now() - Date.parse(row.paused_at) : 0; // no clamp: a phone clock that is off then cancels out
+  return start + minutes * 60 * 1000 + pausedFor;
+}
+
+// True while the facilitator has paused the running exercise.
+function isPaused(row) {
+  return !!(row && row.status === "running" && row.paused_at && !isNaN(Date.parse(row.paused_at)));
 }
 
 // Uploads one attachment to Supabase Storage ahead of saveSubmission — the
@@ -1253,7 +1265,7 @@ function rowSignature(row) {
   return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
     row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
     JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
-    row.run_number].join("|");
+    row.run_number, row.paused_at, row.inject_replay_count].join("|");
 }
 
 function createLiveStatus() {

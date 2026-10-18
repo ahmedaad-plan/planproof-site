@@ -27,6 +27,7 @@
     direction: ltr; unicode-bidi: isolate;
   }
   .timer-row .value.warn { color: var(--amber); }
+  .timer-row .value.paused { color: var(--amber); }
   .timer-row .value.up { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; direction: inherit; unicode-bidi: normal; }
   .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; direction: inherit; unicode-bidi: normal; }
   .video-card {
@@ -335,6 +336,7 @@
   const clientLabelEl = document.getElementById("clientLabel");
   const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
+  let lastRenderedReplay = null; // inject_replay_count last drawn (Replay this inject, 18 October 2026)
   let obsPageFresh = true; // true until this page has shown the lobby or an inject
   let obsCameFromLobby = false; // the next inject drawn is the start of the exercise
   let injectTimerInterval = null;
@@ -737,8 +739,13 @@
       return;
     }
 
-    const isNewInject = idx !== lastRenderedIndex;
+    // Replay this inject counts as a new inject here: its sound plays again
+    // and an Observer is taken back to the Exercise tab.
+    const replayCount = row.inject_replay_count || 0;
+    const isNewInject = idx !== lastRenderedIndex
+      || (lastRenderedReplay !== null && replayCount > lastRenderedReplay);
     lastRenderedIndex = idx;
+    lastRenderedReplay = replayCount;
 
     const videoBlock = inject.video
       ? `<div class="video-card"><div class="tag">${escapeHtml(T("room.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
@@ -811,17 +818,23 @@
     // changes), so a reload mid-inject resumes at the real time left and an
     // extension shows straight away. (Fixed 6 October 2026 — the room screen
     // used to start its own stopwatch when it first showed the inject.)
-    startInjectTimer(injectDeadlineMs(row, inject), row.inject_extra_minutes || 0);
+    startInjectTimer(row, inject, row.inject_extra_minutes || 0);
   }
 
-  function startInjectTimer(deadlineMs, extraMinutes) {
+  // The deadline is worked out again every second, so a Pause holds the
+  // time left still (shared.js injectDeadlineMs).
+  function startInjectTimer(row, inject, extraMinutes) {
     clearInjectTimer();
+    const paused = isPaused(row);
     const noteEl = document.getElementById("injectTimerNote");
-    if (noteEl) noteEl.textContent = extraMinutes > 0 ? T("room.timer.extra", { count: extraMinutes }) : "";
+    if (noteEl) noteEl.textContent = paused ? T("room.timer.paused")
+      : extraMinutes > 0 ? T("room.timer.extra", { count: extraMinutes }) : "";
     const slim = document.getElementById("slimClock");
+    const hasDeadline = !!injectDeadlineMs(row, inject);
     function tick() {
       const el = document.getElementById("injectTimerValue");
       if (!el) return;
+      const deadlineMs = injectDeadlineMs(row, inject);
       if (!deadlineMs) {
         el.textContent = T("room.timer.noLimit");
         el.className = "value nolimit";
@@ -841,12 +854,12 @@
       const s = Math.floor((remainingMs % 60000) / 1000);
       el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
       // Amber in the last minute, as on the phones.
-      el.className = remainingMs < 60000 ? "value warn" : "value"; // i18n-ok: CSS class names
+      el.className = paused ? "value paused" : remainingMs < 60000 ? "value warn" : "value"; // i18n-ok: CSS class names
       // The Observer's slim header carries the same clock.
-      if (slim) { slim.textContent = el.textContent; slim.dataset.state = remainingMs < 60000 ? "warn" : "run"; }
+      if (slim) { slim.textContent = el.textContent; slim.dataset.state = paused ? "paused" : remainingMs < 60000 ? "warn" : "run"; }
     }
     tick();
-    if (deadlineMs) injectTimerInterval = setInterval(tick, 1000);
+    if (hasDeadline) injectTimerInterval = setInterval(tick, 1000);
   }
 
   function clearInjectTimer() {

@@ -274,6 +274,8 @@
   let lockLabel = T("part.lock.timesUp"); // what the greyed button says when the form is closed
   let submitting = false;    // a Submit is on its way to the server
   let currentExtraMinutes = 0; // the exercise_sessions.inject_extra_minutes value already applied to the running timer, for the inject currently on screen
+  let currentReplayCount = 0; // exercise_sessions.inject_replay_count already applied (Replay this inject, 18 October 2026)
+  let currentPaused = false; // the facilitator's Pause, as already applied to the form
   let forceUnlocked = false; // mirrors exercise_sessions.inject_force_unlocked for the inject currently on screen
   let latestRow = null;
   let saveTimer = null;
@@ -966,6 +968,8 @@
       formIdx = idx;
       formInject = inject;
       currentExtraMinutes = row.inject_extra_minutes || 0;
+      currentReplayCount = row.inject_replay_count || 0;
+      currentPaused = isPaused(row);
       forceUnlocked = !!row.inject_force_unlocked;
       lockLabel = T("part.lock.timesUp");
       editingSubmitted = false;
@@ -1048,6 +1052,43 @@
       }
     } else {
       formInject = inject;
+      // Replay this inject (Ahmed, 18 October 2026): the inject starts again
+      // with its full time — like a new inject: its sound, the Inject tab, the
+      // top of the page. An answer already sent stays sent (with its "Edit
+      // answer"); one that had locked on time-out opens again.
+      const replayNow = row.inject_replay_count || 0;
+      if (replayNow > currentReplayCount) {
+        currentReplayCount = replayNow;
+        currentPaused = isPaused(row);
+        if (forceUnlocked && !row.inject_force_unlocked && reopenedSubmitted) {
+          submittedForCurrent = true;
+          reopenedSubmitted = false;
+        }
+        forceUnlocked = !!row.inject_force_unlocked;
+        currentExtraMinutes = row.inject_extra_minutes || 0;
+        if (editingSubmitted) abandonEdit();
+        if (injectLocked && !submittedForCurrent) unlockForCurrentInject(T("part.status.replayed"), false, true);
+        else if (currentSaveStatusEl) currentSaveStatusEl.textContent = T("part.status.replayed");
+        armTimer();
+        drawState();
+        stopSfx();
+        playInjectSound(row, idx, inject);
+        if (tabsApi && !tabsApi.isCurrent("inject")) tabsApi.show("inject");
+        try { window.scrollTo({ top: 0 }); } catch { window.scrollTo(0, 0); }
+        storeAnswers();
+        return;
+      }
+      currentReplayCount = replayNow;
+      // Pause / Resume (18 October 2026): the clock stops; typing goes on,
+      // sending waits until the facilitator carries on.
+      const pausedNow = isPaused(row);
+      if (pausedNow !== currentPaused) {
+        currentPaused = pausedNow;
+        if (pausedNow) stopSfx();
+        showToast(T(pausedNow ? "part.pause.toast" : "part.pause.resumedToast"), pausedNow ? 15000 : 6000);
+        armTimer();
+        drawState();
+      }
       const forceNow = !!row.inject_force_unlocked;
       if (forceNow !== forceUnlocked) {
         if (forceNow) {
@@ -1283,6 +1324,10 @@
     }
     box.innerHTML = html;
     currentSubmitBtn = document.getElementById("submitBtn");
+    if (currentPaused && currentSubmitBtn && !currentSubmitBtn.disabled) {
+      currentSubmitBtn.disabled = true;
+      currentSubmitBtn.textContent = T("part.pause.cannotSend");
+    }
     renderAttachmentList();
     updateClock();
   }
@@ -1290,6 +1335,7 @@
   // Submit, and "Submit changes" for a submitted answer being changed.
   async function submitAnswer(idx, inject, btn, errorBoxEl) {
     if (injectLocked) return; // time ran out before the click was processed
+    if (currentPaused) return; // paused: sending waits for the facilitator
     const answerEl = currentAnswerEl;
     const wasEditing = editingSubmitted;
     errorBoxEl.style.display = "none";
@@ -1534,7 +1580,7 @@
         const m = Math.floor(remainingMs / 60000);
         const s = Math.floor((remainingMs % 60000) / 1000);
         valueEl.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-        clockEl.dataset.state = remainingMs < 60000 ? "warn" : "run";
+        clockEl.dataset.state = currentPaused ? "paused" : remainingMs < 60000 ? "warn" : "run";
         const totalMs = (((formInject && formInject.durationMinutes) || 0) + currentExtraMinutes) * 60000;
         if (barEl) barEl.style.transform = `scaleX(${totalMs > 0 ? Math.min(1, remainingMs / totalMs) : 1})`;
       }
@@ -1544,7 +1590,9 @@
     slimClockEl.dataset.state = clockEl.dataset.state;
     if (noteEl) {
       const open = remainingMs === null || remainingMs > 0;
-      noteEl.textContent = forceUnlocked
+      noteEl.textContent = currentPaused
+        ? T("part.clock.notePaused")
+        : forceUnlocked
         ? T("part.clock.noteUnlocked")
         : editingSubmitted
           ? T("part.clock.noteEditing")
