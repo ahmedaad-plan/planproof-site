@@ -23,7 +23,7 @@
   .inject-title { font-family: var(--font-display); font-size: 1.45rem; font-weight: 600; line-height: 1.25; margin-bottom: 8px; }
   .inject-desc { color: var(--text); margin-bottom: 14px; }
   .inject-task {
-    background: var(--amber-dim); border-inline-start: 3px solid var(--amber);
+    background: transparent; border-inline-start: 3px solid var(--accent);
     padding: 9px 12px; border-radius: 4px; font-size: 0.95rem;
   }
   .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -31,7 +31,7 @@
     font-size: 0.78rem; padding: 3px 10px; border-radius: 999px;
     border: 1px solid var(--border-strong); color: var(--text-muted);
   }
-  .tag.individual { border-color: var(--amber); color: var(--amber); }
+  .tag.individual { border-color: var(--accent); color: var(--accent); }
   .answer-card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
   }
@@ -61,7 +61,7 @@
   .edit-hint { margin-top: 8px; }
   /* Changing a submitted answer ("Edit answer", 11 October 2026). */
   .editing-note {
-    background: var(--amber-dim); border: 1px solid var(--amber); border-radius: 8px;
+    background: transparent; border: 1px solid var(--accent); border-radius: 8px;
     padding: 10px 14px; font-size: 0.9rem; margin-top: 14px;
   }
   .center-note { text-align: center; color: var(--text); padding: 72px 20px; font-size: 1.15rem; text-wrap: balance; }
@@ -83,7 +83,7 @@
     flex: 0 0 auto; font: inherit; font-size: 0.82rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
     background: transparent; color: var(--text); border: 1.5px solid var(--border-strong);
   }
-  .remote-bar button.attention { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+  .remote-bar button.attention { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .remote-gate {
     position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 18px; z-index: 20; padding: 24px; text-align: center;
@@ -97,17 +97,17 @@
   .video-card {
     width: 100%; aspect-ratio: 16/9;
     background: var(--panel);
-    border: 2px solid var(--amber); border-radius: 12px; margin-bottom: 16px;
+    border: 2px solid var(--accent); border-radius: 12px; margin-bottom: 16px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   }
-  .video-card .tag { color: var(--amber); font-size: 0.85rem; font-weight: 600; border: none; padding: 0; }
+  .video-card .tag { color: var(--accent); font-size: 0.85rem; font-weight: 600; border: none; padding: 0; }
   .video-card .title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; padding: 0 20px; text-align: center; text-wrap: balance; }
   .remote-welcome-note { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: -6px; text-wrap: balance; }
-  .center-note a { color: var(--amber); }
+  .center-note a { color: var(--accent); }
 
   /* Facilitator messages (added 5 October 2026). The banner and the list sit
      outside <main>, which is redrawn on every update. */
-  .msg-banner { display: none; background: var(--amber); color: var(--amber-ink); }
+  .msg-banner { display: none; background: var(--accent); color: var(--accent-ink); }
   .msg-banner.show { display: block; }
   .msg-banner-inner {
     max-width: 640px; margin: 0 auto; padding: 12px 16px;
@@ -117,7 +117,7 @@
   .msg-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
   .msg-text { font-size: 1.08rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
   .msg-banner button {
-    flex: 0 0 auto; border: 1.5px solid var(--amber-ink); background: transparent; color: var(--amber-ink);
+    flex: 0 0 auto; border: 1.5px solid var(--accent-ink); background: transparent; color: var(--accent-ink);
     border-radius: 8px; padding: 9px 13px; font: inherit; font-weight: 600; cursor: pointer; font-size: 0.92rem;
   }
   .msg-history { max-width: 640px; margin: 0 auto; padding: 16px 16px 12px; }
@@ -125,7 +125,7 @@
   .msg-list li.sent { color: var(--text-muted); }
   .msg-list li.sent .meta { font-style: italic; }
   .msg-list li.muted { color: var(--text-muted); border-top: 0; }
-  .msg-list li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--amber); background: none; border: 1px solid var(--amber); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  .msg-list li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
   .pp-chips { margin: 0 0 10px; }
   /* Tabs (17 October 2026): one column on a phone with a bottom bar; on a
      laptop the inject stays on the left and the messages sit on the right. */
@@ -137,13 +137,13 @@
     #partTabs { display: none; }
   }
   /* One writer per department (17 October 2026): a colleague is writing. */
-  .writer-card { background: var(--panel); border: 1px solid var(--amber); border-radius: 12px; padding: 18px; }
+  .writer-card { background: var(--panel); border: 1px solid var(--attn); border-radius: 12px; padding: 18px; }
   .writer-card .t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; margin-bottom: 6px; }
   .writer-card .d { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 12px; }
-  .writer-line { font-size: 0.85rem; color: var(--amber); margin: 0 0 8px; }
+  .writer-line { font-size: 0.85rem; color: var(--attn); margin: 0 0 8px; }
   .msg-badge {
     display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
-    background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
+    background: var(--accent); color: var(--accent-ink); font-size: 0.75rem; font-weight: 700;
   }
   .msg-list { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.92rem; }
   .msg-list li { padding: 8px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
@@ -1088,6 +1088,12 @@
         showToast(T(pausedNow ? "part.pause.toast" : "part.pause.resumedToast"), pausedNow ? 15000 : 6000);
         armTimer();
         drawState();
+        // Resume takes everyone back to the inject (Ahmed, 19 October 2026);
+        // during the pause they may stay on Messages to ask something.
+        if (!pausedNow && tabsApi && !tabsApi.isCurrent("inject")) {
+          tabsApi.show("inject");
+          try { window.scrollTo({ top: 0 }); } catch { window.scrollTo(0, 0); }
+        }
       }
       const forceNow = !!row.inject_force_unlocked;
       if (forceNow !== forceUnlocked) {

@@ -21,14 +21,14 @@
 (function () {
   const CSS = /* i18n-ok: the survey's CSS, not wording */ `
   .ppsv { width:100%; max-width:620px; margin:0 auto 20px; padding:22px 20px 20px; box-sizing:border-box; text-align:start;
-    background:var(--panel); color:var(--text); border:1px solid var(--border); border-top:4px solid var(--amber); border-radius:14px;
+    background:var(--panel); color:var(--text); border:1px solid var(--border); border-top:4px solid var(--accent); border-radius:14px;
     box-shadow:0 12px 40px var(--shadow); font-family:var(--font-body); font-size:15px; line-height:1.4; overflow-wrap:anywhere; }
   .ppsv.compact { max-width:720px; margin:0 auto 10px; padding:16px 16px 14px; }
   .ppsv [hidden] { display:none !important; }
   .ppsv-title { font-family:var(--font-display); font-weight:700; font-size:clamp(1.15rem, 3.6vw, 1.4rem); margin:0 0 4px; line-height:1.2; text-wrap:balance; }
   .ppsv-lead { margin:0 0 6px; color:var(--text-muted); font-size:.95rem; text-wrap:pretty; }
-  .ppsv-later { display:inline-block; margin:2px 0 6px; font-size:.9rem; color:var(--amber); background:none; border:0; padding:4px 0; cursor:pointer; font:inherit; text-decoration:underline; }
-  .ppsv-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--panel); border:1px solid var(--amber); border-radius:12px; max-width:720px; margin:0 auto 10px; box-sizing:border-box; }
+  .ppsv-later { display:inline-block; margin:2px 0 6px; font-size:.9rem; color:var(--accent); background:none; border:0; padding:4px 0; cursor:pointer; font:inherit; text-decoration:underline; }
+  .ppsv-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--panel); border:1px solid var(--accent); border-radius:12px; max-width:720px; margin:0 auto 10px; box-sizing:border-box; }
   .ppsv-bar b { font-weight:600; }
   .ppsv-group { margin:14px 0 0; padding:12px 0 0; border-top:1px solid var(--border); }
   .ppsv-group-title { font-size:.8rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px; }
@@ -41,26 +41,26 @@
   .ppsv-chip { font:inherit; font-size:.86rem; line-height:1.2; padding:9px 8px; min-height:42px; border-radius:10px; text-align:center;
     border:1.5px solid var(--border-strong); background:var(--field); color:var(--text); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .ppsv-chip[aria-checked="true"] { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
-  .ppsv-chip:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+  .ppsv-chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .ppsv-stars { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
   .ppsv-star { font:inherit; font-size:1.9rem; line-height:1; width:46px; height:46px; border-radius:10px; border:1.5px solid var(--border-strong);
     background:var(--field); color:var(--text-muted); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .ppsv-star.lit { color:var(--amber); border-color:var(--amber); }
-  .ppsv-star[aria-checked="true"] { background:var(--amber-dim); }
-  .ppsv-star:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+  .ppsv-star.lit { color:var(--accent); border-color:var(--accent); }
+  .ppsv-star[aria-checked="true"] { background:transparent; }
+  .ppsv-star:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .ppsv-ends { display:flex; justify-content:space-between; gap:8px; font-size:.78rem; color:var(--text-muted); margin-top:5px; }
   .ppsv-nps { display:grid; grid-template-columns:repeat(11, minmax(0,1fr)); gap:4px; direction:ltr; }
   .ppsv-nps .ppsv-chip { padding:9px 2px; font-variant-numeric:tabular-nums; font-family:var(--font-mono); }
   .ppsv-nps-ends { direction:ltr; }
   .ppsv textarea { width:100%; box-sizing:border-box; padding:10px; min-height:84px; resize:vertical; font:inherit; font-size:.95rem; border-radius:10px;
     border:2px solid var(--border-strong); background:var(--field); color:var(--text); }
-  .ppsv textarea:focus { outline:none; border-color:var(--amber); }
+  .ppsv textarea:focus { outline:none; border-color:var(--accent); }
   .ppsv-hint { font-size:.8rem; color:var(--text-muted); margin:4px 0 0; display:flex; justify-content:space-between; gap:8px; }
   .ppsv-quote { display:flex; gap:8px; align-items:flex-start; margin:10px 0 0; font-size:.88rem; cursor:pointer; }
   .ppsv-quote input { margin:3px 0 0; width:18px; height:18px; flex:none; }
   .ppsv-send { margin-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .ppsv-send button { font:inherit; font-weight:600; font-size:1rem; padding:12px 22px; min-height:46px; border-radius:10px; border:0;
-    background:var(--amber); color:var(--amber-ink); cursor:pointer; }
+    background:var(--accent); color:var(--accent-ink); cursor:pointer; }
   .ppsv-send button:disabled { opacity:.6; cursor:default; }
   .ppsv-status { font-size:.9rem; color:var(--text-muted); }
   .ppsv-status.err { color:var(--red); }

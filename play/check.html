@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="./theme.css" />
 <style>
   /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css. */
-  :root { --ok:#3fae6c; --warn:var(--amber); --bad:var(--red); }
+  :root { --ok:#3fae6c; --warn:var(--attn); --bad:var(--red); }
   body { font-size:16px; }
   main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
   h1 { font-size:1.6rem; margin:0 0 6px; }
@@ -27,18 +27,18 @@
   .card[data-state="ok"] .dot { background:var(--ok); }
   .card[data-state="warn"] .dot { background:var(--warn); }
   .card[data-state="bad"] .dot { background:var(--bad); }
-  .card[data-state="running"] .dot { background:var(--amber); animation:blink 1s infinite; }
+  .card[data-state="running"] .dot { background:var(--attn); animation:blink 1s infinite; }
   @keyframes blink { 50% { opacity:.3; } }
   .card h2 { font-size:1.02rem; margin:0; }
   .card .msg { grid-column:2; font-size:.92rem; }
-  .card .fix { grid-column:2; font-size:.88rem; color:var(--amber); }
-  button { font:inherit; border:1.5px solid transparent; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--amber); color:var(--amber-ink); font-weight:600; }
+  .card .fix { grid-column:2; font-size:.88rem; color:var(--attn); }
+  button { font:inherit; border:1.5px solid transparent; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--accent); color:var(--accent-ink); font-weight:600; }
   button.ghost { background:transparent; color:var(--text); border-color:var(--border-strong); }
   .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; grid-column:2; }
   .summary { margin:22px 0 10px; padding:14px 16px; border-radius:12px; font-weight:600; }
   .summary.ok { background:rgba(63,174,108,.16); border:1px solid var(--ok); }
   .summary.bad { background:var(--red-dim); border:1px solid var(--bad); }
-  .summary.warn { background:var(--amber-dim); border:1px solid var(--warn); }
+  .summary.warn { background:transparent; border:1px solid var(--warn); }
   small { color:var(--text-muted); }
 </style>
 </head>

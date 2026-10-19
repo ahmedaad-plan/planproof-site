@@ -26,34 +26,34 @@
   .ppn [hidden] { display:none !important; }
   .ppn fieldset { border:0; margin:0; padding:0; min-width:0; }
   .ppn fieldset:disabled .ppn-field, .ppn fieldset:disabled .ppn-row { opacity:.5; }
-  .ppn-window { font-size:.9rem; background:var(--amber-dim); border:1px solid var(--amber); border-radius:8px; padding:8px 10px; }
+  .ppn-window { font-size:.9rem; background:transparent; border:1px solid var(--accent); border-radius:8px; padding:8px 10px; }
   .ppn-window.closed { background:var(--panel-raised); border-color:var(--border-strong); color:var(--text-muted); }
   .ppn-field { margin-top:12px; }
   .ppn-label { font-weight:600; font-size:.88rem; margin:0 0 6px; display:block; }
   .ppn-inject { font-size:.95rem; }
   .ppn-inject small { color:var(--text-muted); }
-  .ppn-moved { font-size:.82rem; color:var(--amber); margin-top:4px; }
+  .ppn-moved { font-size:.82rem; color:var(--accent); margin-top:4px; }
   .ppn-chips { display:flex; flex-wrap:wrap; gap:6px; }
   .ppn-chip { font:inherit; font-size:.88rem; padding:8px 12px; min-height:40px; border-radius:999px;
     border:1.5px solid var(--border-strong); background:var(--field); color:var(--text); cursor:pointer; }
   .ppn-chip[aria-checked="true"] { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
   .ppn-type-positive[aria-checked="true"] { background:#2f8f5b; border-color:#2f8f5b; color:#fff; }
-  .ppn-type-improvement[aria-checked="true"] { background:var(--amber); border-color:var(--amber); color:var(--amber-ink); }
+  .ppn-type-improvement[aria-checked="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
   .ppn-type-critical[aria-checked="true"] { background:var(--red); border-color:var(--red); color:#fff; }
   .ppn select, .ppn input[type=text], .ppn textarea { width:100%; box-sizing:border-box; padding:10px;
     border-radius:8px; border:1.5px solid var(--border-strong); font:inherit; font-size:16px; background:var(--field); color:var(--text); }
-  .ppn select:focus, .ppn input[type=text]:focus, .ppn textarea:focus { outline:none; border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-dim); }
+  .ppn select:focus, .ppn input[type=text]:focus, .ppn textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px transparent; }
   .ppn input[type=text] { margin-top:8px; }
   .ppn textarea { min-height:84px; resize:vertical; }
   .ppn-checks { margin-top:8px; border:1px solid var(--border); border-radius:8px; padding:4px 10px; }
   .ppn-checks label { display:flex; gap:10px; align-items:center; padding:7px 0; font-size:.95rem; }
-  .ppn-checks input { width:20px; height:20px; accent-color:var(--amber); }
+  .ppn-checks input { width:20px; height:20px; accent-color:var(--accent); }
   .ppn-hint { font-size:.8rem; color:var(--text-muted); margin-top:4px; }
   /* The Log button centred, the character count above it on the right (Ahmed, 18 October 2026). */
   .ppn-row { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:10px; }
   .ppn-row .ppn-count { align-self:flex-end; }
   .ppn-count { font-size:.8rem; color:var(--text-muted); font-family:var(--font-mono); direction:ltr; unicode-bidi:isolate; }
-  .ppn-log { background:var(--amber); color:var(--amber-ink); border:0; border-radius:8px; padding:12px 22px; font:inherit; font-weight:600;
+  .ppn-log { background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:12px 22px; font:inherit; font-weight:600;
     font-size:1rem; cursor:pointer; min-height:44px; }
   .ppn-log:disabled { background:var(--panel-raised); color:var(--text-muted); cursor:not-allowed; }
   .ppn-feedback { min-height:1.2em; font-size:.88rem; margin-top:8px; }
@@ -68,7 +68,7 @@
   /* The type is a coloured word on the black box, not a filled badge
      (Ahmed, 18 October 2026: "only the word Critical gap in red"). */
   .ppn-pill { padding:0; border-radius:0; background:none; }
-  .ppn-pill.positive { color:#3fae6c; } .ppn-pill.improvement { color:var(--amber); } .ppn-pill.critical { color:var(--red-soft); }
+  .ppn-pill.positive { color:#3fae6c; } .ppn-pill.improvement { color:var(--accent); } .ppn-pill.critical { color:var(--red-soft); }
   .ppn-pill.earlier { color:var(--text-muted); font-weight:600; }
   .ppn-actions { margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
   .ppn-actions button { font:inherit; font-size:.82rem; background:none; border:0; padding:4px 0; cursor:pointer; text-decoration:underline; color:var(--blue-soft); }

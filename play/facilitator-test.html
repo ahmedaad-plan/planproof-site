@@ -15,7 +15,7 @@
   h1 { font-size: 1.35rem; margin: 0 0 14px; }
   h2 { font-size: 1.1rem; }
   .note {
-    background: var(--amber-dim); border: 1px solid var(--border); border-inline-start: 3px solid var(--amber); border-radius: 8px;
+    background: transparent; border: 1px solid var(--border); border-inline-start: 3px solid var(--accent); border-radius: 8px;
     padding: 12px 16px; margin-bottom: 20px; font-size: 0.9rem; max-width: 760px;
   }
   .status { margin-bottom: 16px; font-size: 1.05rem; color: var(--text-muted); }
@@ -25,15 +25,15 @@
     font-family: inherit; font-size: 1rem; font-weight: 600; padding: 10px 18px; border-radius: 8px;
     border: 1.5px solid var(--border-strong); background: var(--panel-raised); color: var(--text); cursor: pointer;
   }
-  button:hover:not(:disabled) { border-color: var(--amber); }
-  button.primary { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
   button.danger { border-color: var(--red); color: var(--red-soft); background: transparent; }
   input[type="text"], select, textarea {
     padding: 9px 11px; border-radius: 8px; border: 1.5px solid var(--border-strong);
     background: var(--field); color: var(--text); font-family: inherit; font-size: 0.95rem;
   }
-  input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-dim); }
+  input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px transparent; }
   input::placeholder, textarea::placeholder { color: #77828f; opacity: 1; }
   .err-line { color: var(--red-soft); font-size: 0.9rem; }
   .current-inject { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 760px; }
@@ -71,7 +71,7 @@
     font: inherit; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px;
     background: var(--field); color: var(--text); border: 1px solid var(--border-strong); max-width: 170px;
   }
-  .roster-badge.remote { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .roster-badge.remote { background: transparent; border-color: var(--accent); color: var(--accent); }
 
   /* Response status (Ahmed, 4 October 2026): four states per department,
      only for the departments the inject names as responsible. */
@@ -128,7 +128,7 @@
      "Message a department", for Observers' phones only. */
   .obs-msg-section select, .obs-msg-section textarea { width: 100%; margin-top: 6px; }
   .obs-msg-section textarea { min-height: 56px; resize: vertical; }
-  .obs-msg-warn { font-size: 0.86rem; color: var(--amber); margin-top: 8px; }
+  .obs-msg-warn { font-size: 0.86rem; color: var(--attn); margin-top: 8px; }
   .inbox-list .from-tag {
     display: inline-block; margin-inline-end: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
     letter-spacing: 0.02em; border: 1px solid var(--blue); color: var(--blue-soft); background: var(--blue-dim);
@@ -141,12 +141,12 @@
   }
   .inbox-badge, .notes-badge {
     display: inline-block; padding: 1px 8px; border-radius: 999px; font-family: var(--font-body);
-    background: var(--amber); color: var(--amber-ink); font-size: 0.75rem; font-weight: 700;
+    background: var(--accent); color: var(--accent-ink); font-size: 0.75rem; font-weight: 700;
   }
   .inbox-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.9rem; max-height: 220px; overflow-y: auto; }
   .inbox-list li { padding: 7px 8px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
   .inbox-list li:first-child { border-top: none; }
-  .inbox-list li.unread { font-weight: 600; background: var(--amber-dim); }
+  .inbox-list li.unread { font-weight: 600; background: transparent; }
   .inbox-list .meta { color: var(--text-muted); font-size: 0.8rem; display: block; font-weight: 400; }
   .muted-line { color: var(--text-muted); }
 
@@ -154,7 +154,7 @@
   .notes-badge.critical { background: var(--red); color: #fff; }
   .notes-counts { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px; }
   .notes-list { max-height: 460px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; background: var(--bg); }
-  .notes-list .ppn-item.unread { background: var(--amber-dim); margin: 0 -12px; padding: 9px 12px; }
+  .notes-list .ppn-item.unread { background: transparent; margin: 0 -12px; padding: 9px 12px; }
   /* a Critical gap: only the words are red (18 October 2026) */
   .notes-list .ppn-item.unread.critical { background: var(--red-dim); }
   .notes-list .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
@@ -168,7 +168,7 @@
 
   /* Control tower (roadmap item 6, 11 October 2026): who is connected right
      now. Visual only — it never chimes. */
-  .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 10px; background: var(--amber-dim); border: 2px solid var(--amber); }
+  .start-check { margin-top: 12px; max-width: 760px; padding: 12px 16px; border-radius: 10px; background: transparent; border: 2px solid var(--attn); }
   .start-check .t { font-family: var(--font-display); font-weight: 600; margin-bottom: 4px; }
   .start-check ul { margin: 6px 0 10px; padding-inline-start: 20px; font-size: 0.95rem; }
   .start-check .b { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -183,7 +183,7 @@
   .tower-section h3 { font-size: 0.95rem; margin: 14px 0 6px; }
   .tower-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
   .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-inline-start: 8px; }
-  .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--amber-dim); border: 1px solid var(--amber); font-size: 0.9rem; }
+  .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: transparent; border: 1px solid var(--attn); font-size: 0.9rem; }
   .tower-warn.red { background: var(--red-dim); border-color: var(--red); color: #ffd3cb; font-weight: 600; }
   .tower-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.92rem; flex-wrap: wrap; }
   .tower-row:first-of-type { border-top: none; }
@@ -209,10 +209,10 @@
   .pp-card.status-section, .pp-card.roster-section, .pp-card.tower-section, .pp-card.inbox-section, .pp-card.notes-section, .pp-card.broadcast-section { margin-top: 0; max-width: none; }
   .pp-card.status-section { margin-top: 14px; }
   .pp-card h2 { font-size: 1rem; margin: 0 0 8px; }
-  .pp-card h3 { font-size: 0.92rem; margin: 16px 0 6px; color: var(--amber); }
+  .pp-card h3 { font-size: 0.92rem; margin: 16px 0 6px; color: var(--accent); }
   .ci-title { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; margin-bottom: 6px; }
   .ci-desc { font-size: 0.95rem; white-space: pre-line; margin-bottom: 8px; }
-  .ci-task { font-size: 0.92rem; color: var(--text); background: var(--amber-dim); border-inline-start: 3px solid var(--amber); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
+  .ci-task { font-size: 0.92rem; color: var(--text); background: transparent; border-inline-start: 3px solid var(--accent); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; }
   .ci-meta { font-size: 0.8rem; color: var(--text-muted); }
   .current-inject { background: transparent; border: 0; padding: 0; max-width: none; }
   body.pp-start-asking #startBtn { display: none !important; }
@@ -226,7 +226,7 @@
   .reset-confirm .b { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
   .setup-card summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1rem; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .setup-card summary::-webkit-details-marker { display: none; }
-  .setup-card summary::before { content: "▸"; color: var(--amber); }
+  .setup-card summary::before { content: "▸"; color: var(--accent); }
   .setup-card[open] summary::before { content: "▾"; }
   .setup-card .setup-folded { font-family: var(--font-body); font-weight: 400; font-size: 0.86rem; color: var(--text-muted); }
   .setup-card[open] .setup-folded { display: none; }
@@ -237,14 +237,14 @@
   .exp-row input { width: 84px; padding: 6px 8px; border-radius: 6px; border: 1.5px solid var(--border-strong); background: var(--field); color: var(--text); font: inherit; font-size: 1rem; text-align: center; direction: ltr; }
   .exp-flag { font-size: 0.8rem; font-weight: 500; margin-inline-start: 6px; }
   .exp-flag.ok { color: var(--teal-soft); }
-  .exp-flag.warn { color: var(--amber); }
+  .exp-flag.warn { color: var(--attn); }
   .roster-summary .exp-flag { display: inline-block; }
   .inbox-list { max-height: none; }
   .inbox-list li.sent { color: var(--text-muted); border-inline-start: 3px solid var(--border-strong); }
-  .inbox-list li:not(.sent) { border-inline-start: 3px solid var(--amber); }
-  .inbox-list li.unread { background: var(--amber-dim); }
+  .inbox-list li:not(.sent) { border-inline-start: 3px solid var(--accent); }
+  .inbox-list li.unread { background: transparent; }
   .msg-actions { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .msg-actions .msg-dept-btn { font-weight: 600; color: var(--amber); border-color: var(--amber); }
+  .msg-actions .msg-dept-btn { font-weight: 600; color: var(--accent); border-color: var(--accent); }
   .broadcast-section textarea { width: 100%; min-height: 72px; resize: vertical; margin-top: 6px; }
   .pp-chips { margin-top: 4px; }
   .field-label { margin-top: 10px; }
@@ -259,25 +259,32 @@
     <div class="pp-context"><strong id="facLabel" data-i18n="fac.header.label">Facilitator</strong><div data-i18n="fac.header.private">Facilitator page. Private link, do not share it.</div></div>
   </header>
 
-  <!-- The command bar: inject, clock, the buttons. It never moves (17 October 2026). -->
+  <!-- The command bar (redesigned 19 October 2026, Ahmed): a status line —
+       inject, clock, who responds — and one toolbar in three groups, left to
+       right: moving through the injects, the clock, and End on its own at the
+       far end. Every button is always visible (no "More"). -->
   <div class="pp-cmd" id="cmdBar">
-    <span class="pp-cmd-pos" id="indexVal" data-i18n="fac.cmd.lobby">Lobby</span>
-    <span class="pp-cmd-clock" id="cmdClock" data-state="none" role="timer"></span>
-    <span class="pp-cmd-status" id="statusVal" data-i18n="fac.statusLine.loading">loading…</span>
-    <span class="pp-cmd-who" id="cmdWho"></span>
-    <span class="pp-cmd-spacer"></span>
-    <div class="pp-cmd-btns">
-      <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
-      <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
-      <button id="pauseBtn" data-i18n="fac.controls.pause">Pause</button>
-      <button class="danger" id="endBtn" data-i18n="fac.controls.end">End exercise</button>
-      <button type="button" class="pp-cmd-more" id="cmdMoreBtn" aria-expanded="false" data-i18n="fac.cmd.more">More &#9662;</button>
+    <div class="pp-cmd-info">
+      <span class="pp-cmd-pos" id="indexVal" data-i18n="fac.cmd.lobby">Lobby</span>
+      <span class="pp-cmd-clock" id="cmdClock" data-state="none" role="timer"></span>
+      <span class="pp-cmd-status" id="statusVal" data-i18n="fac.statusLine.loading">loading…</span>
+      <span class="pp-cmd-who" id="cmdWho"></span>
     </div>
-    <div class="pp-cmd-secondary" id="cmdSecondary">
-      <button id="prevBtn" data-i18n="fac.controls.previous">&larr; Previous inject</button>
-      <button id="replayBtn" data-i18n="fac.controls.replay">Replay this inject</button>
-      <button id="extendBtn" data-i18n="fac.controls.extend">+5 min for everyone</button>
-      <button id="unlockBtn" data-i18n="fac.controls.unlock">Unlock this inject</button>
+    <div class="pp-cmd-tools" role="toolbar" aria-label="Exercise controls" data-i18n-attr="aria-label:fac.cmd.toolbarAria">
+      <div class="pp-grp" role="group" aria-label="Injects" data-i18n-attr="aria-label:fac.cmd.groupInjects">
+        <button id="prevBtn" title="Go back one inject; it starts again with its full time" data-i18n="fac.controls.previous" data-i18n-attr="title:fac.controls.previousTitle">&larr; Previous</button>
+        <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
+        <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
+        <button id="replayBtn" title="Play this inject again from the start, with its full time" data-i18n="fac.controls.replay" data-i18n-attr="title:fac.controls.replayTitle">Replay</button>
+      </div>
+      <div class="pp-grp" role="group" aria-label="Clock" data-i18n-attr="aria-label:fac.cmd.groupClock">
+        <button id="pauseBtn" title="Stop every clock; sending waits until you resume" data-i18n="fac.controls.pause" data-i18n-attr="title:fac.controls.pauseTitle">Pause</button>
+        <button id="extendBtn" title="Five more minutes for everyone" data-i18n="fac.controls.extend" data-i18n-attr="title:fac.controls.extendTitle">+5 min</button>
+        <button id="unlockBtn" title="Reopen this inject's answers, even after the time is up" data-i18n="fac.controls.unlock" data-i18n-attr="title:fac.controls.unlockTitle">Unlock</button>
+      </div>
+      <div class="pp-grp pp-grp-end">
+        <button class="danger" id="endBtn" data-i18n="fac.controls.end">End exercise</button>
+      </div>
     </div>
   </div>
   <!-- The alert strip: urgent things, on every tab. -->
@@ -698,14 +705,6 @@
     // and the buttons. Re-drawn every second with the response status.
     const cmdClockEl = document.getElementById("cmdClock");
     const cmdWhoEl = document.getElementById("cmdWho");
-    const cmdMoreBtn = document.getElementById("cmdMoreBtn");
-    const cmdSecondaryEl = document.getElementById("cmdSecondary");
-    cmdMoreBtn.addEventListener("click", () => {
-      const open = !cmdSecondaryEl.classList.contains("open");
-      cmdSecondaryEl.classList.toggle("open", open);
-      cmdMoreBtn.setAttribute("aria-expanded", String(open));
-      cmdMoreBtn.textContent = open ? T("fac.cmd.less") : T("fac.cmd.more");
-    });
     function renderCommandBar() {
       if (!currentRow) return;
       const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
@@ -977,7 +976,6 @@
       pauseBtn.hidden = !isRunning;
       pauseBtn.disabled = !isRunning || currentRow.current_inject_index < 0;
       pauseBtn.textContent = paused ? T("fac.controls.resumePause") : T("fac.controls.pause");
-      pauseBtn.classList.toggle("primary", paused);
       pauseBtn.setAttribute("aria-pressed", String(paused));
       replayBtn.disabled = !isRunning || currentRow.current_inject_index < 0;
       unlockBtn.textContent = currentRow && currentRow.inject_force_unlocked

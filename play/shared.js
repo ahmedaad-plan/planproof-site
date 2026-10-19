@@ -1293,7 +1293,7 @@ function createLiveStatus() {
     el.dataset.state = st;
     if (st === "live") { el.textContent = T("shared.live.live"); el.style.background = "rgba(34,139,84,.85)"; }
     else if (st === "connecting") { el.textContent = T("shared.live.connecting"); el.style.background = "rgba(120,120,120,.85)"; }
-    else if (st === "reconnecting") { el.textContent = T("shared.live.reconnecting"); el.style.background = "rgba(200,140,20,.95)"; }
+    else if (st === "reconnecting") { el.textContent = T("shared.live.reconnecting"); el.style.background = "rgba(232,129,47,.95)"; }
     else { el.textContent = T("shared.live.offline"); el.style.background = "rgba(200,50,40,.95)"; }
   }
   window.addEventListener("online", draw);
@@ -1406,7 +1406,18 @@ function keepSessionInSync(opts) {
     await resync("soft", { force: true });
   }
 
-  setInterval(() => resync("poll"), opts.intervalMs || 15000);
+  // The safety net: a fetch every 15 seconds — every 4 seconds while the
+  // exercise runs, so a Pause, Resume or Next reaches a phone whose live
+  // channel has quietly dropped within a few seconds (Ahmed, 19 October
+  // 2026: a phone took a long time to show the pause).
+  let lastPollAt = 0;
+  setInterval(() => {
+    const running = lastSig && lastSig.startsWith("running|");
+    const every = opts.intervalMs || (running ? 4000 : 15000);
+    if (Date.now() - lastPollAt < every - 500) return;
+    lastPollAt = Date.now();
+    resync("poll");
+  }, 1000);
   onReconnect(() => resync("reconnect"));
   return {
     deliver, channelStatus, resync, softRefresh, live,
@@ -1698,7 +1709,7 @@ function showToast(text, ms) {
     el.setAttribute("aria-live", "polite");
     el.style.cssText = "position:fixed;left:10px;right:10px;top:10px;margin:0 auto;width:fit-content;z-index:10000;" +
       "max-width:min(560px,calc(100vw - 20px));padding:10px 14px;border-radius:10px;cursor:pointer;" +
-      "font:600 14px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#201404;background:#e2a63b;" +
+      "font:600 14px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#0b0f14;background:#f2f4f7;" +
       "box-shadow:0 2px 10px rgba(0,0,0,.35)";
     el.title = T("shared.toast.dismissTitle");
     el.addEventListener("click", () => el.remove());

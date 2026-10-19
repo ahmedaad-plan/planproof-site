@@ -18,6 +18,29 @@
     text-align: center; padding: 40px; gap: 26px;
   }
   .timer-row { display: flex; gap: 40px; }
+  /* The room screen (19 October 2026, Ahmed): the clock sits at the top,
+     beside "Inject 1 of 10", large enough for the back of the room; the
+     inject reads below it. */
+  .room-head {
+    width: min(1240px, 100%); display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border); text-align: start;
+  }
+  .room-head .inject-pos { flex: 1 1 auto; min-width: 0; }
+  .room-head .timer-row { flex: 0 0 auto; text-align: end; }
+  .room-head .timer-row .value { font-size: clamp(3rem, 7.5vw, 6rem); }
+  .room-head .timer-row .label { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  body:not(.observer-mode) main { justify-content: flex-start; padding-top: 28px; }
+  @media (max-width: 700px) {
+    .room-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .room-head .timer-row { text-align: start; }
+  }
+  /* Paused (19 October 2026): replaces "Now playing", like the phones. */
+  .paused-card {
+    width: min(720px, 90vw); padding: 34px 24px; border: 2px dashed var(--attn); border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .paused-card .paused-title { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; color: var(--attn); }
+  .paused-card .paused-sub { font-size: clamp(1rem, 1.8vw, 1.3rem); color: var(--text-muted); }
   .mine-group { margin-bottom: 14px; }
   .mine-group-title { font-size: 0.95rem; margin: 10px 0 6px; color: var(--text-muted); font-weight: 600; }
   .timer-row .label { font-size: 1rem; color: var(--text-muted); display: block; }
@@ -26,20 +49,20 @@
     font-size: clamp(3.2rem, 9vw, 6.5rem); line-height: 1.1; color: var(--text);
     direction: ltr; unicode-bidi: isolate;
   }
-  .timer-row .value.warn { color: var(--amber); }
-  .timer-row .value.paused { color: var(--amber); }
+  .timer-row .value.warn { color: var(--attn); }
+  .timer-row .value.paused { color: var(--attn); }
   .timer-row .value.up { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; direction: inherit; unicode-bidi: normal; }
   .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; direction: inherit; unicode-bidi: normal; }
   .video-card {
     width: min(720px, 90vw); aspect-ratio: 16/9;
     background: var(--panel);
-    border: 2px solid var(--amber); border-radius: 12px;
+    border: 2px solid var(--accent); border-radius: 12px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
     animation: pulse 2.5s ease-in-out infinite;
   }
-  .video-card .tag { color: var(--amber); font-size: 0.9rem; font-weight: 600; }
+  .video-card .tag { color: var(--accent); font-size: 0.9rem; font-weight: 600; }
   .video-card .title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; padding: 0 24px; }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(226,166,59,0.0); } 50% { box-shadow: 0 0 40px 4px rgba(226,166,59,0.25); } }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(242,244,247,0.0); } 50% { box-shadow: 0 0 40px 4px rgba(242,244,247,0.18); } }
   .inject-title { font-family: var(--font-display); font-size: clamp(2rem, 4.6vw, 3.4rem); font-weight: 700; line-height: 1.15; max-width: 1100px; text-wrap: balance; }
   .inject-desc { font-size: clamp(1.2rem, 2.2vw, 1.7rem); max-width: 900px; color: var(--text); text-wrap: pretty; }
   .lobby { font-size: 1.6rem; color: var(--text-muted); text-wrap: balance; }
@@ -80,7 +103,7 @@
      The bar along the bottom shows how long it has left. */
   .broadcast-banner {
     display: none; position: relative; overflow: hidden;
-    background: var(--amber); color: var(--amber-ink);
+    background: var(--accent); color: var(--accent-ink);
     padding: 14px 32px 18px; text-align: center;
   }
   .broadcast-banner.show { display: block; }
@@ -123,7 +146,7 @@
      phone: a banner that stays at the top of the screen until "Got it", a
      count on the link to the messages, and a count in the tab title. */
   .obs-banner {
-    position: sticky; top: 0; z-index: 6; background: var(--amber); color: var(--amber-ink);
+    position: sticky; top: 0; z-index: 6; background: var(--accent); color: var(--accent-ink);
     box-shadow: 0 2px 10px var(--shadow);
   }
   .obs-banner-inner { max-width: 720px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
@@ -132,7 +155,7 @@
   .obs-banner .text { font-size: 1.08rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
   .obs-banner button {
     flex: 0 0 auto; font: inherit; font-weight: 700; padding: 9px 14px; border-radius: 8px; cursor: pointer;
-    background: var(--amber-ink); color: var(--amber); border: none;
+    background: var(--accent-ink); color: var(--accent); border: none;
   }
   /* Tabs (17 October 2026): Exercise / Notes / Messages on a phone (bottom
      bar); on a laptop the exercise stays on the left and Notes / Messages
@@ -140,9 +163,9 @@
      adds nothing outside Observer mode. */
   body.observer-mode .observer-panel { padding-bottom: 24px; }
   body.observer-mode .obs-banner { top: 44px; }
-  body.observer-mode .obs-thread li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--amber); background: none; border: 1px solid var(--amber); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  body.observer-mode .obs-thread li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
   body.observer-mode .inject-pos { font-size: 0.9rem; color: var(--text-muted); }
-  .inject-pos { font-size: clamp(1rem, 1.8vw, 1.5rem); color: var(--amber); font-weight: 600; letter-spacing: 0.01em; }
+  .inject-pos { font-size: clamp(1rem, 1.8vw, 1.5rem); color: var(--accent); font-weight: 600; letter-spacing: 0.01em; }
   @media (min-width: 900px) {
     body.observer-mode .obs-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; max-width: 1280px; margin: 0 auto; padding: 0 16px; }
     body.observer-mode .obs-cols > .pp-col { min-width: 0; }
@@ -153,13 +176,13 @@
   }
   .obs-badge {
     display: inline-block; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px;
-    background: var(--amber); color: var(--amber-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
+    background: var(--accent); color: var(--accent-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
   }
   .obs-thread { list-style: none; margin: 0; padding: 2px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
   .obs-thread li { padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
   .obs-thread li:first-child { border-top: none; }
   .obs-thread .meta { display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); }
-  .obs-thread li.from-fac { border-inline-start: 3px solid var(--amber); margin-inline-start: -16px; padding-inline-start: 13px; }
+  .obs-thread li.from-fac { border-inline-start: 3px solid var(--accent); margin-inline-start: -16px; padding-inline-start: 13px; }
   .obs-thread li.unread { font-weight: 600; }
   .obs-thread li.mine-sent { color: var(--text-muted); }
   .obs-thread .empty { color: var(--text-muted); font-size: 0.9rem; }
@@ -336,7 +359,8 @@
   const clientLabelEl = document.getElementById("clientLabel");
   const sfxStatusEl = document.getElementById("sfxStatus");
   let lastRenderedIndex = null;
-  let lastRenderedReplay = null; // inject_replay_count last drawn (Replay this inject, 18 October 2026)
+  let lastRenderedReplay = null;
+  let lastRenderedPaused = false; // Resume takes an Observer back to the Exercise tab (19 October 2026) // inject_replay_count last drawn (Replay this inject, 18 October 2026)
   let obsPageFresh = true; // true until this page has shown the lobby or an inject
   let obsCameFromLobby = false; // the next inject drawn is the start of the exercise
   let injectTimerInterval = null;
@@ -746,8 +770,13 @@
       || (lastRenderedReplay !== null && replayCount > lastRenderedReplay);
     lastRenderedIndex = idx;
     lastRenderedReplay = replayCount;
+    const resumedNow = lastRenderedPaused && !isPaused(row) && !isNewInject;
+    lastRenderedPaused = isPaused(row);
 
-    const videoBlock = inject.video
+    const pausedNow = isPaused(row);
+    const videoBlock = pausedNow
+      ? `<div class="paused-card" id="pausedCard" role="status"><div class="paused-title">${escapeHtml(T("room.paused.title"))}</div><div class="paused-sub">${escapeHtml(T("room.paused.sub"))}</div></div>`
+      : inject.video
       ? `<div class="video-card"><div class="tag">${escapeHtml(T("room.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
       : "";
 
@@ -788,11 +817,13 @@
       <div class="inject-desc">${escapeHtml(inject.desc)}</div>
       ${videoBlock}
     ` : `
+      <div class="room-head">
+        <div class="inject-pos">${escapeHtml(posLine)}</div>
+        ${timerBlock}
+      </div>
       ${videoBlock}
-      <div class="inject-pos">${escapeHtml(posLine)}</div>
       <div class="inject-title">${escapeHtml(inject.title)}</div>
       <div class="inject-desc">${escapeHtml(inject.desc)}</div>
-      ${timerBlock}
     `;
 
     // An Observer's phone stays silent: the room's display plays the sound.
@@ -818,6 +849,10 @@
     // changes), so a reload mid-inject resumes at the real time left and an
     // extension shows straight away. (Fixed 6 October 2026 — the room screen
     // used to start its own stopwatch when it first showed the inject.)
+    // Paused: the room goes quiet (19 October 2026).
+    if (isPaused(row)) { stopSfx(); pendingSfx = null; }
+    // Resume: an Observer is taken back to the inject, like the phones.
+    if (resumedNow && observerMode && tabsApi && !tabsApi.isCurrent("exercise")) tabsApi.show("exercise");
     startInjectTimer(row, inject, row.inject_extra_minutes || 0);
   }
 
