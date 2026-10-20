@@ -1265,7 +1265,7 @@ function rowSignature(row) {
   return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
     row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
     JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
-    row.run_number, row.paused_at, row.inject_replay_count].join("|");
+    row.run_number, row.paused_at, row.inject_replay_count, row.is_trial].join("|");
 }
 
 function createLiveStatus() {
@@ -1315,11 +1315,29 @@ function createLiveStatus() {
 // With supabaseClient it joins the session's doorbell channel itself: a
 // "session" ring fetches the session (at most once a second); every ring is
 // also passed to opts.onRing so the page can reload its messages.
+// Trial run (20 October 2026): a red strip across the top of every page
+// while the facilitator's practice run is on.
+function applyTrialStrip(row) {
+  const on = !!(row && row.is_trial && row.status === "running");
+  let el = document.getElementById("ppTrialStrip");
+  if (!on) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ppTrialStrip";
+    el.className = "pp-trial-strip";
+    el.setAttribute("role", "status");
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+  const text = T("shared.trial.strip");
+  if (el.textContent !== text) el.textContent = text;
+}
+
 function keepSessionInSync(opts) {
   const live = createLiveStatus();
   let lastSig = null;
   function deliver(row, force) {
     if (!row) return;
+    applyTrialStrip(row);
     const sig = rowSignature(row);
     if (sig === lastSig && !force) return;
     lastSig = sig;

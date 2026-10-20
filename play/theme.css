@@ -259,11 +259,11 @@ a { color: var(--accent); }
 .pp-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-tab-badge {
   display: inline-block; min-width: 20px; height: 20px; line-height: 20px; padding: 0 6px; border-radius: 10px;
-  background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; text-align: center;
+  background: var(--red); color: #fff; font-size: 12px; font-weight: 700; text-align: center;
   direction: ltr; unicode-bidi: isolate;
 }
 .pp-tab-badge.red { background: var(--red); color: #fff; }
-.pp-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.pp-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; }
 /* While a typing box has the keyboard on a phone, the bar steps aside. */
 body.pp-kbd .pp-tabs { display: none; }
 .pp-tabs.pp-tabs-none { display: none; }
@@ -334,6 +334,17 @@ body.pp-has-tabs { padding-bottom: 72px; }
   .pp-grp > button.primary { flex: 1.6 1 0; padding: 0 10px; }
 }
 
+/* Trial run (20 October 2026). */
+.pp-trial-strip {
+  background: var(--red); color: #fff; text-align: center; font-weight: 700; font-size: 0.85rem;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px;
+}
+.pp-trial-tag {
+  display: inline-block; background: var(--red); color: #fff; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; align-self: center;
+}
+.pp-trial-tag[hidden] { display: none; }
+
 /* The alert strip under the command bar: visible on every tab. */
 .pp-alerts {
   background: var(--bg); border-bottom: 1px solid var(--border); padding: 6px 12px;
@@ -366,7 +377,19 @@ body.pp-has-tabs { padding-bottom: 72px; }
   .pp-cols > .pp-col { min-width: 0; }
   .pp-cols > .pp-col.sticky { position: sticky; top: 64px; }
 }
-.pp-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.pp-card { background: var(--panel); border: 1px solid var(--border); border-top: 2px solid var(--red); border-radius: 12px; padding: 14px 16px; }
+/* Box titles (20 October 2026, Ahmed): red small capitals, so a page can be
+   scanned by its boxes. The red top edge separates one box from the next. */
+.pp-card > h2, .pp-card > summary > h2 {
+  color: var(--red-soft); font-family: var(--font-body); font-size: 0.8rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+/* Shared colour words: who and when on a message; good / waiting / problem. */
+.m-who { color: var(--red-soft); font-weight: 700; }
+.m-time { color: var(--attn); font-family: var(--font-mono); }
+.tone-ok { color: var(--teal-soft); }
+.tone-wait { color: var(--attn); }
+.tone-bad { color: var(--red-soft); font-weight: 600; }
 .pp-card + .pp-card { margin-top: 14px; }
 .pp-card h2, .pp-card h3 { margin: 0 0 8px; font-size: 1rem; }
 

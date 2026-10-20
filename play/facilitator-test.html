@@ -208,7 +208,10 @@
   .end-strip { max-width: none; }
   .pp-card.status-section, .pp-card.roster-section, .pp-card.tower-section, .pp-card.inbox-section, .pp-card.notes-section, .pp-card.broadcast-section { margin-top: 0; max-width: none; }
   .pp-card.status-section { margin-top: 14px; }
-  .pp-card h2 { font-size: 1rem; margin: 0 0 8px; }
+  .pp-card h2 { margin: 0 0 10px; }
+  /* The box you work in: a full red edge (20 October 2026). */
+  #currentInjectCard, #notesOwn, #composeCard { border-color: var(--red); }
+  #currentInjectCard h3, #currentInjectCard .ci-title { color: var(--text); }
   .pp-card h3 { font-size: 0.92rem; margin: 16px 0 6px; color: var(--accent); }
   .ci-title { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; margin-bottom: 6px; }
   .ci-desc { font-size: 0.95rem; white-space: pre-line; margin-bottom: 8px; }
@@ -238,10 +241,25 @@
   .exp-flag { font-size: 0.8rem; font-weight: 500; margin-inline-start: 6px; }
   .exp-flag.ok { color: var(--teal-soft); }
   .exp-flag.warn { color: var(--attn); }
+  .dot.wait { background: transparent; box-shadow: inset 0 0 0 2px var(--attn); }
   .roster-summary .exp-flag { display: inline-block; }
   .inbox-list { max-height: none; }
   .inbox-list li.sent { color: var(--text-muted); border-inline-start: 3px solid var(--border-strong); }
-  .inbox-list li:not(.sent) { border-inline-start: 3px solid var(--accent); }
+  .inbox-list li:not(.sent) { border-inline-start: 3px solid var(--border-strong); }
+  .inbox-list li.unread { border-inline-start-color: var(--red); }
+  .inbox-list .meta .m-who { font-size: 0.86rem; }
+  /* "Send a message to": the chosen group in a red outline. */
+  #composeCard .pp-chip[aria-checked="true"], #composeCard .pp-chip[aria-pressed="true"] {
+    background: transparent; color: var(--text); border: 2px solid var(--red); font-weight: 700;
+  }
+  /* Expected attendance: missing red, more than expected amber, as expected green. */
+  .exp-flag.miss { color: var(--red-soft); font-weight: 700; }
+  .exp-flag.extra { color: var(--attn); font-weight: 600; }
+  .exp-row input { color: var(--red-soft); font-weight: 700; }
+  /* Response status words. */
+  .status-list .st-label.tone-wait { color: var(--attn); }
+  .status-list .st-label.tone-ok { color: var(--teal-soft); }
+  .status-list .st-label.tone-bad { color: var(--red-soft); font-weight: 600; }
   .inbox-list li.unread { background: transparent; }
   .msg-actions { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
   .msg-actions .msg-dept-btn { font-weight: 600; color: var(--accent); border-color: var(--accent); }
@@ -265,6 +283,7 @@
        far end. Every button is always visible (no "More"). -->
   <div class="pp-cmd" id="cmdBar">
     <div class="pp-cmd-info">
+      <span class="pp-trial-tag" id="trialTag" hidden data-i18n="fac.trial.tag">Trial run</span>
       <span class="pp-cmd-pos" id="indexVal" data-i18n="fac.cmd.lobby">Lobby</span>
       <span class="pp-cmd-clock" id="cmdClock" data-state="none" role="timer"></span>
       <span class="pp-cmd-status" id="statusVal" data-i18n="fac.statusLine.loading">loading…</span>
@@ -273,6 +292,7 @@
     <div class="pp-cmd-tools" role="toolbar" aria-label="Exercise controls" data-i18n-attr="aria-label:fac.cmd.toolbarAria">
       <div class="pp-grp" role="group" aria-label="Injects" data-i18n-attr="aria-label:fac.cmd.groupInjects">
         <button id="prevBtn" title="Go back one inject; it starts again with its full time" data-i18n="fac.controls.previous" data-i18n-attr="title:fac.controls.previousTitle">&larr; Previous</button>
+        <button id="trialBtn" title="Practise with every screen and phone first; nothing from it is kept" data-i18n="fac.trial.start" data-i18n-attr="title:fac.trial.startTitle">Trial run</button>
         <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
         <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
         <button id="replayBtn" title="Play this inject again from the start, with its full time" data-i18n="fac.controls.replay" data-i18n-attr="title:fac.controls.replayTitle">Replay</button>
@@ -319,6 +339,15 @@
       <button id="endConfirmBtn" class="danger" data-i18n="fac.endCheck.confirm">End exercise</button>
     </div>
   </div>
+  <!-- End trial run (20 October 2026): straight back to the waiting screen. -->
+  <div class="start-check end-check" id="trialEndCheck" hidden role="alertdialog" aria-labelledby="trialEndTitle">
+    <div class="t" id="trialEndTitle" data-i18n="fac.trial.endTitle">End the trial run?</div>
+    <div class="why" data-i18n="fac.trial.endWhy">Every phone, laptop and room screen goes back to the waiting screen, and everyone stays registered. Answers, messages and notes from the trial are set aside, so the real exercise starts clean.</div>
+    <div class="b">
+      <button id="trialEndBackBtn" class="primary" data-i18n="fac.common.goBack">Go back</button>
+      <button id="trialEndConfirmBtn" class="danger" data-i18n="fac.trial.end">End trial run</button>
+    </div>
+  </div>
 
 
   <div class="end-strip" id="endStrip" hidden role="status"></div>
@@ -356,7 +385,7 @@
         <h2 data-i18n="fac.status.heading">Response status — this inject</h2>
         <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
         <div class="legend">
-          <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot grey"></i> Waiting, or not required</span>
+          <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot wait"></i> Waiting · <i class="dot grey"></i> not required</span>
           <span data-i18n-html="fac.status.legendSome_html"><i class="dot amber"></i> Some have submitted (individual task)</span>
           <span data-i18n-html="fac.status.legendComplete_html"><i class="dot green"></i> Complete, on time</span>
           <span data-i18n-html="fac.status.legendTimesUp_html"><i class="dot red"></i> Time's up, not complete</span>
@@ -625,6 +654,7 @@
     const prevBtn = document.getElementById("prevBtn");
     const extendBtn = document.getElementById("extendBtn");
     const pauseBtn = document.getElementById("pauseBtn");
+    const trialBtn = document.getElementById("trialBtn");
     const replayBtn = document.getElementById("replayBtn");
     const unlockBtn = document.getElementById("unlockBtn");
     const endBtn = document.getElementById("endBtn");
@@ -872,7 +902,7 @@
     // The flag beside a group in the roster: ✓, "1 missing", "1 more than expected".
     function expectedFlagHtml(kind, key, attendees) {
       const flags = expectedFlags(kind, key, attendees);
-      return flags.map((f) => ` <span class="exp-flag ${f.ok ? "ok" : "warn"}">${escapeHtml(f.text)}</span>`).join("");
+      return flags.map((f) => ` <span class="exp-flag ${f.ok ? "ok" : f.extra ? "warn extra" : "warn miss"}">${escapeHtml(f.text)}</span>`).join(""); // i18n-ok: CSS class names
     }
     function expectedFlags(kind, key, attendees) {
       const out = [];
@@ -901,7 +931,7 @@
     function flagFor(actual, expected, what) {
       if (actual === expected) return { ok: true, what, text: T("fac.expected.flagOk", { what, actual, expected }) };
       if (actual < expected) return { ok: false, what, text: T("fac.expected.flagMissing", { what, actual, expected, count: expected - actual }) };
-      return { ok: false, what, text: T("fac.expected.flagExtra", { what, actual, expected, count: actual - expected }) };
+      return { ok: false, extra: true, what, text: T("fac.expected.flagExtra", { what, actual, expected, count: actual - expected }) };
     }
     // The same comparison, as lines for the readiness check before Start.
     function expectedIssues() {
@@ -971,6 +1001,13 @@
       nextBtn.disabled = !isRunning || atEnd;
       extendBtn.disabled = !isRunning;
       unlockBtn.disabled = !isRunning;
+      // Trial run (20 October 2026): offered in the lobby only; while it runs
+      // the bar says so and End becomes "End trial run".
+      const trial = !!(currentRow && currentRow.is_trial && currentRow.status === "running");
+      trialBtn.hidden = !currentRow || currentRow.status !== "lobby";
+      document.getElementById("trialTag").hidden = !trial;
+      endBtn.textContent = trial ? T("fac.trial.end") : T("fac.controls.end");
+      if (typeof applyTrialStrip === "function") applyTrialStrip(currentRow);
       // Pause / Resume and Replay (18 October 2026).
       const paused = isPaused(currentRow);
       pauseBtn.hidden = !isRunning;
@@ -1176,7 +1213,7 @@
               const earlier = isEarlierRun(m);
               const earlierHtml = earlier ? ` · <span class="earlier">${escapeHtml(T("fac.inbox.earlierRun"))}</span>` : "";
               if (!isIncoming(m)) {
-                return `<li class="sent" data-kind="sent"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(T("fac.convo.you", { target: sentTargetLabel(m) }))} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}</li>`;
+                return `<li class="sent" data-kind="sent"><span class="meta"><span class="m-time">${escapeHtml(formatMessageTime(m.created_at))}</span> · ${escapeHtml(T("fac.convo.you", { target: sentTargetLabel(m) }))} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}</li>`;
               }
               const observer = m.direction === "from_observer";
               const who = observer ? observerRoomLabel(m.room)
@@ -1185,7 +1222,7 @@
               const actions =
                 (canReply ? `<button type="button" class="msg-dept-btn msg-reply-btn" data-kind="${observer ? "observers" : "dept"}" data-room="${m.room || ""}" data-dept="${escapeHtml(m.department || "")}">${escapeHtml(T("fac.convo.reply"))}</button>` : "") +
                 (isMoreTimeRequest(m) ? `<button type="button" class="msg-dept-btn msg-extend-btn">${escapeHtml(T("fac.convo.extendHere"))}</button>` : "");
-              return `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="${observer ? "observer" : "department"}"><span class="meta">${observer ? `<span class="from-tag">${escapeHtml(T("fac.inbox.observerTag"))}</span>` : ""}${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)} · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}${actions ? `<div class="msg-actions">${actions}</div>` : ""}</li>`;
+              return `<li class="${isInboxUnread(m) ? "unread" : ""}" data-kind="${observer ? "observer" : "department"}"><span class="meta">${observer ? `<span class="from-tag">${escapeHtml(T("fac.inbox.observerTag"))}</span>` : ""}<span class="m-time">${escapeHtml(formatMessageTime(m.created_at))}</span> · <span class="m-who">${escapeHtml(who)}</span> · ${escapeHtml(messageContextLabel(m))}${earlierHtml}</span>${escapeHtml(m.body)}${actions ? `<div class="msg-actions">${actions}</div>` : ""}</li>`;
             })
             .join("")
         : `<li class="muted-line">${escapeHtml(T("fac.inbox.empty"))}</li>`;
@@ -1509,8 +1546,8 @@
         // settled: nothing left to chase for it there.
         if (!timeUp) {
           return draft
-            ? { state: "grey", label: T("fac.status.waitingDrafting"), endLabel: T("fac.endCheck.statusDrafting") }
-            : { state: "grey", label: T("fac.status.waiting"), endLabel: T("fac.endCheck.statusNothing") };
+            ? { state: "grey", tone: "wait", label: T("fac.status.waitingDrafting"), endLabel: T("fac.endCheck.statusDrafting") }
+            : { state: "grey", tone: "wait", label: T("fac.status.waiting"), endLabel: T("fac.endCheck.statusNothing") };
         }
         return { state: "red", label: draft ? T("fac.status.draftCaptured") : T("fac.status.noResponse") };
       }
@@ -1532,7 +1569,7 @@
       if (onTime === n) return { state: "green", label: T("fac.status.allOnTime", { count: n }) };
       if (!timeUp) {
         return onTime === 0
-          ? { state: "grey", label: T("fac.status.waitingNoneOf", { total: n }), endLabel: T("fac.endCheck.statusNoneOf", { total: n }) }
+          ? { state: "grey", tone: "wait", label: T("fac.status.waitingNoneOf", { total: n }), endLabel: T("fac.endCheck.statusNoneOf", { total: n }) }
           : { state: "amber", label: T("fac.status.someSubmitted", { done: onTime, total: n }) };
       }
       return {
@@ -1586,7 +1623,7 @@
                 .map((d) => {
                   const st = departmentStatus(curIdx, inj, d);
                   const canMessage = st.state === "amber" || st.state === "red";
-                  return `<li><i class="dot ${st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label">${escapeHtml(st.label)}</span>${canMessage ? `<button class="msg-dept-btn" data-dept="${escapeHtml(d)}">${escapeHtml(T("fac.status.message"))}</button>` : ""}</li>`;
+                  return `<li><i class="dot ${st.tone === "wait" ? "wait" : st.state}"></i><span class="dept">${escapeHtml(d)}</span><span class="st-label ${st.tone === "wait" ? "tone-wait" : st.state === "green" ? "tone-ok" : st.state === "red" ? "tone-bad" : st.state === "amber" ? "tone-wait" : ""}">${escapeHtml(st.label)}</span>${canMessage ? `<button class="msg-dept-btn" data-dept="${escapeHtml(d)}">${escapeHtml(T("fac.status.message"))}</button>` : ""}</li>`;
                 })
                 .join("")}
             </ul>
@@ -1612,7 +1649,7 @@
                     (d) => `<tr><td>${escapeHtml(d)}</td>${past
                       .map((i) => {
                         const st = departmentStatus(i, injects[i], d);
-                        return `<td title="${escapeHtml(st.label)}"><i class="dot ${st.state}"></i></td>`;
+                        return `<td title="${escapeHtml(st.label)}"><i class="dot ${st.tone === "wait" ? "wait" : st.state}"></i></td>`;
                       })
                       .join("")}</tr>`
                   )
@@ -2285,6 +2322,7 @@
         current_inject_index: 0,
         inject_extra_minutes: 0,
         inject_force_unlocked: false,
+        is_trial: false,
       });
     function startReadinessIssues() {
       const issues = [];
@@ -2516,7 +2554,36 @@
       return issues;
     }
     function hideEndCheck() { endCheckEl.hidden = true; }
+    // ---- Trial run (Ahmed, 20 October 2026) -------------------------------
+    // "Trial run" starts inject 1 on every device as a practice: a red strip
+    // on every screen says so. "End trial run" takes everyone back to the
+    // waiting screen (still registered); the database sets the trial's
+    // answers aside, and its messages and notes belong to the earlier run.
+    const trialEndCheckEl = document.getElementById("trialEndCheck");
+    trialBtn.addEventListener("click", () => {
+      if (!currentRow || currentRow.status !== "lobby") return;
+      startCheckEl.hidden = true; document.body.classList.remove("pp-start-asking");
+      showExercise();
+      runAction(() => patchSession(sessionId, {
+        status: "running", current_inject_index: 0, inject_extra_minutes: 0, inject_force_unlocked: false, is_trial: true,
+      }));
+    });
+    document.getElementById("trialEndBackBtn").addEventListener("click", () => { trialEndCheckEl.hidden = true; });
+    document.getElementById("trialEndConfirmBtn").addEventListener("click", () => {
+      trialEndCheckEl.hidden = true;
+      if (!currentRow || !currentRow.is_trial) return;
+      runAction(() => patchSession(sessionId, {
+        status: "lobby", current_inject_index: -1, inject_extra_minutes: 0, inject_force_unlocked: false, is_trial: false,
+      }));
+    });
     document.getElementById("endBtn").addEventListener("click", () => {
+      if (currentRow && currentRow.is_trial && currentRow.status === "running") {
+        document.getElementById("endCheck").hidden = true;
+        trialEndCheckEl.hidden = false;
+        showTop();
+        document.getElementById("trialEndBackBtn").focus();
+        return;
+      }
       document.getElementById("startCheck").hidden = true;
       document.getElementById("resumeCheck").hidden = true;
       if (!currentRow || currentRow.status === "ended") { hideEndCheck(); return; } // nothing to end
@@ -2607,6 +2674,7 @@
         current_inject_index: -1,
         inject_extra_minutes: 0,
         inject_force_unlocked: false,
+        is_trial: false,
       }));
     });
 

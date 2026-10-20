@@ -627,7 +627,7 @@
       .sort((a, b) => b.t - a.t);
     msgListEl.innerHTML = items.length
       ? items.map((it) => it.in
-          ? `<li class="${isUnread(it.m) ? "unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(it.m.created_at))} · ${escapeHtml(it.m.department ? T("part.msg.toDepartment", { department: it.m.department }) : T("part.msg.toEveryone"))}</span>${escapeHtml(it.m.body)}${ended ? "" : `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("part.msg.reply"))}</button></div>`}</li>`
+          ? `<li class="${isUnread(it.m) ? "unread" : ""}"><span class="meta"><span class="m-time">${escapeHtml(formatMessageTime(it.m.created_at))}</span> · <span class="m-who">${escapeHtml(it.m.department ? T("part.msg.toDepartment", { department: it.m.department }) : T("part.msg.toEveryone"))}</span></span>${escapeHtml(it.m.body)}${ended ? "" : `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("part.msg.reply"))}</button></div>`}</li>`
           : `<li class="sent"><span class="meta">${escapeHtml(formatMessageTime(it.x.created_at))} · ${escapeHtml(T("part.msg.sentAs", { department: String(identity.department) }))}</span>${escapeHtml(it.x.body)}</li>`)
         .join("")
       : `<li class="muted">${escapeHtml(T("part.msg.none"))}</li>`;

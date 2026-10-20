@@ -1227,7 +1227,7 @@
                 ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
                 : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
             const canReply = fromFac && !info && observerChannel(latestRow).open;
-            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta">${escapeHtml(formatMessageTime(m.created_at))} · ${escapeHtml(who)}</span>${escapeHtml(m.body)}${canReply ? `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("room.msg.reply"))}</button></div>` : ""}</li>`;
+            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta"><span class="m-time">${escapeHtml(formatMessageTime(m.created_at))}</span> · <span class="m-who">${escapeHtml(who)}</span></span>${escapeHtml(m.body)}${canReply ? `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("room.msg.reply"))}</button></div>` : ""}</li>`;
           })
           .join("")
       : `<li class="empty">${escapeHtml(T("room.msg.none"))}</li>`;
