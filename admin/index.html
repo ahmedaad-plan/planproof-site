@@ -10,138 +10,202 @@
 <!-- Installable as a phone app ("Add to Home Screen"); the service worker caches nothing -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#10151b">
+<meta name="theme-color" content="#0b0f14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PlanProof">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
+  /* PlanProof admin — redesigned 21 October 2026 (Ahmed): the exercise
+     player's control-tower principles. One dark theme (black page, white
+     text; red for warnings, edges and actions; green for done; amber only for
+     "keep an eye on it"; no yellow), a command bar that never moves, "At a
+     glance" tiles, and tabs instead of one long scroll. The request is the
+     workspace: everything about one exercise request, including the client,
+     sits inside it. One flexible layout: under 900px a phone (bottom tab bar,
+     one column), from 900px a laptop. */
   :root{
-    --bg:#10151b; --panel:#1a222c; --panel-2:#212b37; --border:#2b3642;
-    --text:#e7eaee; --text-muted:#8b96a3; --red:#d84a3a;
-    --green:#3fa66b; --amber:#d9a23a; --focus:#6aa8ff;
-  }
-  @media (prefers-color-scheme: light){
-    :root:not([data-theme="dark"]){
-      --bg:#f3f4f6; --panel:#ffffff; --panel-2:#f7f8fa; --border:#dde1e6;
-      --text:#1a222c; --text-muted:#5c6672; --green:#2c8655; --amber:#a8740f; --focus:#1f5fd1;
-    }
+    --bg:#0b0f14; --panel:#0b0f14; --panel-2:#0e1319; --field:#070a0e;
+    --border:#2b3642; --border-strong:#46566a;
+    --text:#e7eaee; --text-muted:#9aa5b1; --accent:#f2f4f7; --accent-ink:#0b0f14;
+    --red:#d84a3a; --red-soft:#f0907f; --attn:#e8812f; --green:#4f9c82; --green-soft:#8fd0b8; --focus:#f2f4f7;
+    --font-display:"Space Grotesk","Segoe UI",system-ui,sans-serif; --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   }
   *{ box-sizing:border-box; }
-  body{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif; }
-  h1,h2,h3{ font-family:"Space Grotesk",sans-serif; margin:0; line-height:1.25; }
-  h1{ font-size:24px; } h2{ font-size:18px; } h3{ font-size:15px; }
+  html{ color-scheme:dark; }
+  body{ margin:0; background:var(--bg); color:var(--text); font:15px/1.5 var(--font-body); }
+  h1,h2,h3,h4{ font-family:var(--font-display); margin:0; line-height:1.25; }
+  h1{ font-size:22px; } h2{ font-size:17px; } h3{ font-size:15px; }
   a{ color:var(--text); }
   button,input,select,textarea{ font:inherit; color:inherit; }
   :focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
   [hidden]{ display:none !important; }
+  .muted{ color:var(--text-muted); } .small{ font-size:13px; }
+  .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .spread{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px 16px; flex-wrap:wrap; }
+  .stack > * + *{ margin-top:12px; }
+  .end{ justify-content:flex-end; }
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  bdi{ unicode-bidi:isolate; }
 
   /* Top bar */
-  .bar{ position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--border);
-        display:flex; align-items:center; gap:22px; padding:12px 24px; flex-wrap:wrap; }
-  .mark{ font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:18px; text-decoration:none; }
+  .bar{ position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:1px solid var(--border-strong);
+        display:flex; align-items:center; gap:14px; padding:10px 16px; }
+  .mark{ font-family:var(--font-display); font-weight:700; font-size:18px; text-decoration:none; white-space:nowrap; }
   .mark span{ color:var(--red); }
-  .mark small{ font-family:"IBM Plex Sans",sans-serif; font-weight:500; font-size:13px; color:var(--text-muted); margin-left:6px; }
-  nav.views{ display:flex; gap:4px; }
-  nav.views button{ background:none; border:0; padding:8px 12px; border-radius:6px; color:var(--text-muted); cursor:pointer; font-weight:500; }
-  nav.views button[aria-current="page"]{ color:var(--text); background:var(--panel); }
-  .count{ display:inline-block; min-width:20px; padding:0 6px; margin-left:6px; border-radius:10px; background:var(--red); color:#fff; font-size:12px; text-align:center; }
-  .bar .who{ margin-left:auto; font-size:13px; color:var(--text-muted); display:flex; gap:12px; align-items:center; }
+  .mark small{ font-family:var(--font-body); font-weight:500; font-size:12px; color:var(--text-muted); margin-left:6px; }
+  nav.views{ display:flex; gap:8px; }
+  nav.views button{ background:transparent; border:1px solid var(--red); padding:7px 16px; border-radius:8px; color:var(--text); cursor:pointer; font-weight:600; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
+  nav.views button[aria-current="page"]{ background:var(--red); color:#fff; font-weight:700; }
+  .count{ display:inline-block; min-width:20px; height:20px; line-height:20px; padding:0 6px; border-radius:10px; background:var(--red); color:#fff; font-size:12px; font-weight:700; text-align:center; }
+  nav.views button[aria-current="page"] .count{ background:#fff; color:var(--red); }
+  .bar .who{ margin-left:auto; font-size:13px; color:var(--text-muted); display:flex; gap:10px; align-items:center; }
+  .bar .ver{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
+  @media (max-width:899px){ .bar{ padding:8px 10px; gap:8px; } .mark{ font-size:16px; } .mark small{ display:none; } .bar .who{ gap:6px; } .bar .who #whoEmail, .bar .who .ver{ display:none; } nav.views button{ padding:6px 10px; font-size:13px; } .bar .who .btn{ padding:4px 8px; min-height:30px; font-size:12px; } }
 
-  main{ max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
-  .muted{ color:var(--text-muted); }
-  .small{ font-size:13px; }
-  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  .spread{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
-  .stack > * + *{ margin-top:14px; }
+  main{ max-width:1100px; margin:0 auto; padding:16px 16px 60px; }
 
   /* Controls */
-  .btn{ border:1px solid var(--border); background:var(--panel); padding:7px 14px; border-radius:6px; cursor:pointer; font-weight:500; font-size:14px; }
-  .btn:hover{ border-color:var(--text-muted); }
-  .btn.primary{ background:var(--red); border-color:var(--red); color:#fff; }
-  .btn.quiet{ background:none; }
-  .btn.danger{ color:var(--red); border-color:var(--red); background:none; }
+  .btn{ border:1px solid var(--border-strong); background:transparent; color:var(--text); padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; min-height:40px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+  .btn:hover{ background:rgba(242,244,247,0.06); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:700; }
+  .btn.primary:hover{ background:#fff; }
+  .btn.red{ background:var(--red); border-color:var(--red); color:#fff; font-weight:700; }
+  .btn.quiet{ border-color:var(--border); font-weight:500; }
+  .btn.danger{ color:var(--red-soft); border-color:var(--red); background:transparent; }
+  .btn.danger:hover{ background:rgba(216,74,58,0.12); }
+  .btn{ white-space:nowrap; }
+  .btn.sm{ padding:5px 10px; min-height:32px; font-size:13px; }
   .btn[disabled]{ opacity:.5; cursor:default; }
   input[type=text],input[type=email],input[type=password],input[type=tel],input[type=search],input[type=date],select,textarea{
-    background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; width:100%; }
-  textarea{ min-height:70px; resize:vertical; }
-  label.f{ display:block; font-size:13px; color:var(--text-muted); }
-  label.f > input, label.f > select, label.f > textarea{ margin-top:4px; color:var(--text); }
-  .grid2{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px 16px; }
+    background:var(--field); border:1px solid var(--border-strong); border-radius:8px; padding:9px 10px; width:100%; min-height:40px; color:var(--text); }
+  textarea{ min-height:76px; resize:vertical; }
+  select{ appearance:auto; }
+  label.f{ display:block; font-size:13px; color:var(--text-muted); font-weight:500; }
+  label.f > input, label.f > select, label.f > textarea{ margin-top:4px; }
+  .grid2{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px 14px; }
 
-  /* Blocks */
-  .block{ background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
-  .block + .block{ margin-top:16px; }
-  section.part{ margin-top:30px; }
-  section.part > h2{ margin-bottom:12px; }
-  dl.facts{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:12px 0 0; font-size:14px; }
+  /* Cards: one black, thin border, red top edge, red small-capital titles */
+  .card{ background:var(--panel); border:1px solid var(--border); border-top:2px solid var(--red); border-radius:12px; padding:14px 16px; }
+  .card + .card{ margin-top:14px; }
+  .card > h2, .card > .spread > h2{ color:var(--red-soft); font-family:var(--font-body); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; }
+  .card.plain{ border-top-color:var(--border); }
+  .card.danger-zone{ border-color:var(--red); }
+  .cols{ display:grid; gap:14px; align-items:start; }
+  @media (min-width:900px){ .cols{ grid-template-columns:1fr 1fr; } .cols > *{ min-width:0; } .cols .card + .card{ margin-top:0; } }
+
+  dl.facts{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; font-size:14px; }
   dl.facts dt{ color:var(--text-muted); }
   dl.facts dd{ margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  @media (max-width:899px){ dl.facts{ grid-template-columns:1fr; } dl.facts dt{ margin-top:6px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; } }
   table{ width:100%; border-collapse:collapse; font-size:14px; }
-  th{ text-align:left; font-weight:500; color:var(--text-muted); font-size:13px; padding:6px 8px; border-bottom:1px solid var(--border); }
+  th{ text-align:left; font-weight:600; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; padding:6px 8px; border-bottom:1px solid var(--border); }
   td{ padding:8px; border-bottom:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
+  tr:last-child td{ border-bottom:0; }
   .table-wrap{ overflow-x:auto; }
+  pre{ white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.5 var(--font-mono); margin:0; }
 
-  /* Match confidence — same colour logic as the report's readiness bands */
-  .label{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:3px 10px; border-radius:999px; border:1.5px solid; white-space:nowrap; }
-  .label.reference{ color:var(--green); border-color:var(--green); }
-  .label.likely{ color:var(--amber); border-color:var(--amber); }
-  .label.possible{ color:var(--text-muted); border-color:var(--text-muted); border-style:dashed; }
-  .label.new{ color:var(--text); border-color:var(--border); }
-  .label::before{ content:""; width:8px; height:8px; border-radius:50%; background:currentColor; }
-  .label.new::before{ background:none; border:1.5px solid currentColor; width:6px; height:6px; }
-  ul.reasons{ margin:8px 0 0; padding-left:18px; font-size:14px; color:var(--text-muted); }
+  /* Pills and tones */
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px; border:1px solid var(--border-strong); white-space:nowrap; color:var(--text); }
+  .pill::before{ content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .pill.ok{ color:var(--green-soft); border-color:var(--green); }
+  .pill.wait{ color:var(--attn); border-color:var(--attn); }
+  .pill.bad{ color:var(--red-soft); border-color:var(--red); }
+  .pill.none{ color:var(--text-muted); }
+  .pill.none::before{ background:transparent; border:1px solid currentColor; }
+  .tag{ font-size:12px; padding:1px 8px; border-radius:4px; border:1px solid var(--border-strong); color:var(--text-muted); white-space:nowrap; }
+  .tag.red{ border-color:var(--red); color:var(--red-soft); }
+  .warn{ border:1px solid var(--attn); border-left-width:4px; padding:10px 14px; border-radius:8px; font-size:14px; }
+  .alert{ border:1px solid var(--red); border-left-width:4px; padding:10px 14px; border-radius:8px; font-size:14px; }
+  .alert h2{ font-size:14px; color:var(--red-soft); margin-bottom:4px; }
+  .alert ul{ margin:4px 0 0; padding-left:18px; }
+  .sysalert-wrap{ max-width:1100px; margin:12px auto 0; padding:0 16px; }
+  .empty{ color:var(--text-muted); padding:10px 0; margin:0; }
+
+  /* At a glance tiles (same as the facilitator page) */
+  .kpi-strip{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi{ display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; padding:10px 12px; border:1px solid var(--border); border-top:3px solid var(--border-strong); border-radius:10px; background:transparent; color:var(--text); cursor:default; min-width:0; font:inherit; }
+  button.kpi{ cursor:pointer; }
+  button.kpi:hover{ border-color:var(--red); }
+  .kpi[aria-pressed="true"]{ background:rgba(242,244,247,0.06); border-color:var(--accent); }
+  .kpi-v{ font-family:var(--font-mono); font-size:1.6rem; font-weight:600; line-height:1.15; font-variant-numeric:tabular-nums; }
+  .kpi-l{ font-size:.74rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; white-space:normal; }
+  .kpi[data-tone="ok"]{ border-top-color:var(--green); } .kpi[data-tone="ok"] .kpi-v{ color:var(--green-soft); }
+  .kpi[data-tone="wait"]{ border-top-color:var(--attn); } .kpi[data-tone="wait"] .kpi-v{ color:var(--attn); }
+  .kpi[data-tone="bad"]{ border-top-color:var(--red); } .kpi[data-tone="bad"] .kpi-v{ color:var(--red-soft); }
+  .kpi[data-tone="none"] .kpi-v{ color:var(--text-muted); }
+  @media (max-width:899px){ .kpi-strip{ grid-template-columns:repeat(2,minmax(0,1fr)); } .kpi:last-child:nth-child(odd){ grid-column:1 / -1; } .kpi-v{ font-size:1.3rem; } }
+
+  /* Lists of requests and clients: one row each, the whole row opens it */
+  .list{ border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .lrow{ display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1.4fr) auto; gap:4px 14px; align-items:center; padding:12px 14px; border-top:1px solid var(--border); text-decoration:none; color:var(--text); }
+  .lrow:first-child{ border-top:0; }
+  .lrow:hover{ background:rgba(242,244,247,0.04); }
+  .lrow .t{ font-weight:700; font-family:var(--font-display); font-size:16px; overflow-wrap:anywhere; }
+  .lrow .s{ font-size:13px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .lrow .r{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  @media (max-width:899px){ .lrow{ grid-template-columns:1fr; } .lrow .r{ justify-content:flex-start; } }
+
+  /* Command bar on a request or a client: never moves */
+  .cmd{ position:sticky; top:53px; z-index:30; background:var(--bg); border-bottom:1px solid var(--border-strong); margin:-16px -16px 14px; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px; }
+  .cmd .back{ font-size:13px; color:var(--text-muted); text-decoration:none; white-space:nowrap; }
+  .cmd .back:hover{ color:var(--text); }
+  .cmd .title{ flex:1 1 260px; min-width:0; }
+  .cmd .title h1{ overflow-wrap:anywhere; }
+  .cmd .title .s{ font-size:13px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .cmd .next{ font-size:13px; color:var(--text-muted); flex-basis:100%; }
+  .cmd .next b{ color:var(--text); font-weight:600; }
+  .cmd .tools{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .cmd select{ width:auto; min-width:190px; }
+  @media (max-width:899px){ .cmd{ top:49px; gap:6px 12px; padding:8px 12px; margin:-16px -16px 12px; } .cmd .tools{ flex-basis:100%; } .cmd select{ flex:1 1 auto; } }
+
+  /* Tabs: centred red-edged buttons on a laptop; a bottom bar on a phone */
+  .tabs{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; padding:0 0 14px; }
+  .tab{ display:inline-flex; align-items:center; gap:6px; padding:9px 20px; border:1px solid var(--red); border-radius:8px; background:transparent; color:var(--text); cursor:pointer; font-size:15px; font-weight:600; }
+  .tab:hover{ background:rgba(216,74,58,0.12); }
+  .tab[aria-selected="true"]{ background:var(--red); color:#fff; font-weight:700; }
+  .tab .count{ background:var(--red); color:#fff; }
+  .tab[aria-selected="true"] .count{ background:#fff; color:var(--red); }
+  .panel[hidden]{ display:none; }
+  @media (max-width:899px){
+    .tabs{ position:fixed; inset-inline:0; bottom:0; z-index:40; background:var(--bg); border-top:1px solid var(--border-strong); padding:6px 6px calc(6px + env(safe-area-inset-bottom)); gap:4px; flex-wrap:nowrap; }
+    .tab{ flex:1 1 0; min-width:0; justify-content:center; padding:10px 4px; font-size:13px; border-radius:6px; }
+    .tab span.l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    body.has-tabs main{ padding-bottom:84px; }
+    body.kbd .tabs{ display:none; }
+  }
+
+  /* Versions, comments, remarks */
+  .item{ padding:10px 0; border-top:1px solid var(--border); }
+  .item:first-child{ border-top:0; padding-top:0; }
+  .item .body{ white-space:pre-wrap; overflow-wrap:anywhere; margin:4px 0 8px; }
+  .item .meta{ font-size:13px; color:var(--text-muted); }
+  .item .meta b{ color:var(--red-soft); font-weight:700; }
+  .vstat{ width:auto; min-width:170px; }
   .cand{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; margin-top:8px; flex-wrap:wrap; }
-  .band{ font-weight:600; }
-  .band.green{ color:var(--green); } .band.amber{ color:var(--amber); } .band.red{ color:var(--red); }
-  .tag{ font-size:12px; padding:1px 8px; border-radius:4px; background:var(--panel-2); border:1px solid var(--border); color:var(--text-muted); }
-  .warn{ border-left:3px solid var(--amber); background:var(--panel-2); padding:10px 14px; border-radius:6px; font-size:14px; }
-  .danger-zone{ border-color:var(--red); }
+  ul.reasons{ margin:6px 0 0; padding-left:18px; font-size:14px; color:var(--text-muted); }
+  details > summary{ cursor:pointer; color:var(--text-muted); font-size:14px; }
+  details[open] > summary{ margin-bottom:10px; }
+  .band{ font-family:var(--font-mono); font-weight:600; }
+  .band.green{ color:var(--green-soft); } .band.amber{ color:var(--attn); } .band.red{ color:var(--red-soft); }
 
   /* Sign-in */
   .gate{ max-width:400px; margin:9vh auto; }
-  .gate .block{ padding:28px; }
+  .gate .card{ padding:28px; }
   .gate h1{ margin-bottom:6px; }
   .qr{ background:#fff; padding:10px; border-radius:8px; width:200px; height:200px; margin:14px 0; }
   .qr img{ width:100%; height:100%; }
-  code{ font-size:13px; background:var(--panel-2); padding:2px 6px; border-radius:4px; overflow-wrap:anywhere; }
+  code{ font-family:var(--font-mono); font-size:13px; background:var(--panel-2); padding:2px 6px; border-radius:4px; overflow-wrap:anywhere; }
 
-  #toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg);
-          padding:10px 18px; border-radius:8px; font-size:14px; z-index:20; max-width:90vw; }
+  #toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-ink); padding:10px 18px; border-radius:8px; font-size:14px; font-weight:600; z-index:60; max-width:90vw; }
   #toast.err{ background:var(--red); color:#fff; }
-  dialog{ background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:10px; max-width:460px; width:92vw; padding:22px; }
-  dialog::backdrop{ background:rgba(0,0,0,.55); }
-  @media (max-width:640px){ main{ padding:20px 16px 60px; } .bar{ padding:10px 16px; gap:12px; } dl.facts{ grid-template-columns:1fr; } dl.facts dt{ margin-top:6px; } }
+  @media (max-width:899px){ body.has-tabs #toast{ bottom:76px; } }
+  dialog{ background:var(--panel); color:var(--text); border:1px solid var(--red); border-radius:12px; max-width:460px; width:92vw; padding:22px; }
+  dialog::backdrop{ background:rgba(0,0,0,.65); }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
-  /* System status banner (added 9 October 2026): shown only when /api/health reports a problem */
-  .sysalert{ margin:0 auto; max-width:1100px; padding:12px 16px; border-left:4px solid var(--red); background:var(--panel-2); border-radius:6px; font-size:14px; }
-  .sysalert h2{ font-size:15px; color:var(--red); margin-bottom:4px; }
-  .sysalert ul{ margin:6px 0 0; padding-left:18px; }
-  .sysalert-wrap{ padding:12px 16px 0; }
-  /* PlanProof remarks — team only (21 October 2026) */
-  .team-remarks { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--red); border-radius: 10px; }
-  .team-remarks h3 { margin: 0; }
-  .team-remarks .remark { padding: 8px 0; border-top: 1px solid var(--border); }
-  .team-remarks .remark:first-child { border-top: 0; }
-  .team-remarks .remark-body { white-space: pre-wrap; margin: 4px 0 6px; }
-  .team-remarks textarea { width: 100%; margin-top: 8px; box-sizing: border-box; }
-  .tag.lock { border-color: var(--red); color: var(--red); }
-  /* Scenario with the client — versions and client comments (21 October 2026) */
-  .scenario-box { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
-  .scenario-box h4 { font-family: "Space Grotesk", sans-serif; font-size: 14px; margin: 16px 0 6px; }
-  .scenario-box .ver { padding: 8px 0; border-top: 1px solid var(--border); }
-  .scenario-box .ver:first-child { border-top: 0; }
-  .scenario-box .ver .pre, .scenario-box .remark-body { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .scenario-box .remark { padding: 8px 0; border-top: 1px solid var(--border); }
-  .scenario-box .remark:first-child { border-top: 0; }
-  .scenario-box .remark-body { margin: 4px 0 6px; }
-  .scenario-box .ver-status { min-width: 180px; }
-  .scenario-box details.add { margin-top: 8px; }
-  .scenario-box .add-comment { margin-top: 10px; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -152,14 +216,14 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span id="whoEmail"></span><button class="btn quiet" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
-<div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="sysalert" role="alert" id="sysAlert"></div></div>
+<div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
 
 <main id="main">
   <div class="gate" id="gate">
-    <div class="block stack">
+    <div class="card stack">
       <h1>PlanProof client records</h1>
       <p class="muted small">Private. Signed-in access only.</p>
       <div id="gateBody"></div>
@@ -173,9 +237,9 @@
     <h2 id="confirmTitle"></h2>
     <p id="confirmText" class="muted"></p>
     <label class="f" id="confirmTypeWrap" hidden>Type <strong id="confirmTypeWord"></strong> to confirm<input type="text" id="confirmType" autocomplete="off"></label>
-    <div class="row" style="justify-content:flex-end">
+    <div class="row end">
       <button class="btn quiet" value="cancel">Cancel</button>
-      <button class="btn primary" value="ok" id="confirmOk"></button>
+      <button class="btn red" value="ok" id="confirmOk"></button>
     </div>
   </form>
 </dialog>
@@ -186,7 +250,7 @@
         crossorigin="anonymous"></script>
 <script>
 "use strict";
-// PlanProof admin — client history (returning clients).
+// PlanProof admin — client records, requests, scenario versions and comments.
 // Security: this page holds no secret. Everything it shows is protected in the
 // database by Row Level Security: only a user listed in private.admins who has
 // signed in WITH a second factor (MFA, aal2) can read or change anything.
@@ -209,27 +273,44 @@ function h(tag, attrs, ...kids) {
     else if (k === "value") el.value = v;
     else el.setAttribute(k, v === true ? "" : v);
   }
-  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  for (const kid of kids.flat()) if (kid != null && kid !== false && kid !== "") el.append(kid instanceof Node ? kid : String(kid));
   return el;
 }
 const $ = (id) => document.getElementById(id);
 const dt = (s) => s ? new Date(s).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 const dd = (s) => s ? new Date(s + (s.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+const todayDubai = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
 const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 const LABEL_TEXT = { reference: "Matched by reference", likely: "Likely match", possible: "Possible match", new: "New client" };
+const LABEL_TONE = { reference: "ok", likely: "wait", possible: "none", new: "none" };
 const USED_TEXT = { yes: "Yes", no: "No", not_sure: "Not sure" };
 const LANGUAGE_TEXT = { english: "English", arabic: "Arabic preferred (not offered yet — runs in English for now)" };
 const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", unsure: "Not sure yet" };
-// Request stages (renamed from "Pipeline" and two stages added, 21 October 2026).
-// The database moves a request forward by itself when a scenario version is
-// recorded, a client comment is added or a version is approved; never backwards.
+// Request stages. The database moves a request forward by itself when a
+// scenario version is recorded, a client comment is added or a version is
+// approved; never backwards.
 const STATUS = ["new", "contacted", "scenario_sent", "client_reviewing", "scenario_approved", "exercise_scheduled", "delivered"];
 const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", client_reviewing: "Client reviewing", scenario_approved: "Scenario approved", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
+const STATUS_TONE = { new: "bad", contacted: "wait", scenario_sent: "wait", client_reviewing: "wait", scenario_approved: "ok", exercise_scheduled: "ok", delivered: "ok" };
+const NEXT_STEP = {
+  pending: "confirm which client this is (Client tab)",
+  new: "contact the client",
+  contacted: "design the scenario; record v1 under Scenario when it is sent",
+  scenario_sent: "wait for the client's comments or approval (record them under Scenario)",
+  client_reviewing: "revise the scenario from the comments, or mark the version approved",
+  scenario_approved: "schedule the exercise",
+  exercise_scheduled: "run the exercise, then deliver the report",
+  delivered: "nothing — delivered",
+};
 const VERSION_STATUS = { sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
+const VERSION_TONE = { sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
 const ACTION_STATUS = { open: "Open", done: "Done (not yet exercised)", verified: "Verified at a later exercise", not_verified: "Not verified — gap remained" };
 const RATING_TEXT = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
 
-function labelPill(label) { return h("span", { class: "label " + (label || "new") }, LABEL_TEXT[label] || "Not checked"); }
+const pill = (text, tone) => h("span", { class: "pill " + (tone || "none") }, text);
+const labelPill = (label) => pill(LABEL_TEXT[label] || "Not checked", LABEL_TONE[label] || "none");
+const stagePill = (st) => pill(STATUS_TEXT[st] || st, STATUS_TONE[st] || "none");
+function kpi(value, label, tone) { return h("div", { class: "kpi", role: "listitem", "data-tone": tone }, h("span", { class: "kpi-v" }, value), h("span", { class: "kpi-l" }, label)); }
 function toast(msg, isErr) {
   const t = $("toast"); t.textContent = msg; t.className = isErr ? "err" : ""; t.hidden = false;
   clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), isErr ? 7000 : 3000);
@@ -250,6 +331,37 @@ function confirmBox({ title, text, ok, typeWord }) {
     d.showModal();
   });
 }
+
+// Tabs: one set per request or client page. The open tab is remembered per
+// page kind, so coming back lands where you were. On a phone the bar sits at
+// the bottom and steps aside while the keyboard is up.
+function makeTabs(kind, defs, startWith) {
+  const key = "pp_admin_tab_" + kind;
+  const remembered = sessionStorage.getItem(key);
+  let current = startWith || (defs.find((d) => d.id === remembered) ? remembered : defs[0].id);
+  const nav = h("div", { class: "tabs", role: "tablist" });
+  const panels = h("div", {});
+  const buttons = {};
+  defs.forEach((d) => {
+    d.panel.className = "panel"; d.panel.setAttribute("role", "tabpanel"); d.panel.id = "panel-" + d.id;
+    const badge = h("span", { class: "count", hidden: true });
+    const b = h("button", { class: "tab", role: "tab", type: "button", "data-tab": d.id, onclick: () => show(d.id) }, h("span", { class: "l" }, d.label), badge);
+    b._badge = badge; buttons[d.id] = b;
+    nav.append(b); panels.append(d.panel);
+  });
+  function show(id) {
+    current = id; sessionStorage.setItem(key, id);
+    defs.forEach((d) => { d.panel.hidden = d.id !== id; buttons[d.id].setAttribute("aria-selected", d.id === id ? "true" : "false"); });
+    window.scrollTo({ top: 0 });
+  }
+  function badge(id, n) { const b = buttons[id]._badge; b.hidden = !n; b.textContent = n || ""; }
+  show(current);
+  document.body.classList.add("has-tabs");
+  return { nav, panels, show, badge };
+}
+// Hide the bottom tab bar while typing on a phone (the keyboard covers it).
+document.addEventListener("focusin", (e) => { if (e.target.matches("textarea, input:not([type=date]), select") && window.innerWidth < 900) document.body.classList.add("kbd"); });
+document.addEventListener("focusout", () => document.body.classList.remove("kbd"));
 
 // ---------- idle sign-out ----------
 let idleTimer;
@@ -331,14 +443,14 @@ async function enterApp() {
   $("gate").hidden = true; $("app").hidden = false; $("bar").hidden = false;
   bumpIdle();
   checkSystem(); setInterval(checkSystem, 5 * 60000);
-  show(location.hash.startsWith("#client/") ? "client" : (location.hash === "#clients" ? "clients" : "requests"));
+  route();
 }
 
 $("signOut").onclick = async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); };
-document.querySelectorAll("nav.views button").forEach((b) => b.onclick = () => { location.hash = b.dataset.view === "clients" ? "#clients" : ""; show(b.dataset.view); });
-window.addEventListener("hashchange", () => { if (!$("app").hidden && location.hash.startsWith("#client/")) show("client"); });
+document.querySelectorAll("nav.views button").forEach((b) => b.onclick = () => { const to = b.dataset.view === "clients" ? "#clients" : ""; if (location.hash === to || (!to && !location.hash)) route(); else location.hash = to; });
+window.addEventListener("hashchange", () => { if (!$("app").hidden) route(); });
 
-// ---------- system status banner (added 9 October 2026) ----------
+// ---------- system status banner ----------
 // Reads /api/health (the same check that emails alerts). Shows a red banner
 // only when something that handles client requests is not working.
 const SYS_TEXT = {
@@ -367,65 +479,123 @@ async function checkSystem() {
   wrap.hidden = false;
 }
 
-function show(view) {
-  document.querySelectorAll("nav.views button").forEach((b) => b.setAttribute("aria-current", (b.dataset.view === view || (view === "client" && b.dataset.view === "clients")) ? "page" : "false"));
+// ---------- routing ----------
+//   #            requests list      #request/<id>   one request (tabs)
+//   #clients     clients list       #client/<id>    one client (tabs)
+//   #new-client  add a client who called or emailed
+function route() {
+  const hsh = location.hash;
+  const view = hsh.startsWith("#request/") ? "request" : hsh.startsWith("#client/") ? "client" : hsh === "#clients" || hsh === "#new-client" ? "clients" : "requests";
+  document.querySelectorAll("nav.views button").forEach((b) => b.setAttribute("aria-current",
+    (b.dataset.view === "requests" && (view === "requests" || view === "request")) || (b.dataset.view === "clients" && (view === "clients" || view === "client")) ? "page" : "false"));
+  document.body.classList.remove("has-tabs", "kbd");
   const app = $("app"); app.replaceChildren(h("p", { class: "muted" }, "Loading…"));
-  const run = view === "clients" ? renderClients : view === "client" ? () => renderClient(location.hash.slice(8)) : renderRequests;
-  run().catch(fail);
+  const run = hsh === "#new-client" ? newClientForm : view === "request" ? () => renderRequest(hsh.slice(9)) : view === "client" ? () => renderClient(hsh.slice(8)) : view === "clients" ? renderClients : renderRequests;
+  Promise.resolve().then(run).catch(fail);
   refreshPendingCount();
 }
+const go = (hash) => { location.hash = hash; };
 
 async function refreshPendingCount() {
   const { count } = await sb.from("submissions").select("id", { count: "exact", head: true }).eq("match_status", "pending");
   const c = $("pendingCount"); c.hidden = !count; c.textContent = count || "";
 }
 
-// ================= Requests =================
-let requestFilter = "pending";
+// ================= Requests — the list =================
+let requestFilter = sessionStorage.getItem("pp_admin_reqfilter") || "open";
 async function renderRequests() {
   const app = $("app");
-  let query = sb.from("submissions")
-    .select("*, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, phone, record_status, client_ref, sector, size_band, location)")
-    .order("created_at", { ascending: false }).limit(100);
-  if (requestFilter === "pending") query = query.eq("match_status", "pending");
-  else if (requestFilter === "open") query = query.neq("status", "delivered");
-  const rows = await q(query);
-  // PlanProof remarks — team only (21 October 2026): one query for every request shown.
-  const remarkRows = rows.length ? await q(sb.from("submission_team_remarks").select("*")
-    .in("submission_id", rows.map((r) => r.id)).is("withdrawn_at", null).order("created_at")).catch(() => []) : [];
-  const remarksBySub = {};
-  (remarkRows || []).forEach((r) => (remarksBySub[r.submission_id] = remarksBySub[r.submission_id] || []).push(r));
-  rows.forEach((r) => { r._remarks = remarksBySub[r.id] || []; });
-  // Scenario versions and client comments (21 October 2026), same pattern.
-  const ids = rows.map((r) => r.id);
-  const [verRows, comRows] = ids.length ? await Promise.all([
-    // all versions, including removed ones, so the next number shown is the one the database gives
-    q(sb.from("submission_scenario_versions").select("*").in("submission_id", ids).order("version_no")).catch(() => []),
-    q(sb.from("submission_client_comments").select("*").in("submission_id", ids).is("withdrawn_at", null).order("received_on").order("created_at")).catch(() => []),
-  ]) : [[], []];
-  rows.forEach((r) => {
-    const mine = (verRows || []).filter((v) => v.submission_id === r.id);
-    r._versions = mine.filter((v) => !v.withdrawn_at);
-    r._lastVersionNo = mine.reduce((m, v) => Math.max(m, v.version_no), 0);
-    r._comments = (comRows || []).filter((c) => c.submission_id === r.id);
-  });
+  const rows = await q(sb.from("submissions")
+    .select("id, created_at, source, form_name, status, match_status, match_label, service_type, risk_concern_1, org_unit, exercise_language, client:clients!submissions_client_id_fkey(id, company_name, contact_name, record_status, client_ref)")
+    .order("created_at", { ascending: false }).limit(200));
+  const pending = rows.filter((r) => r.match_status === "pending");
+  const open = rows.filter((r) => r.status !== "delivered");
+  const by = (sts) => open.filter((r) => sts.includes(r.status));
+  const tiles = [
+    ["pending", "To confirm", pending.length ? "bad" : "ok", pending],
+    ["design", "Scenario to design", by(["new", "contacted"]).length ? "wait" : "ok", by(["new", "contacted"])],
+    ["client", "With the client", by(["scenario_sent", "client_reviewing"]).length ? "wait" : "none", by(["scenario_sent", "client_reviewing"])],
+    ["schedule", "Approved — to schedule", by(["scenario_approved"]).length ? "wait" : "none", by(["scenario_approved"])],
+    ["scheduled", "Scheduled", by(["exercise_scheduled"]).length ? "ok" : "none", by(["exercise_scheduled"])],
+  ];
+  const sets = { open, all: rows };
+  tiles.forEach(([k, , , list]) => (sets[k] = list));
+  if (!sets[requestFilter]) requestFilter = "open";
 
-  const filters = h("div", { class: "row" }, ...[["pending", "Waiting for you to confirm"], ["open", "All open requests"], ["all", "Everything"]].map(([k, t]) =>
-    h("button", { class: "btn" + (requestFilter === k ? " primary" : " quiet"), onclick: () => { requestFilter = k; renderRequests().catch(fail); } }, t)));
-
-  app.replaceChildren(
-    h("div", { class: "spread" }, h("h1", {}, "Requests"), filters),
-    h("p", { class: "muted small" }, "Every website request is checked against your client records. Nothing is linked until you confirm it."),
-    rows.length ? h("div", {}, ...rows.map(requestBlock)) :
-      h("div", { class: "block" }, h("p", { class: "muted" }, requestFilter === "pending" ? "No requests are waiting. New website requests will appear here with any likely matches." : "No requests yet.")));
+  const strip = h("div", { class: "kpi-strip", role: "list", "aria-label": "At a glance" });
+  const chips = h("div", { class: "row", style: "margin-bottom:12px" });
+  const list = h("div", {});
+  function draw() {
+    strip.replaceChildren(...tiles.map(([k, label, tone, items]) => h("button", { type: "button", class: "kpi", role: "listitem", "data-tone": tone, "aria-pressed": requestFilter === k ? "true" : "false",
+      onclick: () => { requestFilter = requestFilter === k ? "open" : k; sessionStorage.setItem("pp_admin_reqfilter", requestFilter); draw(); } },
+      h("span", { class: "kpi-v" }, String(items.length)), h("span", { class: "kpi-l" }, label))));
+    chips.replaceChildren(...[["open", "All open requests"], ["all", "Everything, incl. delivered"]].map(([k, t]) =>
+      h("button", { type: "button", class: "btn sm" + (requestFilter === k ? " primary" : " quiet"), onclick: () => { requestFilter = k; sessionStorage.setItem("pp_admin_reqfilter", k); draw(); } }, t)));
+    const shown = sets[requestFilter] || open;
+    list.replaceChildren(shown.length ? h("div", { class: "list" }, ...shown.map(requestRow)) :
+      h("div", { class: "card plain" }, h("p", { class: "empty" }, requestFilter === "pending" ? "Nothing is waiting for you to confirm." : "No requests here.")));
+  }
+  app.replaceChildren(h("div", { class: "spread", style: "margin-bottom:12px" }, h("h1", {}, "Requests"), h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a tile to filter. Tap a request to open it.")), strip, chips, list);
+  draw();
+}
+function requestRow(s) {
+  const c = s.client || {};
+  return h("a", { class: "lrow", href: "#request/" + s.id },
+    h("div", {}, h("div", { class: "t" }, h("bdi", {}, c.company_name || "(no organisation name)")),
+      h("div", { class: "s" }, [dt(s.created_at), s.source === "website" ? "website" : s.source, s.org_unit].filter(Boolean).join(" · "))),
+    h("div", { class: "s" }, [s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1].filter(Boolean).join(" · ")),
+    h("div", { class: "r" }, s.match_status === "pending" ? labelPill(s.match_label) : null, stagePill(s.status)));
 }
 
-function requestBlock(s) {
+// ================= One request — the workspace =================
+async function renderRequest(id) {
+  const app = $("app");
+  const s = await q(sb.from("submissions")
+    .select("*, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, phone, record_status, client_ref, sector, size_band, location, business_unit, history_opt_out, retain_until)")
+    .eq("id", id).maybeSingle());
+  if (!s) { app.replaceChildren(h("p", {}, "This request doesn't exist (it may have been erased). "), h("a", { href: "#" }, "Back to requests")); return; }
   const c = s.client || {};
+  const linked = s.match_status !== "pending" && c.id;
+  const [remarks, versions, comments, contacts, exercises, actions] = await Promise.all([
+    q(sb.from("submission_team_remarks").select("*").eq("submission_id", id).is("withdrawn_at", null).order("created_at")).catch(() => []),
+    q(sb.from("submission_scenario_versions").select("*").eq("submission_id", id).order("version_no")).catch(() => []),
+    q(sb.from("submission_client_comments").select("*").eq("submission_id", id).is("withdrawn_at", null).order("received_on").order("created_at")).catch(() => []),
+    linked ? q(sb.from("client_contacts").select("*").eq("client_id", c.id).order("is_active", { ascending: false }).order("created_at")).catch(() => []) : [],
+    linked ? q(sb.from("exercises").select("id, exercise_date, main_risk, overall_score, band").eq("client_id", c.id).order("exercise_date", { ascending: false }).limit(5)).catch(() => []) : [],
+    linked ? q(sb.from("corrective_actions").select("id, action, owner_department, status, due_date").eq("client_id", c.id).order("due_date", { nullsFirst: false })).catch(() => []) : [],
+  ]);
+  s._remarks = remarks || [];
+  s._versions = (versions || []).filter((v) => !v.withdrawn_at);
+  s._lastVersionNo = (versions || []).reduce((m, v) => Math.max(m, v.version_no), 0);
+  s._comments = comments || [];
+  const reload = () => route();
+
+  // --- command bar ---
+  const stageSel = h("select", { "aria-label": "Request stage", onchange: async () => {
+    await q(sb.from("submissions").update({ status: stageSel.value }).eq("id", s.id)).then(() => { s.status = stageSel.value; toast("Request stage saved"); drawNext(); }).catch(fail);
+  } }, ...STATUS.map((x) => h("option", { value: x, selected: x === s.status }, STATUS_TEXT[x])));
+  const nextLine = h("div", { class: "next" });
+  const matchPill = h("span", {});
+  function drawNext() {
+    const key = s.match_status === "pending" ? "pending" : s.status;
+    nextLine.replaceChildren("Next: ", h("b", {}, NEXT_STEP[key] || ""));
+    matchPill.replaceChildren(s.match_status === "pending" ? labelPill(s.match_label) : pill(s.match_status === "linked" ? "Linked to existing client" : "Confirmed new client", "ok"));
+  }
+  // After a version or comment is saved the database may have moved the stage on.
+  async function refreshStage() {
+    const row = await q(sb.from("submissions").select("status").eq("id", s.id).single()).catch(() => null);
+    if (row && row.status !== s.status) { s.status = row.status; stageSel.value = row.status; drawNext(); toast("Request stage moved to " + STATUS_TEXT[row.status]); }
+  }
+  const cmd = h("div", { class: "cmd" },
+    h("a", { class: "back", href: "#" }, "← Requests"),
+    h("div", { class: "title" }, h("h1", {}, h("bdi", {}, c.company_name || "(no organisation name)")),
+      h("div", { class: "s" }, [dt(s.created_at), s.source === "website" ? "website, " + (s.form_name || "form") : s.source, s.org_unit].filter(Boolean).join(" · "))),
+    h("div", { class: "tools" }, matchPill, h("label", { class: "f", style: "margin:0" }, h("span", { class: "sr-only" }, "Request stage"), stageSel)),
+    nextLine);
+
+  // --- Overview tab ---
   const facts = [
-    ["Received", dt(s.created_at) + " · " + (s.source === "website" ? "website, " + (s.form_name || "form") : s.source)],
     ["Contact", [c.contact_name, c.email, c.phone].filter(Boolean).join(" · ")],
-    ["For which part", s.org_unit],
     ["Organisation", [c.sector, c.size_band, c.location].filter(Boolean).join(" · ")],
     ["Service", s.service_type],
     ["Exercise language", LANGUAGE_TEXT[s.exercise_language]],
@@ -439,81 +609,114 @@ function requestBlock(s) {
     ["Plan updated", s.plan_updated],
     ["History", s.history_opt_out ? "Client opted out — don't keep history" : null],
   ].filter(([, v]) => v);
+  const overview = h("div", {},
+    h("div", { class: "card" }, h("h2", {}, "The request"), h("dl", { class: "facts" }, ...facts.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))),
+    h("div", { class: "card plain" }, h("details", {}, h("summary", {}, "Full form summary and notes"), h("pre", {}, s.notes || "(nothing)"))));
 
-  const block = h("article", { class: "block" });
-  const head = h("div", { class: "spread" },
-    h("div", {}, h("h2", {}, c.company_name || "(no organisation name)"),
-      c.record_status === "active" ? h("a", { class: "small muted", href: "#client/" + c.id }, "Client record" + (c.client_ref ? " " + c.client_ref : "")) : null),
-    s.match_status === "pending" ? labelPill(s.match_label) :
-      h("span", { class: "tag" }, s.match_status === "linked" ? "Linked to existing client" : "Confirmed new client"));
-  block.append(head, h("dl", { class: "facts" }, ...facts.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
-
-  if (s.match_status === "pending") {
-    const reasons = s.match_reasons || [];
-    if (reasons.length) block.append(h("ul", { class: "reasons" }, ...reasons.map((r) => h("li", {}, r))));
-    const cands = s.match_candidates || [];
-    const box = h("div", { class: "stack", style: "margin-top:14px" });
+  // --- Client tab: confirm the client, or everything about the linked client ---
+  const clientPanel = h("div", {});
+  if (!linked) {
+    const reasons = s.match_reasons || [], cands = s.match_candidates || [];
+    const box = h("div", { class: "card" }, h("h2", {}, "Which client is this?"),
+      h("div", { class: "row" }, labelPill(s.match_label), h("span", { class: "muted small" }, "Nothing is linked until you confirm it.")),
+      reasons.length ? h("ul", { class: "reasons" }, ...reasons.map((r) => h("li", {}, r))) : null);
     if (cands.length) {
-      box.append(h("h3", {}, cands.length === 1 ? "Possible existing client" : "Possible existing clients"));
+      box.append(h("h3", { style: "margin-top:14px" }, cands.length === 1 ? "Possible existing client" : "Possible existing clients"));
       cands.forEach((m) => box.append(h("div", { class: "cand" },
-        h("div", {}, h("strong", {}, m.company_name), m.business_unit ? h("span", { class: "muted" }, " — " + m.business_unit) : null,
+        h("div", {}, h("strong", {}, h("bdi", {}, m.company_name)), m.business_unit ? h("span", { class: "muted" }, " — " + m.business_unit) : null,
           m.client_ref ? h("span", { class: "muted small", style: "margin:0 8px" }, m.client_ref) : null, " ", labelPill(m.label),
           h("div", { class: "small muted" }, (m.reasons || []).join(" · "))),
-        h("div", { class: "row" },
-          h("a", { class: "btn quiet", href: "#client/" + m.client_id }, "View"),
-          h("button", { class: "btn primary", onclick: () => linkTo(s, m.client_id, m.company_name) }, "Link to this client")))));
+        h("div", { class: "row" }, h("a", { class: "btn quiet sm", href: "#client/" + m.client_id }, "View"),
+          h("button", { class: "btn primary sm", onclick: () => linkTo(s, m.client_id, m.company_name) }, "Link to this client")))));
     }
-    // Manual search, for "Not sure" / phone-style lookups
     const sq = h("input", { type: "search", placeholder: "Search by name, email, domain, phone or PP- reference" });
     const results = h("div", {});
-    const form = h("form", { class: "row", onsubmit: async (e) => {
+    const form = h("form", { class: "row", style: "margin-top:12px", onsubmit: async (e) => {
       e.preventDefault();
       const rows = await q(sb.rpc("admin_search_clients", { p_q: sq.value })).catch(fail) || [];
       results.replaceChildren(...(rows.length ? rows.map((r) => h("div", { class: "cand" },
-        h("div", {}, h("strong", {}, r.company_name), r.business_unit ? " — " + r.business_unit : "", h("div", { class: "small muted" },
+        h("div", {}, h("strong", {}, h("bdi", {}, r.company_name)), r.business_unit ? " — " + r.business_unit : "", h("div", { class: "small muted" },
           [r.client_ref, "matched on " + r.matched_on, r.exercise_count + " exercise(s)"].filter(Boolean).join(" · "))),
-        h("button", { class: "btn primary", onclick: () => linkTo(s, r.client_id, r.company_name) }, "Link to this client")))
+        h("button", { class: "btn primary sm", onclick: () => linkTo(s, r.client_id, r.company_name) }, "Link to this client")))
         : [h("p", { class: "muted small" }, "No client found for that search.")]));
-    } }, h("div", { style: "flex:1;min-width:220px" }, sq), h("button", { class: "btn", type: "submit" }, "Search"));
-    box.append(h("details", {}, h("summary", { class: "small" }, "Search your clients yourself"), form, results));
-    box.append(h("div", { class: "row", style: "justify-content:flex-end" },
-      h("button", { class: "btn", onclick: () => confirmNew(s, c.company_name) }, cands.length ? "None of these — confirm as a new client" : "Confirm as a new client")));
-    block.append(box);
+    } }, h("div", { style: "flex:1;min-width:200px" }, sq), h("button", { class: "btn", type: "submit" }, "Search"));
+    box.append(h("h3", { style: "margin-top:14px" }, "Search your clients yourself"), form, results,
+      h("div", { class: "row end", style: "margin-top:14px" }, h("button", { class: "btn red", onclick: () => confirmNew(s, c.company_name) }, cands.length ? "None of these — confirm as a new client" : "Confirm as a new client")));
+    clientPanel.append(box);
+  } else {
+    const openActions = actions.filter((a) => a.status === "open" || a.status === "done");
+    const latest = exercises[0];
+    clientPanel.append(
+      h("div", { class: "kpi-strip", role: "list", "aria-label": "At a glance" },
+        kpi(String(exercises.length), "Exercises", exercises.length ? "ok" : "none"),
+        kpi(latest && latest.overall_score != null ? Math.round(latest.overall_score) + "%" : "—", "Last score", latest && latest.band === "green" ? "ok" : latest && latest.band === "amber" ? "wait" : latest && latest.band === "red" ? "bad" : "none"),
+        kpi(String(openActions.length), "Actions to re-check", openActions.length ? "wait" : "ok"),
+        kpi(String(contacts.filter((x) => x.is_active).length), "Active contacts", contacts.some((x) => x.is_active) ? "ok" : "bad"),
+        kpi(c.history_opt_out ? "No" : "Yes", "History kept", c.history_opt_out ? "wait" : "ok")),
+      h("div", { class: "card" },
+        h("div", { class: "spread" }, h("h2", {}, "Client"), h("a", { class: "btn quiet sm", href: "#client/" + c.id }, "Full client record")),
+        h("div", { class: "spread" }, h("div", {}, h("h3", {}, h("bdi", {}, c.company_name || "")), h("div", { class: "small muted" }, [c.business_unit, c.sector, c.size_band, c.location].filter(Boolean).join(" · ") || "No details yet")),
+          h("div", { class: "row" }, h("span", { class: "tag" }, c.client_ref || "No reference yet"), c.history_opt_out ? h("span", { class: "tag red" }, "History opted out") : null)),
+        h("p", { class: "muted small", style: "margin:8px 0 0" }, "Details, other names, group, opt-out and erase live on the full client record.")),
+      contactsCard(c.id, contacts, reload),
+      h("div", { class: "card" + (exercises.length || openActions.length ? "" : " plain") }, h("h2", {}, "History — what the scenario must re-check"),
+        exercises.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Exercise"), h("th", {}, "Main risk"), h("th", {}, "Score"))),
+          h("tbody", {}, ...exercises.map((x) => h("tr", {}, h("td", {}, dd(x.exercise_date)), h("td", {}, x.main_risk || ""),
+            h("td", {}, x.overall_score != null ? h("span", { class: "band " + (x.band || "") }, Math.round(x.overall_score) + "%") : "—")))))) : null,
+        openActions.length ? h("div", { style: "margin-top:12px" }, h("h3", { style: "margin-bottom:6px" }, "Open or unverified actions"),
+          h("div", { class: "table-wrap" }, h("table", {}, h("tbody", {}, ...openActions.map((a) => h("tr", {}, h("td", {}, a.action), h("td", {}, a.owner_department || ""), h("td", { class: "small" }, ACTION_STATUS[a.status]))))))) : null,
+        !exercises.length && !openActions.length ? h("p", { class: "empty" }, c.history_opt_out ? "The client opted out — no history is kept. Design as for a first exercise." : "No previous exercise on record — design as for a first exercise.") : null));
   }
 
-  const status = h("select", { "aria-label": "Request stage", onchange: async () => {
-    await q(sb.from("submissions").update({ status: status.value }).eq("id", s.id)).then(() => { s.status = status.value; toast("Request stage saved"); }).catch(fail);
-  } }, ...STATUS.map((x) => h("option", { value: x, selected: x === s.status }, STATUS_TEXT[x])));
-  // After a version or comment is saved the database may have moved the stage on.
-  async function refreshStage() {
-    const row = await q(sb.from("submissions").select("status").eq("id", s.id).single()).catch(() => null);
-    if (row && row.status !== s.status) {
-      s.status = row.status; status.value = row.status;
-      toast("Request stage moved to " + STATUS_TEXT[row.status]);
-    }
-  }
-
-  block.append(scenarioBox(s, refreshStage));
-  block.append(teamRemarksBox(s));
-
-  const notes = h("details", {}, h("summary", { class: "small muted" }, "Full form summary and notes"),
-    h("pre", { class: "small", style: "white-space:pre-wrap;margin-top:8px" }, s.notes || ""));
-  block.append(h("div", { class: "spread", style: "margin-top:14px" }, notes, h("label", { class: "f", style: "min-width:200px" }, "Request stage", status)));
-  return block;
+  // --- Scenario and Remarks tabs ---
+  // The panels report their counts to the tab badges; the tabs exist only
+  // after makeTabs, so a count reported while building is kept until then.
+  let tabs = null; const pendingBadges = {};
+  const setBadge = (id) => (n) => { if (tabs) tabs.badge(id, n); else pendingBadges[id] = n; };
+  tabs = makeTabs("request", [
+    { id: "overview", label: "Overview", panel: overview },
+    { id: "client", label: "Client", panel: clientPanel },
+    { id: "scenario", label: "Scenario", panel: scenarioPanel(s, refreshStage, setBadge("scenario")) },
+    { id: "remarks", label: "Remarks", panel: teamRemarksPanel(s, setBadge("remarks")) },
+  ], !linked ? "client" : null);
+  Object.entries(pendingBadges).forEach(([id, n]) => tabs.badge(id, n));
+  if (!linked) tabs.badge("client", 1);
+  drawNext();
+  app.replaceChildren(cmd, tabs.nav, tabs.panels);
 }
 
-// ---- Scenario with the client (Ahmed, 21 October 2026) --------------------
+// Contacts: on a request's Client tab and on the client record.
+function contactsCard(clientId, contacts, reload) {
+  const cn = { name: h("input", { type: "text" }), email: h("input", { type: "email" }), phone: h("input", { type: "tel" }), role: h("input", { type: "text" }) };
+  return h("div", { class: "card" }, h("h2", {}, "Contacts"),
+    contacts.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Name", "Email", "Phone", "Role", ""].map((x) => h("th", {}, x)))),
+      h("tbody", {}, ...contacts.map((p) => h("tr", { style: p.is_active ? "" : "opacity:.55" },
+        h("td", {}, h("bdi", {}, p.name || "")), h("td", {}, p.email || ""), h("td", {}, p.phone || ""), h("td", {}, p.role || ""),
+        h("td", {}, h("button", { class: "btn quiet sm", onclick: async () => {
+          await q(sb.from("client_contacts").update({ is_active: !p.is_active }).eq("id", p.id)).then(reload).catch(fail);
+        } }, p.is_active ? "Mark as left" : "Mark as active"))))))) : h("p", { class: "empty" }, "No contacts yet."),
+    h("details", { style: "margin-top:12px" }, h("summary", {}, "Add a contact"),
+      h("form", { class: "stack", onsubmit: async (e) => {
+        e.preventDefault();
+        const row = Object.fromEntries(Object.entries(cn).map(([k, el]) => [k, el.value.trim() || null]));
+        if (row.email) row.email = row.email.toLowerCase();
+        if (!row.name && !row.email && !row.phone) return toast("Enter at least a name, email or phone", true);
+        await q(sb.from("client_contacts").insert({ client_id: clientId, ...row })).then(() => { toast("Contact added"); reload(); }).catch(fail);
+      } }, h("div", { class: "grid2" }, h("label", { class: "f" }, "Name", cn.name), h("label", { class: "f" }, "Email", cn.email),
+        h("label", { class: "f" }, "Phone", cn.phone), h("label", { class: "f" }, "Role", cn.role)), h("div", {}, h("button", { class: "btn", type: "submit" }, "Add contact")))));
+}
+
+// ---- Scenario tab: versions sent and the client's comments --------------
 // Each scenario version sent to the client (v1, v2…, date sent, status) and
 // what the client said about it (date received, who sent it, which version).
 // Kept apart from the team-only remarks. Read by the planproof-scenario
 // skill's revise mode. The scenario itself stays in the client's drive
 // folder; only its details are recorded here. The database moves the request
 // stage forward by itself (refreshStage shows the change).
-const todayDubai = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
-function scenarioBox(s, refreshStage) {
-  const box = h("section", { class: "scenario-box" });
-  const verList = h("div", { class: "stack" });
-  const comList = h("div", { class: "stack" });
+function scenarioPanel(s, refreshStage, setBadge) {
+  const panel = h("div", {});
+  const verList = h("div", {});
+  const comList = h("div", {});
   const versions = () => s._versions || (s._versions = []);
   const comments = () => s._comments || (s._comments = []);
   const vLabel = (id) => { const v = versions().find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
@@ -527,18 +730,15 @@ function scenarioBox(s, refreshStage) {
 
   function draw() {
     const vs = versions();
-    verList.replaceChildren(...(vs.length ? vs.map(versionItem) :
-      [h("p", { class: "muted small" }, "No version recorded yet. Record v1 when you send the scenario to the client.")]));
+    verList.replaceChildren(...(vs.length ? vs.map(versionItem) : [h("p", { class: "empty" }, "No version recorded yet. Record v1 when you send the scenario to the client.")]));
     const cs = comments();
-    comList.replaceChildren(...(cs.length ? cs.map(commentItem) :
-      [h("p", { class: "muted small" }, "No client comments yet.")]));
+    comList.replaceChildren(...(cs.length ? cs.map(commentItem) : [h("p", { class: "empty" }, "No client comments yet.")]));
     const last = Math.max(s._lastVersionNo || 0, vs.reduce((m, v) => Math.max(m, v.version_no), 0));
     addVersion.querySelector("summary").textContent = "Record version v" + (last + 1) + " sent to the client";
     fillVersionSelect(cVersion, latest() ? latest().id : "");
-    // usually the same sponsor writes again: start from the last sender
-    if (!cFrom.value && cs.length) cFrom.value = cs[cs.length - 1].sender;
+    if (!cFrom.value && cs.length) cFrom.value = cs[cs.length - 1].sender; // usually the same sponsor writes again
+    setBadge(cs.length);
   }
-
   function fillVersionSelect(sel, chosen) {
     sel.replaceChildren(h("option", { value: "" }, "Not about a specific version"),
       ...versions().slice().reverse().map((v) => h("option", { value: v.id, selected: v.id === chosen }, "v" + v.version_no + " (sent " + dd(v.sent_on) + ")")));
@@ -546,8 +746,8 @@ function scenarioBox(s, refreshStage) {
   }
 
   function versionItem(v) {
-    const row = h("div", { class: "ver" });
-    const stat = h("select", { "aria-label": "Status of v" + v.version_no, onchange: async () => {
+    const row = h("div", { class: "item" });
+    const stat = h("select", { class: "vstat", "aria-label": "Status of v" + v.version_no, onchange: async () => {
       const next = stat.value;
       if (next === "approved") {
         const ok = await confirmBox({ title: "Mark v" + v.version_no + " as approved by the client?",
@@ -559,47 +759,47 @@ function scenarioBox(s, refreshStage) {
     } }, ...["sent", "client_commented", "approved"].concat(v.status === "superseded" ? ["superseded"] : [])
       .map((k) => h("option", { value: k, selected: k === v.status }, VERSION_STATUS[k])));
     const head = h("div", { class: "spread" },
-      h("div", {}, h("strong", {}, "v" + v.version_no), h("span", { class: "muted small" }, " · sent " + dd(v.sent_on) +
-        (v.status !== "sent" ? " · " + VERSION_STATUS[v.status].toLowerCase() + " " + dd(v.status_changed_on) : ""))),
-      h("label", { class: "f ver-status" }, h("span", { class: "sr-only" }, "Status"), stat));
-    const details = h("div", { class: "small" },
+      h("div", {}, h("strong", {}, "v" + v.version_no), " ", pill(VERSION_STATUS[v.status], VERSION_TONE[v.status]),
+        h("div", { class: "meta" }, "sent " + dd(v.sent_on) + (v.status !== "sent" ? " · " + VERSION_STATUS[v.status].toLowerCase() + " " + dd(v.status_changed_on) : ""))),
+      h("label", { class: "f", style: "margin:0" }, h("span", { class: "sr-only" }, "Status"), stat));
+    const details = h("div", { class: "small", style: "margin-top:6px" },
       v.file_name ? h("div", {}, h("span", { class: "muted" }, "File: "), h("bdi", {}, v.file_name)) : null,
-      v.note ? h("div", { class: "pre" }, h("span", { class: "muted" }, "What changed: "), v.note) : null);
-    const edit = h("button", { class: "btn quiet", type: "button", onclick: () => {
+      v.note ? h("div", { class: "body", style: "margin:2px 0 0" }, h("span", { class: "muted" }, "What changed: "), v.note) : null);
+    const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
       const fSent = h("input", { type: "date", value: v.sent_on, max: todayDubai() });
       const fFile = h("input", { type: "text", maxlength: 300, value: v.file_name || "" });
       const fNote = h("textarea", { rows: 2, maxlength: 2000, value: v.note || "" });
-      const save = h("button", { class: "btn primary", type: "button", onclick: async () => {
+      const save = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const upd = await q(sb.from("submission_scenario_versions").update({ sent_on: fSent.value || v.sent_on, file_name: fFile.value.trim() || null, note: fNote.value.trim() || null })
           .eq("id", v.id).select("id")).catch(fail);
         if (upd) await after("v" + v.version_no + " saved");
       } }, "Save");
       row.replaceChildren(h("strong", {}, "v" + v.version_no),
-        h("div", { class: "grid2" }, h("label", { class: "f" }, "Sent on", fSent), h("label", { class: "f" }, "File name (optional)", fFile)),
-        h("label", { class: "f" }, "What changed (optional)", fNote),
-        h("div", { class: "row" }, save, h("button", { class: "btn quiet", type: "button", onclick: draw }, "Cancel")));
+        h("div", { class: "grid2", style: "margin-top:8px" }, h("label", { class: "f" }, "Sent on", fSent), h("label", { class: "f" }, "File name (optional)", fFile)),
+        h("label", { class: "f", style: "margin-top:8px" }, "What changed (optional)", fNote),
+        h("div", { class: "row", style: "margin-top:8px" }, save, h("button", { class: "btn quiet sm", type: "button", onclick: draw }, "Cancel")));
     } }, "Edit");
-    const remove = h("button", { class: "btn quiet", type: "button", onclick: async () => {
+    const remove = h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
       const ok = await confirmBox({ title: "Remove v" + v.version_no + "?", text: "Use this only for a version recorded by mistake. Its number is not reused. It is kept in the database, marked as removed.", ok: "Remove version" });
       if (!ok) return;
       const done = await q(sb.from("submission_scenario_versions").update({ withdrawn_at: new Date().toISOString() }).eq("id", v.id).select("id")).catch(fail);
       if (done) { s._versions = versions().filter((x) => x.id !== v.id); toast("v" + v.version_no + " removed"); draw(); }
     } }, "Remove");
-    row.append(head, details, h("div", { class: "row" }, edit, remove));
+    row.append(head, details, h("div", { class: "row", style: "margin-top:8px" }, edit, remove));
     return row;
   }
 
   function commentItem(c) {
-    const row = h("div", { class: "remark" });
-    const meta = h("div", { class: "small muted" }, dd(c.received_on) + " · from ", h("bdi", {}, c.sender),
+    const row = h("div", { class: "item" });
+    const meta = h("div", { class: "meta" }, dd(c.received_on) + " · from ", h("b", {}, h("bdi", {}, c.sender)),
       " · " + (c.version_id ? "about " + vLabel(c.version_id) : "not about a specific version"));
-    const text = h("div", { class: "remark-body" }, c.body);
-    const edit = h("button", { class: "btn quiet", type: "button", onclick: () => {
+    const text = h("div", { class: "body" }, c.body);
+    const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
       const fDate = h("input", { type: "date", value: c.received_on, max: todayDubai() });
       const fFrom = h("input", { type: "text", maxlength: 200, value: c.sender });
       const fVer = h("select", {}); fillVersionSelect(fVer, c.version_id || "");
       const fBody = h("textarea", { rows: 4, maxlength: 8000 }); fBody.value = c.body;
-      const save = h("button", { class: "btn primary", type: "button", onclick: async () => {
+      const save = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const body = fBody.value.trim(), sender = fFrom.value.trim();
         if (!body || !sender) return toast("Enter who sent it and the comment", true);
         const upd = await q(sb.from("submission_client_comments").update({ received_on: fDate.value || c.received_on, sender, body, version_id: fVer.value || null })
@@ -607,10 +807,10 @@ function scenarioBox(s, refreshStage) {
         if (upd) { Object.assign(c, upd); await after("Client comment saved"); }
       } }, "Save");
       row.replaceChildren(h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", fDate), h("label", { class: "f" }, "From", fFrom),
-        h("label", { class: "f" }, "About", fVer)), h("label", { class: "f" }, "Comment", fBody),
-        h("div", { class: "row" }, save, h("button", { class: "btn quiet", type: "button", onclick: draw }, "Cancel")));
+        h("label", { class: "f" }, "About", fVer)), h("label", { class: "f", style: "margin-top:8px" }, "Comment", fBody),
+        h("div", { class: "row", style: "margin-top:8px" }, save, h("button", { class: "btn quiet sm", type: "button", onclick: draw }, "Cancel")));
     } }, "Edit");
-    const remove = h("button", { class: "btn quiet", type: "button", onclick: async () => {
+    const remove = h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
       const ok = await confirmBox({ title: "Remove this client comment?", text: "It will no longer be used to revise the scenario. It is kept in the database, marked as removed.", ok: "Remove comment" });
       if (!ok) return;
       const done = await q(sb.from("submission_client_comments").update({ withdrawn_at: new Date().toISOString() }).eq("id", c.id).select("id")).catch(fail);
@@ -631,11 +831,11 @@ function scenarioBox(s, refreshStage) {
     vBtn.disabled = false;
     if (row) { vFile.value = ""; vNote.value = ""; vSent.value = todayDubai(); addVersion.open = false; await after("v" + row.version_no + " recorded as sent"); }
   } }, "Record as sent");
-  const addVersion = h("details", { class: "add" }, h("summary", { class: "small" }, ""),
-    h("div", { class: "stack", style: "margin-top:10px" },
+  const addVersion = h("details", { class: "add", style: "margin-top:10px" }, h("summary", {}, ""),
+    h("div", { class: "stack" },
       h("div", { class: "grid2" }, h("label", { class: "f" }, "Sent on", vSent), h("label", { class: "f" }, "File name (optional)", vFile)),
       h("label", { class: "f" }, "What changed since the last version (optional)", vNote),
-      h("div", { class: "row", style: "justify-content:flex-end" }, vBtn)));
+      h("div", { class: "row end" }, vBtn)));
 
   // Add a client comment
   const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
@@ -653,47 +853,45 @@ function scenarioBox(s, refreshStage) {
     if (row) { comments().push(row); cBody.value = ""; cDate.value = todayDubai(); await after("Client comment added"); }
   } }, "Add client comment");
 
-  box.append(
-    h("div", { class: "spread" }, h("h3", {}, "Scenario with the client"), h("span", { class: "tag" }, "Sponsor only — never participants")),
-    h("p", { class: "muted small" }, "Send the scenario to the exercise sponsor only; participants must not see it before the exercise. Record each version you send and paste what the client says. Claude revises the scenario from these comments and the team remarks."),
-    h("h4", {}, "Versions sent"), verList, addVersion,
-    h("h4", {}, "Client comments on the scenario"), comList,
-    h("div", { class: "stack add-comment" },
-      h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom),
-        h("label", { class: "f" }, "About", cVersion)),
-      cBody, h("div", { class: "row", style: "justify-content:flex-end" }, cBtn)));
+  panel.append(
+    h("p", { class: "warn", style: "margin-bottom:14px" }, h("strong", {}, "Sponsor only — never participants. "), "Send the scenario to the exercise sponsor only; participants must not see it before the exercise. Record each version you send and paste what the client says. Claude revises the scenario from these comments and the team remarks."),
+    h("div", { class: "cols" },
+      h("div", { class: "card" }, h("h2", {}, "Versions sent"), verList, addVersion),
+      h("div", { class: "card" }, h("h2", {}, "Client comments on the scenario"), comList,
+        h("div", { class: "stack", style: "margin-top:12px; padding-top:12px; border-top:1px solid var(--border)" },
+          h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom), h("label", { class: "f" }, "About", cVersion)),
+          cBody, h("div", { class: "row end" }, cBtn)))));
   draw();
-  return box;
+  return panel;
 }
 
-// ---- PlanProof remarks — team only (Ahmed, 21 October 2026) -------------
+// ---- Remarks tab: PlanProof remarks, team only --------------------------
 // Special points the PlanProof team wants tested or considered for THIS
 // exercise request. Stored apart from the client's own answers
 // (submission_team_remarks, readable and writable only by a signed-in
 // admin), never shown to the client, and read by the scenario design.
-function teamRemarksBox(s) {
-  const box = h("section", { class: "team-remarks" });
-  const list = h("div", { class: "stack" });
+function teamRemarksPanel(s, setBadge) {
+  const panel = h("div", {});
+  const list = h("div", {});
   function draw() {
     const items = s._remarks || [];
-    list.replaceChildren(...(items.length ? items.map(remarkItem) :
-      [h("p", { class: "muted small" }, "No remarks yet. Add anything the scenario must test or take into account.")]));
+    list.replaceChildren(...(items.length ? items.map(remarkItem) : [h("p", { class: "empty" }, "No remarks yet. Add anything the scenario must test or take into account.")]));
+    setBadge(items.length);
   }
   function remarkItem(r) {
-    const row = h("div", { class: "remark" });
-    const meta = h("div", { class: "small muted" }, dt(r.created_at) + (r.author_email ? " · " + r.author_email : "") + (r.updated_at && Date.parse(r.updated_at) - Date.parse(r.created_at) > 2000 ? " · edited " + dt(r.updated_at) : ""));
-    const text = h("div", { class: "remark-body" }, r.body);
-    const edit = h("button", { class: "btn quiet", type: "button", onclick: () => {
+    const row = h("div", { class: "item" });
+    const meta = h("div", { class: "meta" }, dt(r.created_at) + (r.author_email ? " · " + r.author_email : "") + (r.updated_at && Date.parse(r.updated_at) - Date.parse(r.created_at) > 2000 ? " · edited " + dt(r.updated_at) : ""));
+    const text = h("div", { class: "body" }, r.body);
+    const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
       const ta = h("textarea", { rows: 3, maxlength: 4000 }); ta.value = r.body;
-      const save = h("button", { class: "btn primary", type: "button", onclick: async () => {
+      const save = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const body = ta.value.trim(); if (!body) return;
         const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
         if (upd) { Object.assign(r, upd); toast("Remark saved"); draw(); }
       } }, "Save");
-      const cancel = h("button", { class: "btn quiet", type: "button", onclick: draw }, "Cancel");
-      row.replaceChildren(meta, ta, h("div", { class: "row" }, save, cancel)); ta.focus();
+      row.replaceChildren(meta, ta, h("div", { class: "row", style: "margin-top:8px" }, save, h("button", { class: "btn quiet sm", type: "button", onclick: draw }, "Cancel"))); ta.focus();
     } }, "Edit");
-    const remove = h("button", { class: "btn quiet", type: "button", onclick: async () => {
+    const remove = h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
       const ok = await confirmBox({ title: "Remove this remark?", text: "It will no longer be used for the scenario. It is kept in the database, marked as removed.", ok: "Remove remark" });
       if (!ok) return;
       const done = await q(sb.from("submission_team_remarks").update({ withdrawn_at: new Date().toISOString() }).eq("id", r.id).select("id")).catch(fail);
@@ -708,12 +906,12 @@ function teamRemarksBox(s) {
     const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
     if (row) { (s._remarks = s._remarks || []).push(row); ta.value = ""; toast("Remark added"); draw(); }
   } }, "Add remark");
-  box.append(
-    h("div", { class: "spread" }, h("h3", {}, "PlanProof remarks — team only"), h("span", { class: "tag lock" }, "Not visible to the client")),
-    h("p", { class: "muted small" }, "Special points to test or consider when designing this exercise. Used for the scenario; never shown to the client or in the report."),
-    list, ta, h("div", { class: "row", style: "justify-content:flex-end" }, add));
+  panel.append(h("div", { class: "card danger-zone" },
+    h("div", { class: "spread" }, h("h2", {}, "PlanProof remarks — team only"), h("span", { class: "tag red" }, "Not visible to the client")),
+    h("p", { class: "muted small", style: "margin-bottom:10px" }, "Special points to test or consider when designing this exercise. Used for the scenario; never shown to the client or in the report."),
+    list, h("div", { style: "margin-top:12px" }, ta), h("div", { class: "row end", style: "margin-top:8px" }, add)));
   draw();
-  return box;
+  return panel;
 }
 
 async function linkTo(s, clientId, name) {
@@ -721,17 +919,17 @@ async function linkTo(s, clientId, name) {
     text: "The request joins that client and its history becomes available for this exercise. The contact is added to the client's contact list.",
     ok: "Link request" });
   if (!ok) return;
-  await q(sb.rpc("admin_link_submission", { p_submission: s.id, p_client: clientId })).then(() => { toast("Linked to " + name); renderRequests(); refreshPendingCount(); }).catch(fail);
+  await q(sb.rpc("admin_link_submission", { p_submission: s.id, p_client: clientId })).then(() => { toast("Linked to " + name); sessionStorage.setItem("pp_admin_tab_request", "client"); route(); }).catch(fail);
 }
 async function confirmNew(s, name) {
   const ok = await confirmBox({ title: "Confirm " + (name || "this organisation") + " as a new client?",
     text: "A new client record is created from this request. You can still add other names, a group or contacts afterwards.", ok: "Confirm new client" });
   if (!ok) return;
   const id = await q(sb.rpc("admin_confirm_new_client", { p_submission: s.id })).catch(fail);
-  if (id) { toast("New client confirmed"); refreshPendingCount(); location.hash = "#client/" + id; }
+  if (id) { toast("New client confirmed"); sessionStorage.setItem("pp_admin_tab_request", "overview"); route(); }
 }
 
-// ================= Clients =================
+// ================= Clients — the list =================
 async function renderClients() {
   const app = $("app");
   const sq = h("input", { type: "search", placeholder: "Name, other name, contact, email, phone, domain or PP- reference", "aria-label": "Search clients" });
@@ -739,54 +937,49 @@ async function renderClients() {
   async function run() {
     if (sq.value.trim().length >= 2) {
       const rows = await q(sb.rpc("admin_search_clients", { p_q: sq.value }));
-      list.replaceChildren(clientTable(rows.map((r) => ({ ...r, id: r.client_id })), true));
+      list.replaceChildren(clientList(rows.map((r) => ({ ...r, id: r.client_id })), true));
     } else {
       const rows = await q(sb.from("clients").select("id, company_name, business_unit, client_ref, history_opt_out, updated_at, group:client_groups(name)")
         .eq("record_status", "active").order("updated_at", { ascending: false }).limit(50));
-      list.replaceChildren(rows.length ? clientTable(rows.map((r) => ({ ...r, group_name: r.group && r.group.name })), false) :
-        h("div", { class: "block" }, h("p", { class: "muted" }, "No confirmed clients yet. Confirm a website request, or add a client who called or emailed.")));
+      list.replaceChildren(rows.length ? clientList(rows.map((r) => ({ ...r, group_name: r.group && r.group.name })), false) :
+        h("div", { class: "card plain" }, h("p", { class: "empty" }, "No confirmed clients yet. Confirm a website request, or add a client who called or emailed.")));
     }
   }
   app.replaceChildren(
-    h("div", { class: "spread" }, h("h1", {}, "Clients"), h("button", { class: "btn", onclick: newClientForm }, "Add a client who called or emailed")),
-    h("form", { class: "row", style: "margin:16px 0", onsubmit: (e) => { e.preventDefault(); run().catch(fail); } },
+    h("div", { class: "spread", style: "margin-bottom:12px" }, h("div", {}, h("h1", {}, "Clients"), h("p", { class: "muted small", style: "margin:4px 0 0" }, "Day-to-day work happens on the request. Come here to search, edit details, record an opt-out or erase a client.")),
+      h("a", { class: "btn", href: "#new-client" }, "Add a client who called or emailed")),
+    h("form", { class: "row", style: "margin-bottom:14px", onsubmit: (e) => { e.preventDefault(); run().catch(fail); } },
       h("div", { style: "flex:1;min-width:240px" }, sq), h("button", { class: "btn primary", type: "submit" }, "Search")),
     list);
   sq.focus();
   await run();
 }
-
-function clientTable(rows, searched) {
-  if (!rows.length) return h("p", { class: "muted" }, "No client matches that search. Try another name, the email domain or the reference.");
-  return h("div", { class: "block table-wrap" }, h("table", {},
-    h("thead", {}, h("tr", {}, h("th", {}, "Client"), h("th", {}, "Group"), h("th", {}, "Reference"),
-      searched ? h("th", {}, "Last exercise") : null, searched ? h("th", {}, "Open actions") : null, searched ? h("th", {}, "Matched on") : null)),
-    h("tbody", {}, ...rows.map((r) => h("tr", {},
-      h("td", {}, h("a", { href: "#client/" + r.id }, r.company_name), r.business_unit ? h("div", { class: "small muted" }, r.business_unit) : null,
-        r.history_opt_out ? h("div", { class: "small muted" }, "History opted out") : null),
-      h("td", {}, r.group_name || ""), h("td", {}, r.client_ref || h("span", { class: "muted small" }, "not issued")),
-      searched ? h("td", {}, dd(r.last_exercise) || "—") : null, searched ? h("td", {}, String(r.open_actions)) : null,
-      searched ? h("td", { class: "small muted" }, r.matched_on) : null)))));
+function clientList(rows, searched) {
+  if (!rows.length) return h("div", { class: "card plain" }, h("p", { class: "empty" }, "No client matches that search. Try another name, the email domain or the reference."));
+  return h("div", { class: "list" }, ...rows.map((r) => h("a", { class: "lrow", href: "#client/" + r.id },
+    h("div", {}, h("div", { class: "t" }, h("bdi", {}, r.company_name)), h("div", { class: "s" }, [r.business_unit, r.group_name && "group: " + r.group_name].filter(Boolean).join(" · "))),
+    h("div", { class: "s" }, searched ? [r.last_exercise ? "last exercise " + dd(r.last_exercise) : "no exercise yet", plural(r.open_actions || 0, "open action"), "matched on " + r.matched_on].join(" · ") : ""),
+    h("div", { class: "r" }, h("span", { class: "tag" }, r.client_ref || "no reference"), r.history_opt_out ? h("span", { class: "tag red" }, "History opted out") : null))));
 }
 
 function newClientForm() {
   const f = { company_name: h("input", { type: "text", required: true }), business_unit: h("input", { type: "text" }),
     sector: h("input", { type: "text" }), location: h("input", { type: "text" }) };
   $("app").replaceChildren(h("h1", {}, "Add a client"),
-    h("p", { class: "muted small" }, "First search the client list — the caller's organisation may already be there under another name. Then record the request from the client's page."),
-    h("form", { class: "block stack", style: "margin-top:16px", onsubmit: async (e) => {
+    h("p", { class: "muted small", style: "margin:4px 0 14px" }, "First search the client list — the caller's organisation may already be there under another name. Then record the request from the client's page."),
+    h("form", { class: "card stack", onsubmit: async (e) => {
       e.preventDefault();
       const row = Object.fromEntries(Object.entries(f).map(([k, el]) => [k, el.value.trim() || null]));
       const id = crypto.randomUUID();
       await q(sb.from("clients").insert({ id, ...row, record_status: "active" }));
-      toast("Client added"); location.hash = "#client/" + id;
+      toast("Client added"); go("#client/" + id);
     } },
       h("div", { class: "grid2" }, h("label", { class: "f" }, "Organisation name", f.company_name), h("label", { class: "f" }, "Business unit or site", f.business_unit),
         h("label", { class: "f" }, "Sector", f.sector), h("label", { class: "f" }, "Location", f.location)),
-      h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Add client"), h("a", { class: "btn quiet", href: "#clients", onclick: () => show("clients") }, "Cancel"))));
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Add client"), h("a", { class: "btn quiet", href: "#clients" }, "Cancel"))));
 }
 
-// ================= One client =================
+// ================= One client — the record =================
 async function renderClient(id) {
   const app = $("app");
   const [client, contacts, names, exercises, actions, requests, events, groups, profile] = await Promise.all([
@@ -795,120 +988,117 @@ async function renderClient(id) {
     q(sb.from("client_names").select("*").eq("client_id", id).order("created_at")),
     q(sb.from("exercises").select("*, findings:exercise_findings(*)").eq("client_id", id).order("exercise_date", { ascending: false })),
     q(sb.from("corrective_actions").select("*").eq("client_id", id).order("due_date", { nullsFirst: false })),
-    q(sb.from("submissions").select("id, created_at, source, form_name, status, service_type, risk_concern_1, org_unit, retest_or_new").eq("client_id", id).order("created_at", { ascending: false })),
+    q(sb.from("submissions").select("id, created_at, source, form_name, status, match_status, service_type, risk_concern_1, org_unit, retest_or_new").eq("client_id", id).order("created_at", { ascending: false })),
     q(sb.from("client_events").select("*").eq("client_id", id).order("at", { ascending: false }).limit(50)),
     q(sb.from("client_groups").select("id, name").order("name")),
     q(sb.from("organisation_profiles").select("*").eq("client_id", id).maybeSingle()),
   ]);
   if (!client) { app.replaceChildren(h("p", {}, "This client record doesn't exist (it may have been deleted). "), h("a", { href: "#clients" }, "Back to clients")); return; }
-  const reload = () => renderClient(id).catch(fail);
+  const reload = () => route();
+  const openActions = actions.filter((a) => a.status === "open" || a.status === "done").length;
+  const latest = exercises[0];
 
-  // --- Identity ---
+  // --- command bar ---
+  const refBox = client.client_ref ? h("span", { class: "tag", style: "font-size:14px" }, client.client_ref) :
+    h("button", { class: "btn sm", onclick: async () => {
+      const ok = await confirmBox({ title: "Issue a client reference?", text: "Do this at the first delivery. The reference goes on the report's document control page and in the delivery email, and can't be changed.", ok: "Issue reference" });
+      if (ok) await q(sb.rpc("admin_issue_client_ref", { p_client: id })).then((r) => { toast("Reference " + r + " issued"); reload(); }).catch(fail);
+    } }, "Issue client reference");
+  const cmd = h("div", { class: "cmd" },
+    h("a", { class: "back", href: "#clients" }, "← Clients"),
+    h("div", { class: "title" }, h("h1", {}, h("bdi", {}, client.company_name)),
+      h("div", { class: "s" }, [client.business_unit, client.sector, client.size_band, client.location].filter(Boolean).join(" · ") || "No details yet — see Details")),
+    h("div", { class: "tools" }, refBox, client.history_opt_out ? h("span", { class: "tag red" }, "History opted out") : (client.retain_until ? h("span", { class: "tag" }, "History kept until " + dd(client.retain_until)) : null)));
+
+  // --- Overview tab: tiles, requests, record a request ---
+  const tiles = h("div", { class: "kpi-strip", role: "list", "aria-label": "At a glance" },
+    kpi(String(exercises.length), "Exercises", exercises.length ? "ok" : "none"),
+    kpi(latest && latest.overall_score != null ? Math.round(latest.overall_score) + "%" : "—", "Last score", latest && latest.band === "green" ? "ok" : latest && latest.band === "amber" ? "wait" : latest && latest.band === "red" ? "bad" : "none"),
+    kpi(String(openActions), "Open actions", openActions ? "wait" : "ok"),
+    kpi(String(requests.filter((r) => r.status !== "delivered").length), "Open requests", requests.some((r) => r.status !== "delivered") ? "wait" : "none"),
+    kpi(String(contacts.filter((x) => x.is_active).length), "Active contacts", contacts.some((x) => x.is_active) ? "ok" : "bad"));
+  const requestsCard = h("div", { class: "card" }, h("h2", {}, "Requests"),
+    requests.length ? h("div", { class: "list" }, ...requests.map((r) => h("a", { class: "lrow", href: "#request/" + r.id },
+      h("div", {}, h("div", { class: "t", style: "font-size:15px" }, dt(r.created_at)), h("div", { class: "s" }, [r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1), r.org_unit].filter(Boolean).join(" · "))),
+      h("div", { class: "s" }, [r.service_type, r.risk_concern_1 && "Main risk: " + r.risk_concern_1].filter(Boolean).join(" · ")),
+      h("div", { class: "r" }, stagePill(r.status))))) : h("p", { class: "empty" }, "No requests yet."),
+    h("details", { style: "margin-top:12px" }, h("summary", {}, "Record a phone or email request"), phoneRequestForm(client, contacts, reload)));
+  const overview = h("div", {}, tiles, requestsCard);
+
+  // --- History tab ---
+  const actionsByEx = {}; actions.forEach((a) => (actionsByEx[a.exercise_id] = actionsByEx[a.exercise_id] || []).push(a));
+  const history = h("div", {},
+    exercises.length ? h("p", { class: "warn", style: "margin-bottom:14px" }, "Before discussing this history, check who you're speaking to: a contact listed under Contacts, or someone writing from the company's own email domain. Send summaries only to those addresses.") : null,
+    ...(exercises.length ? exercises.map((x) => h("div", { class: "card" },
+      h("div", { class: "spread" },
+        h("div", {}, h("h3", {}, dd(x.exercise_date) + (x.main_risk ? " — " + x.main_risk : "")),
+          h("div", { class: "small muted" }, [x.service_type, x.is_retest ? "re-test" : null, x.delivery_mode && x.delivery_mode.replace("_", " "), x.plan_title && "plan: " + x.plan_title + (x.plan_version ? " v" + x.plan_version : "")].filter(Boolean).join(" · "))),
+        x.overall_score != null ? h("div", { class: "band " + (x.band || ""), style: "font-size:20px" }, Math.round(x.overall_score) + "% " + (x.band ? x.band[0].toUpperCase() + x.band.slice(1) : "")) : null),
+      Object.keys(x.capability_scores || {}).length ? h("dl", { class: "facts", style: "margin-top:10px" }, ...Object.entries(x.capability_scores).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v == null ? "Not tested" : Math.round(v) + "%")])) : null,
+      (x.findings || []).length ? h("details", { style: "margin-top:10px" }, h("summary", {}, x.findings.length + (x.findings.length === 1 ? " finding" : " findings")),
+        h("div", { class: "table-wrap" }, h("table", {}, h("tbody", {}, ...x.findings.slice().sort((a, b) => a.sort_order - b.sort_order).map((f) => h("tr", {},
+          h("td", {}, f.criterion, f.plan_cause ? h("div", { class: "small muted" }, "Plan-level cause: " + f.plan_cause) : null),
+          h("td", { class: "small" }, RATING_TEXT[f.rating]), h("td", { class: "small muted" }, [f.ncema_clause && "NCEMA " + f.ncema_clause, f.iso_clause && "ISO " + f.iso_clause].filter(Boolean).join(" · ")))))))) : null,
+      (actionsByEx[x.id] || []).length ? h("div", { style: "margin-top:12px" }, h("h3", { style: "margin-bottom:6px" }, "Corrective actions"),
+        h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Action"), h("th", {}, "Owner"), h("th", {}, "Due"), h("th", {}, "Status"))),
+          h("tbody", {}, ...actionsByEx[x.id].map((a) => {
+            const sel = h("select", { "aria-label": "Status", onchange: async () => {
+              await q(sb.from("corrective_actions").update({ status: sel.value }).eq("id", a.id)).then(() => toast("Action status saved")).catch(fail);
+            } }, ...Object.entries(ACTION_STATUS).map(([k, t]) => h("option", { value: k, selected: k === a.status }, t)));
+            return h("tr", {}, h("td", {}, a.action), h("td", {}, a.owner_department || ""), h("td", {}, dd(a.due_date)), h("td", { style: "min-width:190px" }, sel));
+          }))))) : null))
+      : [h("div", { class: "card plain" }, h("p", { class: "empty" }, client.history_opt_out ? "This client opted out — no exercise history is kept." :
+          "No exercises recorded yet. At delivery, the report skill saves the exercise here (score, findings and corrective actions)."))]),
+    profile ? h("div", { class: "card" }, h("h2", {}, "Organisation profile"), h("dl", { class: "facts" },
+      ...[["Departments", (profile.departments || []).join(", ")], ["Key operations", profile.key_operations], ["Dependencies", profile.dependencies],
+          ["Plan tested", [profile.plan_title, profile.plan_version && "v" + profile.plan_version].filter(Boolean).join(" ")], ["Updated", dt(profile.updated_at)]]
+        .filter(([, v]) => v).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))) : null);
+
+  // --- Contacts tab: contacts + other names ---
+  const nn = h("input", { type: "text", placeholder: "e.g. brand name, Arabic name, former name" });
+  const nk = h("select", {}, ...[["brand", "Brand"], ["arabic", "Arabic"], ["former", "Former"], ["legal", "Legal"], ["other", "Other"]].map(([v, t]) => h("option", { value: v }, t)));
+  const namesCard = h("div", { class: "card" }, h("h2", {}, "Other names"),
+    h("p", { class: "muted small", style: "margin-bottom:8px" }, "Other names help match future requests (brand, Arabic, former names)."),
+    names.length ? h("div", { class: "row" }, ...names.map((n) => h("span", { class: "tag", style: "font-size:13px; padding:4px 8px" }, h("bdi", {}, n.name), " (" + n.kind + ") ",
+      h("button", { class: "btn quiet sm", "aria-label": "Remove " + n.name, style: "padding:0 6px; min-height:0; border:0", onclick: async () => {
+        await q(sb.from("client_names").delete().eq("id", n.id)).then(reload).catch(fail);
+      } }, "×")))) : h("p", { class: "empty" }, "None yet."),
+    h("form", { class: "row", style: "margin-top:10px", onsubmit: async (e) => {
+      e.preventDefault(); if (!nn.value.trim()) return;
+      await q(sb.from("client_names").insert({ client_id: id, name: nn.value.trim(), kind: nk.value })).then(() => { toast("Name added"); reload(); }).catch(fail);
+    } }, h("div", { style: "flex:1;min-width:200px" }, nn), h("div", { style: "width:130px" }, nk), h("button", { class: "btn", type: "submit" }, "Add name")));
+  const contactsPanel = h("div", { class: "cols" }, contactsCard(id, contacts, reload), namesCard);
+
+  // --- Details tab: identity, history choice, activity, delete/erase ---
   const ed = {
     company_name: h("input", { type: "text", value: client.company_name }), business_unit: h("input", { type: "text", value: client.business_unit || "" }),
     sector: h("input", { type: "text", value: client.sector || "" }), size_band: h("input", { type: "text", value: client.size_band || "" }),
     location: h("input", { type: "text", value: client.location || "" }), admin_notes: h("textarea", { value: client.admin_notes || "" }),
   };
-  const groupSel = h("select", {}, h("option", { value: "" }, "No group"), ...groups.map((g) => h("option", { value: g.id, selected: g.id === client.group_id }, g.name)),
-    h("option", { value: "__new" }, "New group…"));
-  const identity = h("form", { class: "block stack", onsubmit: async (e) => {
+  const newGroup = h("input", { type: "text", placeholder: "Name of the parent group" });
+  const newGroupWrap = h("label", { class: "f", hidden: true }, "New group name", newGroup);
+  const groupSel = h("select", { onchange: () => { newGroupWrap.hidden = groupSel.value !== "__new"; if (!newGroupWrap.hidden) newGroup.focus(); } },
+    h("option", { value: "" }, "No group"), ...groups.map((g) => h("option", { value: g.id, selected: g.id === client.group_id }, g.name)), h("option", { value: "__new" }, "New group…"));
+  const identity = h("form", { class: "card stack", onsubmit: async (e) => {
     e.preventDefault();
     let group_id = groupSel.value || null;
     if (group_id === "__new") {
-      const name = prompt("Name of the parent group");
-      if (!name) return;
+      const name = newGroup.value.trim();
+      if (!name) { toast("Enter the new group's name", true); newGroup.focus(); return; }
       const gid = crypto.randomUUID();
-      await q(sb.from("client_groups").insert({ id: gid, name: name.trim() })).catch(fail);
+      await q(sb.from("client_groups").insert({ id: gid, name })).catch(fail);
       group_id = gid;
     }
     const row = Object.fromEntries(Object.entries(ed).map(([k, el]) => [k, el.value.trim() || null]));
     await q(sb.from("clients").update({ ...row, company_name: row.company_name || client.company_name, group_id }).eq("id", id)).then(() => { toast("Client details saved"); reload(); }).catch(fail);
   } },
+    h("h2", {}, "Client details"),
     h("div", { class: "grid2" },
       h("label", { class: "f" }, "Organisation name", ed.company_name), h("label", { class: "f" }, "Business unit or site", ed.business_unit),
-      h("label", { class: "f" }, "Parent group", groupSel), h("label", { class: "f" }, "Sector", ed.sector),
+      h("label", { class: "f" }, "Parent group", groupSel), newGroupWrap, h("label", { class: "f" }, "Sector", ed.sector),
       h("label", { class: "f" }, "Size", ed.size_band), h("label", { class: "f" }, "Location", ed.location)),
     h("label", { class: "f" }, "Private notes", ed.admin_notes),
     h("div", {}, h("button", { class: "btn primary", type: "submit" }, "Save client details")));
-
-  const refBox = client.client_ref ? h("span", { class: "tag", style: "font-size:14px" }, client.client_ref) :
-    h("button", { class: "btn", onclick: async () => {
-      const ok = await confirmBox({ title: "Issue a client reference?", text: "Do this at the first delivery. The reference goes on the report's document control page and in the delivery email, and can't be changed.", ok: "Issue reference" });
-      if (ok) await q(sb.rpc("admin_issue_client_ref", { p_client: id })).then((r) => { toast("Reference " + r + " issued"); reload(); }).catch(fail);
-    } }, "Issue client reference");
-
-  // --- Contacts ---
-  const cn = { name: h("input", { type: "text" }), email: h("input", { type: "email" }), phone: h("input", { type: "tel" }), role: h("input", { type: "text" }) };
-  const contactsBlock = h("div", { class: "block stack" },
-    contacts.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Name", "Email", "Phone", "Role", ""].map((x) => h("th", {}, x)))),
-      h("tbody", {}, ...contacts.map((p) => h("tr", { style: p.is_active ? "" : "opacity:.55" },
-        h("td", {}, p.name || ""), h("td", {}, p.email || ""), h("td", {}, p.phone || ""), h("td", {}, p.role || ""),
-        h("td", {}, h("button", { class: "btn quiet small", onclick: async () => {
-          await q(sb.from("client_contacts").update({ is_active: !p.is_active }).eq("id", p.id)).then(reload).catch(fail);
-        } }, p.is_active ? "Mark as left" : "Mark as active"))))))) : h("p", { class: "muted" }, "No contacts yet."),
-    h("details", {}, h("summary", { class: "small" }, "Add a contact"),
-      h("form", { class: "stack", style: "margin-top:10px", onsubmit: async (e) => {
-        e.preventDefault();
-        const row = Object.fromEntries(Object.entries(cn).map(([k, el]) => [k, el.value.trim() || null]));
-        if (row.email) row.email = row.email.toLowerCase();
-        if (!row.name && !row.email && !row.phone) return toast("Enter at least a name, email or phone", true);
-        await q(sb.from("client_contacts").insert({ client_id: id, ...row })).then(() => { toast("Contact added"); reload(); }).catch(fail);
-      } }, h("div", { class: "grid2" }, h("label", { class: "f" }, "Name", cn.name), h("label", { class: "f" }, "Email", cn.email),
-        h("label", { class: "f" }, "Phone", cn.phone), h("label", { class: "f" }, "Role", cn.role)), h("div", {}, h("button", { class: "btn", type: "submit" }, "Add contact")))));
-
-  // --- Other names ---
-  const nn = h("input", { type: "text", placeholder: "e.g. brand name, Arabic name, former name" });
-  const nk = h("select", {}, ...[["brand", "Brand"], ["arabic", "Arabic"], ["former", "Former"], ["legal", "Legal"], ["other", "Other"]].map(([v, t]) => h("option", { value: v }, t)));
-  const namesBlock = h("div", { class: "block stack" },
-    names.length ? h("div", { class: "row" }, ...names.map((n) => h("span", { class: "tag" }, h("bdi", {}, n.name), " (" + n.kind + ") ",
-      h("button", { class: "btn quiet small", "aria-label": "Remove " + n.name, style: "padding:0 4px;border:0", onclick: async () => {
-        await q(sb.from("client_names").delete().eq("id", n.id)).then(reload).catch(fail);
-      } }, "×")))) : h("p", { class: "muted small" }, "Other names help match future requests (brand, Arabic, former names)."),
-    h("form", { class: "row", onsubmit: async (e) => {
-      e.preventDefault(); if (!nn.value.trim()) return;
-      await q(sb.from("client_names").insert({ client_id: id, name: nn.value.trim(), kind: nk.value })).then(() => { toast("Name added"); reload(); }).catch(fail);
-    } }, h("div", { style: "flex:1;min-width:200px" }, nn), h("div", { style: "width:130px" }, nk), h("button", { class: "btn", type: "submit" }, "Add name")));
-
-  // --- History ---
-  const actionsByEx = {}; actions.forEach((a) => (actionsByEx[a.exercise_id] = actionsByEx[a.exercise_id] || []).push(a));
-  const historyBlock = exercises.length ? h("div", {}, ...exercises.map((x) => h("div", { class: "block" },
-    h("div", { class: "spread" },
-      h("div", {}, h("h3", {}, dd(x.exercise_date) + (x.main_risk ? " — " + x.main_risk : "")),
-        h("div", { class: "small muted" }, [x.service_type, x.is_retest ? "re-test" : null, x.delivery_mode && x.delivery_mode.replace("_", " "), x.plan_title && "plan: " + x.plan_title + (x.plan_version ? " v" + x.plan_version : "")].filter(Boolean).join(" · "))),
-      x.overall_score != null ? h("div", { class: "band " + (x.band || "") }, Math.round(x.overall_score) + "% " + (x.band ? x.band[0].toUpperCase() + x.band.slice(1) : "")) : null),
-    Object.keys(x.capability_scores || {}).length ? h("dl", { class: "facts" }, ...Object.entries(x.capability_scores).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v == null ? "Not tested" : Math.round(v) + "%")])) : null,
-    (x.findings || []).length ? h("details", { style: "margin-top:10px" }, h("summary", { class: "small" }, x.findings.length + (x.findings.length === 1 ? " finding" : " findings")),
-      h("div", { class: "table-wrap" }, h("table", {}, h("tbody", {}, ...x.findings.sort((a, b) => a.sort_order - b.sort_order).map((f) => h("tr", {},
-        h("td", {}, f.criterion, f.plan_cause ? h("div", { class: "small muted" }, "Plan-level cause: " + f.plan_cause) : null),
-        h("td", { class: "small" }, RATING_TEXT[f.rating]), h("td", { class: "small muted" }, [f.ncema_clause && "NCEMA " + f.ncema_clause, f.iso_clause && "ISO " + f.iso_clause].filter(Boolean).join(" · ")))))))) : null,
-    (actionsByEx[x.id] || []).length ? h("div", { style: "margin-top:12px" }, h("h3", { style: "margin-bottom:6px" }, "Corrective actions"),
-      h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Action"), h("th", {}, "Owner"), h("th", {}, "Due"), h("th", {}, "Status"))),
-        h("tbody", {}, ...actionsByEx[x.id].map((a) => {
-          const sel = h("select", { "aria-label": "Status", onchange: async () => {
-            await q(sb.from("corrective_actions").update({ status: sel.value }).eq("id", a.id)).then(() => toast("Action status saved")).catch(fail);
-          } }, ...Object.entries(ACTION_STATUS).map(([k, t]) => h("option", { value: k, selected: k === a.status }, t)));
-          return h("tr", {}, h("td", {}, a.action), h("td", {}, a.owner_department || ""), h("td", {}, dd(a.due_date)), h("td", { style: "min-width:190px" }, sel));
-        }))))) : null)))
-    : h("div", { class: "block" }, h("p", { class: "muted" }, client.history_opt_out ? "This client opted out — no exercise history is kept." :
-        "No exercises recorded yet. At delivery, the report skill saves the exercise here (score, findings and corrective actions)."));
-
-  const profileBlock = profile ? h("div", { class: "block" }, h("dl", { class: "facts" },
-    ...[["Departments", (profile.departments || []).join(", ")], ["Key operations", profile.key_operations], ["Dependencies", profile.dependencies],
-        ["Plan tested", [profile.plan_title, profile.plan_version && "v" + profile.plan_version].filter(Boolean).join(" ")], ["Updated", dt(profile.updated_at)]]
-      .filter(([, v]) => v).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))) : null;
-
-  // --- Requests + record a phone/email request ---
-  const requestsBlock = h("div", { class: "block stack" },
-    requests.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Received", "How", "For", "Main risk", "Stage"].map((x) => h("th", {}, x)))),
-      h("tbody", {}, ...requests.map((r) => h("tr", {}, h("td", {}, dt(r.created_at)), h("td", {}, r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1)),
-        h("td", {}, r.org_unit || ""), h("td", {}, r.risk_concern_1 || ""), h("td", {}, STATUS_TEXT[r.status])))))) : h("p", { class: "muted" }, "No requests yet."),
-    h("details", {}, h("summary", { class: "small" }, "Record a phone or email request"), phoneRequestForm(client, contacts, reload)));
-
-  // --- Activity ---
-  const eventsBlock = h("details", { class: "block" }, h("summary", {}, "Activity log (" + events.length + ")"),
-    events.length ? h("ul", { class: "small", style: "margin-top:10px" }, ...events.map((ev) => h("li", {}, dt(ev.at) + " — " + ev.event.replace(/_/g, " ") + (ev.detail ? ": " + ev.detail : "")))) : h("p", { class: "muted small" }, "Nothing recorded yet."));
-
-  // --- History choices ---
   const optBtn = h("button", { class: "btn", onclick: async () => {
     const turningOff = !client.history_opt_out;
     const ok = await confirmBox({ title: turningOff ? "Record that this client opted out?" : "Keep history again for this client?",
@@ -916,8 +1106,12 @@ async function renderClient(id) {
       ok: turningOff ? "Record opt-out" : "Keep history again" });
     if (ok) await q(sb.rpc("admin_set_history_opt_out", { p_client: id, p_opt_out: turningOff, p_note: "Recorded on the admin page" })).then(reload).catch(fail);
   } }, client.history_opt_out ? "Keep history again" : "Record opt-out");
+  const historyChoice = h("div", { class: "card" }, h("h2", {}, "Exercise history choice"),
+    h("div", { class: "spread" }, h("p", { class: "small muted", style: "margin:0" }, client.history_opt_out ? "The client opted out: no exercise history is kept." : "History is kept for 5 years from the latest exercise (" + (client.retain_until ? "until " + dd(client.retain_until) : "no exercise yet") + ")."), optBtn));
+  const eventsCard = h("div", { class: "card plain" }, h("details", {}, h("summary", {}, "Activity log (" + events.length + ")"),
+    events.length ? h("ul", { class: "small", style: "margin:0; padding-left:18px" }, ...events.map((ev) => h("li", {}, dt(ev.at) + " — " + ev.event.replace(/_/g, " ") + (ev.detail ? ": " + ev.detail : "")))) : h("p", { class: "empty" }, "Nothing recorded yet.")));
   const word = client.company_name.split(/\s+/)[0];
-  const dangerBlock = h("div", { class: "block danger-zone stack" },
+  const dangerCard = h("div", { class: "card danger-zone stack" }, h("h2", {}, "Delete or erase"),
     h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Delete exercise history"), h("p", { class: "small muted" }, "Removes exercises, findings, actions and the organisation profile, and records the opt-out. Contacts and requests stay.")),
       h("button", { class: "btn danger", onclick: async () => {
         const ok = await confirmBox({ title: "Delete all exercise history for " + client.company_name + "?", text: "This can't be undone. The activity log keeps a note that it was deleted on request.", ok: "Delete history", typeWord: word });
@@ -926,26 +1120,19 @@ async function renderClient(id) {
     h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Erase this client completely"), h("p", { class: "small muted" }, "Removes the client, contacts, other names, requests and history. Only the reference and a dated note remain in the log.")),
       h("button", { class: "btn danger", onclick: async () => {
         const ok = await confirmBox({ title: "Erase " + client.company_name + " completely?", text: "Everything about this client is removed. This can't be undone.", ok: "Erase client", typeWord: word });
-        if (ok) await q(sb.rpc("admin_erase_client", { p_client: id, p_reason: "Client request (admin page)" })).then(() => { toast("Client erased"); location.hash = "#clients"; show("clients"); }).catch(fail);
+        if (ok) await q(sb.rpc("admin_erase_client", { p_client: id, p_reason: "Client request (admin page)" })).then(() => { toast("Client erased"); go("#clients"); }).catch(fail);
       } }, "Erase client")));
+  const details = h("div", {}, identity, historyChoice, eventsCard, dangerCard);
 
-  const openActions = actions.filter((a) => a.status === "open" || a.status === "done").length;
-  app.replaceChildren(
-    h("a", { href: "#clients", class: "small muted", onclick: () => show("clients") }, "← All clients"),
-    h("div", { class: "spread", style: "margin-top:10px" },
-      h("div", {}, h("h1", { dir: "auto" }, client.company_name), h("p", { class: "muted small", style: "margin:4px 0 0" },
-        [client.business_unit, plural(exercises.length, "exercise"), plural(openActions, "open action"),
-         client.history_opt_out ? "history opted out" : (client.retain_until ? "history kept until " + dd(client.retain_until) : null)].filter(Boolean).join(" · "))),
-      h("div", { class: "row" }, refBox, optBtn)),
-    exercises.length ? h("p", { class: "warn", style: "margin-top:16px" }, "Before discussing this history, check who you're speaking to: a contact listed below, or someone writing from the company's own email domain. Send summaries only to those addresses.") : null,
-    h("section", { class: "part" }, h("h2", {}, "Exercise history"), historyBlock),
-    profileBlock ? h("section", { class: "part" }, h("h2", {}, "Organisation profile"), profileBlock) : null,
-    h("section", { class: "part" }, h("h2", {}, "Requests"), requestsBlock),
-    h("section", { class: "part" }, h("h2", {}, "Contacts"), contactsBlock),
-    h("section", { class: "part" }, h("h2", {}, "Other names"), namesBlock),
-    h("section", { class: "part" }, h("h2", {}, "Client details"), identity),
-    h("section", { class: "part" }, eventsBlock),
-    h("section", { class: "part" }, h("h2", {}, "Delete or erase"), dangerBlock));
+  const tabs = makeTabs("client", [
+    { id: "overview", label: "Overview", panel: overview },
+    { id: "history", label: "History", panel: history },
+    { id: "contacts", label: "Contacts", panel: contactsPanel },
+    { id: "details", label: "Details", panel: details },
+  ]);
+  tabs.badge("history", exercises.length);
+  tabs.badge("contacts", contacts.filter((x) => x.is_active).length);
+  app.replaceChildren(cmd, tabs.nav, tabs.panels);
 }
 
 function phoneRequestForm(client, contacts, reload) {
@@ -956,7 +1143,7 @@ function phoneRequestForm(client, contacts, reload) {
     risk_concern_1: h("input", { type: "text" }), risk_concern_2: h("input", { type: "text" }),
     retest_or_new: h("select", {}, h("option", { value: "" }, "—"), ...Object.entries(RETEST_TEXT).map(([k, t]) => h("option", { value: k }, t))),
     what_changed: h("textarea", {}), actions_done: h("textarea", {}), plan_updated: h("input", { type: "text", placeholder: "e.g. v3, March 2027" }), notes: h("textarea", {}) };
-  return h("form", { class: "stack", style: "margin-top:12px", onsubmit: async (e) => {
+  return h("form", { class: "stack", onsubmit: async (e) => {
     e.preventDefault();
     let contactLine = "";
     if (!who.value && (nn.value.trim() || ne.value.trim() || np.value.trim())) {
