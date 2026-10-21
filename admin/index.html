@@ -129,6 +129,19 @@
   .team-remarks .remark-body { white-space: pre-wrap; margin: 4px 0 6px; }
   .team-remarks textarea { width: 100%; margin-top: 8px; box-sizing: border-box; }
   .tag.lock { border-color: var(--red); color: var(--red); }
+  /* Scenario with the client — versions and client comments (21 October 2026) */
+  .scenario-box { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+  .scenario-box h4 { font-family: "Space Grotesk", sans-serif; font-size: 14px; margin: 16px 0 6px; }
+  .scenario-box .ver { padding: 8px 0; border-top: 1px solid var(--border); }
+  .scenario-box .ver:first-child { border-top: 0; }
+  .scenario-box .ver .pre, .scenario-box .remark-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .scenario-box .remark { padding: 8px 0; border-top: 1px solid var(--border); }
+  .scenario-box .remark:first-child { border-top: 0; }
+  .scenario-box .remark-body { margin: 4px 0 6px; }
+  .scenario-box .ver-status { min-width: 180px; }
+  .scenario-box details.add { margin-top: 8px; }
+  .scenario-box .add-comment { margin-top: 10px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -207,8 +220,12 @@ const LABEL_TEXT = { reference: "Matched by reference", likely: "Likely match", 
 const USED_TEXT = { yes: "Yes", no: "No", not_sure: "Not sure" };
 const LANGUAGE_TEXT = { english: "English", arabic: "Arabic preferred (not offered yet — runs in English for now)" };
 const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", unsure: "Not sure yet" };
-const STATUS = ["new", "contacted", "scenario_sent", "exercise_scheduled", "delivered"];
-const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
+// Request stages (renamed from "Pipeline" and two stages added, 21 October 2026).
+// The database moves a request forward by itself when a scenario version is
+// recorded, a client comment is added or a version is approved; never backwards.
+const STATUS = ["new", "contacted", "scenario_sent", "client_reviewing", "scenario_approved", "exercise_scheduled", "delivered"];
+const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", client_reviewing: "Client reviewing", scenario_approved: "Scenario approved", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
+const VERSION_STATUS = { sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
 const ACTION_STATUS = { open: "Open", done: "Done (not yet exercised)", verified: "Verified at a later exercise", not_verified: "Not verified — gap remained" };
 const RATING_TEXT = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
 
@@ -379,6 +396,19 @@ async function renderRequests() {
   const remarksBySub = {};
   (remarkRows || []).forEach((r) => (remarksBySub[r.submission_id] = remarksBySub[r.submission_id] || []).push(r));
   rows.forEach((r) => { r._remarks = remarksBySub[r.id] || []; });
+  // Scenario versions and client comments (21 October 2026), same pattern.
+  const ids = rows.map((r) => r.id);
+  const [verRows, comRows] = ids.length ? await Promise.all([
+    // all versions, including removed ones, so the next number shown is the one the database gives
+    q(sb.from("submission_scenario_versions").select("*").in("submission_id", ids).order("version_no")).catch(() => []),
+    q(sb.from("submission_client_comments").select("*").in("submission_id", ids).is("withdrawn_at", null).order("received_on").order("created_at")).catch(() => []),
+  ]) : [[], []];
+  rows.forEach((r) => {
+    const mine = (verRows || []).filter((v) => v.submission_id === r.id);
+    r._versions = mine.filter((v) => !v.withdrawn_at);
+    r._lastVersionNo = mine.reduce((m, v) => Math.max(m, v.version_no), 0);
+    r._comments = (comRows || []).filter((c) => c.submission_id === r.id);
+  });
 
   const filters = h("div", { class: "row" }, ...[["pending", "Waiting for you to confirm"], ["open", "All open requests"], ["all", "Everything"]].map(([k, t]) =>
     h("button", { class: "btn" + (requestFilter === k ? " primary" : " quiet"), onclick: () => { requestFilter = k; renderRequests().catch(fail); } }, t)));
@@ -451,15 +481,189 @@ function requestBlock(s) {
     block.append(box);
   }
 
+  const status = h("select", { "aria-label": "Request stage", onchange: async () => {
+    await q(sb.from("submissions").update({ status: status.value }).eq("id", s.id)).then(() => { s.status = status.value; toast("Request stage saved"); }).catch(fail);
+  } }, ...STATUS.map((x) => h("option", { value: x, selected: x === s.status }, STATUS_TEXT[x])));
+  // After a version or comment is saved the database may have moved the stage on.
+  async function refreshStage() {
+    const row = await q(sb.from("submissions").select("status").eq("id", s.id).single()).catch(() => null);
+    if (row && row.status !== s.status) {
+      s.status = row.status; status.value = row.status;
+      toast("Request stage moved to " + STATUS_TEXT[row.status]);
+    }
+  }
+
+  block.append(scenarioBox(s, refreshStage));
   block.append(teamRemarksBox(s));
 
-  const status = h("select", { "aria-label": "Pipeline status", onchange: async () => {
-    await q(sb.from("submissions").update({ status: status.value }).eq("id", s.id)).then(() => toast("Status saved")).catch(fail);
-  } }, ...STATUS.map((x) => h("option", { value: x, selected: x === s.status }, STATUS_TEXT[x])));
   const notes = h("details", {}, h("summary", { class: "small muted" }, "Full form summary and notes"),
     h("pre", { class: "small", style: "white-space:pre-wrap;margin-top:8px" }, s.notes || ""));
-  block.append(h("div", { class: "spread", style: "margin-top:14px" }, notes, h("label", { class: "f", style: "min-width:200px" }, "Pipeline", status)));
+  block.append(h("div", { class: "spread", style: "margin-top:14px" }, notes, h("label", { class: "f", style: "min-width:200px" }, "Request stage", status)));
   return block;
+}
+
+// ---- Scenario with the client (Ahmed, 21 October 2026) --------------------
+// Each scenario version sent to the client (v1, v2…, date sent, status) and
+// what the client said about it (date received, who sent it, which version).
+// Kept apart from the team-only remarks. Read by the planproof-scenario
+// skill's revise mode. The scenario itself stays in the client's drive
+// folder; only its details are recorded here. The database moves the request
+// stage forward by itself (refreshStage shows the change).
+const todayDubai = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+function scenarioBox(s, refreshStage) {
+  const box = h("section", { class: "scenario-box" });
+  const verList = h("div", { class: "stack" });
+  const comList = h("div", { class: "stack" });
+  const versions = () => s._versions || (s._versions = []);
+  const comments = () => s._comments || (s._comments = []);
+  const vLabel = (id) => { const v = versions().find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
+  const latest = () => versions().slice().sort((a, b) => b.version_no - a.version_no)[0];
+
+  async function reloadVersions() {
+    const rows = await q(sb.from("submission_scenario_versions").select("*").eq("submission_id", s.id).order("version_no")).catch(fail);
+    if (rows) { s._versions = rows.filter((v) => !v.withdrawn_at); s._lastVersionNo = rows.reduce((m, v) => Math.max(m, v.version_no), 0); }
+  }
+  async function after(msg) { await reloadVersions(); toast(msg); draw(); await refreshStage(); }
+
+  function draw() {
+    const vs = versions();
+    verList.replaceChildren(...(vs.length ? vs.map(versionItem) :
+      [h("p", { class: "muted small" }, "No version recorded yet. Record v1 when you send the scenario to the client.")]));
+    const cs = comments();
+    comList.replaceChildren(...(cs.length ? cs.map(commentItem) :
+      [h("p", { class: "muted small" }, "No client comments yet.")]));
+    const last = Math.max(s._lastVersionNo || 0, vs.reduce((m, v) => Math.max(m, v.version_no), 0));
+    addVersion.querySelector("summary").textContent = "Record version v" + (last + 1) + " sent to the client";
+    fillVersionSelect(cVersion, latest() ? latest().id : "");
+    // usually the same sponsor writes again: start from the last sender
+    if (!cFrom.value && cs.length) cFrom.value = cs[cs.length - 1].sender;
+  }
+
+  function fillVersionSelect(sel, chosen) {
+    sel.replaceChildren(h("option", { value: "" }, "Not about a specific version"),
+      ...versions().slice().reverse().map((v) => h("option", { value: v.id, selected: v.id === chosen }, "v" + v.version_no + " (sent " + dd(v.sent_on) + ")")));
+    if (chosen && !versions().some((v) => v.id === chosen)) sel.value = "";
+  }
+
+  function versionItem(v) {
+    const row = h("div", { class: "ver" });
+    const stat = h("select", { "aria-label": "Status of v" + v.version_no, onchange: async () => {
+      const next = stat.value;
+      if (next === "approved") {
+        const ok = await confirmBox({ title: "Mark v" + v.version_no + " as approved by the client?",
+          text: "This is the version the exercise will use. The request moves to \"Scenario approved\". Any other approved version becomes \"Superseded\".", ok: "Mark approved" });
+        if (!ok) { stat.value = v.status; return; }
+      }
+      const upd = await q(sb.from("submission_scenario_versions").update({ status: next }).eq("id", v.id).select("id")).catch(fail);
+      if (upd) await after("v" + v.version_no + ": " + VERSION_STATUS[next]); else stat.value = v.status;
+    } }, ...["sent", "client_commented", "approved"].concat(v.status === "superseded" ? ["superseded"] : [])
+      .map((k) => h("option", { value: k, selected: k === v.status }, VERSION_STATUS[k])));
+    const head = h("div", { class: "spread" },
+      h("div", {}, h("strong", {}, "v" + v.version_no), h("span", { class: "muted small" }, " · sent " + dd(v.sent_on) +
+        (v.status !== "sent" ? " · " + VERSION_STATUS[v.status].toLowerCase() + " " + dd(v.status_changed_on) : ""))),
+      h("label", { class: "f ver-status" }, h("span", { class: "sr-only" }, "Status"), stat));
+    const details = h("div", { class: "small" },
+      v.file_name ? h("div", {}, h("span", { class: "muted" }, "File: "), h("bdi", {}, v.file_name)) : null,
+      v.note ? h("div", { class: "pre" }, h("span", { class: "muted" }, "What changed: "), v.note) : null);
+    const edit = h("button", { class: "btn quiet", type: "button", onclick: () => {
+      const fSent = h("input", { type: "date", value: v.sent_on, max: todayDubai() });
+      const fFile = h("input", { type: "text", maxlength: 300, value: v.file_name || "" });
+      const fNote = h("textarea", { rows: 2, maxlength: 2000, value: v.note || "" });
+      const save = h("button", { class: "btn primary", type: "button", onclick: async () => {
+        const upd = await q(sb.from("submission_scenario_versions").update({ sent_on: fSent.value || v.sent_on, file_name: fFile.value.trim() || null, note: fNote.value.trim() || null })
+          .eq("id", v.id).select("id")).catch(fail);
+        if (upd) await after("v" + v.version_no + " saved");
+      } }, "Save");
+      row.replaceChildren(h("strong", {}, "v" + v.version_no),
+        h("div", { class: "grid2" }, h("label", { class: "f" }, "Sent on", fSent), h("label", { class: "f" }, "File name (optional)", fFile)),
+        h("label", { class: "f" }, "What changed (optional)", fNote),
+        h("div", { class: "row" }, save, h("button", { class: "btn quiet", type: "button", onclick: draw }, "Cancel")));
+    } }, "Edit");
+    const remove = h("button", { class: "btn quiet", type: "button", onclick: async () => {
+      const ok = await confirmBox({ title: "Remove v" + v.version_no + "?", text: "Use this only for a version recorded by mistake. Its number is not reused. It is kept in the database, marked as removed.", ok: "Remove version" });
+      if (!ok) return;
+      const done = await q(sb.from("submission_scenario_versions").update({ withdrawn_at: new Date().toISOString() }).eq("id", v.id).select("id")).catch(fail);
+      if (done) { s._versions = versions().filter((x) => x.id !== v.id); toast("v" + v.version_no + " removed"); draw(); }
+    } }, "Remove");
+    row.append(head, details, h("div", { class: "row" }, edit, remove));
+    return row;
+  }
+
+  function commentItem(c) {
+    const row = h("div", { class: "remark" });
+    const meta = h("div", { class: "small muted" }, dd(c.received_on) + " · from ", h("bdi", {}, c.sender),
+      " · " + (c.version_id ? "about " + vLabel(c.version_id) : "not about a specific version"));
+    const text = h("div", { class: "remark-body" }, c.body);
+    const edit = h("button", { class: "btn quiet", type: "button", onclick: () => {
+      const fDate = h("input", { type: "date", value: c.received_on, max: todayDubai() });
+      const fFrom = h("input", { type: "text", maxlength: 200, value: c.sender });
+      const fVer = h("select", {}); fillVersionSelect(fVer, c.version_id || "");
+      const fBody = h("textarea", { rows: 4, maxlength: 8000 }); fBody.value = c.body;
+      const save = h("button", { class: "btn primary", type: "button", onclick: async () => {
+        const body = fBody.value.trim(), sender = fFrom.value.trim();
+        if (!body || !sender) return toast("Enter who sent it and the comment", true);
+        const upd = await q(sb.from("submission_client_comments").update({ received_on: fDate.value || c.received_on, sender, body, version_id: fVer.value || null })
+          .eq("id", c.id).select().single()).catch(fail);
+        if (upd) { Object.assign(c, upd); await after("Client comment saved"); }
+      } }, "Save");
+      row.replaceChildren(h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", fDate), h("label", { class: "f" }, "From", fFrom),
+        h("label", { class: "f" }, "About", fVer)), h("label", { class: "f" }, "Comment", fBody),
+        h("div", { class: "row" }, save, h("button", { class: "btn quiet", type: "button", onclick: draw }, "Cancel")));
+    } }, "Edit");
+    const remove = h("button", { class: "btn quiet", type: "button", onclick: async () => {
+      const ok = await confirmBox({ title: "Remove this client comment?", text: "It will no longer be used to revise the scenario. It is kept in the database, marked as removed.", ok: "Remove comment" });
+      if (!ok) return;
+      const done = await q(sb.from("submission_client_comments").update({ withdrawn_at: new Date().toISOString() }).eq("id", c.id).select("id")).catch(fail);
+      if (done) { s._comments = comments().filter((x) => x.id !== c.id); toast("Client comment removed"); draw(); }
+    } }, "Remove");
+    row.append(meta, text, h("div", { class: "row" }, edit, remove));
+    return row;
+  }
+
+  // Record a new version
+  const vSent = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
+  const vFile = h("input", { type: "text", maxlength: 300, placeholder: "e.g. acme-scenario-v2.docx" });
+  const vNote = h("textarea", { rows: 2, maxlength: 2000, placeholder: "e.g. Moved the outage to Ramadan working hours; replaced the fire inject (client's comments of 20 Oct)." });
+  const vBtn = h("button", { class: "btn primary", type: "button", onclick: async () => {
+    vBtn.disabled = true;
+    const row = await q(sb.from("submission_scenario_versions").insert({ submission_id: s.id, sent_on: vSent.value || todayDubai(),
+      file_name: vFile.value.trim() || null, note: vNote.value.trim() || null }).select().single()).catch(fail);
+    vBtn.disabled = false;
+    if (row) { vFile.value = ""; vNote.value = ""; vSent.value = todayDubai(); addVersion.open = false; await after("v" + row.version_no + " recorded as sent"); }
+  } }, "Record as sent");
+  const addVersion = h("details", { class: "add" }, h("summary", { class: "small" }, ""),
+    h("div", { class: "stack", style: "margin-top:10px" },
+      h("div", { class: "grid2" }, h("label", { class: "f" }, "Sent on", vSent), h("label", { class: "f" }, "File name (optional)", vFile)),
+      h("label", { class: "f" }, "What changed since the last version (optional)", vNote),
+      h("div", { class: "row", style: "justify-content:flex-end" }, vBtn)));
+
+  // Add a client comment
+  const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
+  const cFrom = h("input", { type: "text", maxlength: 200, placeholder: "e.g. Sara Ali, BCM Manager (sponsor)" });
+  const cVersion = h("select", { "aria-label": "Which version the comment is about" });
+  const cBody = h("textarea", { rows: 4, maxlength: 8000, placeholder: "Paste the client's comments as received (email, call notes or meeting notes).", "aria-label": "Client comment" });
+  const cBtn = h("button", { class: "btn primary", type: "button", onclick: async () => {
+    const body = cBody.value.trim(), sender = cFrom.value.trim();
+    if (!sender) { toast("Enter who sent the comment", true); cFrom.focus(); return; }
+    if (!body) { toast("Enter the comment", true); cBody.focus(); return; }
+    cBtn.disabled = true;
+    const row = await q(sb.from("submission_client_comments").insert({ submission_id: s.id, received_on: cDate.value || todayDubai(), sender, body,
+      version_id: cVersion.value || null }).select().single()).catch(fail);
+    cBtn.disabled = false;
+    if (row) { comments().push(row); cBody.value = ""; cDate.value = todayDubai(); await after("Client comment added"); }
+  } }, "Add client comment");
+
+  box.append(
+    h("div", { class: "spread" }, h("h3", {}, "Scenario with the client"), h("span", { class: "tag" }, "Sponsor only — never participants")),
+    h("p", { class: "muted small" }, "Send the scenario to the exercise sponsor only; participants must not see it before the exercise. Record each version you send and paste what the client says. Claude revises the scenario from these comments and the team remarks."),
+    h("h4", {}, "Versions sent"), verList, addVersion,
+    h("h4", {}, "Client comments on the scenario"), comList,
+    h("div", { class: "stack add-comment" },
+      h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom),
+        h("label", { class: "f" }, "About", cVersion)),
+      cBody, h("div", { class: "row", style: "justify-content:flex-end" }, cBtn)));
+  draw();
+  return box;
 }
 
 // ---- PlanProof remarks — team only (Ahmed, 21 October 2026) -------------
@@ -695,7 +899,7 @@ async function renderClient(id) {
 
   // --- Requests + record a phone/email request ---
   const requestsBlock = h("div", { class: "block stack" },
-    requests.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Received", "How", "For", "Main risk", "Status"].map((x) => h("th", {}, x)))),
+    requests.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ...["Received", "How", "For", "Main risk", "Stage"].map((x) => h("th", {}, x)))),
       h("tbody", {}, ...requests.map((r) => h("tr", {}, h("td", {}, dt(r.created_at)), h("td", {}, r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1)),
         h("td", {}, r.org_unit || ""), h("td", {}, r.risk_concern_1 || ""), h("td", {}, STATUS_TEXT[r.status])))))) : h("p", { class: "muted" }, "No requests yet."),
     h("details", {}, h("summary", { class: "small" }, "Record a phone or email request"), phoneRequestForm(client, contacts, reload)));
