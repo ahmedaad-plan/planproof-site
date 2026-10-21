@@ -209,6 +209,31 @@
   .pp-card.status-section, .pp-card.roster-section, .pp-card.tower-section, .pp-card.inbox-section, .pp-card.notes-section, .pp-card.broadcast-section { margin-top: 0; max-width: none; }
   .pp-card.status-section { margin-top: 14px; }
   .pp-card h2 { margin: 0 0 10px; }
+  /* Control tower layout (21 October 2026). */
+  header.pp-top { padding: 8px 16px; }
+  header.pp-top .pp-brand { font-size: 18px; }
+  header.pp-top .pp-brand svg { width: 24px; height: 24px; }
+  header.pp-top .pp-context { font-size: 12px; line-height: 1.3; }
+  #towerSection, #currentInjectCard, #notesOwn, #composeCard { border-color: var(--red); }
+  .kpi-strip { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .kpi {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: start;
+    background: var(--panel); border: 1px solid var(--border); border-top: 3px solid var(--border-strong);
+    border-radius: 10px; padding: 10px 14px; cursor: pointer; font: inherit; color: var(--text); min-width: 0;
+  }
+  .kpi:hover { border-color: var(--red); }
+  .kpi:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .kpi-v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  .kpi-l { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .kpi[data-tone="ok"] { border-top-color: var(--teal); } .kpi[data-tone="ok"] .kpi-v { color: var(--teal-soft); }
+  .kpi[data-tone="wait"] { border-top-color: var(--attn); } .kpi[data-tone="wait"] .kpi-v { color: var(--attn); }
+  .kpi[data-tone="bad"] { border-top-color: var(--red); } .kpi[data-tone="bad"] .kpi-v { color: var(--red-soft); }
+  .kpi[data-tone="none"] .kpi-v { color: var(--text-muted); }
+  @media (max-width: 899px) {
+    .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .kpi-v { font-size: 1.3rem; }
+  }
   /* The box you work in: a full red edge (20 October 2026). */
   #currentInjectCard, #notesOwn, #composeCard { border-color: var(--red); }
   #currentInjectCard h3, #currentInjectCard .ci-title { color: var(--text); }
@@ -292,7 +317,6 @@
     <div class="pp-cmd-tools" role="toolbar" aria-label="Exercise controls" data-i18n-attr="aria-label:fac.cmd.toolbarAria">
       <div class="pp-grp" role="group" aria-label="Injects" data-i18n-attr="aria-label:fac.cmd.groupInjects">
         <button id="prevBtn" title="Go back one inject; it starts again with its full time" data-i18n="fac.controls.previous" data-i18n-attr="title:fac.controls.previousTitle">&larr; Previous</button>
-        <button id="trialBtn" title="Practise with every screen and phone first; nothing from it is kept" data-i18n="fac.trial.start" data-i18n-attr="title:fac.trial.startTitle">Trial run</button>
         <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
         <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
         <button id="replayBtn" title="Play this inject again from the start, with its full time" data-i18n="fac.controls.replay" data-i18n-attr="title:fac.controls.replayTitle">Replay</button>
@@ -302,7 +326,11 @@
         <button id="extendBtn" title="Five more minutes for everyone" data-i18n="fac.controls.extend" data-i18n-attr="title:fac.controls.extendTitle">+5 min</button>
         <button id="unlockBtn" title="Reopen this inject's answers, even after the time is up" data-i18n="fac.controls.unlock" data-i18n-attr="title:fac.controls.unlockTitle">Unlock</button>
       </div>
+      <!-- One button at the far end (Ahmed, 21 October 2026): "Trial run" in
+           the lobby, "End trial run" during a trial, "End exercise" during
+           the real exercise. Each asks first. -->
       <div class="pp-grp pp-grp-end">
+        <button class="danger" id="trialBtn" title="Practise with every screen and phone first; nothing from it is kept" data-i18n="fac.trial.start" data-i18n-attr="title:fac.trial.startTitle">Trial run</button>
         <button class="danger" id="endBtn" data-i18n="fac.controls.end">End exercise</button>
       </div>
     </div>
@@ -339,6 +367,15 @@
       <button id="endConfirmBtn" class="danger" data-i18n="fac.endCheck.confirm">End exercise</button>
     </div>
   </div>
+  <!-- Start a trial run? (21 October 2026): never by accident. -->
+  <div class="start-check" id="trialStartCheck" hidden role="alertdialog" aria-labelledby="trialStartTitle">
+    <div class="t" id="trialStartTitle" data-i18n="fac.trial.startQ">Start a trial run?</div>
+    <div class="why" data-i18n="fac.trial.startWhy">Inject 1 starts on every room screen, phone and laptop, with a red "Trial run" strip across the top. Use it to check the screens, the sound, answers, messages and notes. Nothing from it is kept: "End trial run" takes everyone back to the waiting screen, still registered. You can run it as often as you like.</div>
+    <div class="b">
+      <button id="trialStartBackBtn" data-i18n="fac.common.goBack">Go back</button>
+      <button id="trialStartConfirmBtn" class="danger" data-i18n="fac.trial.startConfirm">Start trial run</button>
+    </div>
+  </div>
   <!-- End trial run (20 October 2026): straight back to the waiting screen. -->
   <div class="start-check end-check" id="trialEndCheck" hidden role="alertdialog" aria-labelledby="trialEndTitle">
     <div class="t" id="trialEndTitle" data-i18n="fac.trial.endTitle">End the trial run?</div>
@@ -359,6 +396,9 @@
 
   <!-- ===== Exercise ===== -->
   <section id="tabExercise" class="pp-cols wide">
+    <!-- At a glance (21 October 2026): the five numbers a facilitator
+         watches, each a door to its tab. -->
+    <div class="kpi-strip" id="kpiStrip" role="list" aria-label="At a glance" data-i18n-attr="aria-label:fac.kpi.aria"></div>
     <div class="pp-col">
       <div class="pp-card" id="currentInjectCard">
         <h2 data-i18n="fac.exercise.currentHeading">Current inject</h2>
@@ -695,6 +735,8 @@
         if (id === "notes") markNotesRead();
       },
     });
+    // Remember each tab's count for the "At a glance" tiles.
+    { const badge = tabsApi.badge.bind(tabsApi); tabsApi.badge = (key, n, cls) => { (window.__ppBadges = window.__ppBadges || {})[key] = { n: n || 0, c: cls || "" }; return badge(key, n, cls); }; }
     PPLayout.watchKeyboard();
     const alertsApi = PPLayout.alerts(document.getElementById("alertStrip"), { moreLabel: (n) => T("fac.alerts.more", { count: n }) });
     // What needs the facilitator's attention right now, whatever tab is open:
@@ -1005,6 +1047,8 @@
       // the bar says so and End becomes "End trial run".
       const trial = !!(currentRow && currentRow.is_trial && currentRow.status === "running");
       trialBtn.hidden = !currentRow || currentRow.status !== "lobby";
+      endBtn.hidden = !trialBtn.hidden;
+      if (trialBtn.hidden) document.getElementById("trialStartCheck").hidden = true;
       document.getElementById("trialTag").hidden = !trial;
       endBtn.textContent = trial ? T("fac.trial.end") : T("fac.controls.end");
       if (typeof applyTrialStrip === "function") applyTrialStrip(currentRow);
@@ -1585,8 +1629,62 @@
       return list.some((d) => String(d).toLowerCase() === "all") ? T("fac.status.allDepartments") : list.join(", ");
     }
 
+    // ---- At a glance (Ahmed, 21 October 2026) -----------------------------
+    // Five tiles over the Exercise tab: answers for this inject, people
+    // online, room screens, unread messages, new notes. Green = fine, amber =
+    // keep an eye on it, red = act now. Each tile opens its tab.
+    const kpiStripEl = document.getElementById("kpiStrip");
+    const badgeCounts = (window.__ppBadges = window.__ppBadges || {});
+    function kpiTile(key, tab, value, label, tone) {
+      return `<button type="button" class="kpi" role="listitem" data-kpi="${key}" data-tab="${tab}" data-tone="${tone}"><span class="kpi-v">${escapeHtml(value)}</span><span class="kpi-l">${escapeHtml(label)}</span></button>`;
+    }
+    function renderKpis() {
+      if (!kpiStripEl || !currentRow) return;
+      const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
+      const idx = currentRow.current_inject_index;
+      const inj = currentRow.status === "running" ? injects[idx] : null;
+      const tiles = [];
+      if (inj && lastSubmissions) {
+        const resp = allDepartments().filter((d) => isDepartmentResponsible(inj, d, currentRow, idx));
+        let done = 0, late = 0;
+        resp.forEach((d) => {
+          const st = departmentStatus(idx, inj, d);
+          if (st.state === "green") done++;
+          else if (st.state === "red") late++;
+        });
+        const tone = resp.length && done === resp.length ? "ok" : late ? "bad" : "wait";
+        tiles.push(kpiTile("answers", "exercise", `${done} / ${resp.length}`, T("fac.kpi.answers"), tone));
+      } else {
+        tiles.push(kpiTile("answers", "exercise", "—", T("fac.kpi.answers"), "none"));
+      }
+      if (lastAttendees && lastPresence) {
+        const now = towerNowMs();
+        const online = lastAttendees.filter((a) => { const d = personPresence(a.id); return d && presenceState(d.last_seen, now) === "green"; }).length;
+        const total = lastAttendees.length;
+        tiles.push(kpiTile("people", "people", `${online} / ${total}`, T("fac.kpi.people"), !total ? "none" : online === total ? "ok" : online === 0 ? "bad" : "wait"));
+        const rooms = currentRow.room_count || 1;
+        const screens = lastPresence.devices.filter((d) => d.kind === "room_screen" && presenceState(d.last_seen, now) === "green");
+        const good = Math.min(rooms, new Set(screens.filter((d) => d.sound === "on").map((d) => d.room || 1)).size);
+        tiles.push(kpiTile("screens", "exercise", `${good} / ${rooms}`, T("fac.kpi.screens"), good === rooms ? "ok" : screens.length ? "wait" : "bad"));
+      }
+      const msgs = (badgeCounts.messages && badgeCounts.messages.n) || 0;
+      tiles.push(kpiTile("messages", "messages", String(msgs), T("fac.kpi.messages"), msgs ? "bad" : "ok"));
+      const notes = (badgeCounts.notes && badgeCounts.notes.n) || 0;
+      tiles.push(kpiTile("notes", "notes", String(notes), T("fac.kpi.notes"), badgeCounts.notes && badgeCounts.notes.c === "red" && notes ? "bad" : notes ? "wait" : "ok"));
+      const html = tiles.join("");
+      if (kpiStripEl.innerHTML !== html) kpiStripEl.innerHTML = html;
+    }
+    kpiStripEl.addEventListener("click", (e) => {
+      const b = e.target.closest(".kpi");
+      if (!b) return;
+      tabsApi.show(b.dataset.tab);
+      if (b.dataset.kpi === "screens") { const el = document.getElementById("towerSection"); if (el) el.scrollIntoView({ block: "start" }); }
+      else showTop();
+    });
+
     function renderStatus() {
       renderCommandBar();
+      renderKpis();
       if (!currentRow || !lastSubmissions || !lastAttendees) return;
       const injects = (currentRow.scenario && currentRow.scenario.injects) || [];
       const depts = allDepartments();
@@ -2560,9 +2658,18 @@
     // waiting screen (still registered); the database sets the trial's
     // answers aside, and its messages and notes belong to the earlier run.
     const trialEndCheckEl = document.getElementById("trialEndCheck");
+    const trialStartCheckEl = document.getElementById("trialStartCheck");
     trialBtn.addEventListener("click", () => {
       if (!currentRow || currentRow.status !== "lobby") return;
       startCheckEl.hidden = true; document.body.classList.remove("pp-start-asking");
+      trialStartCheckEl.hidden = false;
+      showTop();
+      document.getElementById("trialStartBackBtn").focus();
+    });
+    document.getElementById("trialStartBackBtn").addEventListener("click", () => { trialStartCheckEl.hidden = true; });
+    document.getElementById("trialStartConfirmBtn").addEventListener("click", () => {
+      trialStartCheckEl.hidden = true;
+      if (!currentRow || currentRow.status !== "lobby") return;
       showExercise();
       runAction(() => patchSession(sessionId, {
         status: "running", current_inject_index: 0, inject_extra_minutes: 0, inject_force_unlocked: false, is_trial: true,
