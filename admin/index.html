@@ -100,6 +100,7 @@
   dl.facts{ display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0; font-size:14px; }
   dl.facts dt{ color:var(--text-muted); }
   dl.facts dd{ margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  @media (min-width:900px){ dl.facts.two{ grid-template-columns:max-content 1fr max-content 1fr; column-gap:24px; } }
   @media (max-width:899px){ dl.facts{ grid-template-columns:1fr; } dl.facts dt{ margin-top:6px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; } }
   table{ width:100%; border-collapse:collapse; font-size:14px; }
   th{ text-align:left; font-weight:600; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; padding:6px 8px; border-bottom:1px solid var(--border); }
@@ -137,7 +138,13 @@
   .kpi[data-tone="wait"]{ border-top-color:var(--attn); } .kpi[data-tone="wait"] .kpi-v{ color:var(--attn); }
   .kpi[data-tone="bad"]{ border-top-color:var(--red); } .kpi[data-tone="bad"] .kpi-v{ color:var(--red-soft); }
   .kpi[data-tone="none"] .kpi-v{ color:var(--text-muted); }
-  @media (max-width:899px){ .kpi-strip{ grid-template-columns:repeat(2,minmax(0,1fr)); } .kpi:last-child:nth-child(odd){ grid-column:1 / -1; } .kpi-v{ font-size:1.3rem; } }
+  .kpi-strip.seven{ grid-template-columns:repeat(7,minmax(0,1fr)); }
+  .kpi-strip.seven .kpi{ padding:8px 10px; }
+  .kpi-strip.seven .kpi-v{ font-size:1.4rem; }
+  .kpi-strip.seven .kpi-l{ font-size:.68rem; }
+  @media (max-width:899px){ .kpi-strip, .kpi-strip.seven{ grid-template-columns:repeat(2,minmax(0,1fr)); } .kpi:last-child:nth-child(odd){ grid-column:1 / -1; } .kpi-v, .kpi-strip.seven .kpi-v{ font-size:1.3rem; } }
+  .rno{ font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--text-muted); }
+  .lrow.overdue{ border-left:3px solid var(--red); }
 
   /* Lists of requests and clients: one row each, the whole row opens it */
   .list{ border:1px solid var(--border); border-radius:12px; overflow:hidden; }
@@ -216,7 +223,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v3</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -502,49 +509,75 @@ async function refreshPendingCount() {
 }
 
 // ================= Requests — the list =================
+// Seven tiles, one per request stage (Ahmed, 22 October 2026): the number of
+// requests at each stage; amber for New, green for Delivered, and RED when a
+// request has waited 7 days or more since it arrived without the scenario
+// being sent (stage New or Contacted). Tap a tile to see that stage's
+// requests; "To confirm" lists requests whose client is not confirmed yet.
+const OVERDUE_DAYS = 7;
+const daysSince = (iso) => Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+const isOverdue = (s) => (s.status === "new" || s.status === "contacted") && daysSince(s.created_at) >= OVERDUE_DAYS;
 let requestFilter = sessionStorage.getItem("pp_admin_reqfilter") || "open";
+let requestSearch = "";
 async function renderRequests() {
   const app = $("app");
   const rows = await q(sb.from("submissions")
-    .select("id, created_at, source, form_name, status, match_status, match_label, service_type, risk_concern_1, org_unit, exercise_language, client:clients!submissions_client_id_fkey(id, company_name, contact_name, record_status, client_ref)")
-    .order("created_at", { ascending: false }).limit(200));
+    .select("id, request_no, created_at, source, form_name, status, match_status, match_label, service_type, risk_concern_1, org_unit, exercise_language, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
+    .order("created_at", { ascending: false }).limit(300));
   const pending = rows.filter((r) => r.match_status === "pending");
   const open = rows.filter((r) => r.status !== "delivered");
-  const by = (sts) => open.filter((r) => sts.includes(r.status));
-  const tiles = [
-    ["pending", "To confirm", pending.length ? "bad" : "ok", pending],
-    ["design", "Scenario to design", by(["new", "contacted"]).length ? "wait" : "ok", by(["new", "contacted"])],
-    ["client", "With the client", by(["scenario_sent", "client_reviewing"]).length ? "wait" : "none", by(["scenario_sent", "client_reviewing"])],
-    ["schedule", "Approved — to schedule", by(["scenario_approved"]).length ? "wait" : "none", by(["scenario_approved"])],
-    ["scheduled", "Scheduled", by(["exercise_scheduled"]).length ? "ok" : "none", by(["exercise_scheduled"])],
-  ];
-  const sets = { open, all: rows };
-  tiles.forEach(([k, , , list]) => (sets[k] = list));
+  const byStage = (st) => rows.filter((r) => r.status === st);
+  const sets = { open, all: rows, pending };
+  STATUS.forEach((st) => (sets[st] = byStage(st)));
   if (!sets[requestFilter]) requestFilter = "open";
+  const tone = (st) => {
+    const items = sets[st];
+    if (st === "delivered") return items.length ? "ok" : "none";
+    if (items.some(isOverdue)) return "bad";
+    if (st === "new") return items.length ? "wait" : "none";
+    if (st === "exercise_scheduled" || st === "scenario_approved") return items.length ? "ok" : "none";
+    return items.length ? "wait" : "none";
+  };
 
-  const strip = h("div", { class: "kpi-strip", role: "list", "aria-label": "At a glance" });
-  const chips = h("div", { class: "row", style: "margin-bottom:12px" });
+  const strip = h("div", { class: "kpi-strip seven", role: "list", "aria-label": "Requests by stage" });
+  const sq = h("input", { type: "search", value: requestSearch, placeholder: "Search: request number, organisation, contact, email, risk…", "aria-label": "Search requests",
+    oninput: () => { requestSearch = sq.value; drawList(); } });
+  const chips = h("div", { class: "row" });
   const list = h("div", {});
-  function draw() {
-    strip.replaceChildren(...tiles.map(([k, label, tone, items]) => h("button", { type: "button", class: "kpi", role: "listitem", "data-tone": tone, "aria-pressed": requestFilter === k ? "true" : "false",
-      onclick: () => { requestFilter = requestFilter === k ? "open" : k; sessionStorage.setItem("pp_admin_reqfilter", requestFilter); draw(); } },
-      h("span", { class: "kpi-v" }, String(items.length)), h("span", { class: "kpi-l" }, label))));
-    chips.replaceChildren(...[["open", "All open requests"], ["all", "Everything, incl. delivered"]].map(([k, t]) =>
-      h("button", { type: "button", class: "btn sm" + (requestFilter === k ? " primary" : " quiet"), onclick: () => { requestFilter = k; sessionStorage.setItem("pp_admin_reqfilter", k); draw(); } }, t)));
-    const shown = sets[requestFilter] || open;
+  const setFilter = (k) => { requestFilter = k; sessionStorage.setItem("pp_admin_reqfilter", k); draw(); };
+  function drawList() {
+    const needle = requestSearch.trim().toLowerCase();
+    let shown = sets[requestFilter] || open;
+    if (needle) shown = rows.filter((r) => [r.request_no, r.client && r.client.company_name, r.client && r.client.contact_name, r.client && r.client.email, r.risk_concern_1, r.org_unit, r.service_type]
+      .filter(Boolean).some((v) => String(v).toLowerCase().includes(needle)));
     list.replaceChildren(shown.length ? h("div", { class: "list" }, ...shown.map(requestRow)) :
-      h("div", { class: "card plain" }, h("p", { class: "empty" }, requestFilter === "pending" ? "Nothing is waiting for you to confirm." : "No requests here.")));
+      h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestFilter === "pending" ? "Nothing is waiting for you to confirm." : "No requests at this stage.")));
   }
-  app.replaceChildren(h("div", { class: "spread", style: "margin-bottom:12px" }, h("h1", {}, "Requests"), h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a tile to filter. Tap a request to open it.")), strip, chips, list);
+  function draw() {
+    strip.replaceChildren(...STATUS.map((st) => h("button", { type: "button", class: "kpi", role: "listitem", "data-tone": tone(st), "aria-pressed": requestFilter === st ? "true" : "false",
+      onclick: () => setFilter(requestFilter === st ? "open" : st) },
+      h("span", { class: "kpi-v" }, String(sets[st].length)), h("span", { class: "kpi-l" }, STATUS_TEXT[st]))));
+    chips.replaceChildren(...[["open", "All open"], ["pending", "To confirm" + (pending.length ? " (" + pending.length + ")" : "")], ["all", "Everything"]].map(([k, t]) =>
+      h("button", { type: "button", class: "btn sm" + (requestFilter === k ? " primary" : " quiet"), onclick: () => setFilter(k) }, t)));
+    drawList();
+  }
+  app.replaceChildren(
+    h("div", { class: "spread", style: "margin-bottom:10px" }, h("h1", {}, "Requests"),
+      h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a stage to see its requests · red = waited " + OVERDUE_DAYS + " days or more without a scenario sent")),
+    strip,
+    h("div", { class: "spread", style: "margin-bottom:10px; align-items:center" }, chips, h("div", { style: "flex:1 1 280px; max-width:460px" }, sq)),
+    list);
   draw();
 }
 function requestRow(s) {
   const c = s.client || {};
-  return h("a", { class: "lrow", href: "#request/" + s.id },
-    h("div", {}, h("div", { class: "t" }, h("bdi", {}, c.company_name || "(no organisation name)")),
-      h("div", { class: "s" }, [dt(s.created_at), s.source === "website" ? "website" : s.source, s.org_unit].filter(Boolean).join(" · "))),
+  const age = daysSince(s.created_at);
+  const overdue = isOverdue(s);
+  return h("a", { class: "lrow" + (overdue ? " overdue" : ""), href: "#request/" + s.id },
+    h("div", {}, h("div", { class: "t" }, h("span", { class: "rno" }, s.request_no || "—"), " ", h("bdi", {}, c.company_name || "(no organisation name)")),
+      h("div", { class: "s" }, [dt(s.created_at) + (age ? " · " + plural(age, "day") + " ago" : " · today"), s.source === "website" ? "website" : s.source, s.org_unit].filter(Boolean).join(" · "))),
     h("div", { class: "s" }, [s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1].filter(Boolean).join(" · ")),
-    h("div", { class: "r" }, s.match_status === "pending" ? labelPill(s.match_label) : null, stagePill(s.status)));
+    h("div", { class: "r" }, overdue ? pill(plural(age, "day") + ", no scenario sent", "bad") : null, s.match_status === "pending" ? labelPill(s.match_label) : null, stagePill(s.status)));
 }
 
 // ================= One request — the workspace =================
@@ -588,8 +621,8 @@ async function renderRequest(id) {
   }
   const cmd = h("div", { class: "cmd" },
     h("a", { class: "back", href: "#" }, "← Requests"),
-    h("div", { class: "title" }, h("h1", {}, h("bdi", {}, c.company_name || "(no organisation name)")),
-      h("div", { class: "s" }, [dt(s.created_at), s.source === "website" ? "website, " + (s.form_name || "form") : s.source, s.org_unit].filter(Boolean).join(" · "))),
+    h("div", { class: "title" }, h("h1", {}, h("span", { class: "rno", style: "font-size:15px" }, s.request_no || ""), " ", h("bdi", {}, c.company_name || "(no organisation name)")),
+      h("div", { class: "s" }, [dt(s.created_at) + " (" + (daysSince(s.created_at) ? plural(daysSince(s.created_at), "day") + " ago" : "today") + ")", s.source === "website" ? "website, " + (s.form_name || "form") : s.source, s.org_unit].filter(Boolean).join(" · "))),
     h("div", { class: "tools" }, matchPill, h("label", { class: "f", style: "margin:0" }, h("span", { class: "sr-only" }, "Request stage"), stageSel)),
     nextLine);
 
@@ -609,9 +642,19 @@ async function renderRequest(id) {
     ["Plan updated", s.plan_updated],
     ["History", s.history_opt_out ? "Client opted out — don't keep history" : null],
   ].filter(([, v]) => v);
+  const deleteBtn = h("button", { class: "btn danger sm", type: "button", onclick: async () => {
+    const ok = await confirmBox({ title: "Delete request " + (s.request_no || "") + "?",
+      text: "Use this for a test, a duplicate or a request sent by mistake. Its scenario versions, client comments and team remarks are deleted with it. If the client record was created only by this request and is still unconfirmed, it is removed too. A confirmed client and its history are never touched. This can't be undone.",
+      ok: "Delete request", typeWord: "DELETE" });
+    if (!ok) return;
+    await q(sb.rpc("admin_delete_submission", { p_submission: s.id, p_reason: "Deleted on the admin page" }))
+      .then(() => { toast("Request " + (s.request_no || "") + " deleted"); go("#"); })
+      .catch((err) => fail(/function|not found|schema cache/i.test(err && err.message || "") ? new Error("Deleting is not switched on yet: paste delete-request-paste-into-supabase.sql in Supabase → SQL Editor first.") : err));
+  } }, "Delete this request");
   const overview = h("div", {},
-    h("div", { class: "card" }, h("h2", {}, "The request"), h("dl", { class: "facts" }, ...facts.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))),
-    h("div", { class: "card plain" }, h("details", {}, h("summary", {}, "Full form summary and notes"), h("pre", {}, s.notes || "(nothing)"))));
+    h("div", { class: "card" }, h("h2", {}, "The request"), h("dl", { class: "facts two" }, ...facts.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))),
+    h("div", { class: "card plain" }, h("div", { class: "spread", style: "align-items:center" },
+      h("details", { style: "flex:1 1 300px" }, h("summary", {}, "Full form summary and notes"), h("pre", {}, s.notes || "(nothing)")), deleteBtn)));
 
   // --- Client tab: confirm the client, or everything about the linked client ---
   const clientPanel = h("div", {});
@@ -736,6 +779,7 @@ function scenarioPanel(s, refreshStage, setBadge) {
     const last = Math.max(s._lastVersionNo || 0, vs.reduce((m, v) => Math.max(m, v.version_no), 0));
     addVersion.querySelector("summary").textContent = "Record version v" + (last + 1) + " sent to the client";
     fillVersionSelect(cVersion, latest() ? latest().id : "");
+    cVersionWrap.hidden = !vs.length; // "About" only makes sense once a version has been sent
     if (!cFrom.value && cs.length) cFrom.value = cs[cs.length - 1].sender; // usually the same sponsor writes again
     setBadge(cs.length);
   }
@@ -798,6 +842,7 @@ function scenarioPanel(s, refreshStage, setBadge) {
       const fDate = h("input", { type: "date", value: c.received_on, max: todayDubai() });
       const fFrom = h("input", { type: "text", maxlength: 200, value: c.sender });
       const fVer = h("select", {}); fillVersionSelect(fVer, c.version_id || "");
+      const fVerWrap = h("label", { class: "f", hidden: !versions().length }, "About", fVer);
       const fBody = h("textarea", { rows: 4, maxlength: 8000 }); fBody.value = c.body;
       const save = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const body = fBody.value.trim(), sender = fFrom.value.trim();
@@ -806,8 +851,8 @@ function scenarioPanel(s, refreshStage, setBadge) {
           .eq("id", c.id).select().single()).catch(fail);
         if (upd) { Object.assign(c, upd); await after("Client comment saved"); }
       } }, "Save");
-      row.replaceChildren(h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", fDate), h("label", { class: "f" }, "From", fFrom),
-        h("label", { class: "f" }, "About", fVer)), h("label", { class: "f", style: "margin-top:8px" }, "Comment", fBody),
+      row.replaceChildren(h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", fDate), h("label", { class: "f" }, "From", fFrom), fVerWrap),
+        h("label", { class: "f", style: "margin-top:8px" }, "Comment", fBody),
         h("div", { class: "row", style: "margin-top:8px" }, save, h("button", { class: "btn quiet sm", type: "button", onclick: draw }, "Cancel")));
     } }, "Edit");
     const remove = h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
@@ -841,6 +886,7 @@ function scenarioPanel(s, refreshStage, setBadge) {
   const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
   const cFrom = h("input", { type: "text", maxlength: 200, placeholder: "e.g. Sara Ali, BCM Manager (sponsor)" });
   const cVersion = h("select", { "aria-label": "Which version the comment is about" });
+  const cVersionWrap = h("label", { class: "f" }, "About", cVersion);
   const cBody = h("textarea", { rows: 4, maxlength: 8000, placeholder: "Paste the client's comments as received (email, call notes or meeting notes).", "aria-label": "Client comment" });
   const cBtn = h("button", { class: "btn primary", type: "button", onclick: async () => {
     const body = cBody.value.trim(), sender = cFrom.value.trim();
@@ -859,7 +905,7 @@ function scenarioPanel(s, refreshStage, setBadge) {
       h("div", { class: "card" }, h("h2", {}, "Versions sent"), verList, addVersion),
       h("div", { class: "card" }, h("h2", {}, "Client comments on the scenario"), comList,
         h("div", { class: "stack", style: "margin-top:12px; padding-top:12px; border-top:1px solid var(--border)" },
-          h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom), h("label", { class: "f" }, "About", cVersion)),
+          h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom), cVersionWrap),
           cBody, h("div", { class: "row end" }, cBtn)))));
   draw();
   return panel;
@@ -988,7 +1034,7 @@ async function renderClient(id) {
     q(sb.from("client_names").select("*").eq("client_id", id).order("created_at")),
     q(sb.from("exercises").select("*, findings:exercise_findings(*)").eq("client_id", id).order("exercise_date", { ascending: false })),
     q(sb.from("corrective_actions").select("*").eq("client_id", id).order("due_date", { nullsFirst: false })),
-    q(sb.from("submissions").select("id, created_at, source, form_name, status, match_status, service_type, risk_concern_1, org_unit, retest_or_new").eq("client_id", id).order("created_at", { ascending: false })),
+    q(sb.from("submissions").select("id, request_no, created_at, source, form_name, status, match_status, service_type, risk_concern_1, org_unit, retest_or_new").eq("client_id", id).order("created_at", { ascending: false })),
     q(sb.from("client_events").select("*").eq("client_id", id).order("at", { ascending: false }).limit(50)),
     q(sb.from("client_groups").select("id, name").order("name")),
     q(sb.from("organisation_profiles").select("*").eq("client_id", id).maybeSingle()),
@@ -1019,7 +1065,7 @@ async function renderClient(id) {
     kpi(String(contacts.filter((x) => x.is_active).length), "Active contacts", contacts.some((x) => x.is_active) ? "ok" : "bad"));
   const requestsCard = h("div", { class: "card" }, h("h2", {}, "Requests"),
     requests.length ? h("div", { class: "list" }, ...requests.map((r) => h("a", { class: "lrow", href: "#request/" + r.id },
-      h("div", {}, h("div", { class: "t", style: "font-size:15px" }, dt(r.created_at)), h("div", { class: "s" }, [r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1), r.org_unit].filter(Boolean).join(" · "))),
+      h("div", {}, h("div", { class: "t", style: "font-size:15px" }, h("span", { class: "rno" }, r.request_no || ""), " ", dt(r.created_at)), h("div", { class: "s" }, [r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1), r.org_unit].filter(Boolean).join(" · "))),
       h("div", { class: "s" }, [r.service_type, r.risk_concern_1 && "Main risk: " + r.risk_concern_1].filter(Boolean).join(" · ")),
       h("div", { class: "r" }, stagePill(r.status))))) : h("p", { class: "empty" }, "No requests yet."),
     h("details", { style: "margin-top:12px" }, h("summary", {}, "Record a phone or email request"), phoneRequestForm(client, contacts, reload)));
