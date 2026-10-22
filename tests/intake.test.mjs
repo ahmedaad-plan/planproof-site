@@ -427,3 +427,14 @@ test("database down at first: the email still goes out (without a number) and a 
   await retryPending(d);
   assert.equal(net.inserts.submissions.length, 1);
 });
+
+test("self-service kit switched off: an older page asking for the kit is still delivered, flagged; the new page's facilitated request is not", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const old = genericBody(); old.data.privacy_ack = "yes"; old.data.service_type = "Self-service kit";
+  assert.equal((await handleIntake(old, d)).ok, true);
+  assert.equal(net.inserts.submissions[0].service_type, "Self-service kit");
+  assert.match(net.emails[0].text, /SELF-SERVICE KIT REQUESTED/);
+  const now = genericBody(); now.data.privacy_ack = "yes"; now.data.service_type = "Facilitated session";
+  assert.equal((await handleIntake(now, d)).ok, true);
+  assert.doesNotMatch(net.emails[1].text, /SELF-SERVICE KIT/);
+});

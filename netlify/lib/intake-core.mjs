@@ -279,6 +279,12 @@ export function buildEmail(record, fileResult) {
   if (clean(data.privacy_ack, 10) !== "yes") {
     lines.push("PRIVACY POLICY NOT CONFIRMED — sent from an older copy of the page. Confirm the client has read the privacy policy before using these details.");
   }
+  if (/self[\s-]*service/i.test(String(data.service_type || ""))) {
+    // The self-service kit was withdrawn on 22 October 2026; only an older copy of
+    // the page can still ask for it. Never dropped — flagged so the reply offers
+    // the facilitated exercise instead.
+    lines.push("SELF-SERVICE KIT REQUESTED — sent from an older copy of the page. The kit is no longer offered: reply offering the facilitated exercise (60, 90 or 120 minutes).");
+  }
   lines.push(`Marketing emails: ${clean(data.marketing_opt_in, 10) === "yes" ? "YES — opted in" : "No (do not send marketing)"}`);
   if (String(data.exercise_language || "").trim() === "arabic") {
     lines.push("Language: the client would prefer the exercise in ARABIC. Arabic exercises are not offered yet — the form told them it will run in English for now (the report is in both languages).", "");

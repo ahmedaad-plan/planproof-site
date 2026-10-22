@@ -67,16 +67,24 @@
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Self-service tabletop exercise kit",
-              "description": "A complete, ready-to-run exercise package: scenario briefing, timed injects, facilitator notes and debrief questions."
+              "name": "Facilitated tabletop exercise — 60 minutes (Focused)",
+              "description": "One critical risk or one part of your continuity plan, tested with a small team. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           },
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Facilitated tabletop exercise session",
-              "description": "A specialist facilitates the live exercise with your team and delivers a written debrief report."
+              "name": "Facilitated tabletop exercise — 90 minutes (Standard)",
+              "description": "Several departments working the same incident, from the first alert to recovery decisions. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Facilitated tabletop exercise — 120 minutes (Extended)",
+              "description": "Complex or multi-site scenarios with more departments, more pressure and a longer structured debrief. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           }
         ]
@@ -119,10 +127,10 @@
         },
         {
           "@type": "Question",
-          "name": "What is the difference between the self-service kit and a facilitated session?",
+          "name": "What happens after we send a request?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The self-service kit is a complete, ready-to-run exercise package your own team runs internally. In a facilitated session, a specialist runs the live exercise with your team and then delivers a written debrief report identifying real gaps in your plan."
+            "text": "We contact you to confirm the details, then design your scenario and send it to you to review. Once you are happy with it, we agree the date, our facilitator runs the live exercise with your team, and your bilingual scored report follows within 3 working days."
           }
         },
         {
@@ -130,7 +138,7 @@
           "name": "What do we receive at the end?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "A debrief report summarizing what was tested, key findings, and concrete recommendations tied to what actually happened in the exercise."
+            "text": "A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021."
           }
         },
         {
@@ -1158,7 +1166,7 @@
   }
 
   /* --- Layout fit fixes (Sep 2026): keep key content inside one laptop screen --- */
-  section[id]{ scroll-margin-top: 72px; }               /* headings no longer hide under the sticky menu */
+  section[id]{ scroll-margin-top: calc(var(--nav-h, 64px) + 10px); } /* headings never hide under the sticky menu (its height is measured; two lines on a phone) */
   .hero-photo{ min-height: 400px; }
   .hero-photo-inner{ padding: 40px 24px; }
   .hero-steps{ padding: 28px 24px; }
@@ -1207,6 +1215,58 @@
   .faq-item summary::after{ content: "+"; position: absolute; right: 4px; top: 13px; font-size: 20px; color: var(--red); font-weight: 400; }
   .faq-item[open] summary::after{ content: "\2212"; }
   .faq-item p{ margin: 0 0 16px; color: var(--text-muted); font-size: 14.5px; line-height: 1.65; }
+
+  /* --- 22 Oct 2026: six-step "How it works" + one service in three lengths --- */
+  .how-band{ border-top: 1px solid var(--border); }
+  .how-inner{ max-width: 1180px; margin: 0 auto; padding: 40px 24px 44px; }
+  .how-inner > h2{ font-family: "Space Grotesk", sans-serif; font-size: 26px; text-align: center; margin: 0 0 8px; }
+  .flow{ list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 18px; position: relative; }
+  .flow::before{ content: ""; position: absolute; left: calc(100% / 12); right: calc(100% / 12); top: 15px; height: 2px; background: var(--border); }
+  .flow-step{ position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .flow-marker{ position: relative; z-index: 1; padding: 0 6px; background: var(--panel); }
+  .flow-num{ width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; border: 2px solid #000; color: #d84a3a; font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 700; box-sizing: border-box; }
+  .flow-body{ display: flex; flex-direction: column; align-items: center; margin-top: 12px; }
+  .flow-head{ display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .flow-icon{ width: 22px; height: 22px; color: #d84a3a; flex-shrink: 0; }
+  .flow-who{ font-size: 11.5px; font-weight: 600; line-height: 1; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+  .flow-who.who-us{ color: var(--text); background: var(--red-dim); border-color: rgba(194,81,63,0.45); }
+  .flow-who.who-both{ color: var(--text); background: var(--amber-dim); border-color: rgba(226,166,59,0.5); }
+  .flow-title{ font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 15.5px; line-height: 1.3; margin: 0 0 6px; }
+  .flow-step p{ color: var(--text-muted); font-size: 13.5px; line-height: 1.55; margin: 0; max-width: 30ch; }
+  @media (max-width: 1099px){
+    .flow{ grid-template-columns: repeat(3, 1fr); gap: 28px 22px; }
+    .flow::before{ display: none; }
+  }
+  @media (max-width: 700px){
+    .how-inner{ padding: 34px 18px 36px; }
+    .flow{ grid-template-columns: 1fr; gap: 0; }
+    .flow::before{ display: block; left: 15px; right: auto; top: 16px; bottom: 16px; width: 2px; height: auto; }
+    .flow-step{ flex-direction: row; align-items: flex-start; text-align: left; gap: 14px; padding-bottom: 20px; }
+    .flow-step:last-child{ padding-bottom: 0; }
+    .flow-marker{ padding: 0 0 4px; }
+    .flow-body{ align-items: flex-start; margin-top: 4px; }
+    .flow-step p{ max-width: none; }
+  }
+
+  .length-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 8px 0 22px; }
+  .length-card{ position: relative; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; }
+  .length-card.featured{ border: 2px solid var(--amber); padding: 23px 21px 21px; }
+  .length-badge{ position: absolute; top: -11px; left: 20px; background: var(--amber); color: #10151b; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .length-time{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .length-min{ font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 44px; line-height: 1; color: var(--text); letter-spacing: -0.02em; }
+  .length-unit{ color: var(--text-muted); font-size: 14px; }
+  .length-card h3{ font-family: "Space Grotesk", sans-serif; font-size: 18px; margin: 0 0 8px; padding-left: 10px; border-left: 3px solid #d84a3a; }
+  .length-card p{ color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0; }
+  .included{ max-width: 560px; margin: 0 auto; }
+  .included h3{ font-family: "Space Grotesk", sans-serif; font-size: 17px; text-align: center; margin: 0 0 12px; }
+  .included-list{ list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .included-list li{ display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.5; color: var(--text); }
+  .incl-tick{ width: 18px; height: 18px; color: #3fae6b; flex-shrink: 0; margin-top: 2px; }
+  .services-cta{ text-align: center; margin-top: 18px; }
+  .services-cta .btn-pill-primary{ background: #d84a3a; color: #fff; }
+  .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
+  @media (max-width: 860px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
+  @media (max-width: 700px){ .length-min{ font-size: 38px; } }
 </style>
 </head>
 <body>
@@ -1238,25 +1298,65 @@
     <p class="hero-sub hero-sub-light">PlanProof designs realistic BCM tabletop exercises and crisis simulations for organizations — ISO 22301 and NCEMA 7000:2021 aligned, built either from a short profile of your organization, or from a direct review of your existing BCM plan.</p>
     <div class="hero-actions">
       <a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a>
-      <a href="#demo" class="btn-pill btn-pill-primary btn-link">See how it works</a>
+      <a href="#how-it-works" class="btn-pill btn-pill-primary btn-link">See how it works</a>
     </div>
   </div>
 </section>
 
-<section class="hero-steps-band">
-  <div class="hero-steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-body"><div class="step-title">Tell us about your organization</div><p>Answer a short intake, or share your existing continuity plan for review.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3" stroke-linecap="round"/></svg></div></div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body"><div class="step-title">We design your exercise</div><p>A tailored, regionally realistic scenario is built around your real risk profile.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20l4.5-1.2L19 8.3a1.6 1.6 0 0 0 0-2.3l-1-1a1.6 1.6 0 0 0-2.3 0L5.2 15.5 4 20z" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke-linecap="round"/></svg></div></div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body"><div class="step-title">We facilitate it, or your team does</div><p>Choose a live session run by our specialist, or the self-service kit for your own team to run — either way, you'll get a full debrief report.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5v-7z" fill="currentColor" stroke="none"/></svg></div></div>
-    </div>
+<section id="how-it-works" class="hero-steps-band how-band" aria-labelledby="howTitle">
+  <div class="how-inner">
+    <h2 id="howTitle">How it works</h2>
+    <p class="section-lead">Six steps from your first message to next year’s re-test. You stay in control of the scenario; we do the design, the facilitation and the report.</p>
+    <ol class="flow">
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">1</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3" stroke-linecap="round"/></svg><span class="flow-who who-you">You</span></div>
+        <h3 class="flow-title">Tell us</h3>
+        <p>Answer a short intake about your organization, or share your continuity plan for review.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">2</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20l4.5-1.2L19 8.3a1.6 1.6 0 0 0 0-2.3l-1-1a1.6 1.6 0 0 0-2.3 0L5.2 15.5 4 20z" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke-linecap="round"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">We design</h3>
+        <p>A realistic scenario built around your real risks, aligned with ISO 22301 and NCEMA 7000:2021.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">3</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8"/></svg><span class="flow-who who-you">You</span></div>
+        <h3 class="flow-title">You review it</h3>
+        <p>You see the scenario before the day and tell us what to change. We revise it until it is right.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">4</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5v-7z" fill="currentColor" stroke="none"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">We deliver</h3>
+        <p>Our facilitator runs the live, timed exercise with your team, followed by a structured debrief.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">5</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" stroke-linejoin="round"/><path d="M14 3v4h4" stroke-linejoin="round"/><path d="M9 17v-3M12 17v-6M15 17v-4" stroke-linecap="round"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">Your report in 3 working days</h3>
+        <p>A bilingual English and Arabic report with a readiness score, findings and actions.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">6</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke-linecap="round"/><path d="M19.8 4.5v3.6h-3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="flow-who who-both">Together</span></div>
+        <h3 class="flow-title">Re-test next year</h3>
+        <p>We re-test against your actions, so next year’s report shows the progress you have made.</p>
+      </div>
+    </li>
+    </ol>
   </div>
 </section>
 
@@ -1269,18 +1369,47 @@
 
 <section id="services" class="services">
   <div class="section-inner">
-    <h2>Two ways to run your exercise</h2>
-    <div class="service-grid">
-      <div class="service-card">
+    <h2>One service, three lengths</h2>
+    <p class="section-lead">Every PlanProof exercise is designed for you and run by our facilitator. Choose the length that fits what you want to test.</p>
+    <div class="length-grid">
+      <div class="length-card">
+        <div class="length-time"><span class="length-min">60</span><span class="length-unit">minutes</span></div>
+        <h3>Focused</h3>
+        <p>One critical risk or one part of your plan, tested with a small team. A good first exercise, or a single department.</p>
+      </div>
+      <div class="length-card featured">
+        <span class="length-badge">Recommended</span><div class="length-time"><span class="length-min">90</span><span class="length-unit">minutes</span></div>
+        <h3>Standard</h3>
+        <p>The full picture: several departments working the same incident, from the first alert to the recovery decisions.</p>
+      </div>
+      <div class="length-card">
+        <div class="length-time"><span class="length-min">120</span><span class="length-unit">minutes</span></div>
+        <h3>Extended</h3>
+        <p>Complex or multi-site scenarios, with more departments, more pressure and a longer structured debrief.</p>
+      </div>
+    </div>
+    <div class="included">
+      <h3>Every length includes</h3>
+      <ul class="included-list">
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A scenario designed for your organization and your real risks</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Your review of the scenario before the day, revised until it is right</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The live, timed exercise, run by our facilitator</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A structured debrief at the end of the session</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A bilingual English and Arabic report with a readiness score, within 3 working days</span></li>
+      </ul>
+    </div>
+    <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
+    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a></div>
+    <!-- SELF-SERVICE KIT — switched off 22 October 2026 (decision 11): facilitator-side
+         material is never given to a client. Kept here, inert, so it can be restored:
+         set FEATURES.selfServiceKit = true in the page script and the card comes back.
+         A <template> is never shown, read aloud or indexed. -->
+    <template data-feature="selfServiceKit" data-target=".length-grid" data-place="before">
+      <div class="service-card kit-card">
         <h3>Self-service kit</h3>
         <p>You receive a complete, ready-to-run exercise package: scenario briefing, timed injects, facilitator notes, and debrief questions, to run internally with your own team.</p>
       </div>
-      <div class="service-card featured">
-        <h3>Facilitated session</h3>
-        <p>A specialist personally facilitates the live exercise with your team, then delivers a written debrief report identifying real gaps in your plan.</p>
-      </div>
-    </div>
-    <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
+    </template>
   </div>
 </section>
 
@@ -1344,13 +1473,20 @@
         <summary>Who should take part?</summary>
         <p>The people who would make or carry out decisions in a real incident — typically executive leadership, operations, IT, communications, HR, legal and compliance, plus any department central to the scenario. You select the participating departments in the request form.</p>
       </details>
+      <details class="faq-item" id="faqAfterRequest">
+        <summary>What happens after we send a request?</summary>
+        <p>We contact you to confirm the details, then design your scenario and send it to you to review. Once you are happy with it, we agree the date, our facilitator runs the live exercise with your team, and your bilingual scored report follows within 3 working days.</p>
+      </details>
+      <!-- SELF-SERVICE KIT FAQ — switched off 22 October 2026 (see the Services section). -->
+      <template data-feature="selfServiceKit" data-target="#faqAfterRequest" data-place="after">
       <details class="faq-item">
         <summary>What is the difference between the self-service kit and a facilitated session?</summary>
         <p>The self-service kit is a complete, ready-to-run exercise package your own team runs internally. In a facilitated session, a specialist runs the live exercise with your team and then delivers a written debrief report identifying real gaps in your plan.</p>
       </details>
+      </template>
       <details class="faq-item">
         <summary>What do we receive at the end?</summary>
-        <p>A debrief report summarizing what was tested, key findings, and concrete recommendations tied to what actually happened in the exercise.</p>
+        <p>A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021.</p>
       </details>
       <details class="faq-item">
         <summary>Is the information we share kept confidential?</summary>
@@ -1412,6 +1548,29 @@
 </footer>
 
 <script>
+// Switched-off features (kept in the code, not deleted). 22 October 2026:
+// the self-service kit is withdrawn — PlanProof offers the facilitated
+// exercise only (decision 11). Turning it back on also brings back the
+// <template data-feature="selfServiceKit"> blocks on this page.
+const FEATURES = Object.freeze({ selfServiceKit: false });
+// Keep every section heading clear of the sticky menu when a link jumps to it.
+// The menu wraps to two lines on a phone, so its real height is measured.
+(function trackMenuHeight(){
+  const nav = document.querySelector(".sitenav");
+  if(!nav) return;
+  const set = ()=> document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
+  set();
+  window.addEventListener("resize", set);
+  if(window.ResizeObserver) new ResizeObserver(set).observe(nav);
+})();
+(function restoreFeatureBlocks(){
+  document.querySelectorAll("template[data-feature]").forEach((t)=>{
+    if(!FEATURES[t.dataset.feature]) return;
+    const target = document.querySelector(t.dataset.target);
+    if(!target) return;
+    target.insertAdjacentElement(t.dataset.place === "after" ? "afterend" : "beforebegin", t.content.firstElementChild.cloneNode(true));
+  });
+})();
 
 const icons = {
   monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/><path d="M8 9l2.5 2.5L14 8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1768,16 +1927,7 @@ ${orgUnitHTML("f")}
       </div>
       <input type="hidden" name="audience" id="f_audience">
 
-      <label for="f_duration">Preferred exercise duration</label>
-      <select name="duration" id="f_duration">
-        <option>60 minutes</option><option>90 minutes</option><option>120 minutes</option>
-      </select>
-
-      <label for="f_service_type">Type of service required <span class="opt">(required)</span></label>
-      <select name="service_type" id="f_service_type" required>
-        <option value="">\u2014 Select \u2014</option>
-        <option>Self-service kit</option><option>Facilitated session</option>
-      </select>
+${lengthAndServiceHTML("f")}
 
 ${languageHTML("f")}
       <label for="f_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
@@ -1866,8 +2016,8 @@ ${consentHTML("f")}
         ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
-        ["Preferred duration", document.getElementById("f_duration").value],
-        ["Type of service required", document.getElementById("f_service_type").value],
+        ["Exercise length", document.getElementById("f_duration").value],
+        ["Service", document.getElementById("f_service_type").value],
         languagePair("f"),
         ["Specific focus areas", document.getElementById("f_focus").value],
         ["Recent incidents/near-misses", document.getElementById("f_incidents").value],
@@ -1915,6 +2065,34 @@ function orgUnitHTML(p){ return `
 // Preferred exercise language (12 October 2026). English is offered today;
 // Arabic is "coming soon" — choosing it records the preference only, and the
 // note says so plainly, so nothing is promised that can't be delivered yet.
+// Exercise length and service (22 October 2026, decision 11 and 12).
+// PlanProof offers one service — a facilitated exercise — in three lengths. The
+// self-service kit is switched off: no choice is shown and every request is sent
+// as "Facilitated session", so the email, the database and the admin page keep
+// the same field. Set FEATURES.selfServiceKit = true to bring the choice back.
+// The option values stay "60 minutes" etc. so stored data and emails don't change.
+function lengthAndServiceHTML(p){
+  const length = `
+      <label for="${p}_duration">Exercise length</label>
+      <select name="duration" id="${p}_duration">
+        <option value="60 minutes">60 minutes \u2014 Focused</option>
+        <option value="90 minutes" selected>90 minutes \u2014 Standard (recommended)</option>
+        <option value="120 minutes">120 minutes \u2014 Extended</option>
+      </select>
+`;
+  if(!FEATURES.selfServiceKit){
+    return length + `      <input type="hidden" name="service_type" id="${p}_service_type" value="Facilitated session">
+`;
+  }
+  return length + `
+      <label for="${p}_service_type">Type of service required <span class="opt">(required)</span></label>
+      <select name="service_type" id="${p}_service_type" required>
+        <option value="">\u2014 Select \u2014</option>
+        <option>Self-service kit</option><option>Facilitated session</option>
+      </select>
+`;
+}
+
 function languageHTML(p){ return `
       <p class="returning-q" id="${p}_langLabel">Which language would you prefer for the exercise?</p>
       <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_langLabel" id="${p}_langGroup">
@@ -2189,16 +2367,7 @@ ${orgUnitHTML("p")}
       </div>
       <input type="hidden" name="audience" id="p_audience">
 
-      <label for="p_duration">Preferred exercise duration</label>
-      <select name="duration" id="p_duration">
-        <option>60 minutes</option><option>90 minutes</option><option>120 minutes</option>
-      </select>
-
-      <label for="p_service_type">Type of service required <span class="opt">(required)</span></label>
-      <select name="service_type" id="p_service_type" required>
-        <option value="">\u2014 Select \u2014</option>
-        <option>Self-service kit</option><option>Facilitated session</option>
-      </select>
+${lengthAndServiceHTML("p")}
 
 ${languageHTML("p")}
       <label for="p_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
@@ -2299,8 +2468,8 @@ ${consentHTML("p")}
         ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
-        ["Preferred duration", document.getElementById("p_duration").value],
-        ["Type of service required", document.getElementById("p_service_type").value],
+        ["Exercise length", document.getElementById("p_duration").value],
+        ["Service", document.getElementById("p_service_type").value],
         languagePair("p"),
         ["Specific focus areas", document.getElementById("p_focus").value],
         ["Recent incidents/near-misses", document.getElementById("p_incidents").value],
@@ -2706,12 +2875,12 @@ function renderTeaserEnd(){
       <h2>Unlock the full exercise</h2>
       <p class="teaser-hook">You've seen the first 30 minutes.<br>The part that makes an exercise work is still locked.</p>
       <ul class="teaser-locks">
-        <li>${lockIcon}<div><strong>Facilitator notes</strong><span>What to watch for in the room</span></div></li>
+        <li>${lockIcon}<div><strong>Live facilitation</strong><span>Run by our facilitator, start to finish</span></div></li>
         <li>${lockIcon}<div><strong>Remaining injects</strong><span>Media, social media, regulators</span></div></li>
         <li>${lockIcon}<div><strong>Participant access</strong><span>Any device, routed by department</span></div></li>
         <li>${lockIcon}<div><strong>Live dashboard</strong><span>Every team's responses, live</span></div></li>
         <li>${lockIcon}<div><strong>Structured debrief</strong><span>Discussion turned into findings</span></div></li>
-        <li>${lockIcon}<div><strong>Automatic final report</strong><span>Board-ready Word, sample included</span></div></li>
+        <li>${lockIcon}<div><strong>Bilingual scored report</strong><span>English and Arabic, in 3 working days</span></div></li>
       </ul>
       <p class="teaser-cta-line">Fill in your details and we'll walk you through it.</p>
       <form id="walkthroughFormEl" name="demo-walkthrough" method="POST" novalidate>
