@@ -33,6 +33,12 @@ class BrokenStore extends MemStore {
 function fakeNet() {
   const net = { supabaseMode: "ok", resendMode: "ok", inserts: { clients: [], submissions: [] }, emails: [], ids: new Set() };
   net.fetchFn = async (url, init) => {
+    if (url === "https://sb.test/rest/v1/rpc/intake_request_no") {
+      if (net.supabaseMode !== "ok") throw new Error("connect ETIMEDOUT");
+      const { p_submission } = JSON.parse(init.body);
+      const i = net.inserts.submissions.findIndex((r) => r.id === p_submission);
+      return new Response(JSON.stringify(i >= 0 ? "R-2026-" + String(i + 1).padStart(4, "0") : null), { status: 200 });
+    }
     if (url.startsWith("https://sb.test/rest/v1/")) {
       const table = url.split("/").pop();
       if (net.supabaseMode === "down") throw new Error("connect ETIMEDOUT");
@@ -96,7 +102,8 @@ test("a normal request is saved to Supabase, emailed, and then removed from stor
   assert.equal(sub.risk_concern_2, "Flood");
   assert.ok(!sub.notes.includes("POSSIBLE SPAM"));
   assert.equal(net.emails.length, 1);
-  assert.match(net.emails[0].subject, /^New generic-scenario submission — TEST Company \(exercised before: No\)$/);
+  assert.match(net.emails[0].subject, /^R-2026-0001 — New generic-scenario submission — TEST Company \(exercised before: No\)$/);
+  assert.match(net.emails[0].text, /Request number: R-2026-0001/);
   assert.deepEqual(net.emails[0].to, ["exercises@plan-proof.com"]);
   assert.equal(net.emails[0].from, "PlanProof <alerts@notify.plan-proof.com>");
   assert.equal(await d.pending.get(`rec/${body.submission_id}`), null, "finished requests are not kept");
@@ -122,7 +129,7 @@ test("a request that looks automated is delivered with a Possible spam label, ne
     const r = await handleIntake(genericBody(over), d);
     assert.equal(r.ok, true);
     assert.equal(net.emails.length, 1);
-    assert.match(net.emails[0].subject, /^⚠ Possible spam — New generic-scenario/);
+    assert.match(net.emails[0].subject, /^⚠ Possible spam — R-2026-0001 — New generic-scenario/);
     assert.match(net.emails[0].text, /POSSIBLE SPAM/);
     assert.match(net.inserts.submissions[0].notes, /^POSSIBLE SPAM \(/);
   }
@@ -326,7 +333,7 @@ test("the server-only database secret is sent when set, and only then", async ()
   net.fetchFn = async (url, init) => { if (url.startsWith("https://sb.test/")) seen.push(init.headers["x-intake-secret"]); return base(url, init); };
   await handleIntake(genericBody(), deps(net));
   await handleIntake(genericBody(), deps(net, { env: { ...ENV, INTAKE_DB_SECRET: "s3cret" } }));
-  assert.deepEqual(seen, [undefined, undefined, "s3cret", "s3cret"]);
+  assert.deepEqual(seen, [undefined, undefined, undefined, "s3cret", "s3cret", "s3cret"]); // clients, submissions, number read-back
 });
 
 test("flood protection: after 5 possible-spam emails in a day the rest are saved but not emailed; real requests always email", async () => {
@@ -407,4 +414,16 @@ test("consent: a request from an older copy of the page (no privacy tick) is sti
   assert.equal(row.privacy_ack, false);
   assert.equal(row.history_opt_out, true);
   assert.match(net.emails[0].text, /PRIVACY POLICY NOT CONFIRMED/);
+});
+
+test("database down at first: the email still goes out (without a number) and a later retry saves the request", async () => {
+  const net = fakeNet(); net.supabaseMode = "down";
+  const d = deps(net);
+  const r = await handleIntake(genericBody(), d);
+  assert.equal(r.ok, true);
+  assert.equal(net.emails.length, 1);
+  assert.doesNotMatch(net.emails[0].subject, /^R-2026/);
+  net.supabaseMode = "ok";
+  await retryPending(d);
+  assert.equal(net.inserts.submissions.length, 1);
 });

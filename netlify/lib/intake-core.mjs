@@ -166,6 +166,24 @@ async function supabaseInsert(table, rows, { fetchFn, env, timeoutMs }) {
   throw new Error(`Supabase insert into ${table} failed: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
 }
 
+// After the save, ask the database for the request's number (R-YYYY-NNNN,
+// given by a trigger at insert) so the email can carry it. Never blocks: a
+// failed read-back just leaves the number out of the email.
+async function readBackRequestNo(record, deps) {
+  try {
+    const { env, fetchFn } = deps;
+    const res = await fetchFn(`${env.SUPABASE_URL}/rest/v1/rpc/intake_request_no`, {
+      method: "POST",
+      headers: supabaseHeaders(env, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ p_submission: record.id }),
+      signal: AbortSignal.timeout(deps.timeoutMs ?? 4000),
+    });
+    if (!res.ok) return;
+    const n = await res.json();
+    if (typeof n === "string" && /^R-\d{4}-\d{4}$/.test(n)) record.requestNo = n;
+  } catch { /* the email goes without the number */ }
+}
+
 export async function saveToSupabase(record, deps) {
   const { data, formName } = record;
   const opts = { fetchFn: deps.fetchFn, env: deps.env, timeoutMs: deps.timeoutMs ?? 4000 };
@@ -219,6 +237,7 @@ export async function saveToSupabase(record, deps) {
     ...(exerciseLanguage ? { exercise_language: exerciseLanguage } : {}),
     notes: `${label}Form: ${formName}\n\n${data.formatted_summary || "(No summary available)"}${fileNote}`,
   }], opts);
+  await readBackRequestNo(record, deps);
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +263,7 @@ export function buildEmail(record, fileResult) {
   const usedBeforeText = { yes: "Yes", no: "No", not_sure: "Not sure" }[String(data.used_before || "").trim()];
   const delayed = record.attempts > 0 ? " [delayed delivery]" : "";
   const subject = (record.spamReasons.length ? "⚠ Possible spam — " : "")
+    + (record.requestNo ? `${record.requestNo} — ` : "")
     + `New ${formName} submission — ${org}`
     + (usedBeforeText ? ` (exercised before: ${usedBeforeText})` : "")
     + delayed;
@@ -255,6 +275,7 @@ export function buildEmail(record, fileResult) {
     lines.push("If it is junk, ignore it and erase it on the admin page.", "");
   }
   lines.push(`New submission: ${formName}`, `Received: ${uaeTime(record.receivedAt)} (UAE time)`);
+  if (record.requestNo) lines.push(`Request number: ${record.requestNo} (open it on plan-proof.com/admin)`);
   if (clean(data.privacy_ack, 10) !== "yes") {
     lines.push("PRIVACY POLICY NOT CONFIRMED — sent from an older copy of the page. Confirm the client has read the privacy policy before using these details.");
   }
