@@ -212,7 +212,8 @@ export async function saveToSupabase(record, deps) {
     id: record.id,
     client_id: record.clientId,
     form_name: clean(formName, 60),
-    service_type: clean(data.service_type, 200),
+    // A "Call me back" from the contact form shows as such on the admin page.
+    service_type: wantsCallback(record) ? "Callback request" : clean(data.service_type, 200),
     risk_concern_1: riskMain,
     risk_concern_2: risk2,
     risk_concern_3: risk3,
@@ -257,12 +258,18 @@ export async function assembleFile(file, uploads) {
   return { buffer };
 }
 
+// Contact form "How would you like us to reply?" = "Call me back" (22 October 2026).
+export function wantsCallback(record) {
+  return record.formName === "contact-request" && String(record.data.reply_by || "").trim() === "call";
+}
+
 export function buildEmail(record, fileResult) {
   const { data, formName } = record;
   const org = clean(data.organization, 200) || "PlanProof";
   const usedBeforeText = { yes: "Yes", no: "No", not_sure: "Not sure" }[String(data.used_before || "").trim()];
   const delayed = record.attempts > 0 ? " [delayed delivery]" : "";
   const subject = (record.spamReasons.length ? "⚠ Possible spam — " : "")
+    + (wantsCallback(record) ? "CALLBACK — " : "")
     + (record.requestNo ? `${record.requestNo} — ` : "")
     + `New ${formName} submission — ${org}`
     + (usedBeforeText ? ` (exercised before: ${usedBeforeText})` : "")
@@ -275,6 +282,9 @@ export function buildEmail(record, fileResult) {
     lines.push("If it is junk, ignore it and erase it on the admin page.", "");
   }
   lines.push(`New submission: ${formName}`, `Received: ${uaeTime(record.receivedAt)} (UAE time)`);
+  if (wantsCallback(record)) {
+    lines.push(`CALL BACK REQUESTED — ${clean(data.name, 200) || "the client"} on ${clean(data.mobile, 60) || "(no number given)"}, best time: ${clean(data.callback_time, 100) || "any time"} (UAE time).`);
+  }
   if (record.requestNo) lines.push(`Request number: ${record.requestNo} (open it on plan-proof.com/admin)`);
   if (clean(data.privacy_ack, 10) !== "yes") {
     lines.push("PRIVACY POLICY NOT CONFIRMED — sent from an older copy of the page. Confirm the client has read the privacy policy before using these details.");

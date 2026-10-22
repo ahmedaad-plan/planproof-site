@@ -438,3 +438,17 @@ test("self-service kit switched off: an older page asking for the kit is still d
   assert.equal((await handleIntake(now, d)).ok, true);
   assert.doesNotMatch(net.emails[1].text, /SELF-SERVICE KIT/);
 });
+
+test("callback: 'Call me back' on the contact form is flagged in the subject, at the top of the email and on the admin page; 'By email' is not", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const mk = (reply) => ({ submission_id: crypto.randomUUID(), form_name: "contact-request", honeypot: "", elapsed_ms: 60000, file: null, file_upload_failed: null,
+    data: { name: "Test Person", mobile: "0501234567", email: "t@example.com", privacy_ack: "yes", reply_by: reply, callback_time: "Afternoon (12 to 5 pm)", message: "Leadership exercise", formatted_summary: "New contact form message" } });
+  assert.equal((await handleIntake(mk("call"), d)).ok, true);
+  assert.match(net.emails[0].subject, /CALLBACK — /);
+  assert.match(net.emails[0].text, /CALL BACK REQUESTED — Test Person on 0501234567, best time: Afternoon \(12 to 5 pm\)/);
+  assert.equal(net.inserts.submissions[0].service_type, "Callback request");
+  assert.equal((await handleIntake(mk("email"), d)).ok, true);
+  assert.doesNotMatch(net.emails[1].subject, /CALLBACK/);
+  assert.doesNotMatch(net.emails[1].text, /CALL BACK REQUESTED/);
+  assert.notEqual(net.inserts.submissions[1].service_type, "Callback request");
+});

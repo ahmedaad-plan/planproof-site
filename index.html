@@ -1262,7 +1262,11 @@
   .included-list{ list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
   .included-list li{ display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.5; color: var(--text); }
   .incl-tick{ width: 18px; height: 18px; color: #3fae6b; flex-shrink: 0; margin-top: 2px; }
-  .services-cta{ text-align: center; margin-top: 18px; }
+  .services-cta{ display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; }
+  .btn-pill-outline{ background: transparent; color: var(--text); border: 1.4px solid var(--border); }
+  .btn-pill-outline:hover{ border-color: #d84a3a; }
+  .length-longer{ text-align: center; color: var(--text-muted); font-size: 14px; max-width: 620px; margin: -6px auto 22px; }
+  @media (max-width: 700px){ .services-cta .btn-pill{ flex: 1 1 100%; } }
   .services-cta .btn-pill-primary{ background: #d84a3a; color: #fff; }
   .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
   @media (max-width: 860px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
@@ -1306,7 +1310,7 @@
 <section id="how-it-works" class="hero-steps-band how-band" aria-labelledby="howTitle">
   <div class="how-inner">
     <h2 id="howTitle">How it works</h2>
-    <p class="section-lead">Six steps from your first message to next year’s re-test. You stay in control of the scenario; we do the design, the facilitation and the report.</p>
+    <p class="section-lead">Six steps from your first message to your re-test. You stay in control of the scenario; we do the design, the facilitation and the report.</p>
     <ol class="flow">
     <li class="flow-step">
       <div class="flow-marker"><span class="flow-num">1</span></div>
@@ -1352,8 +1356,8 @@
       <div class="flow-marker"><span class="flow-num">6</span></div>
       <div class="flow-body">
         <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke-linecap="round"/><path d="M19.8 4.5v3.6h-3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="flow-who who-both">Together</span></div>
-        <h3 class="flow-title">Re-test next year</h3>
-        <p>We re-test against your actions, so next year’s report shows the progress you have made.</p>
+        <h3 class="flow-title">Re-test and track progress</h3>
+        <p>When you are ready, next quarter or next year, we re-test against your actions, so your new report shows the progress made.</p>
       </div>
     </li>
     </ol>
@@ -1388,6 +1392,7 @@
         <p>Complex or multi-site scenarios, with more departments, more pressure and a longer structured debrief.</p>
       </div>
     </div>
+    <p class="length-longer">Need a longer session, such as a half-day exercise across several sites or agencies? We also design 150- and 180-minute exercises with a planned break.</p>
     <div class="included">
       <h3>Every length includes</h3>
       <ul class="included-list">
@@ -1399,7 +1404,7 @@
       </ul>
     </div>
     <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
-    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a></div>
+    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a><a href="#contact" class="btn-pill btn-pill-outline btn-link" data-callback>Request a callback</a></div>
     <!-- SELF-SERVICE KIT — switched off 22 October 2026 (decision 11): facilitator-side
          material is never given to a client. Kept here, inert, so it can be restored:
          set FEATURES.selfServiceKit = true in the page script and the card comes back.
@@ -1499,7 +1504,7 @@
 <section id="contact" class="contact">
   <div class="section-inner">
     <h2>Get in touch</h2>
-    <p class="section-lead">Leave your details and we'll get back to you — or email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
+    <p class="section-lead">Leave your details and we'll reply by email or call you back, whichever you prefer. You can also email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
 
     <form class="intake-card" id="contactFormEl" name="contact-request" method="POST" novalidate style="max-width:480px;margin:0 auto;">
       <input type="hidden" name="form-name" value="contact-request">
@@ -1516,6 +1521,24 @@
 
       <label for="c_email">Email address <span class="opt">(required)</span></label>
       <input type="email" name="email" id="c_email" placeholder="you@company.com">
+
+      <p class="returning-q" id="c_replyLabel">How would you like us to reply?</p>
+      <div class="choice-row" role="radiogroup" aria-labelledby="c_replyLabel" id="c_replyGroup">
+        <label><input type="radio" name="reply_by" value="email" checked> By email</label>
+        <label><input type="radio" name="reply_by" value="call"> Call me back</label>
+      </div>
+      <div id="c_callbackBox" hidden>
+        <label for="c_callback_time">Best time to call you <span class="opt">(UAE time)</span></label>
+        <select name="callback_time" id="c_callback_time">
+          <option value="Morning (9 am to 12 pm)">Morning, 9 am to 12 pm</option>
+          <option value="Afternoon (12 to 5 pm)">Afternoon, 12 to 5 pm</option>
+          <option value="Evening (5 to 8 pm)">Evening, 5 to 8 pm</option>
+        </select>
+        <p class="returning-note">We call the mobile number above. A call takes about 20 minutes.</p>
+      </div>
+
+      <label for="c_message">What would you like to talk about? <span class="opt">(optional)</span></label>
+      <textarea name="message" id="c_message" rows="3" maxlength="2000" placeholder="e.g. an exercise for our leadership team before the summer season"></textarea>
 
       <div class="consent" id="c_consent">
         <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="c_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
@@ -2078,6 +2101,7 @@ function lengthAndServiceHTML(p){
         <option value="60 minutes">60 minutes \u2014 Focused</option>
         <option value="90 minutes" selected>90 minutes \u2014 Standard (recommended)</option>
         <option value="120 minutes">120 minutes \u2014 Extended</option>
+        <option value="Longer (150 or 180 minutes)">Longer (150 or 180 minutes) \u2014 to agree with you</option>
       </select>
 `;
   if(!FEATURES.selfServiceKit){
@@ -3107,6 +3131,7 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   function markInvalid(el){ el.classList.add("field-error"); if(!firstInvalid) firstInvalid = el; }
 
   const nameEl = document.getElementById("c_name");
+  const wantsCall = (document.querySelector("#c_replyGroup input:checked") || {}).value === "call";
   const mobileEl = document.getElementById("c_mobile");
   const emailEl = document.getElementById("c_email");
 
@@ -3132,7 +3157,9 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
       "Organization: " + document.getElementById("c_organization").value,
       "Name: " + nameEl.value,
       "Mobile: " + mobileEl.value,
-      "Email: " + emailEl.value
+      "Email: " + emailEl.value,
+      "Reply by: " + (wantsCall ? "CALL ME BACK \u2014 " + document.getElementById("c_callback_time").value + ", UAE time" : "Email"),
+      "Message: " + (document.getElementById("c_message").value.trim() || "(none)")
     ].concat(consentPairs("c").map(([k, v]) => k + ": " + v));
     contactSummaryText = summaryLines.join("\n");
     const formData = new FormData(e.target);
@@ -3151,6 +3178,19 @@ document.querySelectorAll('a[href="#demo"]').forEach(link=>{
     if(previewFinished) resetBtn.click();
   });
 });
+
+// Contact form: "Call me back" shows the best-time question; any
+// "Request a callback" link opens the form with that choice made.
+function syncCallbackBox(){
+  const call = (document.querySelector("#c_replyGroup input:checked") || {}).value === "call";
+  const box = document.getElementById("c_callbackBox");
+  if(box) box.hidden = !call;
+}
+document.querySelectorAll("#c_replyGroup input").forEach((r)=>r.addEventListener("change", syncCallbackBox));
+document.querySelectorAll("a[data-callback]").forEach((a)=>a.addEventListener("click", ()=>{
+  const r = document.querySelector('#c_replyGroup input[value="call"]');
+  if(r){ r.checked = true; syncCallbackBox(); }
+}));
 
 // initial state
 renderScenarioChoice();
