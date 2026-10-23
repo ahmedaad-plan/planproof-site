@@ -452,3 +452,13 @@ test("callback: 'Call me back' on the contact form is flagged in the subject, at
   assert.doesNotMatch(net.emails[1].text, /CALL BACK REQUESTED/);
   assert.notEqual(net.inserts.submissions[1].service_type, "Callback request");
 });
+
+test("the attached submission file opens cleanly in Windows: UTF-8 with a byte-order mark, dashes intact", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const body = genericBody(); body.data.privacy_ack = "yes"; body.data.formatted_summary = "Reply by: CALL ME BACK — Morning";
+  assert.equal((await handleIntake(body, d)).ok, true);
+  const att = net.emails[0].attachments.find((a) => a.filename.endsWith("-submission.txt"));
+  const bytes = Buffer.from(att.content, "base64");
+  assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+  assert.match(bytes.toString("utf8"), /CALL ME BACK — Morning/);
+});

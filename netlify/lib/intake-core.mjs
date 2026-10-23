@@ -318,7 +318,9 @@ export function buildEmail(record, fileResult) {
   }
 
   const text = lines.join("\n");
-  attachments.push({ filename: `${formName}-submission.txt`, content: Buffer.from(text).toString("base64") });
+  // The byte-order mark tells Windows (Notepad, Outlook's preview) the file is
+  // UTF-8; without it dashes and symbols showed as "â€"" (23 October 2026).
+  attachments.push({ filename: `${formName}-submission.txt`, content: Buffer.from("\uFEFF" + text, "utf8").toString("base64") });
   return { subject, text, attachments };
 }
 

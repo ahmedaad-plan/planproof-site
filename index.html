@@ -67,7 +67,7 @@
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Facilitated tabletop exercise — 60 minutes (Focused)",
+              "name": "Facilitated tabletop exercise — 60-minute duration (Focused)",
               "description": "One critical risk or one part of your continuity plan, tested with a small team. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           },
@@ -75,7 +75,7 @@
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Facilitated tabletop exercise — 90 minutes (Standard)",
+              "name": "Facilitated tabletop exercise — 90-minute duration (Standard)",
               "description": "Several departments working the same incident, from the first alert to recovery decisions. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           },
@@ -83,7 +83,7 @@
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Facilitated tabletop exercise — 120 minutes (Extended)",
+              "name": "Facilitated tabletop exercise — 120-minute duration (Extended)",
               "description": "Complex or multi-site scenarios with more departments, more pressure and a longer structured debrief. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           }
@@ -658,13 +658,20 @@
     box-shadow: 0 8px 20px var(--shadow);
   }
   .dept-dropdown.open{ display: block; }
+  /* A group title in a pick list — a heading, never an option (22 Oct 2026) */
   .dept-group-label{
-    font-size: 11px; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.04em; padding: 8px 12px 4px;
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+    padding: 12px 12px 6px; margin-top: 4px; border-top: 1px solid var(--border);
+    cursor: default; user-select: none;
   }
+  .dept-done + .dept-group-label{ border-top: none; margin-top: 0; }
   .dept-option{ padding: 8px 12px; font-size: 14px; cursor: pointer; }
   .dept-option:hover{ background: var(--panel-raised); }
   .dept-empty{ padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
+  .dept-other{ margin-top: 8px; }
+  .dept-other-row{ display: flex; gap: 8px; align-items: stretch; }
+  .dept-other-row input{ flex: 1 1 auto; min-width: 0; margin: 0; }
+  .dept-other-add{ flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 600; padding: 0 18px; min-height: 42px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
   .dept-done{ position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px 10px 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .dept-done-hint{ font-size: 12.5px; color: var(--text-muted); }
   .dept-done-btn{ flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 600; padding: 7px 18px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
@@ -1266,6 +1273,7 @@
   .btn-pill-outline{ background: transparent; color: var(--text); border: 1.4px solid var(--border); }
   .btn-pill-outline:hover{ border-color: #d84a3a; }
   .length-longer{ text-align: center; color: var(--text-muted); font-size: 14px; max-width: 620px; margin: -6px auto 22px; }
+  .length-longer strong{ color: #d84a3a; font-weight: 700; }
   @media (max-width: 700px){ .services-cta .btn-pill{ flex: 1 1 100%; } }
   .services-cta .btn-pill-primary{ background: #d84a3a; color: #fff; }
   .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
@@ -1373,8 +1381,8 @@
 
 <section id="services" class="services">
   <div class="section-inner">
-    <h2>One service, three lengths</h2>
-    <p class="section-lead">Every PlanProof exercise is designed for you and run by our facilitator. Choose the length that fits what you want to test.</p>
+    <h2>One expert-led exercise, three durations</h2>
+    <p class="section-lead">Every PlanProof exercise is designed for you and run by our facilitator. Choose the duration that matches the scope of what you want to test.</p>
     <div class="length-grid">
       <div class="length-card">
         <div class="length-time"><span class="length-min">60</span><span class="length-unit">minutes</span></div>
@@ -1392,9 +1400,9 @@
         <p>Complex or multi-site scenarios, with more departments, more pressure and a longer structured debrief.</p>
       </div>
     </div>
-    <p class="length-longer">Need a longer session, such as a half-day exercise across several sites or agencies? We also design 150- and 180-minute exercises with a planned break.</p>
+    <p class="length-longer"><strong>Need a longer session?</strong> We also design 150- and 180-minute exercises, for example a half-day exercise across several sites or agencies.</p>
     <div class="included">
-      <h3>Every length includes</h3>
+      <h3>Every duration includes</h3>
       <ul class="included-list">
         <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A scenario designed for your organization and your real risks</span></li>
         <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Your review of the scenario before the day, revised until it is right</span></li>
@@ -1948,6 +1956,13 @@ ${orgUnitHTML("f")}
         <input type="text" id="f_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
         <div class="dept-dropdown" id="f_deptDropdown"></div>
       </div>
+      <div class="dept-other" id="f_deptOtherWrap" hidden>
+        <label for="f_deptOther">Other department \u2014 please specify</label>
+        <div class="dept-other-row">
+          <input type="text" id="f_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
+          <button type="button" class="dept-other-add" id="f_deptOtherAdd">Add</button>
+        </div>
+      </div>
       <input type="hidden" name="audience" id="f_audience">
 
 ${lengthAndServiceHTML("f")}
@@ -2039,7 +2054,7 @@ ${consentHTML("f")}
         ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
-        ["Exercise length", document.getElementById("f_duration").value],
+        ["Exercise duration", document.getElementById("f_duration").value],
         ["Service", document.getElementById("f_service_type").value],
         languagePair("f"),
         ["Specific focus areas", document.getElementById("f_focus").value],
@@ -2063,7 +2078,7 @@ ${consentHTML("f")}
       await submitIntake(formData);
       intakeDirty = false; // sent: nothing left to lose
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll design your exercise and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
-      requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
+      showThanksClear(requestStage);
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
     }catch(err){
       document.getElementById("submitGeneric").disabled = false;
@@ -2096,12 +2111,12 @@ function orgUnitHTML(p){ return `
 // The option values stay "60 minutes" etc. so stored data and emails don't change.
 function lengthAndServiceHTML(p){
   const length = `
-      <label for="${p}_duration">Exercise length</label>
+      <label for="${p}_duration">Exercise duration</label>
       <select name="duration" id="${p}_duration">
         <option value="60 minutes">60 minutes \u2014 Focused</option>
         <option value="90 minutes" selected>90 minutes \u2014 Standard (recommended)</option>
         <option value="120 minutes">120 minutes \u2014 Extended</option>
-        <option value="Longer (150 or 180 minutes)">Longer (150 or 180 minutes) \u2014 to agree with you</option>
+        <option value="Longer session (150 or 180 minutes)">Longer session (150 or 180 minutes)</option>
       </select>
 `;
   if(!FEATURES.selfServiceKit){
@@ -2389,6 +2404,13 @@ ${orgUnitHTML("p")}
         <input type="text" id="p_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
         <div class="dept-dropdown" id="p_deptDropdown"></div>
       </div>
+      <div class="dept-other" id="p_deptOtherWrap" hidden>
+        <label for="p_deptOther">Other department \u2014 please specify</label>
+        <div class="dept-other-row">
+          <input type="text" id="p_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
+          <button type="button" class="dept-other-add" id="p_deptOtherAdd">Add</button>
+        </div>
+      </div>
       <input type="hidden" name="audience" id="p_audience">
 
 ${lengthAndServiceHTML("p")}
@@ -2492,7 +2514,7 @@ ${consentHTML("p")}
         ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
-        ["Exercise length", document.getElementById("p_duration").value],
+        ["Exercise duration", document.getElementById("p_duration").value],
         ["Service", document.getElementById("p_service_type").value],
         languagePair("p"),
         ["Specific focus areas", document.getElementById("p_focus").value],
@@ -2520,7 +2542,7 @@ ${consentHTML("p")}
         : `Your plan and details have been received. We'll review it and be in touch at the email you provided.`;
       intakeDirty = false; // sent: nothing left to lose
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>${planThanks}</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
-      requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
+      showThanksClear(requestStage);
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
     }catch(err){
       document.getElementById("submitPlan").disabled = false;
@@ -2690,10 +2712,30 @@ function initDeptPicker(prefix){
     searchEl.focus();
   }
 
+  // "Other (specify)" opens a typing box inside the form, under the list —
+  // like "Other" for the risks — instead of the browser's pop-up at the top.
+  const otherWrap = document.getElementById(prefix + "_deptOtherWrap");
+  const otherInput = document.getElementById(prefix + "_deptOther");
+  const otherAdd = document.getElementById(prefix + "_deptOtherAdd");
   function addOtherDept(){
-    const custom = prompt("Please specify the department:");
-    if(custom && custom.trim()) addDept(custom.trim());
+    closePickList(dropdownEl, searchEl);
+    otherWrap.hidden = false;
+    otherInput.focus();
   }
+  function commitOther(){
+    const v = otherInput.value.trim();
+    if(!v) { otherInput.focus(); return; }
+    otherInput.value = "";
+    otherWrap.hidden = true;
+    if(!selected.includes(v)) selected.push(v);
+    renderChips();
+    syncHidden();
+  }
+  otherAdd.addEventListener("click", commitOther);
+  otherInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); commitOther(); }
+    if(e.key === "Escape"){ otherInput.value = ""; otherWrap.hidden = true; }
+  });
 
   function renderDropdown(term){
     const t = term.trim().toLowerCase();
@@ -2703,7 +2745,7 @@ function initDeptPicker(prefix){
       const matches = list.filter(d => !selected.includes(d) && d.toLowerCase().includes(t));
       if(matches.length){
         anyMatch = true;
-        html += `<div class="dept-group-label">${group}</div>`;
+        html += `<div class="dept-group-label" role="presentation" aria-hidden="true">${group}</div>`;
         html += matches.map(d => `<div class="dept-option" data-name="${d}">${d}</div>`).join("");
       }
     });
@@ -3165,7 +3207,7 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
     const formData = new FormData(e.target);
     formData.append("formatted_summary", contactSummaryText);
     await submitIntake(formData);
-    document.getElementById("contact").querySelector(".section-inner").innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your message has been received. We'll be in touch at the details you provided. If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p></div>`;
+    showContactThanks(wantsCall);
   }catch(err){
     document.getElementById("submitContact").disabled = false;
     showSendFallback(document.getElementById("contactMsg"), "Website enquiry \u2014 " + (document.getElementById("c_organization").value || nameEl.value), contactSummaryText);
@@ -3179,6 +3221,45 @@ document.querySelectorAll('a[href="#demo"]').forEach(link=>{
   });
 });
 
+// Contact form thank-you (fixed 23 October 2026): the form is hidden, not
+// destroyed, and the message has a Close button. Close — or any later jump to
+// Contact from the menu or a "Request a callback" button — brings back a
+// fresh, empty form.
+function showContactThanks(wantsCall){
+  const form = document.getElementById("contactFormEl");
+  const lead = document.querySelector("#contact .section-lead");
+  const done = wantsCall
+    ? "We'll call you back on the mobile number you gave, at the time you chose."
+    : "We'll reply by email at the address you gave.";
+  const card = document.createElement("div");
+  card.className = "thanks-card";
+  card.id = "contactThanks";
+  card.style.maxWidth = "480px";
+  card.style.margin = "0 auto";
+  card.innerHTML = `<h2>Thank you</h2><p>Your message has been received. ${done} If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p><button type="button" class="btn-ghost" id="closeContactThanks" style="margin-top:10px;">Close</button>`;
+  form.hidden = true;
+  if(lead) lead.hidden = true;
+  form.insertAdjacentElement("beforebegin", card);
+  document.getElementById("closeContactThanks").addEventListener("click", ()=> resetContactForm(false));
+  showThanksClear(card);
+}
+function resetContactForm(callMode){
+  const card = document.getElementById("contactThanks");
+  if(!card) return;
+  card.remove();
+  const form = document.getElementById("contactFormEl");
+  form.reset();
+  form.querySelectorAll(".field-error").forEach(el=>el.classList.remove("field-error"));
+  document.getElementById("contactMsg").textContent = "";
+  document.getElementById("submitContact").disabled = false;
+  const lead = document.querySelector("#contact .section-lead");
+  if(lead) lead.hidden = false;
+  form.hidden = false;
+  if(callMode){ const r = document.querySelector('#c_replyGroup input[value="call"]'); if(r) r.checked = true; }
+  syncCallbackBox();
+}
+document.querySelectorAll('a[href="#contact"]').forEach((a)=>a.addEventListener("click", ()=> resetContactForm(a.hasAttribute("data-callback"))));
+
 // Contact form: "Call me back" shows the best-time question; any
 // "Request a callback" link opens the form with that choice made.
 function syncCallbackBox(){
@@ -3191,6 +3272,15 @@ document.querySelectorAll("a[data-callback]").forEach((a)=>a.addEventListener("c
   const r = document.querySelector('#c_replyGroup input[value="call"]');
   if(r){ r.checked = true; syncCallbackBox(); }
 }));
+
+// Brings a thank-you message fully into view, just below the sticky menu
+// (scrolling it to the very top hid half of it under the menu).
+function showThanksClear(container){
+  const card = container.querySelector(".thanks-card") || container;
+  const nav = document.querySelector(".sitenav");
+  const offset = (nav ? nav.offsetHeight : 70) + 24;
+  window.scrollTo({ top: Math.max(0, card.getBoundingClientRect().top + window.scrollY - offset), behavior: "smooth" });
+}
 
 // initial state
 renderScenarioChoice();
