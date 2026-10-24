@@ -826,8 +826,29 @@
     gap: 16px;
   }
   .nav-links{ display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+  .nav-toggle{ display: none; }
+  /* Phones (24 October 2026): one slim, solid line — logo and a Menu button;
+     the links open as a panel under it. Nothing shows through the menu. */
   @media (max-width: 780px){
-    .nav-inner{ grid-template-columns: 1fr; justify-items: center; }
+    .sitenav{ background: #10151b; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .nav-inner{ grid-template-columns: 1fr auto; justify-items: stretch; padding: 10px 16px; gap: 0; }
+    .nav-toggle{
+      display: inline-flex; align-items: center; gap: 8px; justify-self: end;
+      font: 700 15px "Space Grotesk", sans-serif; color: #f2f3f5;
+      background: transparent; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px;
+      padding: 0 14px; min-height: 40px; cursor: pointer;
+    }
+    .nav-toggle-bars{ display: inline-flex; flex-direction: column; gap: 3px; }
+    .nav-toggle-bars span{ display: block; width: 16px; height: 2px; background: currentColor; border-radius: 2px; }
+    .nav-links{
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: #10151b; padding: 4px 16px 10px; border-top: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 16px 30px rgba(0,0,0,.45);
+    }
+    .sitenav.open .nav-links{ display: flex; }
+    .nav-links a, .nav-links a:hover{ font-size: 16px; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sitenav.open .nav-toggle{ border-color: #d84a3a; }
   }
   .brand{
     font-family: "Space Grotesk", sans-serif;
@@ -1179,8 +1200,6 @@
 
   /* ===== Mobile polish pass ===== */
   @media (max-width: 480px){
-    .nav-links{ gap: 12px 16px; }
-    .nav-links a{ font-size: 14px; }
     .brand{ font-size: 19px; }
     .brand-mark{ width: 28px; height: 28px; }
 
@@ -1358,41 +1377,44 @@
     .contact-form{ padding: 20px 18px; }
   }
 
-  /* --- 24 Oct 2026: demo controls on phones — a bar above the video that docks
-     to the bottom of the screen while the demo is in view, so the next action
-     ("Start exercise", "Reveal next inject") is always under the thumb. --- */
+  /* --- 24 Oct 2026: demo controls on phones — one bar above the video that
+     stays pinned just under the menu while the demo is on screen, so the next
+     action ("Start exercise", "Reveal next inject") is always visible. --- */
   .demo-mbar{ display: none; }
   @media (max-width: 820px){
     .demo-mbar{
       display: flex; align-items: center; gap: 10px;
+      position: sticky; top: var(--nav-h, 60px); z-index: 40;
       background: var(--panel-raised); border: 1.5px solid #d84a3a; border-radius: 12px;
-      padding: 10px 12px; margin: 0 0 14px;
+      padding: 10px 12px; margin: 0 0 14px; box-shadow: 0 8px 20px var(--shadow);
     }
     .demo-mbar-clock{ display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; }
     .demo-mbar-label{ font-size: 11px; color: var(--text-muted); }
     .demo-mbar-time{ font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; color: var(--text); }
     .demo-mbar-btn{
       font: inherit; font-size: 15px; font-weight: 700; color: #fff; background: #d84a3a;
-      border: none; border-radius: 999px; padding: 0 18px; min-height: 46px; cursor: pointer; white-space: nowrap;
+      border: none; border-radius: 999px; padding: 6px 16px; min-height: 46px; cursor: pointer;
+      flex: 0 1 auto; min-width: 0; white-space: normal; line-height: 1.15; text-align: center;
     }
     .demo-mbar-btn:disabled{ opacity: .55; cursor: default; }
+    .demo-mbar-clock{ flex: 0 0 auto; }
+    .demo-mbar-reset{ flex: 0 0 auto; }
+    @media (max-width: 380px){
+      .demo-mbar{ gap: 8px; padding: 8px 10px; }
+      .demo-mbar-label{ display: none; }
+      .demo-mbar-time{ font-size: 16px; }
+      .demo-mbar-btn{ font-size: 14px; padding: 6px 12px; }
+      .demo-mbar-reset{ font-size: 13px; padding: 0 10px; }
+    }
     .demo-mbar-reset{
       font: inherit; font-size: 13.5px; color: var(--text); background: transparent;
       border: 1px solid var(--border); border-radius: 999px; padding: 0 12px; min-height: 40px; cursor: pointer;
     }
-    .demo-mbar-dock{
-      position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 60;
-      margin: 0; box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      transform: translateY(140%); transition: transform .22s ease; pointer-events: none;
-    }
-    .demo-mbar-dock.show{ transform: none; pointer-events: auto; }
     .demo-mbar-btn.nudge{ animation: mbarNudge 1.2s ease 2; }
     @keyframes mbarNudge{ 0%,100%{ box-shadow: 0 0 0 0 rgba(216,74,58,.0); } 50%{ box-shadow: 0 0 0 8px rgba(216,74,58,.35); } }
-    @media (prefers-reduced-motion: reduce){ .demo-mbar-dock{ transition: none; } .demo-mbar-btn.nudge{ animation: none; } }
+    @media (prefers-reduced-motion: reduce){ .demo-mbar-btn.nudge{ animation: none; } }
     /* the rail's own button, reset and clock are replaced by the bar on phones */
     #demoApp .rail #mainBtn, #demoApp .rail #resetBtn, #demoApp .rail .timer-block{ display: none !important; }
-    /* room for the docked bar under the last part of the demo */
-    #demo .section-inner{ padding-bottom: 96px; }
   }
 </style>
 </head>
@@ -1407,7 +1429,10 @@
       </svg>
       <span class="brand-plan">Plan</span><span class="brand-proof">Proof</span>
     </a>
-    <div class="nav-links">
+    <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks">
+      <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="#home">Home</a>
       <a href="#tool">Start an exercise</a>
       <a href="#services">Services</a>
@@ -1553,11 +1578,6 @@
       <div class="demo-mbar-clock"><span class="demo-mbar-label">Exercise time</span><span class="demo-mbar-time" data-sync="time">00:00</span></div>
       <button type="button" class="demo-mbar-reset" data-sync="reset" hidden>Restart</button>
       <button type="button" class="demo-mbar-btn" data-sync="main">Start exercise</button>
-    </div>
-    <div class="demo-mbar demo-mbar-dock" id="demoDock" aria-hidden="true">
-      <div class="demo-mbar-clock"><span class="demo-mbar-label">Exercise time</span><span class="demo-mbar-time" data-sync="time">00:00</span></div>
-      <button type="button" class="demo-mbar-reset" data-sync="reset" tabindex="-1" hidden>Restart</button>
-      <button type="button" class="demo-mbar-btn" data-sync="main" tabindex="-1">Start exercise</button>
     </div>
     <div class="app" id="demoApp">
       <aside class="rail">
@@ -1733,6 +1753,18 @@
 const FEATURES = Object.freeze({ selfServiceKit: false });
 // Keep every section heading clear of the sticky menu when a link jumps to it.
 // The menu wraps to two lines on a phone, so its real height is measured.
+// Phone menu (24 October 2026): the Menu button opens and closes the links;
+// choosing a link, pressing Escape or tapping elsewhere closes them.
+(function phoneMenu(){
+  const nav = document.querySelector(".sitenav");
+  const btn = document.getElementById("navToggle");
+  if(!nav || !btn) return;
+  const set = (open)=>{ nav.classList.toggle("open", open); btn.setAttribute("aria-expanded", open ? "true" : "false"); };
+  btn.addEventListener("click", ()=> set(!nav.classList.contains("open")));
+  nav.querySelectorAll(".nav-links a").forEach((a)=> a.addEventListener("click", ()=> set(false)));
+  document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") set(false); });
+  document.addEventListener("click", (e)=>{ if(nav.classList.contains("open") && !nav.contains(e.target)) set(false); });
+})();
 (function trackMenuHeight(){
   const nav = document.querySelector(".sitenav");
   if(!nav) return;
@@ -3070,7 +3102,9 @@ function showInjectInView(){
   const card = stage.firstElementChild;
   if(!card) return;
   const nav = document.querySelector(".sitenav");
-  const navH = nav ? nav.offsetHeight : 70;
+  const bar = document.getElementById("demoBar");
+  const barH = bar && getComputedStyle(bar).display !== "none" ? bar.offsetHeight + 10 : 0;
+  const navH = (nav ? nav.offsetHeight : 70) + barH;
   const r = card.getBoundingClientRect();
   const narrow = window.matchMedia("(max-width: 900px)").matches;
   if(!narrow && r.top >= navH && r.top < window.innerHeight * 0.6) return;
@@ -3447,9 +3481,9 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   }
 });
 
-// Phone demo bar (24 October 2026): two copies of the controls — one above the
-// video, one docked at the bottom of the screen — both mirror the real button,
-// Reset and clock in the rail and simply press them.
+// Phone demo bar (24 October 2026): one bar above the video, pinned under the
+// menu by CSS (position: sticky) while the demo is on screen. It mirrors the
+// real button, Reset and clock in the rail and simply presses them.
 (function demoBars(){
   const bars = [...document.querySelectorAll(".demo-mbar")];
   if(!bars.length) return;
@@ -3475,31 +3509,6 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
     });
   });
   sync();
-  // Dock the bar while the demo is on screen and the top bar has scrolled away.
-  const top = document.getElementById("demoBar"), dock = document.getElementById("demoDock");
-  const demoApp = document.getElementById("demoApp");
-  let topVisible = true, demoVisible = false; // set by measure() below
-  const update = ()=>{
-    const on = demoVisible && !topVisible;
-    dock.classList.toggle("show", on);
-    dock.setAttribute("aria-hidden", on ? "false" : "true");
-    dock.querySelectorAll("button").forEach((b)=> b.tabIndex = on ? 0 : -1);
-  };
-  // Measured against the sticky menu: a bar hidden behind the menu counts as gone.
-  const nav = document.querySelector(".sitenav");
-  let queued = false;
-  function measure(){
-    queued = false;
-    const navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
-    const t = top.getBoundingClientRect(), a = demoApp.getBoundingClientRect();
-    topVisible = t.top >= navBottom - 8 && t.bottom <= window.innerHeight; // whole bar in view
-    demoVisible = a.top < window.innerHeight - 120 && a.bottom > navBottom + 80;
-    update();
-  }
-  const queue = ()=>{ if(!queued){ queued = true; requestAnimationFrame(measure); } };
-  window.addEventListener("scroll", queue, { passive: true });
-  window.addEventListener("resize", queue);
-  measure();
   // A short pulse on the button when the next step becomes available.
   window.nudgeDemoButton = ()=>{
     bars.forEach((bar)=>{
