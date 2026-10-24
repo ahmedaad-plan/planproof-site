@@ -7,7 +7,7 @@ import { serverEnv } from "../lib/env.mjs";
 
 const json = (status, obj) => Response.json(obj, { status, headers: { "Cache-Control": "no-store" } });
 
-export default async (req) => {
+export default async (req, context) => {
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
   let body;
   try {
@@ -23,6 +23,8 @@ export default async (req) => {
       uploads: getStore({ name: "intake-uploads", consistency: "strong" }),
       fetchFn: fetch,
       env: serverEnv(),
+      // Finish the database save and the email after replying (fast thank-you).
+      defer: context && typeof context.waitUntil === "function" ? (work) => context.waitUntil(work()) : undefined,
     });
     return json(result.ok ? 200 : 503, { ok: result.ok });
   } catch (err) {

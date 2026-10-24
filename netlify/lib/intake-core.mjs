@@ -478,13 +478,25 @@ export async function handleIntake(body, deps) {
     log.error(`[intake ${record.id}] Could not store the request:`, err.message);
   }
 
-  await processRecord(record, deps);
-  try {
-    await settleRecord(record, deps);
-    stored = true;
-  } catch (err) {
-    log.error(`[intake ${record.id}] Could not settle the request:`, err.message);
+  // Fast reply (24 October 2026): once the request is safely stored, the
+  // visitor is told at once and the database save and the email finish after
+  // the reply (deps.defer = Netlify's context.waitUntil). If that is ever cut
+  // short, the 5-minute retry finishes the stored request. A request that
+  // could NOT be stored is still worked through before replying, as before.
+  const finish = async () => {
+    await processRecord(record, deps);
+    try {
+      await settleRecord(record, deps);
+      stored = true;
+    } catch (err) {
+      log.error(`[intake ${record.id}] Could not settle the request:`, err.message);
+    }
+  };
+  if (stored && typeof deps.defer === "function") {
+    deps.defer(() => finish().catch((err) => log.error(`[intake ${record.id}] Background finish failed:`, err.message)));
+    return { ok: true, deferred: true, steps: record.steps };
   }
+  await finish();
   const ok = stored || record.steps.supabase || record.steps.email;
   if (!ok) log.error(`[intake ${record.id}] LOST: not stored, not saved, not emailed. Visitor was shown the email fallback.`);
   return { ok, steps: record.steps };
@@ -493,6 +505,8 @@ export async function handleIntake(body, deps) {
 // ---------------------------------------------------------------------------
 // 5. Scheduled retry and clean-up (intake-retry, every 5 minutes)
 // ---------------------------------------------------------------------------
+
+export const FRESH_GRACE_MS = 2 * 60 * 1000;
 
 export async function retryPending(deps) {
   const log = deps.log || console;
@@ -519,6 +533,9 @@ export async function retryPending(deps) {
     const record = await deps.pending.get(key, { type: "json" });
     if (!record) continue;
     if (record.file) referencedUploads.add(record.file.uploadId);
+    // A request received moments ago may still be finishing after its reply
+    // (see handleIntake); leave it alone so it is never emailed twice.
+    if (!record.attempts && nowMs - Date.parse(record.receivedAt) < FRESH_GRACE_MS) { summary.waiting++; continue; }
     // Never give up. After a day, retry once an hour; the health check
     // (system-check, /api/health, admin page banner) is already alarming.
     if (nowMs - Date.parse(record.receivedAt) > RETRY_SLOW_AFTER_MS) {

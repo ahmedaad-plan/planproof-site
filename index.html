@@ -1066,7 +1066,7 @@
 
   .intake-card{
     background: var(--panel-raised);
-    border: 1px solid var(--border);
+    border: 1.5px solid #d84a3a; /* red edge on every form (24 October 2026) */
     border-radius: 12px;
     padding: 28px 30px;
     max-width: 620px;
@@ -1092,6 +1092,7 @@
     font-size: 20px;
     margin: 0 0 6px;
   }
+  .intake-card .form-label-red{ color: #d84a3a; font-weight: 700; }
   .intake-sub{
     font-size: 13.5px;
     color: var(--text-muted);
@@ -1279,6 +1280,29 @@
   .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
   @media (max-width: 860px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
   @media (max-width: 700px){ .length-min{ font-size: 38px; } }
+
+  /* --- 24 Oct 2026: Services and Get in touch fit one laptop screen --- */
+  .services > .section-inner, .contact > .section-inner{ padding-top: 16px; padding-bottom: 36px; }
+  .services > .section-inner > h2, .contact > .section-inner > h2{ margin: 0 0 6px; }
+  .services .section-lead, .contact .section-lead{ margin-bottom: 14px; }
+  .length-grid{ margin: 4px 0 14px; gap: 16px; }
+  .length-card{ padding: 18px 20px 16px; }
+  .length-card.featured{ padding: 17px 19px 15px; }
+  .length-min{ font-size: 40px; }
+  .length-card h3{ margin-bottom: 6px; }
+  .length-card p{ line-height: 1.5; }
+  .length-longer{ margin: 0 auto 12px; }
+  .included h3{ margin-bottom: 8px; }
+  .included-list{ gap: 6px; }
+  .services .service-note{ margin-top: 8px; }
+  .services-cta{ margin-top: 10px; }
+  .contact-form{ max-width: 720px; margin: 0 auto; padding: 22px 28px; }
+  .contact-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .contact-form .returning-q{ margin-top: 12px; }
+  @media (max-width: 700px){
+    .contact-grid{ grid-template-columns: 1fr; }
+    .contact-form{ padding: 20px 18px; }
+  }
 </style>
 </head>
 <body>
@@ -1412,7 +1436,7 @@
       </ul>
     </div>
     <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
-    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a><a href="#contact" class="btn-pill btn-pill-outline btn-link" data-callback>Request a callback</a></div>
+    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a><a href="#contact" class="btn-pill btn-pill-outline btn-link">Contact us</a></div>
     <!-- SELF-SERVICE KIT — switched off 22 October 2026 (decision 11): facilitator-side
          material is never given to a client. Kept here, inert, so it can be restored:
          set FEATURES.selfServiceKit = true in the page script and the card comes back.
@@ -1514,21 +1538,20 @@
     <h2>Get in touch</h2>
     <p class="section-lead">Leave your details and we'll reply by email or call you back, whichever you prefer. You can also email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
 
-    <form class="intake-card" id="contactFormEl" name="contact-request" method="POST" novalidate style="max-width:480px;margin:0 auto;">
+    <form class="intake-card contact-form" id="contactFormEl" name="contact-request" method="POST" novalidate>
       <input type="hidden" name="form-name" value="contact-request">
       <input name="bot-field" style="display:none;">
 
-      <label for="c_organization">Organization name</label>
-      <input type="text" name="organization" id="c_organization" placeholder="Your company or organization">
-
-      <label for="c_name">Your name <span class="opt">(required)</span></label>
-      <input type="text" name="name" id="c_name" placeholder="Full name">
-
-      <label for="c_mobile">Mobile number <span class="opt">(required)</span></label>
-      <input type="tel" name="mobile" id="c_mobile" placeholder="">
-
-      <label for="c_email">Email address <span class="opt">(required)</span></label>
-      <input type="email" name="email" id="c_email" placeholder="you@company.com">
+      <div class="contact-grid">
+        <div><label for="c_organization">Organization name</label>
+        <input type="text" name="organization" id="c_organization" placeholder="Your company or organization"></div>
+        <div><label for="c_name">Your name <span class="opt">(required)</span></label>
+        <input type="text" name="name" id="c_name" placeholder="Full name"></div>
+        <div><label for="c_mobile">Mobile number <span class="opt">(required)</span></label>
+        <input type="tel" name="mobile" id="c_mobile" placeholder=""></div>
+        <div><label for="c_email">Email address <span class="opt">(required)</span></label>
+        <input type="email" name="email" id="c_email" placeholder="you@company.com"></div>
+      </div>
 
       <p class="returning-q" id="c_replyLabel">How would you like us to reply?</p>
       <div class="choice-row" role="radiogroup" aria-labelledby="c_replyLabel" id="c_replyGroup">
@@ -1546,7 +1569,7 @@
       </div>
 
       <label for="c_message">What would you like to talk about? <span class="opt">(optional)</span></label>
-      <textarea name="message" id="c_message" rows="3" maxlength="2000" placeholder="e.g. an exercise for our leadership team before the summer season"></textarea>
+      <textarea name="message" id="c_message" rows="2" maxlength="2000" placeholder="e.g. an exercise for our leadership team before the summer season"></textarea>
 
       <div class="consent" id="c_consent">
         <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="c_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
@@ -1555,7 +1578,6 @@
 
       <button type="submit" class="btn-primary" id="submitContact" style="margin-top:18px;background:#d84a3a;color:#fff;">Send</button>
       <p class="empty-note" id="contactMsg"></p>
-      <p class="empty-note">Prefer not to use the form, or didn't hear back? Email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
     </form>
 
     <div class="privacy-note">
@@ -1757,10 +1779,11 @@ async function postWithRetry(url, options){
 
 // Plan documents go up in parts of at most 2 MB (a single request is limited to
 // about 4.5 MB; plans may be up to 8 MB).
-async function uploadPlanFile(file){
+async function uploadPlanFile(file, onProgress){
   const uploadId = crypto.randomUUID();
   const parts = Math.max(1, Math.ceil(file.size / UPLOAD_PART_BYTES));
   for(let i = 0; i < parts; i++){
+    if(onProgress) onProgress(i + 1, parts);
     const chunk = file.slice(i * UPLOAD_PART_BYTES, (i + 1) * UPLOAD_PART_BYTES);
     await postWithRetry("/api/intake-upload?id=" + uploadId + "&part=" + i + "&parts=" + parts, {
       method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: chunk
@@ -1792,7 +1815,7 @@ function consentPairs(p){
 }
 const CONSENT_MISSING_MSG = "Please tick the box to confirm you have read the privacy policy \u2014 we can't send your request without it.";
 
-async function submitIntake(formData){
+async function submitIntake(formData, onProgress){
   const data = {};
   let formName = null, honeypot = "", fileObj = null;
   for(const [key, value] of formData.entries()){
@@ -1803,7 +1826,7 @@ async function submitIntake(formData){
   }
   let file = null, fileUploadFailed = false;
   if(fileObj){
-    try{ file = await uploadPlanFile(fileObj); }
+    try{ file = await uploadPlanFile(fileObj, onProgress); }
     catch(err){ fileUploadFailed = true; } // still send the request itself: never lose it over the file
   }
   const body = {
@@ -1862,6 +1885,36 @@ window.addEventListener("beforeunload", (e)=>{
   if(intakeHasAnswers()){ e.preventDefault(); e.returnValue = ""; }
 });
 
+// Going back from an open form (24 October 2026): Home, "Start an exercise"
+// and the browser's Back button bring back the two choices. Opening a form
+// adds one step to the browser history, so Back closes the form instead of
+// leaving the page. Answers are never lost without the usual question.
+function formIsOpen(){ return !!document.querySelector("#genericFormEl, #planFormEl"); }
+function noteFormOpened(){
+  try{ history.pushState({ ppForm: true }, "", "#tool"); }catch(e){ /* history not available */ }
+}
+function leaveFormToChoices(){
+  if(!formIsOpen()) return true;
+  if(intakeHasAnswers() && !confirm(LEAVE_FORM_QUESTION)) return false;
+  intakeDirty = false;
+  renderScenarioChoice();
+  return true;
+}
+window.addEventListener("popstate", ()=>{
+  if(!formIsOpen()) return;
+  if(!leaveFormToChoices()){
+    try{ history.pushState({ ppForm: true }, "", "#tool"); }catch(e){}
+    return;
+  }
+  const tool = document.getElementById("tool");
+  if(tool) tool.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.addEventListener("click", (e)=>{
+  const a = e.target.closest('a[href="#home"], a[href="#tool"]');
+  if(!a || !formIsOpen()) return;
+  if(!leaveFormToChoices()) e.preventDefault();
+}, true);
+
 function renderScenarioChoice(){
   requestStage.innerHTML = `
     <div class="choice-grid">
@@ -1879,8 +1932,8 @@ function renderScenarioChoice(){
       <p>Details and plans shared with us are reviewed directly, one-to-one, and are never published or made publicly accessible. We ask that you remove or redact information that isn't essential to the exercise design \u2014 individual staff names, ID numbers, and exact financial figures. Materials are deleted after your exercise package is delivered unless you ask us to retain them, and a mutual NDA is available on request.</p>
     </div>
   `;
-  document.querySelector('[data-key="generic"]').addEventListener("click", renderGenericForm);
-  document.querySelector('[data-key="planTest"]').addEventListener("click", renderPlanForm);
+  document.querySelector('[data-key="generic"]').addEventListener("click", ()=>{ renderGenericForm(); noteFormOpened(); });
+  document.querySelector('[data-key="planTest"]').addEventListener("click", ()=>{ renderPlanForm(); noteFormOpened(); });
 }
 
 function renderGenericForm(){
@@ -1889,7 +1942,7 @@ function renderGenericForm(){
       <input type="hidden" name="form-name" value="generic-scenario">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
-      <div class="eyebrow" style="margin-bottom:6px;">Generic scenario intake</div>
+      <div class="eyebrow form-label-red" style="margin-bottom:6px;">Generic scenario intake</div>
       <h2 class="intake-title">Tell us about your organization</h2>
       <p class="intake-sub">The more specific your answers, the less generic the exercise \u2014 this replaces guesswork with your real context.</p>
 
@@ -2337,7 +2390,7 @@ function renderPlanForm(){
       <input type="hidden" name="form-name" value="plan-review">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
-      <div class="eyebrow" style="margin-bottom:6px;">Test my plan</div>
+      <div class="eyebrow form-label-red" style="margin-bottom:6px;">Test my plan</div>
       <h2 class="intake-title">Share your continuity plan for review</h2>
       <p class="intake-sub">The more specific your answers, the less generic the exercise \u2014 this replaces guesswork with your real context. Please remove or redact information that isn't essential \u2014 individual staff names, ID numbers, and exact financial figures. See the confidentiality note below.</p>
 
@@ -2536,7 +2589,11 @@ ${consentHTML("p")}
       planSummaryText = summaryLines.join("\n");
       const formData = new FormData(form);
       formData.append("formatted_summary", planSummaryText);
-      const sent = await submitIntake(formData);
+      const planMsgEl = document.getElementById("planMsg");
+      const sent = await submitIntake(formData, (part, parts)=>{
+        planMsgEl.textContent = parts > 1 ? `Uploading your plan\u2026 part ${part} of ${parts}` : "Uploading your plan\u2026";
+      });
+      planMsgEl.textContent = "Sending\u2026";
       const planThanks = sent.fileUploadFailed
         ? `Your details have been received, but your plan document didn't upload. Please email it to <a class="mail-link" href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we'll match it to your request.`
         : `Your plan and details have been received. We'll review it and be in touch at the email you provided.`;
@@ -3234,7 +3291,7 @@ function showContactThanks(wantsCall){
   const card = document.createElement("div");
   card.className = "thanks-card";
   card.id = "contactThanks";
-  card.style.maxWidth = "480px";
+  card.style.maxWidth = "560px";
   card.style.margin = "0 auto";
   card.innerHTML = `<h2>Thank you</h2><p>Your message has been received. ${done} If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p><button type="button" class="btn-ghost" id="closeContactThanks" style="margin-top:10px;">Close</button>`;
   form.hidden = true;

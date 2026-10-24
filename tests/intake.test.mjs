@@ -148,7 +148,7 @@ test("email down: the request is kept, the visitor still sees success, and the r
   assert.equal(kept.steps.email, false);
 
   net.resendMode = "ok";
-  const s = await retryPending(d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(s.finished, 1);
   assert.equal(net.emails.length, 1);
   assert.match(net.emails[0].subject, /\[delayed delivery\]$/);
@@ -164,7 +164,7 @@ test("Supabase down: still emailed now, saved to Supabase by the retry", async (
   assert.equal(net.emails.length, 1);
   assert.equal(net.inserts.submissions.length, 0);
   net.supabaseMode = "ok";
-  const s = await retryPending(d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(s.finished, 1);
   assert.equal(net.inserts.submissions.length, 1);
   assert.equal(net.emails.length, 1, "no second email");
@@ -177,7 +177,7 @@ test("a half-finished Supabase save (client row in, request row failed) complete
   // Simulate: client row already inserted by an earlier attempt.
   net.ids.add(`clients:${rec.clientId}`);
   await d.pending.setJSON(`rec/${rec.id}`, rec);
-  await retryPending(d);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(net.inserts.clients.length, 0, "existing client row treated as done (409)");
   assert.equal(net.inserts.submissions.length, 1);
 });
@@ -424,7 +424,7 @@ test("database down at first: the email still goes out (without a number) and a 
   assert.equal(net.emails.length, 1);
   assert.doesNotMatch(net.emails[0].subject, /^R-2026/);
   net.supabaseMode = "ok";
-  await retryPending(d);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(net.inserts.submissions.length, 1);
 });
 
@@ -461,4 +461,49 @@ test("the attached submission file opens cleanly in Windows: UTF-8 with a byte-o
   const bytes = Buffer.from(att.content, "base64");
   assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
   assert.match(bytes.toString("utf8"), /CALL ME BACK — Morning/);
+});
+
+test("fast reply: once stored, the visitor is answered at once and the save and email finish after the reply", async () => {
+  const net = fakeNet(); let later = null;
+  const d = deps(net, { defer: (work) => { later = work(); } });
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  const r = await handleIntake(body, d);
+  assert.equal(r.ok, true); assert.equal(r.deferred, true);
+  assert.equal(net.emails.length, 0); // not yet — the reply came first
+  await later;
+  assert.equal(net.emails.length, 1);
+  assert.equal(net.inserts.submissions.length, 1);
+  assert.equal(await d.pending.get(`rec/${body.submission_id}`), null); // finished and cleared
+});
+
+test("fast reply: a retry running while a fresh request is still finishing leaves it alone (never two emails)", async () => {
+  const net = fakeNet(); let later = null;
+  const d = deps(net, { defer: (work) => { later = work(); } });
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  await handleIntake(body, d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 30 * 1000 });
+  assert.equal(s.retried, 0);
+  await later;
+  assert.equal(net.emails.length, 1);
+});
+
+test("fast reply: if the background finish is cut short, the stored request is finished by the retry", async () => {
+  const net = fakeNet();
+  const d = deps(net, { defer: () => {} }); // the platform dropped the background work
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  assert.equal((await handleIntake(body, d)).ok, true);
+  assert.equal(net.emails.length, 0);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
+  assert.equal(net.emails.length, 1);
+  assert.equal(net.inserts.submissions.length, 1);
+});
+
+test("fast reply: if the request cannot be stored, it is still delivered before replying", async () => {
+  const net = fakeNet(); let deferred = false;
+  const d = deps(net, { defer: () => { deferred = true; } });
+  d.pending.setJSON = async () => { throw new Error("storage down"); };
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  const r = await handleIntake(body, d);
+  assert.equal(r.ok, true); assert.equal(deferred, false);
+  assert.equal(net.emails.length, 1);
 });
