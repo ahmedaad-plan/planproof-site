@@ -3016,6 +3016,20 @@ function addMicButton(textareaId){
   });
 }
 
+// On a phone the inject appears above the button that revealed it, off the
+// screen (24 October 2026): bring its title into view below the menu each time
+// an inject is shown — on a laptop only when it is not already in view.
+function showInjectInView(){
+  const card = stage.firstElementChild;
+  if(!card) return;
+  const nav = document.querySelector(".sitenav");
+  const navH = nav ? nav.offsetHeight : 70;
+  const r = card.getBoundingClientRect();
+  const narrow = window.matchMedia("(max-width: 900px)").matches;
+  if(!narrow && r.top >= navH && r.top < window.innerHeight * 0.6) return;
+  window.scrollTo({ top: Math.max(0, r.top + window.scrollY - navH - 12), behavior: "smooth" });
+}
+
 function renderCurrentInject(){
   const inj = activeScenario.injects[viewingIndex];
   const tint = iconTint[inj.icon];
@@ -3095,6 +3109,7 @@ function renderCurrentInject(){
     addMicButton("taskCapture");
   }
   speak(speakText);
+  showInjectInView();
 }
 
 function renderTeaserEnd(){
@@ -3242,7 +3257,16 @@ function beginExerciseAfterVideo(){
   renderTimeline();
 }
 
-function handleMainAction(){
+// Bring the demo's main button into view (on a phone it sits below the video).
+function showMainButton(){
+  if(!window.matchMedia("(max-width: 900px)").matches) return;
+  const r = mainBtn.getBoundingClientRect();
+  if(r.bottom > window.innerHeight - 8 || r.top < 0){
+    window.scrollTo({ top: Math.max(0, r.top + window.scrollY - window.innerHeight / 2), behavior: "smooth" });
+  }
+}
+
+function handleMainAction(fromVideo){
   if(!started){
     started = true;
     const video = stage.querySelector(".demo-video");
@@ -3254,13 +3278,16 @@ function handleMainAction(){
         if(advanced || current !== -1) return; advanced = true; // ignore if an inject was already opened from the timeline
         mainBtn.disabled = false;
         mainBtn.textContent = "Reveal first inject";
+        showMainButton();
       };
       video.addEventListener("ended", videoDone, { once: true });
       video.addEventListener("error", videoDone, { once: true });
       setTimeout(()=>{ if(!advanced && video.readyState === 0) videoDone(); }, 4000);
-      const playPromise = video.play();
-      if(playPromise && playPromise.catch){
-        playPromise.catch(videoDone);
+      if(fromVideo !== true){
+        const playPromise = video.play();
+        if(playPromise && playPromise.catch){
+          playPromise.catch(videoDone);
+        }
       }
     } else {
       mainBtn.textContent = "Reveal first inject";
@@ -3289,7 +3316,7 @@ function handleMainAction(){
     renderTimeline();
   }
 }
-mainBtn.addEventListener("click", handleMainAction);
+mainBtn.addEventListener("click", ()=> handleMainAction());
 
 const demoIntroHTML = `
   <div class="demo-video-wrap">
@@ -3306,6 +3333,10 @@ const demoIntroHTML = `
 
 function renderDemoIntro(){
   stage.innerHTML = demoIntroHTML;
+  // Pressing play on the video itself starts the demo, exactly like
+  // "Start exercise" (on a phone the video's own play button is what people tap).
+  const video = stage.querySelector(".demo-video");
+  if(video) video.addEventListener("play", ()=>{ if(!started && activeScenario) handleMainAction(true); });
 }
 
 resetBtn.addEventListener("click", ()=>{
@@ -3378,10 +3409,14 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   }
 });
 
+// "Watch a Demo" always starts the demo again from the beginning (24 October
+// 2026) — stopping the timer, the sound and the reading voice — unless it is
+// already at the beginning.
 document.querySelectorAll('a[href="#demo"]').forEach(link=>{
   link.addEventListener("click", ()=>{
-    const previewFinished = closed || (activeScenario && viewingIndex === activeScenario.injects.length);
-    if(previewFinished) resetBtn.click();
+    const video = stage.querySelector(".demo-video");
+    if(video && !video.paused) video.pause();
+    if(started || current !== -1 || closed) resetBtn.click();
   });
 });
 
