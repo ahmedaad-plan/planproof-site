@@ -1357,6 +1357,43 @@
     .contact-grid{ grid-template-columns: 1fr; }
     .contact-form{ padding: 20px 18px; }
   }
+
+  /* --- 24 Oct 2026: demo controls on phones — a bar above the video that docks
+     to the bottom of the screen while the demo is in view, so the next action
+     ("Start exercise", "Reveal next inject") is always under the thumb. --- */
+  .demo-mbar{ display: none; }
+  @media (max-width: 820px){
+    .demo-mbar{
+      display: flex; align-items: center; gap: 10px;
+      background: var(--panel-raised); border: 1.5px solid #d84a3a; border-radius: 12px;
+      padding: 10px 12px; margin: 0 0 14px;
+    }
+    .demo-mbar-clock{ display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; }
+    .demo-mbar-label{ font-size: 11px; color: var(--text-muted); }
+    .demo-mbar-time{ font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; color: var(--text); }
+    .demo-mbar-btn{
+      font: inherit; font-size: 15px; font-weight: 700; color: #fff; background: #d84a3a;
+      border: none; border-radius: 999px; padding: 0 18px; min-height: 46px; cursor: pointer; white-space: nowrap;
+    }
+    .demo-mbar-btn:disabled{ opacity: .55; cursor: default; }
+    .demo-mbar-reset{
+      font: inherit; font-size: 13.5px; color: var(--text); background: transparent;
+      border: 1px solid var(--border); border-radius: 999px; padding: 0 12px; min-height: 40px; cursor: pointer;
+    }
+    .demo-mbar-dock{
+      position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 60;
+      margin: 0; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      transform: translateY(140%); transition: transform .22s ease; pointer-events: none;
+    }
+    .demo-mbar-dock.show{ transform: none; pointer-events: auto; }
+    .demo-mbar-btn.nudge{ animation: mbarNudge 1.2s ease 2; }
+    @keyframes mbarNudge{ 0%,100%{ box-shadow: 0 0 0 0 rgba(216,74,58,.0); } 50%{ box-shadow: 0 0 0 8px rgba(216,74,58,.35); } }
+    @media (prefers-reduced-motion: reduce){ .demo-mbar-dock{ transition: none; } .demo-mbar-btn.nudge{ animation: none; } }
+    /* the rail's own button, reset and clock are replaced by the bar on phones */
+    #demoApp .rail #mainBtn, #demoApp .rail #resetBtn, #demoApp .rail .timer-block{ display: none !important; }
+    /* room for the docked bar under the last part of the demo */
+    #demo .section-inner{ padding-bottom: 96px; }
+  }
 </style>
 </head>
 <body>
@@ -1512,6 +1549,16 @@
     <h2>See a real exercise unfold</h2>
     <p class="demo-sub">This is what a client's team actually experiences — a simulated breaking-news alert, followed by a live, timed exercise with real decision points.</p>
 
+<div class="demo-mbar" id="demoBar" aria-label="Demo controls">
+      <div class="demo-mbar-clock"><span class="demo-mbar-label">Exercise time</span><span class="demo-mbar-time" data-sync="time">00:00</span></div>
+      <button type="button" class="demo-mbar-reset" data-sync="reset" hidden>Restart</button>
+      <button type="button" class="demo-mbar-btn" data-sync="main">Start exercise</button>
+    </div>
+    <div class="demo-mbar demo-mbar-dock" id="demoDock" aria-hidden="true">
+      <div class="demo-mbar-clock"><span class="demo-mbar-label">Exercise time</span><span class="demo-mbar-time" data-sync="time">00:00</span></div>
+      <button type="button" class="demo-mbar-reset" data-sync="reset" tabindex="-1" hidden>Restart</button>
+      <button type="button" class="demo-mbar-btn" data-sync="main" tabindex="-1">Start exercise</button>
+    </div>
     <div class="app" id="demoApp">
       <aside class="rail">
         <div class="eyebrow" id="railEyebrow">Tabletop exercise</div>
@@ -3257,15 +3304,6 @@ function beginExerciseAfterVideo(){
   renderTimeline();
 }
 
-// Bring the demo's main button into view (on a phone it sits below the video).
-function showMainButton(){
-  if(!window.matchMedia("(max-width: 900px)").matches) return;
-  const r = mainBtn.getBoundingClientRect();
-  if(r.bottom > window.innerHeight - 8 || r.top < 0){
-    window.scrollTo({ top: Math.max(0, r.top + window.scrollY - window.innerHeight / 2), behavior: "smooth" });
-  }
-}
-
 function handleMainAction(fromVideo){
   if(!started){
     started = true;
@@ -3278,7 +3316,7 @@ function handleMainAction(fromVideo){
         if(advanced || current !== -1) return; advanced = true; // ignore if an inject was already opened from the timeline
         mainBtn.disabled = false;
         mainBtn.textContent = "Reveal first inject";
-        showMainButton();
+        if(window.nudgeDemoButton) window.nudgeDemoButton();
       };
       video.addEventListener("ended", videoDone, { once: true });
       video.addEventListener("error", videoDone, { once: true });
@@ -3408,6 +3446,68 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
     showSendFallback(document.getElementById("contactMsg"), "Website enquiry \u2014 " + (document.getElementById("c_organization").value || nameEl.value), contactSummaryText);
   }
 });
+
+// Phone demo bar (24 October 2026): two copies of the controls — one above the
+// video, one docked at the bottom of the screen — both mirror the real button,
+// Reset and clock in the rail and simply press them.
+(function demoBars(){
+  const bars = [...document.querySelectorAll(".demo-mbar")];
+  if(!bars.length) return;
+  const timer = document.getElementById("timerValue");
+  function sync(){
+    const resetShown = resetBtn.style.display !== "none";
+    bars.forEach((bar)=>{
+      bar.querySelector('[data-sync="time"]').textContent = timer.textContent;
+      const b = bar.querySelector('[data-sync="main"]');
+      b.textContent = mainBtn.textContent;
+      b.disabled = mainBtn.disabled;
+      bar.querySelector('[data-sync="reset"]').hidden = !resetShown;
+    });
+  }
+  const mo = new MutationObserver(sync);
+  [mainBtn, resetBtn, timer].forEach((el)=> mo.observe(el, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["disabled", "style"] }));
+  bars.forEach((bar)=>{
+    bar.querySelector('[data-sync="main"]').addEventListener("click", ()=>{ if(!mainBtn.disabled) mainBtn.click(); });
+    bar.querySelector('[data-sync="reset"]').addEventListener("click", ()=>{
+      resetBtn.click();
+      const demo = document.getElementById("demo");
+      if(demo) demo.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  sync();
+  // Dock the bar while the demo is on screen and the top bar has scrolled away.
+  const top = document.getElementById("demoBar"), dock = document.getElementById("demoDock");
+  const demoApp = document.getElementById("demoApp");
+  let topVisible = true, demoVisible = false; // set by measure() below
+  const update = ()=>{
+    const on = demoVisible && !topVisible;
+    dock.classList.toggle("show", on);
+    dock.setAttribute("aria-hidden", on ? "false" : "true");
+    dock.querySelectorAll("button").forEach((b)=> b.tabIndex = on ? 0 : -1);
+  };
+  // Measured against the sticky menu: a bar hidden behind the menu counts as gone.
+  const nav = document.querySelector(".sitenav");
+  let queued = false;
+  function measure(){
+    queued = false;
+    const navBottom = nav ? nav.getBoundingClientRect().bottom : 0;
+    const t = top.getBoundingClientRect(), a = demoApp.getBoundingClientRect();
+    topVisible = t.top >= navBottom - 8 && t.bottom <= window.innerHeight; // whole bar in view
+    demoVisible = a.top < window.innerHeight - 120 && a.bottom > navBottom + 80;
+    update();
+  }
+  const queue = ()=>{ if(!queued){ queued = true; requestAnimationFrame(measure); } };
+  window.addEventListener("scroll", queue, { passive: true });
+  window.addEventListener("resize", queue);
+  measure();
+  // A short pulse on the button when the next step becomes available.
+  window.nudgeDemoButton = ()=>{
+    bars.forEach((bar)=>{
+      const b = bar.querySelector('[data-sync="main"]');
+      b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge");
+    });
+  };
+})();
 
 // "Watch a Demo" always starts the demo again from the beginning (24 October
 // 2026) — stopping the timer, the sound and the reading voice — unless it is
