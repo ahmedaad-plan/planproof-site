@@ -148,7 +148,7 @@ test("email down: the request is kept, the visitor still sees success, and the r
   assert.equal(kept.steps.email, false);
 
   net.resendMode = "ok";
-  const s = await retryPending(d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(s.finished, 1);
   assert.equal(net.emails.length, 1);
   assert.match(net.emails[0].subject, /\[delayed delivery\]$/);
@@ -164,7 +164,7 @@ test("Supabase down: still emailed now, saved to Supabase by the retry", async (
   assert.equal(net.emails.length, 1);
   assert.equal(net.inserts.submissions.length, 0);
   net.supabaseMode = "ok";
-  const s = await retryPending(d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(s.finished, 1);
   assert.equal(net.inserts.submissions.length, 1);
   assert.equal(net.emails.length, 1, "no second email");
@@ -177,7 +177,7 @@ test("a half-finished Supabase save (client row in, request row failed) complete
   // Simulate: client row already inserted by an earlier attempt.
   net.ids.add(`clients:${rec.clientId}`);
   await d.pending.setJSON(`rec/${rec.id}`, rec);
-  await retryPending(d);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(net.inserts.clients.length, 0, "existing client row treated as done (409)");
   assert.equal(net.inserts.submissions.length, 1);
 });
@@ -359,14 +359,14 @@ test("the preferred exercise language is saved, and Arabic is flagged in the ema
   assert.equal(net.inserts.submissions[0].exercise_language, "english");
   assert.ok(!net.emails[0].text.includes("ARABIC"));
 
-  // Arabic (coming soon): stored as a preference, and the email says it is not offered yet.
+  // Arabic (on request since 24 October 2026, decision 8): stored as a preference; the email says four weeks for the first one.
   net = fakeNet(); d = deps(net);
   body = genericBody(); body.data.exercise_language = "arabic";
   r = await handleIntake(body, d);
   assert.equal(r.ok, true);
   assert.equal(net.inserts.submissions[0].exercise_language, "arabic");
   assert.match(net.emails[0].text, /prefer the exercise in ARABIC/);
-  assert.match(net.emails[0].text, /not offered yet/);
+  assert.match(net.emails[0].text, /about four weeks from booking/);
 });
 
 test("a request without a language answer, or with a made-up one, still saves (no language column sent)", async () => {
@@ -424,6 +424,86 @@ test("database down at first: the email still goes out (without a number) and a 
   assert.equal(net.emails.length, 1);
   assert.doesNotMatch(net.emails[0].subject, /^R-2026/);
   net.supabaseMode = "ok";
-  await retryPending(d);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
   assert.equal(net.inserts.submissions.length, 1);
+});
+
+test("self-service kit switched off: an older page asking for the kit is still delivered, flagged; the new page's facilitated request is not", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const old = genericBody(); old.data.privacy_ack = "yes"; old.data.service_type = "Self-service kit";
+  assert.equal((await handleIntake(old, d)).ok, true);
+  assert.equal(net.inserts.submissions[0].service_type, "Self-service kit");
+  assert.match(net.emails[0].text, /SELF-SERVICE KIT REQUESTED/);
+  const now = genericBody(); now.data.privacy_ack = "yes"; now.data.service_type = "Facilitated session";
+  assert.equal((await handleIntake(now, d)).ok, true);
+  assert.doesNotMatch(net.emails[1].text, /SELF-SERVICE KIT/);
+});
+
+test("callback: 'Call me back' on the contact form is flagged in the subject, at the top of the email and on the admin page; 'By email' is not", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const mk = (reply) => ({ submission_id: crypto.randomUUID(), form_name: "contact-request", honeypot: "", elapsed_ms: 60000, file: null, file_upload_failed: null,
+    data: { name: "Test Person", mobile: "0501234567", email: "t@example.com", privacy_ack: "yes", reply_by: reply, callback_time: "Afternoon (12 to 5 pm)", message: "Leadership exercise", formatted_summary: "New contact form message" } });
+  assert.equal((await handleIntake(mk("call"), d)).ok, true);
+  assert.match(net.emails[0].subject, /CALLBACK — /);
+  assert.match(net.emails[0].text, /CALL BACK REQUESTED — Test Person on 0501234567, best time: Afternoon \(12 to 5 pm\)/);
+  assert.equal(net.inserts.submissions[0].service_type, "Callback request");
+  assert.equal((await handleIntake(mk("email"), d)).ok, true);
+  assert.doesNotMatch(net.emails[1].subject, /CALLBACK/);
+  assert.doesNotMatch(net.emails[1].text, /CALL BACK REQUESTED/);
+  assert.notEqual(net.inserts.submissions[1].service_type, "Callback request");
+});
+
+test("the attached submission file opens cleanly in Windows: UTF-8 with a byte-order mark, dashes intact", async () => {
+  const net = fakeNet(); const d = deps(net);
+  const body = genericBody(); body.data.privacy_ack = "yes"; body.data.formatted_summary = "Reply by: CALL ME BACK — Morning";
+  assert.equal((await handleIntake(body, d)).ok, true);
+  const att = net.emails[0].attachments.find((a) => a.filename.endsWith("-submission.txt"));
+  const bytes = Buffer.from(att.content, "base64");
+  assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+  assert.match(bytes.toString("utf8"), /CALL ME BACK — Morning/);
+});
+
+test("fast reply: once stored, the visitor is answered at once and the save and email finish after the reply", async () => {
+  const net = fakeNet(); let later = null;
+  const d = deps(net, { defer: (work) => { later = work(); } });
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  const r = await handleIntake(body, d);
+  assert.equal(r.ok, true); assert.equal(r.deferred, true);
+  assert.equal(net.emails.length, 0); // not yet — the reply came first
+  await later;
+  assert.equal(net.emails.length, 1);
+  assert.equal(net.inserts.submissions.length, 1);
+  assert.equal(await d.pending.get(`rec/${body.submission_id}`), null); // finished and cleared
+});
+
+test("fast reply: a retry running while a fresh request is still finishing leaves it alone (never two emails)", async () => {
+  const net = fakeNet(); let later = null;
+  const d = deps(net, { defer: (work) => { later = work(); } });
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  await handleIntake(body, d);
+  const s = await retryPending({ ...d, nowMs: Date.now() + 30 * 1000 });
+  assert.equal(s.retried, 0);
+  await later;
+  assert.equal(net.emails.length, 1);
+});
+
+test("fast reply: if the background finish is cut short, the stored request is finished by the retry", async () => {
+  const net = fakeNet();
+  const d = deps(net, { defer: () => {} }); // the platform dropped the background work
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  assert.equal((await handleIntake(body, d)).ok, true);
+  assert.equal(net.emails.length, 0);
+  await retryPending({ ...d, nowMs: Date.now() + 3 * 60 * 1000 });
+  assert.equal(net.emails.length, 1);
+  assert.equal(net.inserts.submissions.length, 1);
+});
+
+test("fast reply: if the request cannot be stored, it is still delivered before replying", async () => {
+  const net = fakeNet(); let deferred = false;
+  const d = deps(net, { defer: () => { deferred = true; } });
+  d.pending.setJSON = async () => { throw new Error("storage down"); };
+  const body = genericBody(); body.data.privacy_ack = "yes";
+  const r = await handleIntake(body, d);
+  assert.equal(r.ok, true); assert.equal(deferred, false);
+  assert.equal(net.emails.length, 1);
 });

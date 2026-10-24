@@ -212,7 +212,8 @@ export async function saveToSupabase(record, deps) {
     id: record.id,
     client_id: record.clientId,
     form_name: clean(formName, 60),
-    service_type: clean(data.service_type, 200),
+    // A "Call me back" from the contact form shows as such on the admin page.
+    service_type: wantsCallback(record) ? "Callback request" : clean(data.service_type, 200),
     risk_concern_1: riskMain,
     risk_concern_2: risk2,
     risk_concern_3: risk3,
@@ -257,12 +258,18 @@ export async function assembleFile(file, uploads) {
   return { buffer };
 }
 
+// Contact form "How would you like us to reply?" = "Call me back" (22 October 2026).
+export function wantsCallback(record) {
+  return record.formName === "contact-request" && String(record.data.reply_by || "").trim() === "call";
+}
+
 export function buildEmail(record, fileResult) {
   const { data, formName } = record;
   const org = clean(data.organization, 200) || "PlanProof";
   const usedBeforeText = { yes: "Yes", no: "No", not_sure: "Not sure" }[String(data.used_before || "").trim()];
   const delayed = record.attempts > 0 ? " [delayed delivery]" : "";
   const subject = (record.spamReasons.length ? "⚠ Possible spam — " : "")
+    + (wantsCallback(record) ? "CALLBACK — " : "")
     + (record.requestNo ? `${record.requestNo} — ` : "")
     + `New ${formName} submission — ${org}`
     + (usedBeforeText ? ` (exercised before: ${usedBeforeText})` : "")
@@ -275,13 +282,22 @@ export function buildEmail(record, fileResult) {
     lines.push("If it is junk, ignore it and erase it on the admin page.", "");
   }
   lines.push(`New submission: ${formName}`, `Received: ${uaeTime(record.receivedAt)} (UAE time)`);
+  if (wantsCallback(record)) {
+    lines.push(`CALL BACK REQUESTED — ${clean(data.name, 200) || "the client"} on ${clean(data.mobile, 60) || "(no number given)"}, best time: ${clean(data.callback_time, 100) || "any time"} (UAE time).`);
+  }
   if (record.requestNo) lines.push(`Request number: ${record.requestNo} (open it on plan-proof.com/admin)`);
   if (clean(data.privacy_ack, 10) !== "yes") {
     lines.push("PRIVACY POLICY NOT CONFIRMED — sent from an older copy of the page. Confirm the client has read the privacy policy before using these details.");
   }
+  if (/self[\s-]*service/i.test(String(data.service_type || ""))) {
+    // The self-service kit was withdrawn on 22 October 2026; only an older copy of
+    // the page can still ask for it. Never dropped — flagged so the reply offers
+    // the facilitated exercise instead.
+    lines.push("SELF-SERVICE KIT REQUESTED — sent from an older copy of the page. The kit is no longer offered: reply offering the facilitated exercise (60, 90 or 120 minutes).");
+  }
   lines.push(`Marketing emails: ${clean(data.marketing_opt_in, 10) === "yes" ? "YES — opted in" : "No (do not send marketing)"}`);
   if (String(data.exercise_language || "").trim() === "arabic") {
-    lines.push("Language: the client would prefer the exercise in ARABIC. Arabic exercises are not offered yet — the form told them it will run in English for now (the report is in both languages).", "");
+    lines.push("Language: the client would prefer the exercise in ARABIC. The form told them the exercise can run fully in Arabic and that the first Arabic exercise needs about four weeks from booking (the report is in both languages). Confirm the timing with them.", "");
   }
   if (record.attempts > 0) lines.push("(This email was delayed: the first attempt to send it failed and it was retried automatically.)");
   lines.push("", data.formatted_summary || "(No summary available)");
@@ -302,7 +318,9 @@ export function buildEmail(record, fileResult) {
   }
 
   const text = lines.join("\n");
-  attachments.push({ filename: `${formName}-submission.txt`, content: Buffer.from(text).toString("base64") });
+  // The byte-order mark tells Windows (Notepad, Outlook's preview) the file is
+  // UTF-8; without it dashes and symbols showed as "â€"" (23 October 2026).
+  attachments.push({ filename: `${formName}-submission.txt`, content: Buffer.from("\uFEFF" + text, "utf8").toString("base64") });
   return { subject, text, attachments };
 }
 
@@ -460,13 +478,25 @@ export async function handleIntake(body, deps) {
     log.error(`[intake ${record.id}] Could not store the request:`, err.message);
   }
 
-  await processRecord(record, deps);
-  try {
-    await settleRecord(record, deps);
-    stored = true;
-  } catch (err) {
-    log.error(`[intake ${record.id}] Could not settle the request:`, err.message);
+  // Fast reply (24 October 2026): once the request is safely stored, the
+  // visitor is told at once and the database save and the email finish after
+  // the reply (deps.defer = Netlify's context.waitUntil). If that is ever cut
+  // short, the 5-minute retry finishes the stored request. A request that
+  // could NOT be stored is still worked through before replying, as before.
+  const finish = async () => {
+    await processRecord(record, deps);
+    try {
+      await settleRecord(record, deps);
+      stored = true;
+    } catch (err) {
+      log.error(`[intake ${record.id}] Could not settle the request:`, err.message);
+    }
+  };
+  if (stored && typeof deps.defer === "function") {
+    deps.defer(() => finish().catch((err) => log.error(`[intake ${record.id}] Background finish failed:`, err.message)));
+    return { ok: true, deferred: true, steps: record.steps };
   }
+  await finish();
   const ok = stored || record.steps.supabase || record.steps.email;
   if (!ok) log.error(`[intake ${record.id}] LOST: not stored, not saved, not emailed. Visitor was shown the email fallback.`);
   return { ok, steps: record.steps };
@@ -475,6 +505,8 @@ export async function handleIntake(body, deps) {
 // ---------------------------------------------------------------------------
 // 5. Scheduled retry and clean-up (intake-retry, every 5 minutes)
 // ---------------------------------------------------------------------------
+
+export const FRESH_GRACE_MS = 2 * 60 * 1000;
 
 export async function retryPending(deps) {
   const log = deps.log || console;
@@ -501,6 +533,9 @@ export async function retryPending(deps) {
     const record = await deps.pending.get(key, { type: "json" });
     if (!record) continue;
     if (record.file) referencedUploads.add(record.file.uploadId);
+    // A request received moments ago may still be finishing after its reply
+    // (see handleIntake); leave it alone so it is never emailed twice.
+    if (!record.attempts && nowMs - Date.parse(record.receivedAt) < FRESH_GRACE_MS) { summary.waiting++; continue; }
     // Never give up. After a day, retry once an hour; the health check
     // (system-check, /api/health, admin page banner) is already alarming.
     if (nowMs - Date.parse(record.receivedAt) > RETRY_SLOW_AFTER_MS) {
