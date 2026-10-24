@@ -95,6 +95,14 @@
       "mainEntity": [
         {
           "@type": "Question",
+          "name": "Why choose PlanProof?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PlanProof designs realistic, high-pressure exercises built on ISO 22301 and NCEMA 7000:2021 and shaped by real incidents in the region. Every exercise is designed for your organization and reviewed by you before the day. Our facilitator runs it live with your team, supported by our own exercise technology, and a bilingual English and Arabic report with a readiness score follows within 3 working days. We then re-test against your actions, so you can show your board and auditors real progress. One service, from scenario design to findings, re-testing and improvement."
+          }
+        },
+        {
+          "@type": "Question",
           "name": "What is a business continuity tabletop exercise?",
           "acceptedAnswer": {
             "@type": "Answer",
@@ -114,7 +122,7 @@
           "name": "How long does an exercise take?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. You choose the duration when you submit your request, and the number and pace of injects is designed to fit it."
+            "text": "Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. For larger or multi-site exercises we also design longer sessions of 150 or 180 minutes. You choose the duration in your request, and the number and pace of injects is designed to fit it."
           }
         },
         {
@@ -123,6 +131,30 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "The people who would make or carry out decisions in a real incident — typically executive leadership, operations, IT, communications, HR, legal and compliance, plus any department central to the scenario. You select the participating departments in the request form."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How quickly can we get started?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Once we have confirmed the details with you, your initial scenario is ready for your review within 5 working days. We then agree the exercise date with you."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How often should we test our plans?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both ISO 22301 and NCEMA 7000:2021 expect exercises at planned intervals and after significant changes. Most organizations test their different plans at least once a year, and many run several tabletop exercises a year, each testing a different scenario. It is also good practice to exercise again after a significant change, such as a new site, a new system, an updated plan or a restructure."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the exercise run in Arabic?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Exercises can run fully in Arabic on request; please allow about four weeks from booking for your first Arabic exercise. Whichever language the exercise runs in, your report is always delivered in both English and Arabic."
           }
         },
         {
@@ -139,6 +171,14 @@
           "acceptedAnswer": {
             "@type": "Answer",
             "text": "A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does an exercise cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The price depends on the duration, the number of departments and sites, and whether the exercise is built from your own plan. Please contact us for details and we’ll send you a proposal."
           }
         },
         {
@@ -1019,7 +1059,8 @@
   .choice-title{
     font-family: "Space Grotesk", sans-serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    color: #d84a3a;
     margin-bottom: 8px;
   }
   .choice-card p{
@@ -1257,7 +1298,15 @@
   }
 
   .length-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 8px 0 22px; }
-  .length-card{ position: relative; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; }
+  .length-card{ position: relative; display: block; text-decoration: none; color: inherit; cursor: pointer; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .length-card:hover, .length-card:focus-visible{ transform: translateY(-3px); border-color: #d84a3a; box-shadow: 0 10px 24px var(--shadow); outline: none; }
+  .length-card.featured:hover, .length-card.featured:focus-visible{ border-color: #d84a3a; }
+  .length-go{ display: inline-block; margin-top: 10px; font-size: 13.5px; font-weight: 600; color: #d84a3a; }
+  .length-card:hover .length-go{ text-decoration: underline; text-underline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce){ .length-card{ transition: none; } .length-card:hover, .length-card:focus-visible{ transform: none; } }
+  .chosen-duration{ max-width: 760px; margin: 0 auto 14px; text-align: center; font-size: 14.5px; color: var(--text); }
+  .chosen-duration strong{ color: #d84a3a; }
+  .chosen-duration button{ background: none; border: none; color: var(--text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; margin-left: 6px; }
   .length-card.featured{ border: 2px solid var(--amber); padding: 23px 21px 21px; }
   .length-badge{ position: absolute; top: -11px; left: 20px; background: var(--amber); color: #10151b; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
   .length-time{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
@@ -1278,7 +1327,7 @@
   @media (max-width: 700px){ .services-cta .btn-pill{ flex: 1 1 100%; } }
   .services-cta .btn-pill-primary{ background: #d84a3a; color: #fff; }
   .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
-  @media (max-width: 860px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
+  @media (max-width: 760px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
   @media (max-width: 700px){ .length-min{ font-size: 38px; } }
 
   /* --- 24 Oct 2026: Services and Get in touch fit one laptop screen --- */
@@ -1296,6 +1345,11 @@
   .included-list{ gap: 6px; }
   .services .service-note{ margin-top: 8px; }
   .services-cta{ margin-top: 10px; }
+  .length-card{ padding: 15px 20px 14px; }
+  .length-card.featured{ padding: 14px 19px 13px; }
+  .length-time{ margin-bottom: 2px; }
+  .length-go{ margin-top: 6px; }
+  .length-longer{ margin-bottom: 10px; }
   .contact-form{ max-width: 720px; margin: 0 auto; padding: 22px 28px; }
   .contact-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
   .contact-form .returning-q{ margin-top: 12px; }
@@ -1408,21 +1462,24 @@
     <h2>One expert-led exercise, three durations</h2>
     <p class="section-lead">Every PlanProof exercise is designed for you and run by our facilitator. Choose the duration that matches the scope of what you want to test.</p>
     <div class="length-grid">
-      <div class="length-card">
+      <a href="#tool" class="length-card" data-duration="60 minutes" aria-label="Choose 60 minutes (Focused) and start your exercise request">
         <div class="length-time"><span class="length-min">60</span><span class="length-unit">minutes</span></div>
         <h3>Focused</h3>
         <p>One critical risk or one part of your plan, tested with a small team. A good first exercise, or a single department.</p>
-      </div>
-      <div class="length-card featured">
+        <span class="length-go">Choose 60 minutes</span>
+      </a>
+      <a href="#tool" class="length-card featured" data-duration="90 minutes" aria-label="Choose 90 minutes (Standard) and start your exercise request">
         <span class="length-badge">Recommended</span><div class="length-time"><span class="length-min">90</span><span class="length-unit">minutes</span></div>
         <h3>Standard</h3>
         <p>The full picture: several departments working the same incident, from the first alert to the recovery decisions.</p>
-      </div>
-      <div class="length-card">
+        <span class="length-go">Choose 90 minutes</span>
+      </a>
+      <a href="#tool" class="length-card" data-duration="120 minutes" aria-label="Choose 120 minutes (Extended) and start your exercise request">
         <div class="length-time"><span class="length-min">120</span><span class="length-unit">minutes</span></div>
         <h3>Extended</h3>
         <p>Complex or multi-site scenarios, with more departments, more pressure and a longer structured debrief.</p>
-      </div>
+        <span class="length-go">Choose 120 minutes</span>
+      </a>
     </div>
     <p class="length-longer"><strong>Need a longer session?</strong> We also design 150- and 180-minute exercises, for example a half-day exercise across several sites or agencies.</p>
     <div class="included">
@@ -1494,6 +1551,11 @@
   <div class="section-inner">
     <h2>Frequently asked questions</h2>
     <div class="faq-list">
+      <!-- One list: the JSON-LD FAQPage at the top of the page is generated from the same questions. -->
+      <details class="faq-item">
+        <summary>Why choose PlanProof?</summary>
+        <p>PlanProof designs realistic, high-pressure exercises built on ISO 22301 and NCEMA 7000:2021 and shaped by real incidents in the region. Every exercise is designed for your organization and reviewed by you before the day. Our facilitator runs it live with your team, supported by our own exercise technology, and a bilingual English and Arabic report with a readiness score follows within 3 working days. We then re-test against your actions, so you can show your board and auditors real progress. One service, from scenario design to findings, re-testing and improvement.</p>
+      </details>
       <details class="faq-item">
         <summary>What is a business continuity tabletop exercise?</summary>
         <p>A tabletop exercise is a facilitated, discussion-based session in which your team works through a realistic disruption scenario. Timed injects — new developments such as a system outage, a media inquiry or a regulatory question — test how your plans, roles and decisions hold up, without disrupting live operations.</p>
@@ -1504,11 +1566,23 @@
       </details>
       <details class="faq-item">
         <summary>How long does an exercise take?</summary>
-        <p>Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. You choose the duration when you submit your request, and the number and pace of injects is designed to fit it.</p>
+        <p>Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. For larger or multi-site exercises we also design longer sessions of 150 or 180 minutes. You choose the duration in your request, and the number and pace of injects is designed to fit it.</p>
       </details>
       <details class="faq-item">
         <summary>Who should take part?</summary>
         <p>The people who would make or carry out decisions in a real incident — typically executive leadership, operations, IT, communications, HR, legal and compliance, plus any department central to the scenario. You select the participating departments in the request form.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How quickly can we get started?</summary>
+        <p>Once we have confirmed the details with you, your initial scenario is ready for your review within 5 working days. We then agree the exercise date with you.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How often should we test our plans?</summary>
+        <p>Both ISO 22301 and NCEMA 7000:2021 expect exercises at planned intervals and after significant changes. Most organizations test their different plans at least once a year, and many run several tabletop exercises a year, each testing a different scenario. It is also good practice to exercise again after a significant change, such as a new site, a new system, an updated plan or a restructure.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can the exercise run in Arabic?</summary>
+        <p>Yes. Exercises can run fully in Arabic on request; please allow about four weeks from booking for your first Arabic exercise. Whichever language the exercise runs in, your report is always delivered in both English and Arabic.</p>
       </details>
       <details class="faq-item" id="faqAfterRequest">
         <summary>What happens after we send a request?</summary>
@@ -1524,6 +1598,10 @@
       <details class="faq-item">
         <summary>What do we receive at the end?</summary>
         <p>A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How much does an exercise cost?</summary>
+        <p>The price depends on the duration, the number of departments and sites, and whether the exercise is built from your own plan. Please <a href="#contact" class="mail-link">contact us</a> for details and we’ll send you a proposal.</p>
       </details>
       <details class="faq-item">
         <summary>Is the information we share kept confidential?</summary>
@@ -1910,13 +1988,35 @@ window.addEventListener("popstate", ()=>{
   if(tool) tool.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 document.addEventListener("click", (e)=>{
-  const a = e.target.closest('a[href="#home"], a[href="#tool"]');
+  const a = e.target.closest('a[href="#home"], a[href="#tool"]:not(.length-card)');
   if(!a || !formIsOpen()) return;
   if(!leaveFormToChoices()) e.preventDefault();
 }, true);
 
+// A duration card in Services was clicked (24 October 2026): remember it,
+// say so above the two choices, and pre-select it in whichever form opens.
+let chosenDuration = null;
+function chosenDurationHTML(){
+  if(!chosenDuration) return "";
+  return `<p class="chosen-duration" id="chosenDuration"><strong>${chosenDuration}</strong> chosen \u2014 now choose how we build your scenario.<button type="button" id="clearDuration">Change</button></p>`;
+}
+document.querySelectorAll(".length-card[data-duration]").forEach((card)=>card.addEventListener("click", (e)=>{
+  if(formIsOpen()){
+    // A form is already open: set its duration instead of closing it.
+    const sel = document.querySelector("#f_duration, #p_duration");
+    if(sel){ sel.value = card.dataset.duration; intakeDirty = true; }
+    return;
+  }
+  chosenDuration = card.dataset.duration;
+  renderScenarioChoice();
+}));
+function applyChosenDuration(p){
+  const sel = document.getElementById(p + "_duration");
+  if(sel && chosenDuration) sel.value = chosenDuration;
+}
+
 function renderScenarioChoice(){
-  requestStage.innerHTML = `
+  requestStage.innerHTML = chosenDurationHTML() + `
     <div class="choice-grid">
       <button class="choice-card" data-key="generic">
         <div class="choice-title">Generic scenario</div>
@@ -1932,8 +2032,15 @@ function renderScenarioChoice(){
       <p>Details and plans shared with us are reviewed directly, one-to-one, and are never published or made publicly accessible. We ask that you remove or redact information that isn't essential to the exercise design \u2014 individual staff names, ID numbers, and exact financial figures. Materials are deleted after your exercise package is delivered unless you ask us to retain them, and a mutual NDA is available on request.</p>
     </div>
   `;
-  document.querySelector('[data-key="generic"]').addEventListener("click", ()=>{ renderGenericForm(); noteFormOpened(); });
-  document.querySelector('[data-key="planTest"]').addEventListener("click", ()=>{ renderPlanForm(); noteFormOpened(); });
+  document.querySelector('[data-key="generic"]').addEventListener("click", ()=>{ renderGenericForm(); applyChosenDuration("f"); noteFormOpened(); });
+  document.querySelector('[data-key="planTest"]').addEventListener("click", ()=>{ renderPlanForm(); applyChosenDuration("p"); noteFormOpened(); });
+  const clearBtn = document.getElementById("clearDuration");
+  if(clearBtn) clearBtn.addEventListener("click", ()=>{
+    chosenDuration = null;
+    const services = document.getElementById("services");
+    renderScenarioChoice();
+    if(services) services.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function renderGenericForm(){
@@ -2189,9 +2296,9 @@ function languageHTML(p){ return `
       <p class="returning-q" id="${p}_langLabel">Which language would you prefer for the exercise?</p>
       <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_langLabel" id="${p}_langGroup">
         <label><input type="radio" name="exercise_language" value="english" checked> English</label>
-        <label><input type="radio" name="exercise_language" value="arabic"> Arabic <span class="opt">(coming soon)</span></label>
+        <label><input type="radio" name="exercise_language" value="arabic"> Arabic</label>
       </div>
-      <p class="returning-note" id="${p}_langNote" hidden>Thank you — we've noted your preference. Exercises in Arabic are coming soon; for now your exercise will run in English. Your report is always delivered in both English and Arabic.</p>`; }
+      <p class="returning-note" id="${p}_langNote" hidden>Thank you — your exercise can run fully in Arabic. Please allow about four weeks from booking for your first Arabic exercise; we'll confirm the timing with you. Your report is always delivered in both English and Arabic.</p>`; }
 
 function initLanguage(p){
   document.querySelectorAll("#" + p + "_langGroup input").forEach((r)=>r.addEventListener("change", ()=>{
@@ -2202,7 +2309,7 @@ function initLanguage(p){
 
 function languagePair(p){
   const v = (document.querySelector("#" + p + "_langGroup input:checked") || {}).value;
-  return ["Preferred exercise language", v === "arabic" ? "Arabic (coming soon — preference noted; exercise runs in English for now)" : "English"];
+  return ["Preferred exercise language", v === "arabic" ? "Arabic (first Arabic exercise: about four weeks from booking)" : "English"];
 }
 
 // Returning clients (12 October 2026, Ahmed's remarks): the client reference

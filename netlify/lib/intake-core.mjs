@@ -297,7 +297,7 @@ export function buildEmail(record, fileResult) {
   }
   lines.push(`Marketing emails: ${clean(data.marketing_opt_in, 10) === "yes" ? "YES — opted in" : "No (do not send marketing)"}`);
   if (String(data.exercise_language || "").trim() === "arabic") {
-    lines.push("Language: the client would prefer the exercise in ARABIC. Arabic exercises are not offered yet — the form told them it will run in English for now (the report is in both languages).", "");
+    lines.push("Language: the client would prefer the exercise in ARABIC. The form told them the exercise can run fully in Arabic and that the first Arabic exercise needs about four weeks from booking (the report is in both languages). Confirm the timing with them.", "");
   }
   if (record.attempts > 0) lines.push("(This email was delayed: the first attempt to send it failed and it was retried automatically.)");
   lines.push("", data.formatted_summary || "(No summary available)");
