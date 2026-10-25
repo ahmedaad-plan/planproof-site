@@ -1,12 +1,12 @@
 ---
 title: "How do tabletop exercises prepare your team for better crisis management?"
 searchTitle: "How tabletop exercises improve crisis management"
-description: "A plan on a shelf does not manage a crisis; a team does. What actually changes in a crisis management team after a well-run tabletop exercise, what the first ten minutes usually reveal, and how to prepare so the exercise is worth everyone's time."
+description: "What changes in a crisis management team after a tabletop exercise, what the first ten minutes reveal, and how to prepare so it is worth the time."
 slug: how-tabletop-exercises-prepare-your-team-for-crisis-management
 date: 2026-10-25
 updated: 2026-10-25
 topic: Crisis management
-shortAnswer: "A tabletop exercise puts the crisis management team under a realistic scenario with a clock running, so they practise the three things a plan cannot do for them: deciding with incomplete information, communicating in the right order, and knowing who owns which call. The team that comes out of it is faster, calmer and clearer about roles — and the gaps it finds are fixed before a real incident finds them first."
+shortAnswer: "A tabletop exercise puts the crisis management team under a realistic scenario with a clock running, so they practise the three things a plan cannot do for them: deciding with incomplete information, communicating in the right order, and knowing who owns which call. The team that comes out of it is faster, calmer and clearer about roles. The gaps it finds can then be fixed before a real incident exposes them."
 related:
   - tabletop-exercise-or-simulation-what-auditors-expect
   - readiness-score-what-it-tells-a-board
@@ -25,7 +25,7 @@ The clock is the point. With a clock, the team cannot wait for the full picture,
 
 ## The first ten minutes
 
-There is a pattern to what the first ten minutes reveal, and it is remarkably consistent across sectors.
+There is a pattern to what the first ten minutes reveal, and it shows up in most organizations.
 
 The most common thing we hear is a version of "who is actually in charge right now?" The plan names a crisis manager. The person named is on leave, or in a meeting, or the plan names a role that two people think they hold. Settling that takes several minutes of a 90-minute exercise, and it would take the same several minutes of a real incident.
 
@@ -49,7 +49,7 @@ There is a quieter fourth effect. People who have been through an exercise toget
 
 ## Preparing so the exercise is worth it
 
-An exercise is only as good as the preparation, and the preparation is mostly about people, not paperwork.
+An exercise is only as good as the preparation, and most of the preparation is about getting the right people ready.
 
 **Get the real decision-makers in the room.** The person who can approve spending, stop a service, or speak to a regulator. If the deputies attend, you are testing the deputies, which is a legitimate objective, but choose it on purpose.
 
@@ -57,17 +57,17 @@ An exercise is only as good as the preparation, and the preparation is mostly ab
 
 **Brief the participants once, briefly.** Tell them the date, the duration, and that the exercise tests the plan, not individuals. Do not tell them the scenario. The point of the first inject is the reaction to it.
 
-**Protect the time.** Ninety minutes with phones away and no one slipping out for another meeting. A crisis management team that cannot give a crisis 90 minutes of attention has told you something before the exercise starts.
+**Protect the time.** Ninety minutes with no calls taken and no one slipping out for another meeting. A crisis management team that cannot give a crisis 90 minutes of attention has told you something before the exercise starts.
 
 **Put an observer in the room.** Someone who is not responding, whose only job is to note what the team did and did not do against the objectives. The responders are too busy to see themselves.
 
-**Plan the report before the exercise.** Who writes it, who approves it, and by when. A report three weeks later records impressions; a report three days later records facts.
+**Plan the report before the exercise.** Who writes it, who approves it, and by when. A report three weeks later records impressions; a report three days later records facts. ISO 22301 (clause 8.5) and NCEMA 7000:2021 (clauses 8.6.1 and 7.3) both expect a post-exercise report with recommendations for improvement, so this is also the document the auditor will ask for.
 
 ## And then do it again
 
-The teams that handle real incidents well are not the ones that ran a brilliant exercise once. They are the ones that run one every year, each on a different risk, and that fix what the last one found before the next one starts. A crisis management team is a capability, not a document, and like every capability it is built by repetition.
+The teams that handle real incidents well are not the ones that ran a brilliant exercise once. They are the ones that run one every year, each on a different risk, and that fix what the last one found before the next one starts. Crisis capability is built by repetition, and it fades without it.
 
-If you have never run one, the first will be uncomfortable in places. That discomfort is the exercise doing its job, in a room where it costs nothing.
+If you have never run one, the first will be uncomfortable in places. Better to find that out in a meeting room than in a real incident.
 
 ## Sources
 
