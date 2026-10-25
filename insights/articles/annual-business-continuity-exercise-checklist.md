@@ -5,6 +5,7 @@ description: "A year of business continuity exercising as one checklist for the 
 slug: annual-business-continuity-exercise-checklist
 date: 2026-10-25
 updated: 2026-10-25
+order: 6
 topic: Exercising
 shortAnswer: "An annual exercise runs all year: confirm last year's actions are closed, pick this year's risk and the plan it tests, set a date that avoids Ramadan hours, summer leave and year-end, write two or three objectives, brief the team, run the exercise with an observer, report within three working days, assign actions with owners, feed the management review, and keep the evidence pack together."
 related:

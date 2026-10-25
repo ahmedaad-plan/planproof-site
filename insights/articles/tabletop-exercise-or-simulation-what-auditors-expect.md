@@ -5,6 +5,7 @@ description: "Neither ISO 22301 nor NCEMA 7000:2021 names an exercise type. What
 slug: tabletop-exercise-or-simulation-what-auditors-expect
 date: 2026-10-25
 updated: 2026-10-25
+order: 3
 topic: Exercising
 shortAnswer: "Neither standard requires a particular type of exercise. What an auditor expects is a programme that is proportionate to your risks and, over time, validates the whole arrangement: evidence of objectives, a realistic scenario, a report, and closed actions. For most UAE organizations a sensible programme is a facilitated tabletop at least once a year (the standards set no frequency), a technical test wherever a plan makes a recovery promise, and a larger simulation only once the tabletops stop finding big gaps."
 related:

@@ -5,6 +5,7 @@ description: "What a tabletop-exercise readiness score can honestly tell a board
 slug: readiness-score-what-it-tells-a-board
 date: 2026-10-25
 updated: 2026-10-25
+order: 5
 topic: Reporting
 shortAnswer: "A readiness score tells a board, in one number, how well the team performed against a specific scenario on a specific day, where the weaknesses clustered, and — once there is a second exercise — whether things are improving. It does not tell the board the organization is safe, it does not cover risks that were not exercised, and it is not a certification. Used with those limits understood, it is the most useful single line in a continuity report."
 related:

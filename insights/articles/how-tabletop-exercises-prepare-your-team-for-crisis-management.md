@@ -5,6 +5,7 @@ description: "What changes in a crisis management team after a tabletop exercise
 slug: how-tabletop-exercises-prepare-your-team-for-crisis-management
 date: 2026-10-25
 updated: 2026-10-25
+order: 4
 topic: Crisis management
 shortAnswer: "A tabletop exercise puts the crisis management team under a realistic scenario with a clock running, so they practise the three things a plan cannot do for them: deciding with incomplete information, communicating in the right order, and knowing who owns which call. The team that comes out of it is faster, calmer and clearer about roles. The gaps it finds can then be fixed before a real incident exposes them."
 related:

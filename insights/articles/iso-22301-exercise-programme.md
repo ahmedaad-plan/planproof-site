@@ -5,6 +5,7 @@ description: "ISO 22301 clause 8.5 asks for an exercise programme, not one exerc
 slug: iso-22301-exercise-programme
 date: 2026-10-25
 updated: 2026-10-25
+order: 2
 topic: ISO 22301
 shortAnswer: "ISO 22301:2019 (clause 8.5) asks for a programme of exercises and tests that is consistent with your scope and objectives, uses well-planned scenarios with clear aims, builds the team's competence, validates the whole of your business continuity arrangements over time, produces formal post-exercise reports with actions, feeds continual improvement, and runs at planned intervals and after significant change. The word that matters is programme: a planned series that, taken together, covers all of your arrangements over time, rather than a single event."
 related:

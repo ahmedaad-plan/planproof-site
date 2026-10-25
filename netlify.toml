@@ -31,3 +31,13 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
     X-Content-Type-Options = "nosniff"
+
+# Insights (answer library, 25 October 2026): /blog is a common guess.
+[[redirects]]
+  from = "/blog"
+  to = "/insights/"
+  status = 301
+[[redirects]]
+  from = "/blog/*"
+  to = "/insights/"
+  status = 301

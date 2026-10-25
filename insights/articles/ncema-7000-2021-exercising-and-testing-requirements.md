@@ -5,6 +5,7 @@ description: "What NCEMA 7000:2021 clause 8.6 requires for exercising and testin
 slug: ncema-7000-2021-exercising-and-testing-requirements
 date: 2026-10-25
 updated: 2026-10-25
+order: 1
 topic: NCEMA 7000
 shortAnswer: "NCEMA 7000:2021 requires a planned exercise and test process with realistic scenarios, clear objectives, defined success criteria and a post-exercise report with recommendations, run at planned intervals and after any significant change. It does not name a type of exercise and it does not set a fixed frequency — those decisions are left to you, and you need to be able to justify them."
 related:
