@@ -218,6 +218,7 @@
     push(`Feedback survey:     ${(rec.survey && rec.survey.open) ? "STILL OPEN" : "closed (48 hours after End)"}`);
     const w = warnings(rec);
     if (w.length) { push("", "WARNINGS"); w.forEach((x) => push("  ! " + x)); }
+    else push("Warnings:            none");
     push("");
 
     // 1. Participants (report Section 3). Names appear here and nowhere else.
@@ -285,7 +286,8 @@
     // 3. Notes.
     const notes = rec.notes || [];
     push(line("="), "3. OBSERVER AND FACILITATOR NOTES (raw evidence for findings — never name a person)", line("="));
-    push("Note type → scoring level: Positive → Performed · Needs improvement → Some challenges · Critical gap → Major challenges or Not performed.");
+    push("Note type → the level it SUPPORTS (evidence, not the rating): Positive → Performed · Needs improvement → Some challenges · Critical gap → Major challenges or Not performed.");
+    push("The topic is the writer's hint, not the capability area: map each note to the area its substance belongs to.");
     push('Topic "General (to classify)": the writer left the topic open; classify it when writing the report.');
     const lo = rec.left_out || {};
     push(`Left out: ${lo.withdrawn_notes || 0} withdrawn note(s); ${lo.earlier_run_notes || 0} note(s) from earlier or trial runs.`);
@@ -309,6 +311,7 @@
     // 4. More time.
     push(line("="), "4. REQUESTS FOR MORE TIME (recorded, not scored; extra time was always for everyone)", line("="));
     const mt = rec.more_time_requests || [];
+    push("The record shows who asked and when — not whether extra time was given or how much. Write only that it was asked for.");
     if (!mt.length) push("None.");
     mt.forEach((m) => push(`- ${m.from === "observer" ? "Room " + m.room + " Observers" : m.department} asked for more time on inject ${m.inject_index + 1} at ${uaeTime(m.at)}`));
     push("");
@@ -330,7 +333,7 @@
       push(`   Screens easy to use: ${(sv.screens_easy || {}).agree_pct ?? "—"}% agree`);
       push(`   Technical problems: ${(tp.small || 0) + (tp.in_the_way || 0)} of ${R} (${tp.small || 0} small, ${tp.in_the_way || 0} got in the way)`);
     }
-    push("", "B. INTERNAL — PlanProof only. NEVER in the report, never quoted:");
+    push("", "B. INTERNAL — PlanProof only. NEVER in the report, never quoted or paraphrased (a comment may name a person):");
     if (R) {
       const ov = sv.overall || {}, rc = sv.recommend || {};
       push(`   Overall rating: ${ov.avg ?? "—"} of 5 (5★ ${(ov.distribution || {})["5"] || 0}, 4★ ${(ov.distribution || {})["4"] || 0}, 3★ ${(ov.distribution || {})["3"] || 0}, 2★ ${(ov.distribution || {})["2"] || 0}, 1★ ${(ov.distribution || {})["1"] || 0})`);
@@ -378,6 +381,27 @@
     };
   }
 
-  return { FORMAT, uae, departments, departmentStatus, isResponsible, missedInject, playedIndexes, attachmentEntries,
+  // The exact record for the zip, without what could tie an answer to a person:
+  // attendee ids are dropped (an individual answer keeps its department and a
+  // "counted" flag — false for someone who joined after the inject started),
+  // and survey comments lose their marketing-consent flag.
+  function publicJson(rec) {
+    const r = JSON.parse(JSON.stringify(rec));
+    const people = new Map((rec.attendees || []).map((a) => [a.id, a]));
+    r.attendees = (r.attendees || []).map(({ id, ...a }) => a);
+    r.submissions = (r.submissions || []).map((s) => {
+      const { attendee_id, ...rest } = s;
+      if (!s.individual) return rest;
+      const who = people.get(attendee_id), start = injectStart(rec, s.inject_index);
+      return { ...rest, counted: !!(who && (!start || Date.parse(who.joined_at) <= Date.parse(start))) };
+    });
+    if (r.survey) {
+      delete r.survey.exercises;
+      r.survey.comments = (r.survey.comments || []).map(({ role, text }) => ({ role, text, internal_only: true }));
+    }
+    return r;
+  }
+
+  return { FORMAT, uae, publicJson, departments, departmentStatus, isResponsible, missedInject, playedIndexes, attachmentEntries,
     buildText, manifestText, counts, warnings, fileBase, safeName, TYPE_SCORE };
 });
