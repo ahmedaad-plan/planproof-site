@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>PlanProof Insights</title>
+    <link>https://plan-proof.com/insights/</link>
+    <atom:link href="https://plan-proof.com/insights/feed.xml" rel="self" type="application/rss+xml"/>
+    <description>Plain answers to the questions risk, compliance and audit teams ask about business continuity and crisis management exercises in the UAE.</description>
+    <language>en</language>
+    <lastBuildDate>Sun, 25 Oct 2026 06:00:00 GMT</lastBuildDate>
+    <item>
+      <title>What does NCEMA 7000:2021 require for exercising and testing?</title>
+      <link>https://plan-proof.com/insights/ncema-7000-2021-exercising-and-testing-requirements/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/ncema-7000-2021-exercising-and-testing-requirements/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>NCEMA 7000</category>
+      <description>NCEMA 7000:2021 requires a planned exercise and test process with realistic scenarios, clear objectives, defined success criteria and a post-exercise report with recommendations, run at planned intervals and after any significant change. It does not name a type of exercise and it does not set a fixed frequency — those decisions are left to you, and you need to be able to justify them.</description>
+    </item>
+    <item>
+      <title>What should an ISO 22301 exercise programme contain?</title>
+      <link>https://plan-proof.com/insights/iso-22301-exercise-programme/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/iso-22301-exercise-programme/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>ISO 22301</category>
+      <description>ISO 22301:2019 (clause 8.5) asks for a programme of exercises and tests that is consistent with your scope and objectives, uses well-planned scenarios with clear aims, builds the team’s competence, validates the whole of your business continuity arrangements over time, produces formal post-exercise reports with actions, feeds continual improvement, and runs at planned intervals and after significant change. The word that matters is programme: a planned series that, taken together, covers all of your arrangements over time, rather than a single event.</description>
+    </item>
+    <item>
+      <title>Tabletop exercise or simulation: which one does the auditor expect?</title>
+      <link>https://plan-proof.com/insights/tabletop-exercise-or-simulation-what-auditors-expect/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/tabletop-exercise-or-simulation-what-auditors-expect/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>Exercising</category>
+      <description>Neither standard requires a particular type of exercise. What an auditor expects is a programme that is proportionate to your risks and, over time, validates the whole arrangement: evidence of objectives, a realistic scenario, a report, and closed actions. For most UAE organizations a sensible programme is a facilitated tabletop at least once a year (the standards set no frequency), a technical test wherever a plan makes a recovery promise, and a larger simulation only once the tabletops stop finding big gaps.</description>
+    </item>
+    <item>
+      <title>How do tabletop exercises prepare your team for better crisis management?</title>
+      <link>https://plan-proof.com/insights/how-tabletop-exercises-prepare-your-team-for-crisis-management/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/how-tabletop-exercises-prepare-your-team-for-crisis-management/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>Crisis management</category>
+      <description>A tabletop exercise puts the crisis management team under a realistic scenario with a clock running, so they practise the three things a plan cannot do for them: deciding with incomplete information, communicating in the right order, and knowing who owns which call. The team that comes out of it is faster, calmer and clearer about roles. The gaps it finds can then be fixed before a real incident exposes them.</description>
+    </item>
+    <item>
+      <title>What does a readiness score tell a board — and what doesn’t it?</title>
+      <link>https://plan-proof.com/insights/readiness-score-what-it-tells-a-board/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/readiness-score-what-it-tells-a-board/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>Reporting</category>
+      <description>A readiness score tells a board, in one number, how well the team performed against a specific scenario on a specific day, where the weaknesses clustered, and — once there is a second exercise — whether things are improving. It does not tell the board the organization is safe, it does not cover risks that were not exercised, and it is not a certification. Used with those limits understood, it is the most useful single line in a continuity report.</description>
+    </item>
+    <item>
+      <title>The annual business continuity exercise checklist</title>
+      <link>https://plan-proof.com/insights/annual-business-continuity-exercise-checklist/</link>
+      <guid isPermaLink="true">https://plan-proof.com/insights/annual-business-continuity-exercise-checklist/</guid>
+      <pubDate>Sun, 25 Oct 2026 06:00:00 GMT</pubDate>
+      <category>Exercising</category>
+      <description>An annual exercise runs all year: confirm last year’s actions are closed, pick this year’s risk and the plan it tests, set a date that avoids Ramadan hours, summer leave and year-end, write two or three objectives, brief the team, run the exercise with an observer, report within three working days, assign actions with owners, feed the management review, and keep the evidence pack together.</description>
+    </item>
+  </channel>
+</rss>

@@ -12,6 +12,7 @@
 <link rel="icon" href="favicon-96.png" type="image/png" sizes="96x96">
 <link rel="icon" href="favicon-48.png" type="image/png" sizes="48x48">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="PlanProof Insights" href="/insights/feed.xml">
 <meta name="theme-color" content="#10151b">
 <link rel="preload" as="image" href="hero.webp" type="image/webp">
 
@@ -1317,16 +1318,17 @@
   }
 
   .length-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 8px 0 22px; }
-  .length-card{ position: relative; display: block; text-decoration: none; color: inherit; cursor: pointer; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .length-card{ position: relative; display: flex; flex-direction: column; align-items: flex-start; text-decoration: none; color: inherit; cursor: pointer; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
   .length-card:hover, .length-card:focus-visible{ transform: translateY(-3px); border-color: #d84a3a; box-shadow: 0 10px 24px var(--shadow); outline: none; }
   .length-card.featured:hover, .length-card.featured:focus-visible{ border-color: #d84a3a; }
-  .length-go{ display: inline-block; margin-top: 10px; font-size: 13.5px; font-weight: 600; color: #d84a3a; }
+  .length-go{ display: inline-block; margin-top: auto; padding-top: 10px; font-size: 13.5px; font-weight: 600; color: #d84a3a; }
   .length-card:hover .length-go{ text-decoration: underline; text-underline-offset: 3px; }
   @media (prefers-reduced-motion: reduce){ .length-card{ transition: none; } .length-card:hover, .length-card:focus-visible{ transform: none; } }
   .chosen-duration{ max-width: 760px; margin: 0 auto 14px; text-align: center; font-size: 14.5px; color: var(--text); }
   .chosen-duration strong{ color: #d84a3a; }
   .chosen-duration button{ background: none; border: none; color: var(--text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; margin-left: 6px; }
-  .length-card.featured{ border: 2px solid var(--amber); padding: 23px 21px 21px; }
+  .length-card.featured{ border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); }  /* 2px amber edge without changing the card's size, so all three cards line up (25 October 2026) */
+  .length-card.featured:hover, .length-card.featured:focus-visible{ box-shadow: 0 0 0 1px #d84a3a, 0 10px 24px var(--shadow); }
   .length-badge{ position: absolute; top: -11px; left: 20px; background: var(--amber); color: #10151b; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
   .length-time{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
   .length-min{ font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 44px; line-height: 1; color: var(--text); letter-spacing: -0.02em; }
@@ -1355,7 +1357,6 @@
   .services .section-lead, .contact .section-lead{ margin-bottom: 14px; }
   .length-grid{ margin: 4px 0 14px; gap: 16px; }
   .length-card{ padding: 18px 20px 16px; }
-  .length-card.featured{ padding: 17px 19px 15px; }
   .length-min{ font-size: 40px; }
   .length-card h3{ margin-bottom: 6px; }
   .length-card p{ line-height: 1.5; }
@@ -1365,9 +1366,8 @@
   .services .service-note{ margin-top: 8px; }
   .services-cta{ margin-top: 10px; }
   .length-card{ padding: 15px 20px 14px; }
-  .length-card.featured{ padding: 14px 19px 13px; }
   .length-time{ margin-bottom: 2px; }
-  .length-go{ margin-top: 6px; }
+  .length-go{ padding-top: 6px; }
   .length-longer{ margin-bottom: 10px; }
   .contact-form{ max-width: 720px; margin: 0 auto; padding: 22px 28px; }
   .contact-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
@@ -1375,6 +1375,18 @@
   @media (max-width: 700px){
     .contact-grid{ grid-template-columns: 1fr; }
     .contact-form{ padding: 20px 18px; }
+  }
+  /* 26 Oct 2026 (Ahmed): on laptops the whole contact form, Send button
+     included, fits the window after "Contact" — tighter vertical spacing only. */
+  @media (min-width: 761px){
+    .contact > .section-inner{ padding-top: 8px; }
+    .contact .section-lead{ margin-bottom: 10px; }
+    .contact-form{ padding-top: 14px; padding-bottom: 16px; }
+    .contact-form label[for]{ margin-top: 9px; margin-bottom: 4px; }
+    .contact-form .returning-q{ margin-top: 10px; margin-bottom: 6px; }
+    .contact-form .consent{ margin-top: 12px; }
+    .contact-form .consent-row{ margin-bottom: 6px; }
+    .contact-form #submitContact{ margin-top: 10px !important; }
   }
 
   /* --- 24 Oct 2026: demo controls on phones — one bar above the video that
@@ -1439,6 +1451,7 @@
       <a href="#demo" id="navDemoLink">Watch a Demo</a>
       <a href="#about">About</a>
       <a href="#faq">FAQ</a>
+      <a href="/insights/">Insights</a>
       <a href="#contact">Contact</a>
     </div>
   </div>
@@ -1737,7 +1750,7 @@
     <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;width:100%;">
       <div class="footer-email">Email us at <a href="mailto:exercises@plan-proof.com">exercises@plan-proof.com</a></div>
       <div class="footer-links">
-        <a href="#home">Home</a><a href="#tool">Start an exercise</a><a href="#services">Services</a><a href="#demo">Watch a Demo</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="#contact">Contact</a><a href="privacy-policy.html">Privacy Policy</a>
+        <a href="#home">Home</a><a href="#tool">Start an exercise</a><a href="#services">Services</a><a href="#demo">Watch a Demo</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="/insights/">Insights</a><a href="#contact">Contact</a><a href="privacy-policy.html">Privacy Policy</a>
       </div>
       <div class="footer-copyright">© 2026 PlanProof. All rights reserved.</div>
     </div>
@@ -3567,6 +3580,25 @@ function resetContactForm(callMode){
   syncCallbackBox();
 }
 document.querySelectorAll('a[href="#contact"]').forEach((a)=>a.addEventListener("click", ()=> resetContactForm(a.hasAttribute("data-callback"))));
+// 26 Oct 2026 (Ahmed): on a short laptop window (e.g. with display scaling),
+// after a jump to Contact, scroll a little further so the whole form — Send
+// button included — is on screen. Never further than the top of the form.
+function fitContactForm(){
+  const form = document.getElementById("contactFormEl"), btn = document.getElementById("submitContact"), nav = document.querySelector(".sitenav");
+  if(!form || !btn || form.hidden || window.innerWidth <= 760) return;
+  const over = btn.getBoundingClientRect().bottom + 12 - window.innerHeight;
+  if(over <= 0) return;
+  const room = form.getBoundingClientRect().top - (nav ? nav.offsetHeight : 0) - 8;
+  if(room > 0) window.scrollBy({ top: Math.min(over, room), behavior: "smooth" });
+}
+function fitContactAfterScroll(){
+  let done = false;
+  const go = ()=>{ if(done) return; done = true; window.removeEventListener("scrollend", go); fitContactForm(); };
+  window.addEventListener("scrollend", go);
+  setTimeout(go, 900);   // browsers without "scrollend", or no scroll needed
+}
+document.querySelectorAll('a[href="#contact"], a[href="/#contact"]').forEach((a)=>a.addEventListener("click", fitContactAfterScroll));
+if(location.hash === "#contact") window.addEventListener("load", ()=> setTimeout(fitContactForm, 300));
 
 // Contact form: "Call me back" shows the best-time question; any
 // "Request a callback" link opens the form with that choice made.
