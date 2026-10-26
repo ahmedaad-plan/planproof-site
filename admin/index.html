@@ -1031,7 +1031,7 @@ async function buildRecordZip(sessionId, say) {
   const base = PPRecord.fileBase(rec);
   files.unshift(
     { name: `exercise-report-${base}.txt`, bytes: enc.encode(PPRecord.buildText(rec, { exportedAt })) },
-    { name: "exercise-record.json", bytes: enc.encode(JSON.stringify(rec, null, 2) + "\n") });
+    { name: "exercise-record.json", bytes: enc.encode(JSON.stringify(PPRecord.publicJson(rec), null, 2) + "\n") });
   say("Checking every file…");
   for (const f of files) { f.size = f.bytes.length; f.sha256 = await sha256hex(f.bytes); }
   const entries = {};

@@ -89,3 +89,26 @@ test("manifest lists every file with its fingerprint", () => {
   const m = R.manifestText(sample(), [{ name: "a.txt", size: 3, sha256: "a".repeat(64) }]);
   assert.match(m, /a{64}  3  a\.txt/);
 });
+
+test("the zip's JSON cannot tie an answer to a person (W5 audit)", () => {
+  const rec = sample();
+  const j = R.publicJson(rec);
+  assert.ok(j.attendees.every((a) => !("id" in a)));
+  assert.ok(j.submissions.every((s) => !("attendee_id" in s)));
+  const ind = j.submissions.filter((s) => s.individual);
+  assert.equal(ind.length, 2);
+  assert.ok(ind.every((s) => s.counted === true));
+  rec.submissions.push({ inject_index: 1, department: "Finance", individual: true, attendee_id: rec.attendees.find((a) => a.name === "Late Joiner").id, status: "submitted", on_time: true, answer_text: "late", attachments: [] });
+  assert.equal(R.publicJson(rec).submissions.filter((s) => s.individual && s.counted === false).length, 1);
+  assert.ok(j.survey.comments.every((c) => !("quote_ok" in c) && c.internal_only === true));
+  assert.ok(!("exercises" in j.survey));
+  assert.ok(!JSON.stringify(rec).includes('"internal_only"'), "the original record is not changed");
+});
+
+test("text says 'Warnings: none' and that more-time requests do not show what was granted", () => {
+  const rec = sample(); rec.readiness.notes_open = false; rec.survey.open = false;
+  const t = R.buildText(rec);
+  assert.match(t, /Warnings:\s+none/);
+  assert.match(t, /not whether extra time was given/);
+  assert.match(t, /the level it SUPPORTS \(evidence, not the rating\)/);
+});
