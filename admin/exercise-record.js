@@ -222,7 +222,7 @@
     push("");
 
     // 1. Participants (report Section 3). Names appear here and nowhere else.
-    push(line("="), "1. PARTICIPANTS (report Section 3 — names and job titles appear ONLY here)", line("="));
+    push(line("="), "1. PARTICIPANTS (report Section 3 — names and job titles go ONLY in the participants list, the facilitation team incl. Observers, the sign-off and \"Report prepared for\")", line("="));
     push(`${parts.length} participant${parts.length === 1 ? "" : "s"} (${parts.filter((a) => !a.remote).length} in a room, ${parts.filter((a) => a.remote).length} joining alone, remotely); ${obs.length} Observer${obs.length === 1 ? "" : "s"}.`);
     push("Department | Name | Job title | Room / location");
     for (const d of depts) {
@@ -234,7 +234,8 @@
       push("", "Observers (list them with the facilitation team): Name | Job title | Own department | Room");
       obs.forEach((a) => push(`${a.first_name || ""} ${a.family_name || ""}`.trim() + ` | ${a.job_title || ""} | ${a.department || ""} | ${a.room ? "Room " + a.room : "Main room"}`));
     }
-    if (parts.some((a) => a.remote)) push("", "Some participants joined alone, remotely: use the template's hybridLimitationNote in Limitations.");
+    if (parts.some((a) => a.remote)) push("", "Some participants joined alone, remotely: add the template's remoteLimitationNote to Limitations.");
+    if ((S.room_count || 1) > 1) push("", "The exercise ran in several rooms: add the template's hybridLimitationNote (Observer–facilitator messages excluded) to Limitations.");
     const lateDepts = Object.keys((S.departments_added_late) || {});
     if (lateDepts.length) push("", `Added during the exercise: ${lateDepts.map((d) => `${d} (at ${uaeTime(S.departments_added_late[d])})`).join(", ")} — not required for injects that had already started.`);
     push("");
@@ -309,7 +310,7 @@
     if (!notes.length) push("No notes.", "");
 
     // 4. More time.
-    push(line("="), "4. REQUESTS FOR MORE TIME (recorded, not scored; extra time was always for everyone)", line("="));
+    push(line("="), "4. REQUESTS FOR MORE TIME (recorded, not scored)", line("="));
     const mt = rec.more_time_requests || [];
     push("The record shows who asked and when — not whether extra time was given or how much. Write only that it was asked for.");
     if (!mt.length) push("None.");
@@ -388,7 +389,7 @@
   function publicJson(rec) {
     const r = JSON.parse(JSON.stringify(rec));
     const people = new Map((rec.attendees || []).map((a) => [a.id, a]));
-    r.attendees = (r.attendees || []).map(({ id, ...a }) => a);
+    r.attendees = (r.attendees || []).map(({ id, joined_at, ...a }) => a);
     r.submissions = (r.submissions || []).map((s) => {
       const { attendee_id, ...rest } = s;
       if (!s.individual) return rest;

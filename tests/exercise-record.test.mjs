@@ -93,7 +93,7 @@ test("manifest lists every file with its fingerprint", () => {
 test("the zip's JSON cannot tie an answer to a person (W5 audit)", () => {
   const rec = sample();
   const j = R.publicJson(rec);
-  assert.ok(j.attendees.every((a) => !("id" in a)));
+  assert.ok(j.attendees.every((a) => !("id" in a) && !("joined_at" in a)));
   assert.ok(j.submissions.every((s) => !("attendee_id" in s)));
   const ind = j.submissions.filter((s) => s.individual);
   assert.equal(ind.length, 2);
