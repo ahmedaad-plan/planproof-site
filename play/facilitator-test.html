@@ -2717,6 +2717,7 @@
     // How many have answered the feedback survey — a count only, never an
     // answer (16 October 2026). Fetched with the strip, at most every 10 s.
     let feedbackCount = null;
+    let recordStatus = null;
     let feedbackFetching = false;
     let feedbackFetchedAt = 0;
     async function refreshFeedbackCount() {
@@ -2725,13 +2726,15 @@
       try {
         const r = await callNotesRpc("facilitator_feedback_count", { p_session_id: sessionId }, facilitatorToken);
         feedbackCount = r;
+        // Where the exercise record stands (W5): a status only, never data.
+        recordStatus = await callNotesRpc("facilitator_record_status", { p_session_id: sessionId }, facilitatorToken).catch(() => recordStatus);
         feedbackFetchedAt = Date.now();
         renderEndStrip(true);
       } catch { /* the strip simply shows no count until the next try */ }
       finally { feedbackFetching = false; }
     }
     function renderEndStrip(fromFetch) {
-      if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; feedbackCount = null; feedbackFetchedAt = 0; return; }
+      if (!currentRow || currentRow.status !== "ended") { endStripEl.hidden = true; feedbackCount = null; recordStatus = null; feedbackFetchedAt = 0; return; }
       if (!fromFetch) refreshFeedbackCount();
       hideEndCheck();
       const fmtDay = (ms) => new Date(ms).toLocaleString(PPLang.locales(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -2753,6 +2756,12 @@
         lines.push(feedbackCount.open
           ? T("fac.endStrip.feedback", { count: feedbackCount.answered, registered: feedbackCount.registered })
           : T("fac.endStrip.feedbackClosed", { count: feedbackCount.answered, registered: feedbackCount.registered }));
+      }
+      if (recordStatus && recordStatus.state) {
+        const until = [recordStatus.notes_open_until, recordStatus.survey_open_until].filter(Boolean).map(Date.parse).reduce((a, b) => Math.max(a, b), 0);
+        if (recordStatus.state === "exported" && recordStatus.exported_at) lines.push(T("fac.endStrip.recordExported", { time: fmtDay(Date.parse(recordStatus.exported_at)) }));
+        else if (recordStatus.state === "ready") lines.push(T("fac.endStrip.recordReady"));
+        else if (recordStatus.state === "waiting" && until) lines.push(T("fac.endStrip.recordWaiting", { time: fmtDay(until) }));
       }
       lines.push(T("fac.endStrip.panelsLive"));
       if (canResume()) lines.push(T("fac.endStrip.resume", { button: resumeLabel() }));

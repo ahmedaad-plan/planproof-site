@@ -99,7 +99,41 @@ async function fetchSession(sessionId) {
   const row = text ? JSON.parse(text) : null;
   // The exercise's own language (lang.js). English: nothing happens.
   if (row) await PPLang.useSessionLanguage(row.language);
+  // W5 (26 October 2026): after the report is delivered PlanProof removes the
+  // exercise's player data; the exercise then answers "purged" and every page
+  // shows a calm "closed" screen instead of a load error. The caller never
+  // gets a row back, so nothing tries to draw an exercise that is gone.
+  if (row && row.purged) { showClosedPage(sessionId); return new Promise(() => {}); }
   return row || null;
+}
+
+// The "this exercise is closed" screen (W5). Forgets everything this device
+// kept for the exercise (registration with the person's name, answers,
+// survey taps, language, facilitator link) and stops every timer, so the
+// page stays quiet.
+let ppClosedShown = false;
+function showClosedPage(sessionId) {
+  for (const store of [() => window.localStorage, () => window.sessionStorage]) {
+    try {
+      const s = store(), drop = [];
+      for (let i = 0; i < s.length; i++) { const k = s.key(i); if (k && k.includes(sessionId)) drop.push(k); }
+      drop.forEach((k) => s.removeItem(k));
+    } catch { /* storage blocked: nothing kept to forget */ }
+  }
+  if (ppClosedShown) return;
+  ppClosedShown = true;
+  try { stopSfx(); } catch { /* no sound playing */ }
+  const last = Number(setTimeout(() => {}, 0));
+  if (Number.isFinite(last)) for (let id = Math.max(1, last - 200000); id <= last; id++) { clearTimeout(id); clearInterval(id); }
+  document.title = T("shared.closed.title");
+  document.body.innerHTML = `
+    <main class="pp-closed">
+      <section class="pp-thanks" role="status">
+        <h1 class="pp-thanks-title">${ppEscape(T("shared.closed.title"))}</h1>
+        <p class="pp-thanks-lead">${ppEscape(T("shared.closed.lead"))}</p>
+        <p class="pp-thanks-close">${ppEscape(T("shared.closed.body"))}</p>
+      </section>
+    </main>`;
 }
 
 // Retries a failed write a few times (with increasing delay) before giving
