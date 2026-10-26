@@ -125,6 +125,14 @@
   .alert ul{ margin:4px 0 0; padding-left:18px; }
   .sysalert-wrap{ max-width:1100px; margin:12px auto 0; padding:0 16px; }
   .empty{ color:var(--text-muted); padding:10px 0; margin:0; }
+  ul.checks{ list-style:none; padding:0; margin:6px 0 0; }
+  ul.checks li{ display:flex; gap:10px; align-items:baseline; padding:7px 0; border-top:1px solid var(--border); font-size:14px; flex-wrap:wrap; }
+  ul.checks li:first-child{ border-top:0; }
+  ul.checks li .pill{ flex:none; }
+  ul.checks li span.what{ flex:1 1 220px; min-width:0; overflow-wrap:anywhere; }
+  .progress{ font-size:13px; color:var(--attn); margin-top:8px; min-height:1.2em; }
+  .rec-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  @media (max-width:599px){ .rec-actions .btn{ flex:1 1 100%; } }
 
   /* At a glance tiles (same as the facilitator page) */
   .kpi-strip{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
@@ -190,6 +198,9 @@
   @media (max-width:899px){
     .tabs{ position:fixed; inset-inline:0; bottom:0; z-index:40; background:var(--bg); border-top:1px solid var(--border-strong); padding:6px 6px calc(6px + env(safe-area-inset-bottom)); gap:4px; flex-wrap:nowrap; }
     .tab{ flex:1 1 0; min-width:0; justify-content:center; padding:10px 4px; font-size:13px; border-radius:6px; }
+    /* Five tabs since W5 (Exercise): label over its count so every word fits a 360 px phone. */
+    .tab{ flex-direction:column; gap:2px; padding:6px 2px; font-size:12px; line-height:1.2; }
+    .tab .count{ font-size:10px; min-width:16px; line-height:14px; padding:0 4px; }
     .tab span.l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     body.has-tabs main{ padding-bottom:84px; }
     body.kbd .tabs{ display:none; }
@@ -262,6 +273,10 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="/vendor/fflate-0.8.2.js"
+        integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT"
+        crossorigin="anonymous"></script>
+<script src="/admin/exercise-record.js"></script>
 <script src="/vendor/supabase-js-2.117.2.js"
         integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
         crossorigin="anonymous"></script>
@@ -317,8 +332,8 @@ const NEXT_STEP = {
   scenario_sent: "wait for the client's comments or approval (record them under Scenario)",
   client_reviewing: "revise the scenario from the comments, or mark the version approved",
   scenario_approved: "schedule the exercise",
-  exercise_scheduled: "run the exercise, then deliver the report",
-  delivered: "nothing — delivered",
+  exercise_scheduled: "run the exercise, download the exercise record (Exercise tab), then deliver the report",
+  delivered: "nothing — delivered (the exercise's player data is removed 7 days after Delivered)",
 };
 const VERSION_STATUS = { sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
 const VERSION_TONE = { sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
@@ -733,6 +748,7 @@ async function renderRequest(id) {
     { id: "client", label: "Client", panel: clientPanel },
     { id: "scenario", label: "Scenario", panel: scenarioPanel(s, refreshStage, setBadge("scenario")) },
     { id: "remarks", label: "Remarks", panel: teamRemarksPanel(s, setBadge("remarks")) },
+    { id: "exercise", label: "Exercise", panel: exercisePanel(s, setBadge("exercise")) },
   ], !linked ? "client" : null);
   Object.entries(pendingBadges).forEach(([id, n]) => tabs.badge(id, n));
   if (!linked) tabs.badge("client", 1);
@@ -969,6 +985,185 @@ function teamRemarksPanel(s, setBadge) {
     h("p", { class: "muted small", style: "margin-bottom:10px" }, "Special points to test or consider when designing this exercise. Used for the scenario; never shown to the client or in the report."),
     list, h("div", { style: "margin-top:12px" }, ta), h("div", { class: "row end", style: "margin-top:8px" }, add)));
   draw();
+  return panel;
+}
+
+// ---- Exercise tab: the exercise record (W5, 26 October 2026) -------------
+// One exercise (player session) per request. When it has ended and its notes
+// and survey have closed, PlanProof downloads ONE zip: the text the report
+// skill reads, the exact record, the participants' attachments and a
+// manifest of fingerprints. Nothing downloads unless every part is there and
+// reopens correctly. The player data (names, answers, notes, files) is removed
+// 7 days after the request is marked Delivered — never before an export.
+const RECORD_BUCKET = "submission-attachments";
+const RECORD_STATE = {
+  not_ended: ["Exercise not ended", "none"], waiting: ["Waiting for notes or survey", "wait"], ready: ["Ready to download", "ok"],
+  exported: ["Downloaded", "ok"], purged: ["Player data removed", "none"],
+};
+async function sha256hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function saveBytes(bytes, name, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
+  const a = h("a", { href: url, download: name, style: "display:none" });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+// Builds the zip and checks it by opening it again. Throws (and saves
+// nothing) if any part is missing or does not match.
+async function buildRecordZip(sessionId, say) {
+  if (!window.PPRecord || !window.fflate) throw new Error("The export tools did not load. Reload the page and try again.");
+  say("Reading the exercise record…");
+  const rec = await q(sb.rpc("admin_export_record", { p_session: sessionId }));
+  if (!rec || rec.format !== PPRecord.FORMAT) throw new Error("The database returned an unexpected record. Nothing was saved.");
+  const enc = new TextEncoder();
+  const exportedAt = new Date().toISOString();
+  const files = [];
+  const att = PPRecord.attachmentEntries(rec), missing = [];
+  for (let i = 0; i < att.length; i++) {
+    say(`Downloading attachment ${i + 1} of ${att.length}…`);
+    const { data, error } = await sb.storage.from(RECORD_BUCKET).download(att[i].path);
+    if (error || !data) { missing.push(att[i].zipName); continue; }
+    files.push({ name: att[i].zipName, bytes: new Uint8Array(await data.arrayBuffer()) });
+  }
+  if (missing.length) throw new Error(`${missing.length} attachment(s) could not be downloaded (${missing.slice(0, 3).join(", ")}${missing.length > 3 ? "…" : ""}). Nothing was saved — try again.`);
+  const base = PPRecord.fileBase(rec);
+  files.unshift(
+    { name: `exercise-report-${base}.txt`, bytes: enc.encode(PPRecord.buildText(rec, { exportedAt })) },
+    { name: "exercise-record.json", bytes: enc.encode(JSON.stringify(rec, null, 2) + "\n") });
+  say("Checking every file…");
+  for (const f of files) { f.size = f.bytes.length; f.sha256 = await sha256hex(f.bytes); }
+  const entries = {};
+  files.forEach((f) => { entries[f.name] = [f.bytes, { level: /\.(pdf|png|jpe?g|zip|docx|xlsx|pptx)$/i.test(f.name) ? 0 : 6 }]; });
+  entries["manifest.txt"] = enc.encode(PPRecord.manifestText(rec, files, exportedAt));
+  const zip = fflate.zipSync(entries, { mtime: new Date() });
+  const back = fflate.unzipSync(zip);
+  for (const f of files) {
+    if (!back[f.name] || await sha256hex(back[f.name]) !== f.sha256) throw new Error(`The zip did not reopen correctly (${f.name}). Nothing was saved — try again.`);
+  }
+  if (!back["manifest.txt"]) throw new Error("The zip has no manifest. Nothing was saved — try again.");
+  return { rec, zip, base, fingerprint: await sha256hex(zip), counts: PPRecord.counts(rec), files: files.length + 1 };
+}
+// Lists every stored file of this exercise (all runs), however deep.
+async function listRecordFiles(prefix) {
+  const out = [];
+  const { data, error } = await sb.storage.from(RECORD_BUCKET).list(prefix, { limit: 1000 });
+  if (error) throw error;
+  for (const item of data || []) {
+    const path = prefix + "/" + item.name;
+    if (item.id == null) out.push(...await listRecordFiles(path)); else out.push(path);
+  }
+  return out;
+}
+function exercisePanel(s, setBadge) {
+  const panel = h("div", {});
+  let sessions = [];
+  async function load() {
+    const rows = await q(sb.rpc("admin_exercise_sessions", { p_submission: s.id })).catch((err) => { fail(err); return false; });
+    if (rows === false) { panel.replaceChildren(h("div", { class: "card plain" }, h("p", { class: "empty" }, "The exercise list could not be loaded."))); return; }
+    sessions = Array.isArray(rows) ? rows : [];
+    draw();
+  }
+  function draw() {
+    const mine = sessions.filter((x) => x.submission_id === s.id);
+    const free = sessions.filter((x) => !x.submission_id);
+    setBadge(mine.filter((x) => x.record && x.record.state === "ready").length);
+    panel.replaceChildren(...mine.map(sessionCard), linkCard(free, mine.length));
+  }
+  function linkCard(free, linkedCount) {
+    const sel = h("select", { "aria-label": "Exercise to link" }, h("option", { value: "" }, free.length ? "Choose an exercise…" : "No unlinked exercise"),
+      ...free.map((x) => h("option", { value: x.id }, `${x.label || "(no name)"} — ${x.status}${x.ended_at ? ", ended " + dt(x.ended_at) : ""} · ${x.registered} registered`)));
+    return h("div", { class: "card" + (linkedCount ? " plain" : "") },
+      h("h2", {}, linkedCount ? "Link another exercise" : "Link the exercise to this request"),
+      h("p", { class: "muted small", style: "margin:0 0 10px" }, "The exercise (player session) carries this request's number and the client reference into the exercise record and the report. Link it when you set the exercise up."),
+      h("div", { class: "row" }, h("div", { style: "flex:1 1 260px;min-width:0" }, sel),
+        h("button", { class: "btn", type: "button", disabled: !free.length, onclick: async () => {
+          if (!sel.value) return toast("Choose an exercise first", true);
+          await q(sb.rpc("admin_link_session", { p_session: sel.value, p_submission: s.id })).then(() => { toast("Exercise linked to " + (s.request_no || "this request")); return load(); }).catch(fail);
+        } }, "Link to this request")));
+  }
+  function sessionCard(x) {
+    const r = x.record || {};
+    const [stateText, tone] = RECORD_STATE[r.state] || [r.state, "none"];
+    const progress = h("div", { class: "progress", role: "status", "aria-live": "polite" });
+    const say = (m) => { progress.textContent = m; };
+    const until = (iso) => iso ? dt(iso) : "—";
+    // The daily job runs at 06:17 UAE; a day's grace before calling it overdue.
+    const overdue = r.state !== "purged" && r.purge_due_at && Date.now() > Date.parse(r.purge_due_at) + 26 * 3600 * 1000;
+    const checks = h("ul", { class: "checks" },
+      h("li", {}, pill(r.status === "ended" || r.state === "purged" ? "Done" : "Not yet", r.status === "ended" || r.state === "purged" ? "ok" : "none"), h("span", { class: "what" }, "Exercise ended", r.ended_at ? " — " + dt(r.ended_at) : "")),
+      h("li", {}, pill(r.notes_open ? "Open" : r.ended_at ? "Closed" : "—", r.notes_open ? "wait" : r.ended_at ? "ok" : "none"),
+        h("span", { class: "what" }, "Observer and facilitator notes", r.notes_open ? ` — open until ${until(r.notes_open_until)} (the facilitator can close them with "Notes complete")` : r.notes_complete ? ' — closed ("Notes complete")' : "")),
+      h("li", {}, pill(r.survey_open ? "Open" : r.ended_at ? "Closed" : "—", r.survey_open ? "wait" : r.ended_at ? "ok" : "none"),
+        h("span", { class: "what" }, "Feedback survey", r.survey_open ? ` — open until ${until(r.survey_open_until)}` : "")),
+      h("li", {}, pill(r.exported_at ? "Done" : "Not yet", r.exported_at ? "ok" : "none"),
+        h("span", { class: "what" }, "Exercise record downloaded", r.exported_at ? ` — ${dt(r.exported_at)}${r.exported_run && r.exported_run !== r.run_number ? " (an earlier run — download again)" : ""}` : "")),
+      h("li", {}, pill(r.state === "purged" ? "Removed" : overdue ? "Overdue" : r.purge_due_at ? "Scheduled" : "Not yet", r.state === "purged" ? "ok" : overdue ? "bad" : r.purge_due_at ? "wait" : "none"),
+        h("span", { class: "what" }, "Player data removed",
+          r.state === "purged" ? ` — ${dt(r.purged_at)}`
+            : overdue ? ` — was due ${dt(r.purge_due_at)} but the daily job has not removed it. Check SUPABASE_SECRET_KEY in Netlify, or press "Remove player data now".`
+            : r.purge_due_at ? ` — on or after ${dt(r.purge_due_at)} (7 days after Delivered)` : r.exported_at ? ' — 7 days after you mark this request "Delivered"' : " — only after the record is downloaded")));
+    const dl = h("button", { class: "btn " + (r.state === "ready" || r.state === "waiting" ? "primary" : ""), type: "button",
+      disabled: r.state === "not_ended" || r.state === "purged", onclick: async () => {
+        if (r.state === "waiting") {
+          const open = [r.notes_open && "notes are open until " + until(r.notes_open_until), r.survey_open && "the survey is open until " + until(r.survey_open_until)].filter(Boolean);
+          const ok = await confirmBox({ title: "Download before everything has closed?", text: `The ${open.join(" and ")}. Anything added after this download is not in it — you would need to download again later. Download anyway?`, ok: "Download anyway" });
+          if (!ok) return;
+        }
+        dl.disabled = true;
+        try {
+          const out = await buildRecordZip(x.id, say);
+          const name = `PlanProof-exercise-record-${out.base}.zip`;
+          saveBytes(out.zip, name, "application/zip");
+          say("Saved " + name + " — recording the download…");
+          await q(sb.rpc("admin_record_export", { p_session: x.id, p_fingerprint: out.fingerprint, p_counts: { ...out.counts, files: out.files, bytes: out.zip.length } }))
+            .then(() => { toast("Exercise record downloaded"); say(`Saved ${name} (${out.files} files, ${Math.round(out.zip.length / 1024)} KB). Fingerprint ${out.fingerprint.slice(0, 12)}…`); })
+            .catch((err) => { say(""); fail(new Error("The zip was saved, but the download could not be recorded (" + (err.message || err) + "). Press Download again.")); });
+          await load();
+        } catch (err) { say(""); fail(err); dl.disabled = false; }
+      } }, r.state === "exported" ? "Download again" : "Download exercise record");
+    const purge = h("button", { class: "btn danger", type: "button", disabled: !r.exported_at || r.state === "purged", onclick: async () => {
+      const ok = await confirmBox({ title: "Remove this exercise's player data now?",
+        text: "This removes every registration (names, job titles), answer, attachment file, note and message of this exercise, from every run. The anonymous survey taps stay. Use it only once the report is safe — normally this happens by itself 7 days after Delivered. It can't be undone.",
+        ok: "Remove player data", typeWord: "DELETE" });
+      if (!ok) return;
+      purge.disabled = true;
+      try {
+        say("Finding the stored files…");
+        let paths = await listRecordFiles(x.id);
+        for (let i = 0; i < paths.length; i += 100) {
+          say(`Removing files ${i + 1}–${Math.min(i + 100, paths.length)} of ${paths.length}…`);
+          const { error } = await sb.storage.from(RECORD_BUCKET).remove(paths.slice(i, i + 100));
+          if (error) throw error;
+        }
+        paths = await listRecordFiles(x.id);
+        if (paths.length) throw new Error(`${paths.length} file(s) could not be removed. If this keeps happening, paste w5_purge_paste_into_supabase.sql in Supabase → SQL Editor.`);
+        say("Removing the player data…");
+        const res = await q(sb.rpc("admin_purge_player_data", { p_session: x.id }));
+        say(""); toast(res && res.status === "already" ? "Already removed" : "Player data removed");
+        await load();
+      } catch (err) {
+        say(""); purge.disabled = false;
+        fail(/function|schema cache|not found/i.test(err && err.message || "") ? new Error("Removing is not switched on yet: paste w5_purge_paste_into_supabase.sql in Supabase → SQL Editor first.") : err);
+      }
+    } }, "Remove player data now");
+    const unlink = h("button", { class: "btn quiet sm", type: "button", hidden: !!r.exported_at, onclick: async () => {
+      await q(sb.rpc("admin_link_session", { p_session: x.id, p_submission: null })).then(() => { toast("Exercise unlinked"); return load(); }).catch(fail);
+    } }, "Unlink");
+    return h("div", { class: "card" },
+      h("div", { class: "spread" }, h("h2", {}, "Exercise record"), pill(stateText, tone)),
+      h("div", { class: "spread", style: "align-items:baseline" },
+        h("div", {}, h("h3", {}, h("bdi", {}, x.label || "(no name)")),
+          h("div", { class: "small muted" }, [x.status === "ended" ? "Ended" : x.status, x.registered + " registered", plural(x.injects, "inject"), "run " + x.run_number].join(" · "))),
+        unlink),
+      checks,
+      h("div", { class: "rec-actions" }, dl, purge),
+      progress,
+      h("p", { class: "muted small", style: "margin:10px 0 0" }, "The zip holds participants' names and answers: give it to the report chat, then delete it. Never save it in OneDrive."));
+  }
+  panel.append(h("p", { class: "empty" }, "Loading…"));
+  load();
   return panel;
 }
 
