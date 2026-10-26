@@ -1376,6 +1376,18 @@
     .contact-grid{ grid-template-columns: 1fr; }
     .contact-form{ padding: 20px 18px; }
   }
+  /* 26 Oct 2026 (Ahmed): on laptops the whole contact form, Send button
+     included, fits the window after "Contact" — tighter vertical spacing only. */
+  @media (min-width: 761px){
+    .contact > .section-inner{ padding-top: 8px; }
+    .contact .section-lead{ margin-bottom: 10px; }
+    .contact-form{ padding-top: 14px; padding-bottom: 16px; }
+    .contact-form label[for]{ margin-top: 9px; margin-bottom: 4px; }
+    .contact-form .returning-q{ margin-top: 10px; margin-bottom: 6px; }
+    .contact-form .consent{ margin-top: 12px; }
+    .contact-form .consent-row{ margin-bottom: 6px; }
+    .contact-form #submitContact{ margin-top: 10px !important; }
+  }
 
   /* --- 24 Oct 2026: demo controls on phones — one bar above the video that
      stays pinned just under the menu while the demo is on screen, so the next
@@ -3568,6 +3580,25 @@ function resetContactForm(callMode){
   syncCallbackBox();
 }
 document.querySelectorAll('a[href="#contact"]').forEach((a)=>a.addEventListener("click", ()=> resetContactForm(a.hasAttribute("data-callback"))));
+// 26 Oct 2026 (Ahmed): on a short laptop window (e.g. with display scaling),
+// after a jump to Contact, scroll a little further so the whole form — Send
+// button included — is on screen. Never further than the top of the form.
+function fitContactForm(){
+  const form = document.getElementById("contactFormEl"), btn = document.getElementById("submitContact"), nav = document.querySelector(".sitenav");
+  if(!form || !btn || form.hidden || window.innerWidth <= 760) return;
+  const over = btn.getBoundingClientRect().bottom + 12 - window.innerHeight;
+  if(over <= 0) return;
+  const room = form.getBoundingClientRect().top - (nav ? nav.offsetHeight : 0) - 8;
+  if(room > 0) window.scrollBy({ top: Math.min(over, room), behavior: "smooth" });
+}
+function fitContactAfterScroll(){
+  let done = false;
+  const go = ()=>{ if(done) return; done = true; window.removeEventListener("scrollend", go); fitContactForm(); };
+  window.addEventListener("scrollend", go);
+  setTimeout(go, 900);   // browsers without "scrollend", or no scroll needed
+}
+document.querySelectorAll('a[href="#contact"], a[href="/#contact"]').forEach((a)=>a.addEventListener("click", fitContactAfterScroll));
+if(location.hash === "#contact") window.addEventListener("load", ()=> setTimeout(fitContactForm, 300));
 
 // Contact form: "Call me back" shows the best-time question; any
 // "Request a callback" link opens the form with that choice made.

@@ -103,6 +103,11 @@ a{ color: inherit; }
 
 .share{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 34px 0 0; padding-top: 22px; border-top: 1px solid var(--border); }
 .share span{ font-size: 14px; color: var(--text-muted); margin-right: 4px; }
+/* Phones: "Share this article" on its own line, both buttons together below it. */
+@media (max-width: 600px){
+  .share span{ flex-basis: 100%; margin: 0; }
+  .share .btn-small{ flex: 1 1 0; }
+}
 
 /* ---- buttons ---- */
 .btn{
@@ -125,6 +130,12 @@ a{ color: inherit; }
 .cta h2{ margin: 0 0 8px; font: 700 clamp(22px, 3vw, 26px)/1.25 "Space Grotesk", sans-serif; color: #fff; }
 .cta p{ margin: 0 0 20px; color: #b8c0c9; font-size: 16px; max-width: 60ch; }
 .cta-buttons{ display: flex; flex-wrap: wrap; gap: 12px; }
+/* Laptops and tablets: the closing box is centred (Ahmed, 26 October 2026). */
+@media (min-width: 601px){
+  .cta{ text-align: center; }
+  .cta p{ margin-left: auto; margin-right: auto; }
+  .cta-buttons{ justify-content: center; }
+}
 .cta .btn-outline{ color: #f2f3f5; border-color: rgba(255,255,255,0.3); }
 .cta .btn-outline:hover{ border-color: #d84a3a; }
 
@@ -151,7 +162,7 @@ a{ color: inherit; }
 /* ---- footer ---- */
 .sitefooter{ border-top: 1px solid var(--border); padding: 30px 0; }
 .footer-inner{ max-width: 1180px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; gap: 14px 24px; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-muted); }
-.footer-email a{ color: var(--text); }
+.footer-email a{ color: #d84a3a; text-decoration: underline; text-underline-offset: 3px; }
 .footer-links{ display: flex; gap: 8px 20px; flex-wrap: wrap; }
 .footer-links a{ color: var(--text); text-decoration: none; font-weight: 700; font-size: 15px; }
 .footer-links a:hover{ color: #d84a3a; }
