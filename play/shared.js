@@ -1299,7 +1299,8 @@ function rowSignature(row) {
   return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
     row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
     JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
-    row.run_number, row.paused_at, row.inject_replay_count, row.is_trial].join("|");
+    row.run_number, row.paused_at, row.inject_replay_count, row.is_trial,
+    row.survey_open, row.survey_closed_how].join("|");
 }
 
 function createLiveStatus() {

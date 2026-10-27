@@ -726,7 +726,9 @@
         // survey on their own device (16 October 2026).
         mainEl.innerHTML = endScreenHtml({
           everyone: true, label: row.label || "", close: false,
-          extraHtml: `<p class="pp-thanks-survey">${escapeHtml(T("room.end.survey"))}</p>`,
+          // Once the survey has closed (everyone answered, PlanProof closed it,
+          // or 48 hours) the invitation is no longer shown (W5b, 27 Oct 2026).
+          extraHtml: row.survey_open === false ? "" : `<p class="pp-thanks-survey">${escapeHtml(T("room.end.survey"))}</p>`,
         });
       } else {
         // Drawn once, at the top of the Notes tab (17 October 2026): the

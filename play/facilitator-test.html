@@ -2467,6 +2467,20 @@
         : T("fac.startCheck.offlineOfMany", { count: offline, total: participants.length }));
       // Expected attendance (17 October 2026): the flags, as advice.
       expectedIssues().forEach((t) => issues.push(T("fac.startCheck.expected", { flag: t })));
+      // Registrations not seen for a while (W5b, 27 October 2026): often a
+      // test phone from the trial run. Everyone registered counts for the
+      // feedback survey's automatic close, so the facilitator is told who.
+      const unseen = lastAttendees.filter((a) => {
+        const d = personPresence(a.id);
+        return !d || presenceState(d.last_seen, now) === "grey" || presenceState(d.last_seen, now) === "never";
+      }).map((a) => a.name).sort((a, b) => a.localeCompare(b));
+      if (unseen.length) {
+        const shown = unseen.slice(0, 3);
+        const names = unseen.length > 3
+          ? T("fac.startCheck.notSeenMore", { list: shown.join(", "), count: unseen.length - 3 })
+          : shown.length > 1 ? T("room.inject.listAnd", { list: shown.slice(0, -1).join(", "), last: shown[shown.length - 1] }) : shown[0];
+        issues.push(T("fac.startCheck.notSeen", { names, count: unseen.length }));
+      }
       return issues;
     }
     // ---- Resume after End (Ahmed, 11 October 2026) ------------------------
@@ -2752,16 +2766,29 @@
           ? T("fac.endStrip.ownUntil", { time: fmtDay(fac.closesAt) })
           : T("fac.endStrip.ownClosed"));
       }
+      // The feedback survey (participants' feedback) — its own lines, never
+      // mixed with the notes (Ahmed, 27 October 2026).
       if (feedbackCount) {
-        lines.push(feedbackCount.open
-          ? T("fac.endStrip.feedback", { count: feedbackCount.answered, registered: feedbackCount.registered })
-          : T("fac.endStrip.feedbackClosed", { count: feedbackCount.answered, registered: feedbackCount.registered }));
+        const fc = { count: feedbackCount.answered, registered: feedbackCount.registered };
+        if (feedbackCount.open) {
+          lines.push(T("fac.endStrip.feedback", fc));
+          lines.push(T("fac.endStrip.feedbackAuto"));
+        } else if (feedbackCount.closed_how === "everyone") lines.push(T("fac.endStrip.feedbackClosedEveryone", fc));
+        else if (feedbackCount.closed_how === "planproof") lines.push(T("fac.endStrip.feedbackClosedPlanProof", fc));
+        else lines.push(T("fac.endStrip.feedbackClosed", fc));
       }
       if (recordStatus && recordStatus.state) {
-        const until = [recordStatus.notes_open_until, recordStatus.survey_open_until].filter(Boolean).map(Date.parse).reduce((a, b) => Math.max(a, b), 0);
         if (recordStatus.state === "exported" && recordStatus.exported_at) lines.push(T("fac.endStrip.recordExported", { time: fmtDay(Date.parse(recordStatus.exported_at)) }));
         else if (recordStatus.state === "ready") lines.push(T("fac.endStrip.recordReady"));
-        else if (recordStatus.state === "waiting" && until) lines.push(T("fac.endStrip.recordWaiting", { time: fmtDay(until) }));
+        else if (recordStatus.state === "waiting") {
+          const notesOpen = recordStatus.notes_open_until && Date.parse(recordStatus.notes_open_until) > Date.now();
+          const surveyOpen = recordStatus.survey_open === true || (recordStatus.survey_open === undefined && recordStatus.survey_open_until && Date.parse(recordStatus.survey_open_until) > Date.now());
+          const notesAt = notesOpen ? Date.parse(recordStatus.notes_open_until) : 0;
+          const surveyAt = surveyOpen && recordStatus.survey_open_until ? Date.parse(recordStatus.survey_open_until) : 0;
+          if (notesOpen && surveyOpen) lines.push(T("fac.endStrip.recordWaiting", { time: fmtDay(Math.max(notesAt, surveyAt)) }));
+          else if (notesOpen) lines.push(T("fac.endStrip.recordWaitingNotes", { time: fmtDay(notesAt) }));
+          else if (surveyOpen && surveyAt) lines.push(T("fac.endStrip.recordWaitingSurvey", { time: fmtDay(surveyAt) }));
+        }
       }
       lines.push(T("fac.endStrip.panelsLive"));
       if (canResume()) lines.push(T("fac.endStrip.resume", { button: resumeLabel() }));

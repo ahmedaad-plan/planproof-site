@@ -137,8 +137,16 @@
     let drawnFor = null; // "form:<run>" / "done:<run>" / "closed:<run>" / "bar:<run>"
     let sending = false;
 
+    // Closed early (W5b, 27 October 2026): everyone registered has answered,
+    // or PlanProof pressed "Close survey now". The server says so in
+    // survey_open; the 48-hour window still applies on the device's clock.
+    let closedHere = false; // a send refused because the survey had just closed
+    function closedEarly(row) {
+      return closedHere || !!(row && row.survey_open === false && row.survey_closed_how && row.survey_closed_how !== "time");
+    }
     function windowOpen(row) {
       if (!row || row.status !== "ended" || !row.ended_at) return false;
+      if (closedHere || row.survey_open === false) return false;
       return Date.now() <= Date.parse(row.ended_at) + WINDOW_MS;
     }
     function save() { writeState(sessionId, state); }
@@ -154,11 +162,11 @@
         return;
       }
       const run = row.run_number || 1;
-      if (!state || state.run !== run) { state = freshState(run); save(); }
+      if (!state || state.run !== run) { state = freshState(run); save(); closedHere = false; }
       root.hidden = false;
       let want;
       if (state.done) want = `done:${run}`;
-      else if (!windowOpen(row)) want = `closed:${run}`;
+      else if (!windowOpen(row)) want = `closed:${run}:${closedEarly(row) ? "early" : "time"}`;
       else if (observer && state.collapsed) want = `bar:${run}`;
       else want = `form:${run}`;
       if (want === drawnFor) return;
@@ -181,7 +189,7 @@
     }
     function drawClosed() {
       root.innerHTML = card(
-        `<p class="ppsv-lead">${esc(T("survey.closed"))}</p>` +
+        `<p class="ppsv-lead">${esc(T(closedEarly(latestRow) ? "survey.closedEarly" : "survey.closed"))}</p>` +
         (observer ? "" : `<p class="ppsv-lead">${esc(T("shared.end.closePage"))}</p>`),
         "ppsv-done"
       );
@@ -296,6 +304,12 @@
         try { window.scrollTo({ top: 0 }); } catch { window.scrollTo(0, 0); }
         if (result && result.status === "already") showToast(T("survey.already"), 6000);
       } catch (e) {
+        if (e && !e.network && /has closed/.test(String(e.message || ""))) {
+          // Closed a moment ago (everyone answered, or PlanProof closed it):
+          // show the closed card at once; the taps stay on the device.
+          closedHere = true; drawnFor = null; refresh();
+          return;
+        }
         const msg = e && e.network ? T("survey.notSentOffline") : T("survey.notSent", { detail: PPLang.dbMessage((e && e.message) || "") });
         setStatus(msg, true);
       } finally {
