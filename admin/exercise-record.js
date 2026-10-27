@@ -178,6 +178,20 @@
   }
   function pct(part, total) { return total ? Math.round((part * 100) / total) + "%" : "—"; }
 
+  // How the feedback survey closed (W5b, 27 October 2026): by itself when
+  // everyone registered had answered, by PlanProof ("Close survey now" on
+  // the admin page), or 48 hours after End. The notes are separate.
+  function surveyClosedText(rec) {
+    const sv = rec.survey || {}, r = rec.readiness || {};
+    if (sv.open || r.survey_open) return "STILL OPEN";
+    const how = sv.closed_how || r.survey_closed_how;
+    const n = sv.answered !== undefined && sv.answered !== null ? sv.answered : (sv.responses || 0);
+    const reg = sv.registered || 0;
+    if (how === "everyone") return `closed — everyone registered had answered (${n} of ${reg})`;
+    if (how === "planproof") return `closed by PlanProof on ${uae(sv.closed_at || r.survey_closed_at)} (${n} of ${reg} answered)`;
+    return "closed (48 hours after End)";
+  }
+
   // Warnings that must be read before the report is written.
   function warnings(rec) {
     const w = [], r = rec.readiness || {}, sv = rec.survey || {};
@@ -215,7 +229,7 @@
     push(`Run:                 ${S.run_number} (earlier runs and trial runs are left out)`);
     push(`Exported (UAE):      ${uae(o.exportedAt || rec.generated_at)}`);
     push(`Notes:               ${rec.readiness && rec.readiness.notes_complete ? "closed (\"Notes complete\" pressed)" : rec.readiness && rec.readiness.notes_open ? "STILL OPEN" : "closed (48 hours after End)"}`);
-    push(`Feedback survey:     ${(rec.survey && rec.survey.open) ? "STILL OPEN" : "closed (48 hours after End)"}`);
+    push(`Feedback survey:     ${surveyClosedText(rec)}`);
     const w = warnings(rec);
     if (w.length) { push("", "WARNINGS"); w.forEach((x) => push("  ! " + x)); }
     else push("Warnings:            none");
