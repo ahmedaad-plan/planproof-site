@@ -997,7 +997,7 @@ function teamRemarksPanel(s, setBadge) {
 // 7 days after the request is marked Delivered — never before an export.
 const RECORD_BUCKET = "submission-attachments";
 const RECORD_STATE = {
-  not_ended: ["Exercise not ended", "none"], waiting: ["Waiting for notes or survey", "wait"], ready: ["Ready to download", "ok"],
+  not_ended: ["Exercise not ended", "none"], waiting: ["Waiting for the notes or the survey to close", "wait"], ready: ["Ready to download", "ok"],
   exported: ["Downloaded", "ok"], purged: ["Player data removed", "none"],
 };
 async function sha256hex(bytes) {
@@ -1095,8 +1095,7 @@ function exercisePanel(s, setBadge) {
       h("li", {}, pill(r.status === "ended" || r.state === "purged" ? "Done" : "Not yet", r.status === "ended" || r.state === "purged" ? "ok" : "none"), h("span", { class: "what" }, "Exercise ended", r.ended_at ? " — " + dt(r.ended_at) : "")),
       h("li", {}, pill(r.notes_open ? "Open" : r.ended_at ? "Closed" : "—", r.notes_open ? "wait" : r.ended_at ? "ok" : "none"),
         h("span", { class: "what" }, "Observer and facilitator notes", r.notes_open ? ` — open until ${until(r.notes_open_until)} (the facilitator can close them with "Notes complete")` : r.notes_complete ? ' — closed ("Notes complete")' : "")),
-      h("li", {}, pill(r.survey_open ? "Open" : r.ended_at ? "Closed" : "—", r.survey_open ? "wait" : r.ended_at ? "ok" : "none"),
-        h("span", { class: "what" }, "Feedback survey", r.survey_open ? ` — open until ${until(r.survey_open_until)}` : "")),
+      surveyLine(),
       h("li", {}, pill(r.exported_at ? "Done" : "Not yet", r.exported_at ? "ok" : "none"),
         h("span", { class: "what" }, "Exercise record downloaded", r.exported_at ? ` — ${dt(r.exported_at)}${r.exported_run && r.exported_run !== r.run_number ? " (an earlier run — download again)" : ""}` : "")),
       h("li", {}, pill(r.state === "purged" ? "Removed" : overdue ? "Overdue" : r.purge_due_at ? "Scheduled" : "Not yet", r.state === "purged" ? "ok" : overdue ? "bad" : r.purge_due_at ? "wait" : "none"),
@@ -1104,11 +1103,37 @@ function exercisePanel(s, setBadge) {
           r.state === "purged" ? ` — ${dt(r.purged_at)}`
             : overdue ? ` — was due ${dt(r.purge_due_at)} but the daily job has not removed it. Check SUPABASE_SECRET_KEY in Netlify, or press "Remove player data now".`
             : r.purge_due_at ? ` — on or after ${dt(r.purge_due_at)} (7 days after Delivered)` : r.exported_at ? ' — 7 days after you mark this request "Delivered"' : " — only after the record is downloaded")));
+    // The feedback survey (participants' feedback) — its own line and its own
+    // button, never mixed with the notes (Ahmed, 27 October 2026). It closes
+    // by itself when everyone registered has answered; "Close survey now" is
+    // here only (admin page), never on the facilitator's link.
+    function surveyLine() {
+      const n = r.survey_answered ?? 0, reg = r.survey_registered ?? 0;
+      const counts = `${n} of ${reg} answered`;
+      let detail = "";
+      if (r.survey_open) detail = ` — ${counts} · open until ${until(r.survey_open_until)}; it closes by itself when everyone has answered`;
+      else if (r.ended_at && r.survey_closed_how === "everyone") detail = ` — closed: everyone answered (${n} of ${reg})`;
+      else if (r.ended_at && r.survey_closed_how === "planproof") detail = ` — closed by you on ${until(r.survey_closed_at)} (${counts})`;
+      else if (r.ended_at && r.survey_closed_how === "time") detail = ` — closed 48 hours after End (${counts})`;
+      const closeBtn = r.survey_open && r.state !== "purged" ? h("button", { class: "btn sm", type: "button", style: "margin-inline-start:8px", onclick: async () => {
+        const left = Math.max(reg - n, 0);
+        const ok = await confirmBox({ title: "Close the participants' feedback survey?",
+          text: `${n} of ${reg} have answered; ${left === 1 ? "1 person" : left + " people"} will no longer be able to answer. This closes the feedback survey only — the Observer and facilitator notes are not affected. It can't be undone.`,
+          ok: "Close survey now" });
+        if (!ok) return;
+        closeBtn.disabled = true;
+        await q(sb.rpc("admin_close_survey", { p_session: x.id }))
+          .then((res) => { toast(res && res.status === "already" ? "The survey had already closed" : "Feedback survey closed"); return load(); })
+          .catch((err) => { closeBtn.disabled = false; fail(err); });
+      } }, "Close survey now") : null;
+      return h("li", {}, pill(r.survey_open ? "Open" : r.ended_at ? "Closed" : "—", r.survey_open ? "wait" : r.ended_at ? "ok" : "none"),
+        h("span", { class: "what" }, "Feedback survey (participants' feedback)", detail), closeBtn);
+    }
     const dl = h("button", { class: "btn " + (r.state === "ready" || r.state === "waiting" ? "primary" : ""), type: "button",
       disabled: r.state === "not_ended" || r.state === "purged", onclick: async () => {
         if (r.state === "waiting") {
-          const open = [r.notes_open && "notes are open until " + until(r.notes_open_until), r.survey_open && "the survey is open until " + until(r.survey_open_until)].filter(Boolean);
-          const ok = await confirmBox({ title: "Download before everything has closed?", text: `The ${open.join(" and ")}. Anything added after this download is not in it — you would need to download again later. Download anyway?`, ok: "Download anyway" });
+          const open = [r.notes_open && "the Observer and facilitator notes are open until " + until(r.notes_open_until), r.survey_open && "the feedback survey is open until " + until(r.survey_open_until) + " (or until everyone has answered)"].filter(Boolean);
+          const ok = await confirmBox({ title: "Download before everything has closed?", text: `${(open.join(" and ")).replace(/^./, (c) => c.toUpperCase())}. Anything added after this download is not in it — you would need to download again later. Download anyway?`, ok: "Download anyway" });
           if (!ok) return;
         }
         dl.disabled = true;
