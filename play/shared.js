@@ -1187,6 +1187,47 @@ const SFX_FILES = {
   // and can alarm people outside the exercise room too. When designing a
   // scenario that uses it, call this out explicitly to the facilitator.
   gunfire: "sfx/gunfire.mp3",
+
+  // --- Sound batch of 30 October 2026 (item 0e): 27 ZapSplat clips (Gold
+  // account), trimmed and levelled to match the set above. Background
+  // sounds are exactly 18 s with a fade-out, so the 18-second stop below
+  // never cuts mid-sound. Masters in OneDrive "06 Sounds\Player sound
+  // effects (final)"; originals in "Source clips\2026-10-29 additions" and
+  // "2026-10-30 additions".
+  // Rain, water and the coast (rain-season pack, W3b):
+  "rain-heavy": "sfx/rain-heavy.mp3",           // heavy rain on a roof and windows
+  "rain-driving": "sfx/rain-driving.mp3",       // inside a car on a wet road, heavy rain
+  "rain-thunder": "sfx/rain-thunder.mp3",       // wipers, light rain, distant thunder
+  "water-leak": "sfx/water-leak.mp3",           // water spraying from a burst connection
+  "waves-seawall": "sfx/waves-seawall.mp3",     // waves hitting a jetty / sea wall
+  "debris-fall": "sfx/debris-fall.mp3",         // rubble falling — ceiling or wall collapse
+  // Buildings and facilities:
+  lift: "sfx/lift.mp3",                         // lift doors, ride and stop
+  "power-surge": "sfx/power-surge.mp3",         // electrical surge / switchgear fault
+  "construction-site": "sfx/construction-site.mp3",
+  "system-warning": "sfx/system-warning.mp3",   // control-room / building-system warning tone
+  // Alarms and sirens — like gunfire, warn the room before playing these:
+  // a realistic siren can be mistaken for a real one by people nearby.
+  "civil-defence-siren": "sfx/civil-defence-siren.mp3",
+  "fire-alarm-ring": "sfx/fire-alarm-ring.mp3", // third fire-alarm character
+  "emergency-siren-short": "sfx/emergency-siren-short.mp3",
+  // Public places, transport and events:
+  "pa-chime": "sfx/pa-chime.mp3",               // "ding-dong" before an announcement
+  "pa-announcement": "sfx/pa-announcement.mp3", // terminal security announcement (English)
+  "airport-terminal": "sfx/airport-terminal.mp3",
+  "aircraft-cabin": "sfx/aircraft-cabin.mp3",   // cabin while taxiing
+  "ship-horn": "sfx/ship-horn.mp3",
+  "hotel-lobby": "sfx/hotel-lobby.mp3",         // lobby with reception and air conditioning
+  "hall-leaving": "sfx/hall-leaving.mp3",       // a hall emptying — calm evacuation of an event
+  applause: "sfx/applause.mp3",
+  "attraction-indoor": "sfx/attraction-indoor.mp3",   // families indoors — "calm before" ambience
+  "attraction-outdoor": "sfx/attraction-outdoor.mp3", // families outdoors — "calm before" ambience
+  "train-whistle": "sfx/train-whistle.mp3",
+  // Office and health:
+  typing: "sfx/typing.mp3",                     // office / newsroom keyboard
+  "heart-monitor": "sfx/heart-monitor.mp3",     // fast heart-rate monitor (healthcare)
+  // Exercise structure:
+  "break-chime": "sfx/break-chime.mp3",         // calm chime at the end of a break (re-entry)
 };
 
 // Some injects are really two clips playing at once rather than one file —
@@ -1200,7 +1241,13 @@ const SFX_OVERLAY = {
 // Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
 // sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
 // that should just play through once per inject and not restart on a loop.
-const SFX_LOOP = new Set(["fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer", "sandstorm"]);
+const SFX_LOOP = new Set([
+  "fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer", "sandstorm",
+  // 30 October 2026 batch:
+  "rain-heavy", "rain-driving", "rain-thunder", "water-leak", "waves-seawall", "construction-site",
+  "airport-terminal", "aircraft-cabin", "hotel-lobby", "hall-leaving", "attraction-indoor",
+  "attraction-outdoor", "typing", "heart-monitor",
+]);
 // How long an ambience track plays before fading out, in seconds — long
 // enough to register, short enough not to drone under the whole inject.
 const AMBIENCE_PLAY_SECONDS = 18;
