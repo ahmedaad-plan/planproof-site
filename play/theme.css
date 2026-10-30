@@ -450,3 +450,126 @@ body.pp-has-tabs { padding-bottom: 72px; }
   body.pp-has-tabs .pp-top .pp-context { font-size: 12px; }
   body.pp-has-tabs .pp-top .pp-context > div { display: none; }
 }
+
+/* ===========================================================================
+   W4 redesign (30 October 2026, Ahmed: "Yes to all 5"). One frame on every
+   page: one compact top bar, the time, then centred boxed tabs AT THE TOP on
+   every size (decision B), the open tab white (decision C), red only for
+   something urgent, amber only for attention, green for done. Boxes have one
+   thin grey edge; headings are plain white sentence case. Only looks and
+   placement change here — no behaviour. Mock-ups: 07 Backups\2026-10-30 W4
+   redesign\mockups. Design: design-notes.md → "W4 redesign".
+   Spacing scale 4 / 8 / 12 / 16 / 24 / 32; boxes 12px corners; controls 8px.
+   ======================================================================== */
+.pp-top { padding: 10px 16px; min-height: 52px; gap: 8px 16px; }
+.pp-top .pp-context { font-size: 13px; line-height: 1.35; }
+@media (min-width: 900px) { .pp-top { padding: 10px 24px; min-height: 56px; } }
+
+/* Tabs: one centred boxed row at the top, the open tab filled white. */
+.pp-tabs {
+  position: static; inset: auto; bottom: auto; z-index: auto; display: flex; justify-content: center; gap: 0;
+  background: var(--bg); border-top: 0; border-bottom: 1px solid var(--border); padding: 12px 16px;
+}
+body.pp-kbd .pp-tabs { display: flex; }
+.pp-tabs.pp-tabs-none, body.pp-kbd .pp-tabs.pp-tabs-none { display: none; }
+.pp-tab, .pp-tabs .pp-tab {
+  flex: 1 1 0; max-width: 168px; min-width: 0; min-height: 0; padding: 9px 16px; gap: 8px;
+  border: 1px solid var(--border-strong); border-inline-start-width: 0; border-radius: 0;
+  background: transparent; color: var(--text); font-size: 15px; font-weight: 500;
+}
+.pp-tab:first-child { border-inline-start-width: 1px; border-start-start-radius: 8px; border-end-start-radius: 8px; }
+.pp-tab:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
+.pp-tab:hover { background: rgba(242,244,247,0.06); color: var(--text); }
+.pp-tab[aria-selected="true"], .pp-tabs .pp-tab[aria-selected="true"] {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600;
+}
+.pp-tab[aria-selected="true"] + .pp-tab { border-inline-start-width: 0; }
+.pp-tab-badge { background: var(--attn); color: #0b0f14; }
+.pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab[aria-selected="true"] .pp-tab-badge { background: var(--attn); color: #0b0f14; }
+.pp-tab[aria-selected="true"] .pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab-dot { background: var(--attn); }
+body.pp-has-tabs { padding-bottom: 24px; }
+@media (max-width: 899px) {
+  .pp-tabs { padding: 10px 12px; }
+  .pp-tab, .pp-tabs .pp-tab { padding: 9px 6px; font-size: 14px; }
+  /* Five tabs on a phone (Facilitator): the count sits in the corner. */
+  .pp-tabs.many .pp-tab { font-size: 13px; padding: 9px 2px; position: relative; }
+  .pp-tabs.many .pp-tab-badge { position: absolute; top: -7px; inset-inline-end: -4px; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; z-index: 1; }
+  body.pp-has-tabs #liveStatus { bottom: 10px !important; }
+  body.pp-has-tabs .pp-notice-fixed { bottom: 24px !important; }
+}
+
+/* The connection pill: a small green dot while all is well; it grows into
+   words only when something needs attention (reconnecting, offline). */
+#liveStatus[data-state="live"] {
+  font-size: 0 !important; width: 12px; height: 12px; min-width: 0; padding: 0 !important;
+  border-radius: 50% !important; background: var(--teal) !important; box-shadow: 0 0 0 3px rgba(11,15,20,0.9);
+}
+
+/* Boxes: one thin grey edge, a plain white heading. */
+.pp-card { border: 1px solid var(--border); border-top: 1px solid var(--border); padding: 16px; }
+.pp-card > h2, .pp-card > summary > h2 {
+  color: var(--text); font-family: var(--font-display); font-size: 1rem; font-weight: 600;
+  text-transform: none; letter-spacing: 0;
+}
+.pp-card + .pp-card { margin-top: 16px; }
+.pp-cols { gap: 16px; }
+@media (min-width: 900px) { .pp-cols { gap: 24px; } }
+.m-who { color: var(--text); font-weight: 600; }
+.m-time { color: var(--text-muted); }
+
+/* The time: a band with the label and its note on one side and the large
+   clock on the other, and a thin line underneath that runs down — green,
+   amber in the last minute, red at time-up. */
+.pp-clock {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label value" "note value";
+  align-items: center; column-gap: 12px; text-align: start;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px 14px;
+}
+.pp-clock-label { grid-area: label; align-self: end; }
+.pp-clock-note { grid-area: note; align-self: start; min-height: 0; }
+.pp-clock-value { grid-area: value; text-align: end; font-size: clamp(2.6rem, 12vw, 3.4rem); }
+.pp-clock[data-state="warn"], .pp-clock[data-state="paused"], .pp-clock[data-state="up"] { background: var(--bg); }
+.pp-clock[data-state="none"] .pp-clock-value { font-size: 1.1rem; }
+
+/* The slim line under the top bar: where the exercise is. */
+.pp-slim { padding: 8px 16px; font-size: 14px; gap: 12px; border-bottom: 1px solid var(--border); }
+.pp-slim .pos { color: var(--text); font-weight: 600; }
+.pp-slim .pp-cmd-clock { margin-inline-start: auto; font-size: 1.25rem; }
+
+/* The inject shown as the real incoming message (email, call log, alert…):
+   who it is from and when, then the message. Built by injectMessageHTML()
+   in shared.js; an inject without a header line shows as before. */
+.pp-msg { border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; background: var(--bg); }
+.pp-msg-hd { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel-raised); }
+.pp-msg-ch { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--accent); }
+.pp-msg-ch svg { width: 18px; height: 18px; }
+.pp-msg-meta { font-size: 13px; line-height: 1.45; color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
+.pp-msg-meta b { color: var(--text); font-weight: 600; }
+.pp-msg-bd { padding: 16px; }
+.pp-msg-bd .inject-title, .pp-msg-bd .ci-title { margin: 0 0 8px; }
+.pp-msg-body p { margin: 0 0 12px; }
+.pp-msg-body p:last-child { margin-bottom: 0; }
+.pp-msg-ft { border-top: 1px solid var(--border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+
+/* Note kinds (Observers and the facilitator): the four-colour meanings. */
+.pp-kind-positive { border-color: var(--teal) !important; color: var(--teal-soft) !important; }
+.pp-kind-improve { border-color: var(--attn) !important; color: var(--attn) !important; }
+.pp-kind-critical { border-color: var(--red) !important; color: var(--red-soft) !important; }
+
+/* Chips and buttons: one height family. */
+.pp-chip { padding: 6px 12px; border-radius: 999px; font-size: 14px; }
+/* W4: the person's name stays in the top bar on a phone too (it is no longer
+   repeated in a second header). */
+@media (max-width: 899px) {
+  body.pp-has-tabs .pp-top .pp-context > div { display: block; }
+  body.pp-has-tabs .pp-top .pp-context { font-size: 12px; }
+}
+@media (max-width: 380px) {
+  .pp-tabs.many { padding-inline: 8px; }
+  .pp-tabs.many .pp-tab { font-size: 12px; padding-inline: 0; }
+}
+.pp-msg-subj { font-weight: 600; color: var(--text); }
+#liveStatus[data-state="live"] { color: #0b0f14 !important; }
+.pp-slim { min-height: 38px; box-sizing: border-box; }

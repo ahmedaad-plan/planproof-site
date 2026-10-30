@@ -380,6 +380,63 @@ function injectTaskText(inject) {
   return t.type ? `${t.type} — ${text}` : text;
 }
 
+// ---- The inject as the real message (W4 redesign, 30 October 2026) ------
+// Since scenario v7 every inject's "desc" opens with a header line such as
+// "Email · From: Duty Manager, Jebel Ali hub · To: Operations · 07:12",
+// then the message itself. injectMessageParts() splits that first line off
+// when it looks like such a header (it has " · " and more text follows);
+// anything else — an older scenario, the demo — is all body, exactly as
+// before. The header is the scenario's own text: nothing here is wording.
+const MSG_ICONS = {
+  mail: '<path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  alert: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  social: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>',
+  news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
+  update: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+};
+function injectMessageParts(inject) {
+  const desc = String((inject && inject.desc) || "");
+  const nl = desc.indexOf("\n");
+  const first = (nl >= 0 ? desc.slice(0, nl) : desc).trim();
+  const rest = nl >= 0 ? desc.slice(nl + 1).replace(/^\s+/, "") : "";
+  if (nl < 0 || !rest || first.length > 220 || first.indexOf(" \u00b7 ") < 0) return { header: null, channel: "", body: desc };
+  const segs = first.split(" \u00b7 ").map((x) => x.trim()).filter(Boolean);
+  return { header: segs, channel: segs[0] || "", body: rest };
+}
+function injectMessageIcon(channel, deliveredAs) {
+  const c = `${String(channel || "")} ${String(deliveredAs || "")}`.toLowerCase();
+  const key = /mail/.test(c) ? "mail" : /call|phone/.test(c) ? "phone" : /alert|alarm|system/.test(c) ? "alert"
+    : /letter|notice|regulator/.test(c) ? "doc" : /news/.test(c) ? "news" : /social|post|tweet|x\b|facebook|instagram/.test(c) ? "social"
+    : /report|whatsapp|radio|chat/.test(c) ? "chat" : "update";
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${MSG_ICONS[key]}</svg>`;
+}
+// The message card's HTML. opts: titleClass / descClass (the page's own
+// class names, kept so earlier checks still find them), footer (HTML),
+// top (HTML placed above the title, e.g. tags), titleTag.
+function injectMessageHTML(inject, opts) {
+  opts = opts || {};
+  const m = injectMessageParts(inject);
+  // A subject line ("EXERCISE – …", the scenario's own words) reads as the
+  // subject of the email or alert: in bold, on its own line.
+  let bodyText = String(m.body);
+  let subj = "";
+  const sm = m.header ? bodyText.match(/^(EXERCISE\s*[\u2013\u2014-][^\n]*)\n+/) : null;
+  if (sm) { subj = sm[1]; bodyText = bodyText.slice(sm[0].length); }
+  const paras = (subj ? `<p class="pp-msg-subj">${ppEscape(subj)}</p>` : "") +
+    bodyText.split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${ppEscape(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const head = m.header
+    ? `<div class="pp-msg-hd"><span class="pp-msg-ch">${injectMessageIcon(m.channel, inject && inject.deliveredAs)}</span>` +
+      `<div class="pp-msg-meta" dir="auto"><b>${ppEscape(m.header[0])}</b>${m.header.slice(1).map((h) => ` <span>\u00b7 ${ppEscape(h)}</span>`).join("")}</div></div>`
+    : "";
+  return `<div class="pp-msg${m.header ? " has-header" : ""}">${head}<div class="pp-msg-bd">${opts.top || ""}` +
+    `<div class="${opts.titleClass || "inject-title"}" dir="auto">${ppEscape((inject && inject.title) || "")}</div>` +
+    `<div class="${opts.descClass || "inject-desc"} pp-msg-body" dir="auto">${paras}</div>${opts.after || ""}</div>` +
+    `${opts.footer ? `<div class="pp-msg-ft">${opts.footer}</div>` : ""}</div>`;
+}
+
 // The scenario's department list, under either name: "departments" (the
 // player's demo) or "requiredDepartments" (the planproof-scenario skill's
 // Stage 3 JSON). Facilitator-added extra departments are merged in by the
@@ -514,7 +571,7 @@ async function fetchAttendees(sessionId, facilitatorToken) {
   const res = await withRetry(() =>
     fetch(
       `${SUPABASE_URL}/rest/v1/attendees?session_id=eq.${sessionId}` +
-        `&select=id,name,first_name,family_name,job_title,department,role,room,remote,joined_at&order=joined_at.asc`,
+        `&select=id,name,first_name,family_name,job_title,department,role,room,remote,joined_at,rejoined_at&order=joined_at.asc`,
       {
         headers: {
           apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -1083,6 +1140,89 @@ async function callNotesRpc(name, body, facilitatorToken) {
   if (!res.ok) throw new Error(await readErrorDetail(res));
   const text = await res.text();
   return text ? JSON.parse(text) : null;
+}
+
+// ---- A returning person (roadmap item 10, W4, 30 October 2026) ----------
+// Design: design-notes.md → "Item 10 — recognising a returning person".
+// Each browser keeps one random device id (not tied to any exercise). The
+// join page asks the database whether the registration kept on this device
+// still exists (attendee_lookup); a person on a new device can take their
+// own registration back by name + department (attendee_match, then
+// attendee_reclaim), refused while the old device was seen in the last two
+// minutes. The newest device wins: the old one learns it was "moved" and
+// stops. Nothing here ever lists who else is registered.
+function personDeviceId() {
+  const key = "pp_person_device";
+  let id = null;
+  try { id = localStorage.getItem(key); } catch { id = null; }
+  if (!UUID_RE.test(id || "")) {
+    id = crypto.randomUUID();
+    try { localStorage.setItem(key, id); } catch { /* storage blocked: a new id each visit */ }
+  }
+  return id;
+}
+function lookupAttendee(sessionId, attendeeId) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_lookup", { p_session_id: sessionId, p_attendee_id: attendeeId, p_device_id: personDeviceId() });
+}
+function matchAttendee(sessionId, { firstName, familyName, department, role }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_match", { p_session_id: sessionId, p_first: firstName, p_family: familyName, p_department: department, p_role: role });
+}
+function reclaimAttendee(sessionId, { firstName, familyName, department, role }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_reclaim", { p_session_id: sessionId, p_first: firstName, p_family: familyName, p_department: department, p_role: role, p_device_id: personDeviceId() });
+}
+// The identity a page keeps on the device, from a database reply.
+function identityFromAttendee(id, a) {
+  return {
+    attendeeId: id,
+    firstName: a.first_name,
+    familyName: a.family_name,
+    name: `${a.first_name} ${a.family_name}`,
+    title: a.job_title,
+    department: a.department,
+    role: a.role,
+    room: a.room == null ? null : a.room,
+    remote: !!a.remote,
+    deviceId: personDeviceId(),
+  };
+}
+// Where a registered person's page is.
+function personPageUrl(sessionId, role) {
+  const andLang = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
+  return role === "participant"
+    ? `./participant.html?session=${encodeURIComponent(sessionId)}${andLang}`
+    : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1${andLang}`;
+}
+// On a participant's or Observer's page: every 30 seconds, ask whether this
+// registration has moved to another device; if so, this page stops (the same
+// way as a removed registration) and offers to take it back here.
+function watchDeviceMoved(sessionId, identity) {
+  if (!identity || !identity.attendeeId) return;
+  let stopped = false;
+  async function check() {
+    if (stopped || document.hidden) return;
+    try {
+      const r = await lookupAttendee(sessionId, identity.attendeeId);
+      if (r && r.found && r.moved) { stopped = true; showMovedScreen(sessionId); }
+    } catch { /* offline or refused: try again next time */ }
+  }
+  setInterval(check, 30000);
+  setTimeout(check, 4000);
+}
+function showMovedScreen(sessionId) {
+  if (window.__ppRemoved) return;
+  window.__ppRemoved = true;
+  try { stopSfx(); } catch { /* nothing playing */ }
+  const join = `join.html?session=${encodeURIComponent(sessionId)}`;
+  document.body.className = "pp-removed-page";
+  document.body.innerHTML =
+    `<main class="pp-removed" role="alert" style="max-width:440px;margin:18vh auto 0;padding:0 16px;text-align:center;">` +
+      `<h1 style="font-size:1.4rem;margin:0 0 10px;">${ppEscape(T("shared.moved.title"))}</h1>` +
+      `<p style="margin:0 0 20px;opacity:.85;">${ppEscape(T("shared.moved.body"))}</p>` +
+      `<a class="pp-btn" href="${ppEscape(join)}" id="useHereBtn">${ppEscape(T("shared.moved.useHere"))}</a>` +
+    `</main>`;
 }
 
 // Log a new note or save changes to one's own. note.id is created on the

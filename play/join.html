@@ -79,6 +79,31 @@
   .confirm-box .question { font-weight: 600; margin-bottom: 16px; }
   .confirm-buttons { display: flex; gap: 10px; }
   .confirm-buttons button { flex: 1; }
+
+  /* W4 redesign (30 October 2026): the same frame as the other pages — one
+     card, the no-fault line as a quiet green-edged note, two-part switches. */
+  .card { box-shadow: none; border-radius: 12px; padding: 24px; }
+  h1 { text-align: start; }
+  .sub { text-align: start; }
+  .brief { text-align: start; background: transparent; border: 0; border-inline-start: 3px solid var(--border-strong); border-radius: 0; padding: 4px 0 4px 14px; margin: 0 0 16px; }
+  .brief.nofault, .brief.phone, .brief.remote { border-top: 0; }
+  .brief.nofault { border-inline-start-color: var(--teal); }
+  .brief.remote { border-inline-start-color: var(--attn); }
+  .role-options:not(.where-options) { gap: 0; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .role-options:not(.where-options) label { border: 0; border-radius: 0; background: transparent; }
+  .role-options:not(.where-options) label + label { border-inline-start: 1px solid var(--border-strong); }
+  .role-options:not(.where-options) label.checked { background: var(--accent); color: var(--accent-ink); }
+  .where-options label { background: transparent; }
+  /* Item 10: welcome back, and "Is this you?". */
+  .back-who { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0 0 8px; }
+  .back-who strong { display: block; font-family: var(--font-display); font-size: 1.1rem; }
+  .back-who span { color: var(--text-muted); font-size: 0.95rem; }
+  .back-notme { margin-top: 10px !important; }
+  button.full + button.full { margin-top: 10px; }
+  .is-me { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; font-size: 0.95rem; }
+  .is-me p { margin: 0 0 10px; }
+  .is-me .t { font-weight: 700; }
+  .is-me .confirm-buttons button { flex: 1; }
 </style>
 </head>
 <body>
@@ -90,6 +115,7 @@
       <h2 id="confirmTitle" data-i18n="join.confirm.title">Please confirm your details</h2>
       <dl id="confirmDetails"></dl>
       <div class="question" id="confirmQuestion"></div>
+      <div class="is-me" id="isMeBox" hidden></div>
       <div class="confirm-buttons">
         <button class="pp-btn ghost" id="cancelBtn" data-i18n="join.confirm.cancel">Cancel</button>
         <button class="pp-btn" id="proceedBtn" data-i18n="join.confirm.proceed">Proceed</button>
@@ -128,12 +154,66 @@
       cardEl.innerHTML = `<p>${escapeHtml(T("join.error.notFound"))}</p>`;
       return;
     }
+    // A returning person (item 10, W4): this device already holds a
+    // registration for this exercise → "Welcome back", one tap to go on.
+    if (await offerWelcomeBack(session)) return;
     if (session.status === "ended") {
       cardEl.innerHTML =
         `<p>${escapeHtml(T("join.error.ended"))}</p>`;
       return;
     }
     renderForm(session);
+  }
+
+  // ---- Item 10: recognise a returning person (W4, 30 October 2026) ------
+  // The registration kept on this device is checked with the database first
+  // (it may have been removed by the facilitator, or taken to another
+  // device). If the check cannot be made (no connection), the person still
+  // gets "Continue": their own page decides, so no second registration is
+  // ever created by a failed check.
+  function storedIdentity() {
+    try { return JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null"); } catch { return null; }
+  }
+  function forgetIdentity() {
+    try { localStorage.removeItem(`pp_identity_${sessionId}`); } catch { /* storage blocked */ }
+  }
+  async function offerWelcomeBack(session) {
+    const me = storedIdentity();
+    if (!me || !me.attendeeId) return false;
+    let r = null, checked = true;
+    try { r = await lookupAttendee(sessionId, me.attendeeId); } catch { checked = false; }
+    if (checked && !(r && r.found)) { forgetIdentity(); return false; }
+    const a = checked ? r : { first_name: me.firstName, family_name: me.familyName, department: me.department, role: me.role, room: me.room, remote: me.remote, job_title: me.title };
+    const moved = !!(checked && r.moved);
+    const where = a.role === "observer"
+      ? (a.room ? T("join.back.observerRoom", { room: a.room }) : T("join.back.observer"))
+      : a.remote ? T("join.back.remote") : a.room ? T("join.back.room", { room: a.room }) : "";
+    cardEl.innerHTML = `
+      <h1>${escapeHtml(T("join.back.title", { name: String(a.first_name || me.firstName || "") }))}</h1>
+      <p class="sub">${escapeHtml(session.label || "")}</p>
+      <div class="back-who" id="backWho"><strong>${escapeHtml(`${a.first_name || ""} ${a.family_name || ""}`.trim())}</strong>
+        <span>${escapeHtml(String(a.department || ""))}${where ? ` · ${escapeHtml(where)}` : ""}</span></div>
+      ${moved ? `<div class="brief nofault back-moved">${escapeHtml(T("join.back.moved"))}</div>` : ""}
+      <button class="pp-btn full" id="backContinueBtn">${escapeHtml(moved ? T("join.back.useHere") : T("join.back.continue"))}</button>
+      <button class="pp-btn ghost full back-notme" id="backNotMeBtn">${escapeHtml(T("join.back.notMe"))}</button>
+      <div class="pp-error error" id="backError"></div>`;
+    document.getElementById("backNotMeBtn").onclick = () => { forgetIdentity(); init(); };
+    document.getElementById("backContinueBtn").onclick = async () => {
+      const btn = document.getElementById("backContinueBtn");
+      const errEl = document.getElementById("backError");
+      if (!moved) { location.href = personPageUrl(sessionId, a.role || me.role); return; }
+      btn.disabled = true;
+      try {
+        const rec = await reclaimAttendee(sessionId, { firstName: a.first_name, familyName: a.family_name, department: a.department, role: a.role });
+        localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identityFromAttendee(rec.attendee_id, rec)));
+        location.href = personPageUrl(sessionId, rec.role);
+      } catch (err) {
+        errEl.textContent = PPLang.dbMessage(err.message);
+        errEl.style.display = "block";
+        btn.disabled = false;
+      }
+    };
+    return true;
   }
 
   function escapeHtml(s) {
@@ -387,6 +467,8 @@
       confirmErrorEl.style.display = "none";
       proceedBtn.disabled = false;
       proceedBtn.textContent = T("join.confirm.proceed");
+      proceedBtn.classList.remove("ghost");
+      matchAsked = false; hideIsMe();
       overlayEl.classList.add("open");
       proceedBtn.focus();
     });
@@ -398,12 +480,53 @@
       departmentEl.focus();
     };
 
+    // Item 10 (W4): before a new registration is made, the same first name,
+    // family name, department and role already registered in this exercise
+    // means this is probably the same person on another device. Ask.
+    let matchAsked = false;
+    const isMeBox = document.getElementById("isMeBox");
+    function hideIsMe() { isMeBox.hidden = true; isMeBox.innerHTML = ""; }
+    cancelBtn.addEventListener("click", () => { matchAsked = false; hideIsMe(); });
+    async function askIsMe() {
+      let m = null;
+      try { m = await matchAttendee(sessionId, pending); } catch { return false; } // no answer: register as before
+      if (!m || !m.found) return false;
+      matchAsked = true;
+      const joined = m.joined_at ? formatMessageTime(m.joined_at) : "";
+      isMeBox.innerHTML = m.several
+        ? `<p>${escapeHtml(T("join.isMe.several"))}</p>`
+        : `<p class="t">${escapeHtml(T("join.isMe.title"))}</p>
+           <p>${escapeHtml(T("join.isMe.body", { name: `${m.first_name} ${m.family_name}`, department: String(m.department), time: joined }))}</p>
+           <div class="confirm-buttons"><button class="pp-btn" id="isMeYesBtn">${escapeHtml(T("join.isMe.yes"))}</button></div>`;
+      isMeBox.hidden = false;
+      proceedBtn.textContent = T("join.isMe.no");
+      proceedBtn.classList.add("ghost");
+      proceedBtn.disabled = false;
+      cancelBtn.disabled = false;
+      const yes = document.getElementById("isMeYesBtn");
+      if (yes) yes.onclick = async () => {
+        yes.disabled = true; proceedBtn.disabled = true; cancelBtn.disabled = true;
+        confirmErrorEl.style.display = "none";
+        try {
+          const rec = await reclaimAttendee(sessionId, pending);
+          try { localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identityFromAttendee(rec.attendee_id, rec))); } catch { /* the page will ask again */ }
+          location.href = personPageUrl(sessionId, rec.role);
+        } catch (err) {
+          confirmErrorEl.textContent = PPLang.dbMessage(err.message);
+          confirmErrorEl.style.display = "block";
+          yes.disabled = false; proceedBtn.disabled = false; cancelBtn.disabled = false;
+        }
+      };
+      return true;
+    }
+
     proceedBtn.onclick = async () => {
       if (!pending) return;
       proceedBtn.disabled = true;
       cancelBtn.disabled = true;
-      proceedBtn.textContent = T("join.confirm.registering");
       confirmErrorEl.style.display = "none";
+      if (!matchAsked && await askIsMe()) return;
+      proceedBtn.textContent = T("join.confirm.registering");
       const attendeeId = crypto.randomUUID();
       try {
         await joinSession(sessionId, { id: attendeeId, ...pending });
@@ -424,6 +547,7 @@
               role: pending.role,
               room: pending.room,
               remote: !!pending.remote,
+              deviceId: personDeviceId(),
             })
           );
         } catch {
@@ -445,7 +569,7 @@
         confirmErrorEl.style.display = "block";
         proceedBtn.disabled = false;
         cancelBtn.disabled = false;
-        proceedBtn.textContent = T("join.confirm.proceed");
+        proceedBtn.textContent = matchAsked ? T("join.isMe.no") : T("join.confirm.proceed");
       }
     };
   }

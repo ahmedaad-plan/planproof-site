@@ -164,6 +164,37 @@
   .msg-reply-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
   .msg-reply-feedback.ok { color: var(--teal-soft); }
   .msg-reply-feedback.err { color: var(--red-soft); }
+
+  /* W4 redesign (30 October 2026): the inject card is the message itself
+     (shared .pp-msg), the clock a band, the tabs at the top, the person's
+     name once (top bar), one centred width. */
+  .inject-card { background: transparent; border: 0; padding: 0; margin-bottom: 16px; }
+  .inject-desc { margin-bottom: 0; }
+  .inject-task { margin-top: 12px; }
+  .pp-msg-ft .task-tags { margin: 0; }
+  .clock-wrap { padding: 8px 0 12px; top: 38px; }
+  .part-page .pp-slim .who { display: none; }
+  .answer-card, .msg-reply-card, .writer-card { border-radius: 12px; padding: 16px; }
+  .writer-line { color: var(--teal-soft); }
+  .writer-line::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); margin-inline-end: 8px; vertical-align: middle; }
+  .writer-card { border-color: var(--border-strong); }
+  .msg-banner { background: var(--bg); color: var(--text); border-bottom: 1px solid var(--border); }
+  .msg-banner-inner { border: 1px solid var(--accent); border-radius: 12px; margin: 12px auto; max-width: 608px; }
+  .msg-banner .msg-label { color: var(--text-muted); opacity: 1; }
+  .msg-banner button { border-color: var(--border-strong); color: var(--text); }
+  .msg-banner #msgBannerOk { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .msg-badge { background: var(--attn); color: #0b0f14; }
+  .tag.individual { border-color: var(--attn); color: var(--attn); }
+  input[type="file"]::file-selector-button {
+    font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--text); background: transparent;
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 14px; margin-inline-end: 10px; cursor: pointer;
+  }
+  .submitted-banner { background: transparent; color: var(--teal-soft); }
+  @media (min-width: 900px) {
+    .part-cols { max-width: 1240px; gap: 24px; padding: 8px 24px 0; }
+    .part-cols > #tabMessages { border-inline-start: 1px solid var(--border); padding-inline-start: 24px; }
+    .msg-banner-inner { max-width: 1192px; }
+  }
 </style>
 </head>
 <body class="pp-has-tabs part-page">
@@ -189,6 +220,7 @@
     <span class="pos" id="slimPos"></span>
     <span class="pp-cmd-clock" id="slimClock" data-state="none" hidden></span>
   </div>
+  <nav class="pp-tabs" id="partTabs" aria-label="Sections" data-i18n-attr="aria-label:part.tabs.aria"></nav>
   <div class="msg-banner" id="msgBanner" role="status" aria-live="polite">
     <div class="msg-banner-inner">
       <div>
@@ -226,7 +258,6 @@
       <p class="pp-hint reply-closed" id="replyClosed" hidden></p>
     </section>
   </div>
-  <nav class="pp-tabs" id="partTabs" aria-label="Sections" data-i18n-attr="aria-label:part.tabs.aria"></nav>
 
 <!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
@@ -351,6 +382,7 @@
       drawWho();
       initRemote();
       init();
+      watchDeviceMoved(sessionId, identity); // item 10: the newest device wins (W4)
     }
   }
 
@@ -1153,15 +1185,13 @@
         </div>
       </div>
       ${remote && inject.video ? `<div class="video-card"><div class="tag">${escapeHtml(T("part.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>` : ""}
-      <div class="inject-card">
-        <div class="task-tags">
+      <div class="inject-card">${injectMessageHTML(inject, {
+        after: injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : "",
+        footer: `<div class="task-tags">
           <span class="tag ${individual ? "individual" : ""}">${escapeHtml(individual ? T("part.task.individual") : T("part.task.group"))}</span>
           <span class="tag">${escapeHtml(T("part.task.responsible", { list: responsibleText }))}</span>
-        </div>
-        <div class="inject-title">${escapeHtml(inject.title)}</div>
-        <div class="inject-desc">${escapeHtml(inject.desc)}</div>
-        ${injectTaskText(inject) ? `<div class="inject-task">${escapeHtml(injectTaskText(inject))}</div>` : ""}
-      </div>
+        </div>`,
+      })}</div>
       ${!individual && writerHeld ? `
       <div class="writer-card" id="writerCard">
         <div class="t">${escapeHtml(writerHeld.tookOver ? T("part.writer.tookOver", { name: String(writerHeld.writer_name), department: String(identity.department) }) : T("part.writer.held", { name: String(writerHeld.writer_name), department: String(identity.department) }))}</div>

@@ -294,6 +294,45 @@
   .notes-list { max-height: 60vh; }
   .roster-group button[hidden] { display: none; }
   @media (max-width: 899px) { .fac-main { padding: 12px 12px 90px; } .fac-main.fac-checks { padding-bottom: 0; } .notes-list { max-height: none; } }
+
+  /* W4 redesign (30 October 2026): one thin grey edge on every box, plain
+     white headings, "At a glance" as one quiet strip (only the numbers carry
+     colour), the inject as the message card, two control rows on a phone,
+     a larger clock. Red is left for real problems and End. */
+  #towerSection, #currentInjectCard, #notesOwn, #composeCard { border-color: var(--border); }
+  .roster-badge.rejoined { border-color: var(--attn); color: var(--attn); }
+  .kpi-strip { gap: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .kpi { border: 0; border-inline-start: 1px solid var(--border); border-radius: 0; border-top: 0; padding: 12px 16px; background: transparent; }
+  .kpi:first-child { border-inline-start: 0; }
+  .kpi:hover { background: rgba(242,244,247,0.04); border-color: var(--border); }
+  .kpi[data-tone] { border-top: 0; }
+  .kpi-l { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.82rem; }
+  .kpi[data-tone="none"] .kpi-v { color: var(--text-muted); }
+  .pp-card h3 { color: var(--text); }
+  .pp-cmd { padding: 12px 24px; gap: 12px 24px; }
+  .pp-cmd-clock { font-size: 2.2rem; }
+  .pp-cmd-pos { font-size: 1.1rem; }
+  .ci-msg { margin-top: 4px; }
+  .ci-msg .pp-msg-ft { font-size: 0.85rem; color: var(--text-muted); }
+  .end-strip { background: transparent; }
+  #composeCard .pp-chip[aria-checked="true"], #composeCard .pp-chip[aria-pressed="true"] {
+    background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
+  }
+  .inbox-list li.unread { border-inline-start-color: var(--attn); }
+  .exp-row input { color: var(--text); }
+  @media (max-width: 899px) {
+    .pp-cmd { padding: 10px 12px; }
+    .pp-cmd-clock { font-size: 1.8rem; }
+    .pp-cmd-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .pp-cmd-tools > .pp-grp:first-child { grid-column: 1 / -1; }
+    .pp-grp-end { flex: 0 0 auto; }
+    .pp-grp-end > button { padding: 0 14px; }
+    .kpi-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .kpi { grid-column: span 2; padding: 10px 12px; border-top: 0; }
+    .kpi:nth-child(n+4) { grid-column: span 3; border-top: 1px solid var(--border); }
+    .kpi:nth-child(4) { border-inline-start: 0; }
+    .kpi:last-child:nth-child(odd) { grid-column: span 3; }
+  }
 </style>
 </head>
 <body class="pp-has-tabs">
@@ -390,7 +429,7 @@
   <div class="end-strip" id="endStrip" hidden role="status"></div>
   </div>
 
-  <nav class="pp-tabs" id="facTabs" aria-label="Sections" data-i18n-attr="aria-label:fac.tabs.aria"></nav>
+  <nav class="pp-tabs many" id="facTabs" aria-label="Sections" data-i18n-attr="aria-label:fac.tabs.aria"></nav>
 
   <div class="fac-main">
 
@@ -2089,7 +2128,7 @@
                   (a) => `
                 <li>
                   <span>
-                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">${escapeHtml(T("fac.roster.observerBadge"))}</span>` : ""}${a.remote ? ` <span class="roster-badge remote">${escapeHtml(T("fac.roster.remoteBadge"))}</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — ${escapeHtml(T("fac.roster.roomName", { room: a.room }))}` : ""}${personSeenHtml(a)}
+                    ${personDotHtml(a)}${escapeHtml(a.name)}${a.role === "observer" ? ` <span class="roster-badge">${escapeHtml(T("fac.roster.observerBadge"))}</span>` : ""}${a.remote ? ` <span class="roster-badge remote">${escapeHtml(T("fac.roster.remoteBadge"))}</span>` : ""}${a.rejoined_at ? ` <span class="roster-badge rejoined" title="${escapeHtml(T("fac.roster.rejoinedTitle", { time: formatMessageTime(a.rejoined_at) }))}">${escapeHtml(T("fac.roster.rejoinedBadge", { time: formatMessageTime(a.rejoined_at) }))}</span>` : ""}${a.job_title ? ` <span class="title">— ${escapeHtml(a.job_title)}</span>` : ""}${byRoom ? ` — ${escapeHtml(a.department)}` : a.room ? ` — ${escapeHtml(T("fac.roster.roomName", { room: a.room }))}` : ""}${personSeenHtml(a)}
                   </span>
                   <span class="roster-actions">${markControl(a)}<button class="removeAttendeeBtn" data-id="${a.id}" data-name="${escapeHtml(a.name)}">${escapeHtml(T("fac.roster.remove"))}</button></span>
                 </li>`
@@ -2864,10 +2903,11 @@
       // The current inject as the room sees it: title, text, task, then the
       // technical line (sound, video, duration).
       currentInjectEl.innerHTML = inject && currentRow.status !== "lobby"
-        ? `<div class="ci-title">${escapeHtml(inject.title)}</div>` +
-          (inject.desc ? `<div class="ci-desc">${escapeHtml(inject.desc)}</div>` : "") +
-          (injectTaskText(inject) ? `<div class="ci-task">${escapeHtml(T("fac.exercise.task", { task: injectTaskText(inject) }))}</div>` : "") +
-          `<div class="ci-meta">${escapeHtml(meta)}</div>`
+        ? `<div class="ci-msg">${injectMessageHTML(inject, {
+            titleClass: "ci-title", descClass: "ci-desc",
+            after: injectTaskText(inject) ? `<div class="ci-task">${escapeHtml(T("fac.exercise.task", { task: injectTaskText(inject) }))}</div>` : "",
+            footer: `<div class="ci-meta">${escapeHtml(meta)}</div>`,
+          })}</div>`
         : `<div class="ci-meta">${escapeHtml(currentRow.status === "lobby" ? T("fac.exercise.noInject") : T("fac.current.noInject"))}</div>`;
       // Setup folds away once the exercise has started (and opens again in the lobby).
       const setupEl = document.getElementById("setupDetails");

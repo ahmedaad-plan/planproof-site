@@ -196,6 +196,53 @@
   .obs-msg-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
   .obs-msg-feedback.ok { color: var(--teal-soft); }
   .obs-msg-feedback.err { color: var(--red-soft); }
+
+  /* W4 redesign (30 October 2026). The inject is the message card (shared
+     .pp-msg); the room screen keeps its large type inside it. Tabs at the
+     top on every size: on a phone the Observer's tab row comes first. */
+  .pp-msg { width: 100%; max-width: 1100px; }
+  body:not(.observer-mode) .pp-msg-hd { padding: 16px 24px; }
+  body:not(.observer-mode) .pp-msg-meta { font-size: clamp(0.95rem, 1.4vw, 1.25rem); }
+  body:not(.observer-mode) .pp-msg-bd { padding: 24px; }
+  body:not(.observer-mode) .pp-msg-ch { width: 44px; height: 44px; }
+  body:not(.observer-mode) .pp-msg-ch svg { width: 24px; height: 24px; }
+  .pp-msg .inject-title { margin-bottom: 12px; }
+  body.observer-mode .pp-msg-body p { margin-bottom: 10px; }
+  body.observer-mode .timer-row { border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; text-align: start; }
+  body.observer-mode .timer-row > div { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; }
+  body.observer-mode .timer-row .value { grid-row: 1 / span 2; grid-column: 2; text-align: end; }
+  body.observer-mode .timer-row .label { text-transform: none; letter-spacing: 0; }
+  body.observer-mode .inject-pos { color: var(--text); font-weight: 600; }
+  body.observer-mode .slim-who-hidden { display: none; }
+  body.observer-mode main { align-items: stretch; text-align: start; }
+  body.observer-mode .timer-row { width: 100%; }
+  .obs-extra:empty { display: none; }
+  .obs-extra { display: grid; gap: 12px; }
+  .obs-box { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .obs-box h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; margin: 0 0 8px; }
+  .obs-box ul { margin: 0; padding-inline-start: 18px; }
+  .obs-box li { margin: 0 0 4px; }
+  .obs-resp { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.95rem; }
+  .obs-resp:first-of-type { border-top: 0; }
+  .obs-resp .st { text-align: end; }
+  .obs-banner { background: var(--bg); color: var(--text); border-bottom: 1px solid var(--border); box-shadow: none; }
+  .obs-banner-inner { border: 1px solid var(--accent); border-radius: 12px; margin: 10px auto; }
+  .obs-banner .label { color: var(--text-muted); opacity: 1; }
+  .obs-banner button { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+  .obs-banner #obsBannerOk { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .obs-badge { background: var(--attn); color: #0b0f14; }
+  .observer-panel h2 { font-size: 1rem; }
+  @media (max-width: 899px) {
+    body.observer-mode .obs-cols { display: flex; flex-direction: column; }
+    body.observer-mode .obs-right { display: contents; }
+    body.observer-mode #obsTabs { order: -1; }
+    body.observer-mode .obs-banner { top: 40px; }
+  }
+  @media (min-width: 900px) {
+    body.observer-mode .obs-cols { gap: 24px; padding: 8px 24px 0; max-width: 1280px; }
+    body.observer-mode .obs-right { border-inline-start: 1px solid var(--border); padding-inline-start: 24px; }
+    body.observer-mode .obs-right .pp-tabs { padding: 12px 0; border-bottom: 0; }
+  }
 </style>
 </head>
 <body>
@@ -319,6 +366,7 @@
       observer.room
         ? T("room.observer.whoRoom", { name: String(observer.name), department: String(observer.department), room: observer.room })
         : T("room.observer.who", { name: String(observer.name), department: String(observer.department) });
+    watchDeviceMoved(sessionId, observer); // item 10: the newest device wins (W4)
     document.getElementById("observerPanel").hidden = false;
     document.getElementById("observerMsgPanel").hidden = false;
     document.body.classList.add("pp-has-tabs");
@@ -682,6 +730,62 @@
   }
 
   let wasEnded = false;
+  // ---- "Watch for" and the answer status for Observers (W4, decision A,
+  // 30 October 2026). Read-only, through the checked route
+  // observer_inject_view (an Observer registration of this exercise): the
+  // scenario's observerWatch points for the inject on screen and, per
+  // responsible department, whether it has answered — never what it wrote,
+  // never who. If the route fails the two boxes are simply not shown.
+  let obsExtra = null; // { idx, watch, subs, eligible }
+  let obsExtraRow = null;
+  let obsExtraAt = 0;
+  let obsExtraBusy = false;
+  async function loadObserverExtra(force) {
+    if (!observerMode || !observer || obsExtraBusy) return;
+    const row = obsExtraRow;
+    if (!row || !(row.status === "running" || row.status === "paused") || row.current_inject_index == null) { obsExtra = null; drawObserverExtra(); return; }
+    if (!force && Date.now() - obsExtraAt < 8000) return;
+    obsExtraBusy = true;
+    try {
+      const r = await callNotesRpc("observer_inject_view", { p_session_id: sessionId, p_attendee_id: observer.attendeeId });
+      obsExtra = r && r.inject_index != null ? { idx: r.inject_index, watch: r.watch || [], subs: r.subs || [], eligible: r.eligible || [] } : null;
+      obsExtraAt = Date.now();
+    } catch { obsExtra = null; }
+    obsExtraBusy = false;
+    drawObserverExtra();
+  }
+  function drawObserverExtra() {
+    const el = document.getElementById("obsExtra");
+    if (!el) return;
+    const row = obsExtraRow;
+    if (!obsExtra || !row || obsExtra.idx !== row.current_inject_index) { el.innerHTML = ""; return; }
+    const inject = ((row.scenario && row.scenario.injects) || [])[obsExtra.idx] || {};
+    const watch = (obsExtra.watch || []).filter((w) => typeof w === "string" && w.trim());
+    const resp = injectResponsible(inject);
+    const depts = resp.some((d) => String(d).toLowerCase() === "all") ? sessionDepartments(row) : resp;
+    const individual = injectOutput(inject) === "individual";
+    const lines = depts.filter((d) => isDepartmentResponsible(inject, d, row, obsExtra.idx)).map((d) => {
+      const mine = (obsExtra.subs || []).filter((x) => String(x.department) === String(d) && x.status === "submitted");
+      let st;
+      if (individual) {
+        const n = ((obsExtra.eligible || []).find((e) => String(e.department) === String(d)) || {}).n || 0;
+        st = mine.length >= n && n > 0 ? `<span class="tone-ok">${escapeHtml(T("room.obs.someOf", { done: mine.length, total: n }))}</span>`
+          : `<span class="tone-wait">${escapeHtml(T("room.obs.someOf", { done: mine.length, total: n }))}</span>`;
+      } else if (mine.length) {
+        const t = formatMessageTime(mine[0].submitted_at);
+        st = mine[0].on_time === false ? `<span class="tone-wait">${escapeHtml(T("room.obs.answeredLate", { time: t }))}</span>`
+          : `<span class="tone-ok">${escapeHtml(T("room.obs.answered", { time: t }))}</span>`;
+      } else {
+        st = `<span class="tone-wait">${escapeHtml(T("room.obs.waiting"))}</span>`;
+      }
+      return `<div class="obs-resp"><span dir="auto">${escapeHtml(d)}</span><span class="st">${st}</span></div>`;
+    });
+    el.innerHTML =
+      (watch.length ? `<div class="obs-box" id="obsWatch"><h3>${escapeHtml(T("room.obs.watchTitle"))}</h3><ul>${watch.map((w) => `<li dir="auto">${escapeHtml(w)}</li>`).join("")}</ul></div>` : "") +
+      (lines.length ? `<div class="obs-box" id="obsResp"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${lines.join("")}</div>` : "");
+  }
+  if (observerMode) setInterval(() => { loadObserverExtra(false); }, 10000);
+
   function render(row) {
     if (!row || window.__ppRemoved) return;
     latestRow = row;
@@ -815,8 +919,8 @@
     mainEl.innerHTML = observerMode ? `
       <div class="inject-pos">${escapeHtml(posLine)}</div>
       ${timerBlock}
-      <div class="inject-title">${escapeHtml(inject.title)}</div>
-      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+      <div class="obs-extra" id="obsExtra"></div>
+      ${injectMessageHTML(inject)}
       ${videoBlock}
     ` : `
       <div class="room-head">
@@ -824,9 +928,9 @@
         ${timerBlock}
       </div>
       ${videoBlock}
-      <div class="inject-title">${escapeHtml(inject.title)}</div>
-      <div class="inject-desc">${escapeHtml(inject.desc)}</div>
+      ${injectMessageHTML(inject)}
     `;
+    if (observerMode) { obsExtraRow = row; if (isNewInject) loadObserverExtra(true); else drawObserverExtra(); } // "Watch for" and the answer status (W4)
 
     // An Observer's phone stays silent: the room's display plays the sound.
     // A resumed inject comes back without its sound (shared.js

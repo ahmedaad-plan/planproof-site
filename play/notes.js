@@ -40,6 +40,13 @@
   .ppn-type-positive[aria-checked="true"] { background:#2f8f5b; border-color:#2f8f5b; color:#fff; }
   .ppn-type-improvement[aria-checked="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
   .ppn-type-critical[aria-checked="true"] { background:var(--red); border-color:var(--red); color:#fff; }
+  /* W4 (30 October 2026): each kind carries its colour before it is chosen —
+     green Positive, amber Needs improvement, red Critical gap. */
+  .ppn-type-positive { border-color:var(--teal); color:var(--teal-soft); background:transparent; }
+  .ppn-type-improvement { border-color:var(--attn); color:var(--attn); background:transparent; }
+  .ppn-type-critical { border-color:var(--red); color:var(--red-soft); background:transparent; }
+  .ppn-type-positive[aria-checked="true"] { background:var(--teal); border-color:var(--teal); color:#04120d; }
+  .ppn-type-improvement[aria-checked="true"] { background:var(--attn); border-color:var(--attn); color:#0b0f14; }
   .ppn select, .ppn input[type=text], .ppn textarea { width:100%; box-sizing:border-box; padding:10px;
     border-radius:8px; border:1.5px solid var(--border-strong); font:inherit; font-size:16px; background:var(--field); color:var(--text); }
   .ppn select:focus, .ppn input[type=text]:focus, .ppn textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px transparent; }
@@ -68,7 +75,7 @@
   /* The type is a coloured word on the black box, not a filled badge
      (Ahmed, 18 October 2026: "only the word Critical gap in red"). */
   .ppn-pill { padding:0; border-radius:0; background:none; }
-  .ppn-pill.positive { color:#3fae6c; } .ppn-pill.improvement { color:var(--accent); } .ppn-pill.critical { color:var(--red-soft); }
+  .ppn-pill.positive { color:#3fae6c; } .ppn-pill.improvement { color:var(--attn); } .ppn-pill.critical { color:var(--red-soft); }
   .ppn-pill.earlier { color:var(--text-muted); font-weight:600; }
   .ppn-actions { margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
   .ppn-actions button { font:inherit; font-size:.82rem; background:none; border:0; padding:4px 0; cursor:pointer; text-decoration:underline; color:var(--blue-soft); }
