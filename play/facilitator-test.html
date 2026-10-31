@@ -252,6 +252,17 @@
   .reset-confirm .t { font-weight: 700; margin-bottom: 4px; }
   .reset-confirm .why { font-size: 0.9rem; opacity: 0.85; margin-bottom: 10px; }
   .reset-confirm .b { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  #earlierFeedback { flex: 1 1 100%; color: var(--red-soft, #e0675c); }
+  /* W4b: the People tab fits a 360 px phone (the Rooms list and the link rows could push it 11 px wider). */
+  #tabPeople > *, #tabPeople .pp-col > * { min-width: 0; }
+  #tabPeople .add-dept-row { flex-wrap: wrap; }
+  #tabPeople select { max-width: 100%; }
+  #earlierRunsSection { margin-top: 18px; }
+  #earlierRunsSection .earlier-h { margin: 0 0 2px; font-size: 1rem; }
+  .earlier-run { margin-top: 12px; }
+  .earlier-run-h { margin-bottom: 6px; }
+  .earlier-tag { font-weight: 600; color: var(--text-muted); font-style: italic; }
+  .earlier-trial { color: var(--red-soft, #e0675c); font-weight: 600; }
   .setup-card summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 1rem; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .setup-card summary::-webkit-details-marker { display: none; }
   .setup-card summary::before { content: "▸"; color: var(--accent); }
@@ -489,6 +500,7 @@
         <h2 data-i18n="fac.responses.heading">Responses — every inject so far</h2>
         <div class="sub" data-i18n="fac.responses.sub">One row per department, one column per inject. The Exercise tab shows the inject running now.</div>
         <div id="historySection"></div>
+        <div id="earlierRunsSection" hidden></div>
       </div>
     </div>
   </section>
@@ -498,17 +510,26 @@
     <div class="pp-card reset-card">
       <div class="body">
         <h2 data-i18n="fac.reset.heading">Start over</h2>
-        <div class="sub" data-i18n="fac.reset.sub">Sends every device back to the waiting screen, ready to start again from the first inject.</div>
+        <div class="sub" id="resetSub" data-i18n="fac.reset.sub">Clears the screens between two sessions — a trial run and the real run, or the demo. Nothing is deleted.</div>
       </div>
-      <button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Reset to lobby…</button>
+      <button id="resetBtn" class="danger" data-i18n="fac.controls.reset">Start fresh…</button>
       <div class="reset-confirm" id="resetCheck" hidden role="alertdialog" aria-labelledby="resetCheckTitle">
-        <div class="t" id="resetCheckTitle" data-i18n="fac.reset.title">Send everyone back to the waiting screen?</div>
-        <div class="why" data-i18n="fac.reset.why">Every device returns to the waiting screen and the exercise starts again from the first inject when you press Start. Notes and messages already written are kept and labelled "Earlier run". This is for testing and for starting over — not for a short pause.</div>
+        <div class="t" id="resetCheckTitle" data-i18n="fac.reset.title">Start fresh?</div>
+        <div class="why" data-i18n="fac.reset.why">Everyone goes back to the waiting screen. Messages, notes and answers so far disappear from all screens. They are kept safely in the background and removed with the exercise's other data. Registered people stay.</div>
         <div class="b">
-          <button id="resetBackBtn" type="button" data-i18n="fac.reset.cancel">Cancel</button>
-          <button id="resetConfirmBtn" type="button" class="danger" data-i18n="fac.reset.confirm">Yes, reset everyone</button>
+          <button id="resetBackBtn" type="button" data-i18n="fac.reset.cancel">Go back</button>
+          <button id="resetConfirmBtn" type="button" class="danger" data-i18n="fac.reset.confirm">Start fresh</button>
         </div>
       </div>
+      <div class="reset-confirm" id="earlierCheck" hidden role="alertdialog" aria-labelledby="earlierCheckTitle">
+        <div class="t" id="earlierCheckTitle" data-i18n="fac.reset.showTitle">Show earlier runs?</div>
+        <div class="why" data-i18n="fac.reset.showWhy">The messages, notes and answers of earlier runs come back into view on this page only, labelled "Earlier run". Participants and Observers never see them. When you press Start they are hidden again.</div>
+        <div class="b">
+          <button id="earlierBackBtn" type="button" data-i18n="fac.reset.cancel">Go back</button>
+          <button id="earlierConfirmBtn" type="button" data-i18n="fac.reset.showConfirm">Show earlier runs</button>
+        </div>
+      </div>
+      <div class="note" id="earlierFeedback" hidden></div>
     </div>
     <div class="pp-col">
       <details class="pp-card setup-card" id="setupDetails" open>
@@ -1103,6 +1124,7 @@
         : T("fac.controls.unlock");
       endBtn.disabled = false;
       resetBtn.disabled = false;
+      renderStartOver();
 
       // Departments can be added at any time, also mid-exercise (Ahmed,
       // 11 October 2026 — "it's difficult to cover all the departments from
@@ -1232,7 +1254,7 @@
     const isIncoming = (m) => m.direction === "to_facilitator" || m.direction === "from_observer";
     const inboxMsgTime = (m) => new Date(m.created_at).getTime();
     function isInboxUnread(m) {
-      return isIncoming(m) && (inboxLastReadAt === null || inboxMsgTime(m) > inboxLastReadAt);
+      return isIncoming(m) && !isEarlierRun(m) && (inboxLastReadAt === null || inboxMsgTime(m) > inboxLastReadAt);
     }
     function unreadMessages() { return allMessages.filter(isInboxUnread); }
     function markInboxRead() {
@@ -1253,6 +1275,10 @@
       if (e.target.closest("button")) return;
       markInboxRead();
     });
+    // Start fresh (W4b, 31 October 2026): earlier runs are hidden on this
+    // page unless the facilitator chose "Show earlier runs" (stored on the
+    // exercise, cleared again by Start fresh and by Start).
+    function earlierShown() { return !!(currentRow && currentRow.show_earlier_runs); }
     // A message from before the latest Reset (same label as Observer notes).
     function isEarlierRun(m) {
       return !!(currentRow && m.run_number && currentRow.run_number && m.run_number < currentRow.run_number);
@@ -1287,7 +1313,8 @@
       tabsApi.badge("messages", unread.length, "");
       const canReplyObs = observerChannel(currentRow).open;
       const ended = currentRow && currentRow.status === "ended";
-      const shown = allMessages.filter((m) => convoFilter === "all" || (convoFilter === "observers" ? isObserverThread(m) : !isObserverThread(m)));
+      // Start fresh (W4b): earlier runs only when "Show earlier runs" is on.
+      const shown = allMessages.filter((m) => (earlierShown() || !isEarlierRun(m)) && (convoFilter === "all" || (convoFilter === "observers" ? isObserverThread(m) : !isObserverThread(m))));
       inboxListEl.innerHTML = shown.length
         ? shown
             .slice()
@@ -2234,6 +2261,7 @@
     const noteTime = (n) => Date.parse(n.created_at);
     function isNoteUnread(n) {
       if (n.author_role === "facilitator") return false; // your own notes are never "new"
+      if (currentRow && n.run_number && currentRow.run_number && n.run_number !== currentRow.run_number) return false; // an earlier run's note is never "new" (W4b)
       return notesLastReadAt === null || noteTime(n) > notesLastReadAt;
     }
     function markNotesRead() {
@@ -2271,8 +2299,9 @@
     function renderNotes() {
       if (!allNotes) return;
       const run = currentRow ? currentRow.run_number : null;
-      const visible = allNotes.filter((n) => !n.withdrawn).slice().reverse();
-      const thisRun = visible.filter((n) => !run || n.run_number === run);
+      const thisRun = allNotes.filter((n) => !n.withdrawn && (!run || n.run_number === run)).slice().reverse();
+      // Start fresh (W4b): an earlier run's notes only when "Show earlier runs" is on.
+      const visible = earlierShown() ? allNotes.filter((n) => !n.withdrawn).slice().reverse() : thisRun;
       const unread = visible.filter(isNoteUnread);
       const unreadCritical = unread.filter((n) => n.note_type === "critical").length;
       notesBadgeEl.hidden = unread.length === 0;
@@ -2285,7 +2314,7 @@
       renderAlerts();
 
       const count = (k) => thisRun.filter((n) => n.note_type === k).length;
-      const withdrawn = allNotes.filter((n) => n.withdrawn).length;
+      const withdrawn = allNotes.filter((n) => n.withdrawn && (earlierShown() || !run || n.run_number === run)).length;
       const earlier = visible.length - thisRun.length;
       notesCountsEl.textContent = thisRun.length || earlier || withdrawn
         ? `${T("fac.notes.countNotes", { count: thisRun.length })} · ${T("fac.notes.countCritical", { count: count("critical") })} · ${T("fac.notes.countImprovement", { count: count("improvement") })} · ${T("fac.notes.countPositive", { count: count("positive") })}` +
@@ -2839,18 +2868,27 @@
     }
     setInterval(renderEndStrip, 10000);
     const resetCheckEl = document.getElementById("resetCheck");
+    const earlierCheckEl = document.getElementById("earlierCheck");
+    function closeStartOverQuestions() { resetCheckEl.hidden = true; earlierCheckEl.hidden = true; resetBtn.hidden = false; }
     document.getElementById("resetBtn").addEventListener("click", () => {
+      const mode = startOverMode();
+      if (mode === "first") return;
+      if (mode === "hide") { setEarlierRuns(false); return; } // nothing is lost: no question
       startCheckEl.hidden = true; document.body.classList.remove("pp-start-asking"); endCheckEl.hidden = true; resumeCheckEl.hidden = true;
       // The question opens inside the "Start over" box, in place of the
       // button (18 October 2026: one question, one pair of answers).
-      resetCheckEl.hidden = false;
+      const box = mode === "show" ? earlierCheckEl : resetCheckEl;
+      box.hidden = false;
       resetBtn.hidden = true;
-      resetCheckEl.scrollIntoView({ block: "center" });
-      document.getElementById("resetBackBtn").focus();
+      box.scrollIntoView({ block: "center" });
+      document.getElementById(mode === "show" ? "earlierBackBtn" : "resetBackBtn").focus();
     });
-    document.getElementById("resetBackBtn").addEventListener("click", () => { resetCheckEl.hidden = true; resetBtn.hidden = false; });
+    document.getElementById("resetBackBtn").addEventListener("click", closeStartOverQuestions);
+    document.getElementById("earlierBackBtn").addEventListener("click", closeStartOverQuestions);
     document.getElementById("resetConfirmBtn").addEventListener("click", () => {
-      resetCheckEl.hidden = true; resetBtn.hidden = false;
+      closeStartOverQuestions();
+      // The same as the old "Reset to lobby": a new run. The database hides
+      // the earlier runs again (show_earlier_runs = false) at the same time.
       runAction(() => patchSession(sessionId, {
         status: "lobby",
         current_inject_index: -1,
@@ -2859,6 +2897,112 @@
         is_trial: false,
       }));
     });
+    document.getElementById("earlierConfirmBtn").addEventListener("click", () => {
+      closeStartOverQuestions();
+      setEarlierRuns(true);
+    });
+    // Show / hide earlier runs: stored on the exercise (every Facilitator
+    // device agrees), Facilitator link only, waiting screen only.
+    async function setEarlierRuns(show) {
+      const fb = document.getElementById("earlierFeedback");
+      fb.hidden = true;
+      await runAction(async () => {
+        try {
+          await callNotesRpc("facilitator_show_earlier_runs", { p_session_id: sessionId, p_show: !!show }, facilitatorToken);
+        } catch (err) {
+          fb.textContent = T("fac.reset.showFailed", { message: PPLang.dbMessage(err.message) });
+          fb.hidden = false;
+          throw err;
+        }
+      });
+      applyEarlierView();
+    }
+    function startOverMode() {
+      if (!currentRow || currentRow.status !== "lobby") return "fresh";
+      if ((currentRow.run_number || 1) <= 1) return "first";
+      return earlierShown() ? "hide" : "show";
+    }
+    let lastStartOverMode = null;
+    function renderStartOver() {
+      const btn = document.getElementById("resetBtn"), sub = document.getElementById("resetSub");
+      if (!btn || !sub) return;
+      const mode = startOverMode();
+      btn.textContent = mode === "show" ? T("fac.reset.show") : mode === "hide" ? T("fac.reset.hide") : T("fac.controls.reset");
+      btn.classList.toggle("danger", mode === "fresh" || mode === "first");
+      btn.dataset.mode = mode;
+      if (mode === "first") btn.disabled = true;
+      sub.textContent = mode === "show" ? T("fac.reset.subShow") : mode === "hide" ? T("fac.reset.subShown") : mode === "first" ? T("fac.reset.subFirst") : T("fac.reset.sub");
+      if (lastStartOverMode !== null && lastStartOverMode !== mode) {
+        // the state changed under an open question (another device, Start): close it
+        const rc = document.getElementById("resetCheck"), ec = document.getElementById("earlierCheck");
+        if (rc && ec && (!rc.hidden || !ec.hidden)) { rc.hidden = true; ec.hidden = true; btn.hidden = false; }
+      }
+      lastStartOverMode = mode;
+    }
+    // Earlier runs on the Responses tab (status only, never the answers).
+    let earlierRunsData = null, earlierRunsLoading = false, earlierRunsAt = 0;
+    async function loadEarlierRuns(force) {
+      if (!earlierShown() || earlierRunsLoading) return;
+      if (!force && earlierRunsData && Date.now() - earlierRunsAt < 30000) return;
+      earlierRunsLoading = true;
+      try {
+        earlierRunsData = await callNotesRpc("facilitator_earlier_runs", { p_session_id: sessionId }, facilitatorToken);
+        earlierRunsAt = Date.now();
+      } catch (err) {
+        earlierRunsData = { error: PPLang.dbMessage(err.message) };
+      } finally {
+        earlierRunsLoading = false;
+      }
+      renderEarlierRuns();
+    }
+    function renderEarlierRuns() {
+      const el = document.getElementById("earlierRunsSection");
+      if (!el) return;
+      if (!earlierShown()) { if (!el.hidden) { el.hidden = true; el.innerHTML = ""; } return; }
+      el.hidden = false;
+      const injects = (currentRow && currentRow.scenario && currentRow.scenario.injects) || [];
+      let html = `<h3 class="earlier-h">${escapeHtml(T("fac.earlier.heading"))}</h3><div class="sub">${escapeHtml(T("fac.earlier.sub"))}</div>`;
+      if (!earlierRunsData) html += `<p class="muted-line">${escapeHtml(T("fac.earlier.loading"))}</p>`;
+      else if (earlierRunsData.error) html += `<p class="muted-line" style="color:var(--red-soft);">${escapeHtml(T("fac.earlier.failed", { message: earlierRunsData.error }))}</p>`;
+      else {
+        const runs = (earlierRunsData.runs || []).filter((r) => r.run_number < currentRow.run_number).slice().reverse();
+        const answers = earlierRunsData.answers || [];
+        const depts = allDepartments();
+        for (const r of runs) {
+          const mine = answers.filter((a) => a.run_number === r.run_number);
+          const played = Object.keys(r.inject_started_log || {}).map(Number).filter((i) => injects[i]).sort((a, b) => a - b);
+          mine.forEach((a) => { if (injects[a.inject_index] && !played.includes(a.inject_index)) played.push(a.inject_index); });
+          played.sort((a, b) => a - b);
+          const when = r.started_at ? clockTimeText(Date.parse(r.started_at)) : "";
+          html += `<div class="earlier-run" data-run="${r.run_number}"><div class="earlier-run-h"><span class="earlier-tag">${escapeHtml(T("fac.earlier.run", { number: r.run_number }))}</span>` +
+            (r.is_trial ? ` <span class="earlier-trial">${escapeHtml(T("fac.earlier.trial"))}</span>` : "") +
+            (when ? ` <span class="muted-line">· ${escapeHtml(T("fac.earlier.started", { time: when }))}</span>` : "") + `</div>`;
+          if (!mine.length || !played.length) { html += `<p class="muted-line">${escapeHtml(T("fac.earlier.none"))}</p></div>`; continue; }
+          html += `<div class="history-wrap"><table class="history"><thead><tr><th>${escapeHtml(T("fac.status.deptColumn"))}</th>${played.map((i) => `<th title="${escapeHtml(injects[i].title || "")}">${escapeHtml(T("fac.status.historyCol", { number: i + 1 }))}</th>`).join("")}</tr></thead><tbody>`;
+          for (const d of depts) {
+            html += `<tr><td>${escapeHtml(d)}</td>` + played.map((i) => {
+              const list = mine.filter((a) => a.inject_index === i && sameDept(a.department, d));
+              const sent = list.filter((a) => a.status === "submitted");
+              let cls = "wait", label = T("fac.earlier.noAnswer");
+              if (list.some((a) => a.individual)) {
+                cls = sent.length ? "green" : "wait"; label = T("fac.earlier.individual", { count: sent.length });
+              } else if (sent.length) {
+                cls = sent[0].on_time ? "green" : "red"; label = sent[0].on_time ? T("fac.earlier.onTime") : T("fac.earlier.late");
+              } else if (list.some((a) => a.has_content)) { cls = "red"; label = T("fac.earlier.draft"); }
+              return `<td title="${escapeHtml(label)}"><i class="dot ${cls}"></i></td>`;
+            }).join("") + `</tr>`;
+          }
+          html += `</tbody></table></div></div>`;
+        }
+      }
+      if (el.innerHTML !== html) el.innerHTML = html;
+    }
+    function applyEarlierView() {
+      renderStartOver();
+      if (typeof renderInbox === "function") renderInbox();
+      if (typeof renderNotes === "function") renderNotes();
+      if (earlierShown()) loadEarlierRuns(true); else { earlierRunsData = null; renderEarlierRuns(); }
+    }
 
     // Only the most recently started refresh is applied (refreshSeq), so the
     // 15-second check can never put an older copy of the session back after
@@ -2869,11 +3013,13 @@
       if (seq !== refreshSeq) return;
       const prevRun = currentRow && currentRow.run_number;
       const prevStatus = currentRow && currentRow.status;
+      const prevShown = !!(currentRow && currentRow.show_earlier_runs);
       currentRow = row;
       updateButtonAvailability();
       // A Reset (new run) or a change of state relabels the conversation
       // ("Earlier run", Reply shown or not) without waiting for a new message.
       if (row && (row.run_number !== prevRun || row.status !== prevStatus) && typeof renderInbox === "function") renderInbox();
+      if (row && (row.run_number !== prevRun || !!row.show_earlier_runs !== prevShown)) applyEarlierView();
       if (!currentRow) return;
       // Reflect the session's real room_count in the selector. refresh()
       // only ever runs after an action settles (a button click, reconnect,

@@ -909,6 +909,10 @@
     // belong to the earlier run — start clean.
     if (storedRun !== null && row.run_number !== undefined && row.run_number !== storedRun) {
       clearStoredAnswers();
+      // Start fresh (W4b, 31 October 2026): the earlier run's messages leave
+      // this screen at once (the database already returns this run's only).
+      messages = [];
+      loadMessages();
     }
     if (row.run_number !== undefined) storedRun = row.run_number;
     latestRow = row;
