@@ -573,3 +573,15 @@ body.pp-has-tabs { padding-bottom: 24px; }
 .pp-msg-subj { font-weight: 600; color: var(--text); }
 #liveStatus[data-state="live"] { color: #0b0f14 !important; }
 .pp-slim { min-height: 38px; box-sizing: border-box; }
+
+/* ------------------------------------------------------------------
+   After Ahmed's W4 real-device test (31 October 2026): the thank-you
+   title ("Thank you, Ali", "Thank you, everyone") and the feedback
+   survey's invitation are red, so nobody misses the survey at the end.
+   The survey's own "Thank you for your feedback" stays white.
+   ------------------------------------------------------------------ */
+.pp-thanks-title,
+.pp-thanks-title .pp-thanks-name { color: var(--red); }
+.pp-thanks-survey { color: var(--red); }
+.ppsv-title { color: var(--red); }
+.ppsv-done .ppsv-title { color: var(--text); }
