@@ -1,5 +1,5 @@
 {
-  "name": "PlanProof client records",
+  "name": "PlanProof admin",
   "short_name": "PlanProof",
   "description": "Private PlanProof admin: requests and client records.",
   "id": "/admin/",
