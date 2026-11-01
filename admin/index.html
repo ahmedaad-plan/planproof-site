@@ -132,6 +132,9 @@
   ul.checks li span.what{ flex:1 1 220px; min-width:0; overflow-wrap:anywhere; }
   .progress{ font-size:13px; color:var(--attn); margin-top:8px; min-height:1.2em; }
   .rec-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .run-pick{ margin:12px 0 4px; }
+  .run-pick label{ display:block; margin-bottom:4px; }
+  .run-pick select{ width:100%; max-width:100%; }
   @media (max-width:599px){ .rec-actions .btn{ flex:1 1 100%; } }
 
   /* At a glance tiles (same as the facilitator page) */
@@ -244,7 +247,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v4</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v5</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -1012,10 +1015,12 @@ function saveBytes(bytes, name, type) {
 }
 // Builds the zip and checks it by opening it again. Throws (and saves
 // nothing) if any part is missing or does not match.
-async function buildRecordZip(sessionId, say) {
+async function buildRecordZip(sessionId, say, run) {
   if (!window.PPRecord || !window.fflate) throw new Error("The export tools did not load. Reload the page and try again.");
   say("Reading the exercise record…");
-  const rec = await q(sb.rpc("admin_export_record", { p_session: sessionId }));
+  // W4b (31 October 2026): the record of the run chosen in the list (any
+  // run can be downloaded until the player data is removed).
+  const rec = await q(sb.rpc("admin_export_record", run ? { p_session: sessionId, p_run: run } : { p_session: sessionId }));
   if (!rec || rec.format !== PPRecord.FORMAT) throw new Error("The database returned an unexpected record. Nothing was saved.");
   const enc = new TextEncoder();
   const exportedAt = new Date().toISOString();
@@ -1063,6 +1068,10 @@ function exercisePanel(s, setBadge) {
     const rows = await q(sb.rpc("admin_exercise_sessions", { p_submission: s.id })).catch((err) => { fail(err); return false; });
     if (rows === false) { panel.replaceChildren(h("div", { class: "card plain" }, h("p", { class: "empty" }, "The exercise list could not be loaded."))); return; }
     sessions = Array.isArray(rows) ? rows : [];
+    // The runs of each linked exercise, for "Run to download" (W4b).
+    await Promise.all(sessions.filter((x) => x.submission_id === s.id).map(async (x) => {
+      x.runs = await q(sb.rpc("admin_exercise_runs", { p_session: x.id })).catch(() => null);
+    }));
     draw();
   }
   function draw() {
@@ -1085,19 +1094,49 @@ function exercisePanel(s, setBadge) {
   }
   function sessionCard(x) {
     const r = x.record || {};
+    // ---- Run to download (W4b, 31 October 2026) ----
+    // Every run of the exercise is listed; the latest real (non-trial) run
+    // that can be downloaded is chosen first. Any run can be downloaded until
+    // the player data is removed.
+    const runs = Array.isArray(x.runs) ? x.runs : null;
+    const usable = runs ? runs.filter((u) => u.exportable) : [];
+    const firstChoice = usable.find((u) => !u.is_trial) || usable[0] || null;
+    if (x.chosenRun === undefined || (runs && !runs.some((u) => u.run_number === x.chosenRun))) x.chosenRun = firstChoice ? firstChoice.run_number : null;
+    const chosen = runs ? runs.find((u) => u.run_number === x.chosenRun) || null : null;
+    const earlierChosen = !!(chosen && !chosen.current);
+    const runLabel = (u) => [`Run ${u.run_number}`, u.is_trial ? "TRIAL RUN" : null,
+      u.started_at ? "started " + dt(u.started_at) : null,
+      u.state === "ended" ? (u.ended_at ? "ended " + dt(u.ended_at) : "ended") : u.state === "stopped" ? "stopped by Start fresh" + (u.closed_at ? " " + dt(u.closed_at) : "") : u.state === "running" ? "running now" : "not started",
+      u.current ? "latest" : null, u.approximate ? "times estimated" : null,
+      u.exported_at ? "downloaded " + dt(u.exported_at) : null].filter(Boolean).join(" · ");
+    const runSel = runs && runs.length ? h("select", { "aria-label": "Run to download", class: "run-select", onchange: () => { x.chosenRun = Number(runSel.value); draw(); } },
+      ...runs.map((u) => h("option", { value: String(u.run_number), selected: u.run_number === x.chosenRun, disabled: !u.exportable }, runLabel(u)))) : null;
+    const runBox = runSel ? h("div", { class: "run-pick" },
+      h("label", { class: "small muted" }, "Run to download"), runSel,
+      h("p", { class: "muted small", style: "margin:4px 0 0" }, earlierChosen
+        ? `An earlier run is chosen${chosen.is_trial ? " — a TRIAL RUN (practice)" : ""}. Its record holds that run only. The latest real run is chosen by default.`
+        : "Each run is downloaded on its own. The latest real (non-trial) run is chosen by default; choose another run to report it instead.")) : null;
     const [stateText, tone] = RECORD_STATE[r.state] || [r.state, "none"];
     const progress = h("div", { class: "progress", role: "status", "aria-live": "polite" });
     const say = (m) => { progress.textContent = m; };
     const until = (iso) => iso ? dt(iso) : "—";
     // The daily job runs at 06:17 UAE; a day's grace before calling it overdue.
     const overdue = r.state !== "purged" && r.purge_due_at && Date.now() > Date.parse(r.purge_due_at) + 26 * 3600 * 1000;
+    const earlierChecks = earlierChosen ? [
+      h("li", {}, pill(chosen.state === "ended" ? "Done" : "Stopped", chosen.state === "ended" ? "ok" : "wait"), h("span", { class: "what" }, `Run ${chosen.run_number} ended`, chosen.state === "ended" ? (chosen.ended_at ? " — " + dt(chosen.ended_at) : "") : ` — stopped with "Start fresh"${chosen.closed_at ? " on " + dt(chosen.closed_at) : ""} before End was pressed`)),
+      h("li", {}, pill("Closed", "ok"), h("span", { class: "what" }, "Observer and facilitator notes", ` — closed (${chosen.notes} note${chosen.notes === 1 ? "" : "s"} in this run)`)),
+      h("li", {}, pill("Closed", "ok"), h("span", { class: "what" }, "Feedback survey (participants' feedback)", ` — closed (${chosen.survey} answer${chosen.survey === 1 ? "" : "s"} in this run)`)),
+      h("li", {}, pill(chosen.exported_at ? "Done" : "Not yet", chosen.exported_at ? "ok" : "none"), h("span", { class: "what" }, `Run ${chosen.run_number} record downloaded`, chosen.exported_at ? " — " + dt(chosen.exported_at) : "")),
+    ] : null;
     const checks = h("ul", { class: "checks" },
+      ...(earlierChecks || [
       h("li", {}, pill(r.status === "ended" || r.state === "purged" ? "Done" : "Not yet", r.status === "ended" || r.state === "purged" ? "ok" : "none"), h("span", { class: "what" }, "Exercise ended", r.ended_at ? " — " + dt(r.ended_at) : "")),
       h("li", {}, pill(r.notes_open ? "Open" : r.ended_at ? "Closed" : "—", r.notes_open ? "wait" : r.ended_at ? "ok" : "none"),
         h("span", { class: "what" }, "Observer and facilitator notes", r.notes_open ? ` — open until ${until(r.notes_open_until)} (the facilitator can close them with "Notes complete")` : r.notes_complete ? ' — closed ("Notes complete")' : "")),
       surveyLine(),
-      h("li", {}, pill(r.exported_at ? "Done" : "Not yet", r.exported_at ? "ok" : "none"),
-        h("span", { class: "what" }, "Exercise record downloaded", r.exported_at ? ` — ${dt(r.exported_at)}${r.exported_run && r.exported_run !== r.run_number ? " (an earlier run — download again)" : ""}` : "")),
+      h("li", {}, pill(r.exported_at && r.exported_run === r.run_number ? "Done" : "Not yet", r.exported_at && r.exported_run === r.run_number ? "ok" : "none"),
+        h("span", { class: "what" }, "Exercise record downloaded", r.exported_at && r.exported_run === r.run_number ? ` — ${dt(r.exported_at)}` : r.exported_at ? ` — an earlier run (run ${r.exported_run}) was downloaded ${dt(r.exported_at)}` : "")),
+      ]),
       h("li", {}, pill(r.state === "purged" ? "Removed" : overdue ? "Overdue" : r.purge_due_at ? "Scheduled" : "Not yet", r.state === "purged" ? "ok" : overdue ? "bad" : r.purge_due_at ? "wait" : "none"),
         h("span", { class: "what" }, "Player data removed",
           r.state === "purged" ? ` — ${dt(r.purged_at)}`
@@ -1129,25 +1168,27 @@ function exercisePanel(s, setBadge) {
       return h("li", {}, pill(r.survey_open ? "Open" : r.ended_at ? "Closed" : "—", r.survey_open ? "wait" : r.ended_at ? "ok" : "none"),
         h("span", { class: "what" }, "Feedback survey (participants' feedback)", detail), closeBtn);
     }
-    const dl = h("button", { class: "btn " + (r.state === "ready" || r.state === "waiting" ? "primary" : ""), type: "button",
-      disabled: r.state === "not_ended" || r.state === "purged", onclick: async () => {
-        if (r.state === "waiting") {
+    const dlState = earlierChosen ? (chosen.exported_at ? "exported" : "ready") : r.state;
+    const dl = h("button", { class: "btn " + (dlState === "ready" || dlState === "waiting" ? "primary" : ""), type: "button",
+      disabled: r.state === "purged" || (runs ? !(chosen && chosen.exportable) : r.state === "not_ended"), onclick: async () => {
+        if (!earlierChosen && r.state === "waiting") {
           const open = [r.notes_open && "the Observer and facilitator notes are open until " + until(r.notes_open_until), r.survey_open && "the feedback survey is open until " + until(r.survey_open_until) + " (or until everyone has answered)"].filter(Boolean);
           const ok = await confirmBox({ title: "Download before everything has closed?", text: `${(open.join(" and ")).replace(/^./, (c) => c.toUpperCase())}. Anything added after this download is not in it — you would need to download again later. Download anyway?`, ok: "Download anyway" });
           if (!ok) return;
         }
         dl.disabled = true;
         try {
-          const out = await buildRecordZip(x.id, say);
-          const name = `PlanProof-exercise-record-${out.base}.zip`;
+          const run = chosen ? chosen.run_number : null;
+          const out = await buildRecordZip(x.id, say, run);
+          const name = `PlanProof-exercise-record-${out.base}${earlierChosen ? "-run" + run : ""}.zip`;
           saveBytes(out.zip, name, "application/zip");
           say("Saved " + name + " — recording the download…");
-          await q(sb.rpc("admin_record_export", { p_session: x.id, p_fingerprint: out.fingerprint, p_counts: { ...out.counts, files: out.files, bytes: out.zip.length } }))
+          await q(sb.rpc("admin_record_export", { p_session: x.id, p_fingerprint: out.fingerprint, p_counts: { ...out.counts, files: out.files, bytes: out.zip.length }, ...(run ? { p_run: run } : {}) }))
             .then(() => { toast("Exercise record downloaded"); say(`Saved ${name} (${out.files} files, ${Math.round(out.zip.length / 1024)} KB). Fingerprint ${out.fingerprint.slice(0, 12)}…`); })
             .catch((err) => { say(""); fail(new Error("The zip was saved, but the download could not be recorded (" + (err.message || err) + "). Press Download again.")); });
           await load();
         } catch (err) { say(""); fail(err); dl.disabled = false; }
-      } }, r.state === "exported" ? "Download again" : "Download exercise record");
+      } }, dlState === "exported" ? (earlierChosen ? `Download run ${chosen.run_number} again` : "Download again") : earlierChosen ? `Download run ${chosen.run_number}` : "Download exercise record");
     const purge = h("button", { class: "btn danger", type: "button", disabled: !r.exported_at || r.state === "purged", onclick: async () => {
       const ok = await confirmBox({ title: "Remove this exercise's player data now?",
         text: "This removes every registration (names, job titles), answer, attachment file, note and message of this exercise, from every run. The anonymous survey taps stay. Use it only once the report is safe — normally this happens by itself 7 days after Delivered. It can't be undone.",
@@ -1177,11 +1218,12 @@ function exercisePanel(s, setBadge) {
       await q(sb.rpc("admin_link_session", { p_session: x.id, p_submission: null })).then(() => { toast("Exercise unlinked"); return load(); }).catch(fail);
     } }, "Unlink");
     return h("div", { class: "card" },
-      h("div", { class: "spread" }, h("h2", {}, "Exercise record"), pill(stateText, tone)),
+      h("div", { class: "spread" }, h("h2", {}, "Exercise record"), pill(...(RECORD_STATE[dlState] || [stateText, tone]))),
       h("div", { class: "spread", style: "align-items:baseline" },
         h("div", {}, h("h3", {}, h("bdi", {}, x.label || "(no name)")),
           h("div", { class: "small muted" }, [x.status === "ended" ? "Ended" : x.status, x.registered + " registered", plural(x.injects, "inject"), "run " + x.run_number].join(" · "))),
         unlink),
+      runBox,
       checks,
       h("div", { class: "rec-actions" }, dl, purge),
       progress,

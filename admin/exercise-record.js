@@ -189,6 +189,7 @@
     const reg = sv.registered || 0;
     if (how === "everyone") return `closed — everyone registered had answered (${n} of ${reg})`;
     if (how === "planproof") return `closed by PlanProof on ${uae(sv.closed_at || r.survey_closed_at)} (${n} of ${reg} answered)`;
+    if (how === "new_run") return `closed — a new run was started (${n} of ${reg} answered)`;
     return "closed (48 hours after End)";
   }
 
@@ -201,6 +202,13 @@
     else if (!(rec.client && rec.client.client_ref)) w.push("The client has no client reference (PP-…) yet — issue it on the admin page before the report is delivered.");
     const notPlayed = injects(rec).length - playedIndexes(rec).length;
     if (notPlayed > 0) w.push(`${notPlayed} inject${notPlayed === 1 ? " was" : "s were"} not played (listed in section 2).`);
+    // W4b (31 October 2026): a run chosen on the admin page.
+    const run = rec.run || {};
+    if (run.is_trial) w.push("This is a TRIAL RUN (practice before the real exercise). It is normally not the run to report — check that this is the run you meant to choose.");
+    if (run.current === false) w.push(`This is an earlier run (run ${run.number}; the latest run is ${run.latest_run}), chosen on the admin page. Only this run's answers, notes, requests for more time and survey answers are in this record.`);
+    if (run.stopped_before_end) w.push(`This run was stopped with "Start fresh" on ${uae(run.closed_at)} before End was pressed: it has no end time and no end-of-exercise survey of its own.`);
+    if (run.approximate) w.push("This run took place before run times were recorded (31 October 2026): its start time is estimated from its first activity.");
+    if (run.current === false) w.push("Registrations are kept across runs: section 1 lists everyone registered before this run closed (anyone the facilitator removed later is not listed).");
     return w;
   }
 
@@ -223,12 +231,12 @@
     push(`Exercise:            ${S.label || ""}${sc.label && sc.label !== S.label ? " — scenario: " + sc.label : ""}`);
     push(`Exercise language:   ${S.language === "ar" ? "Arabic" : "English"} (the report is always in English and Arabic)`);
     push(`Started (UAE):       ${uae(S.started_at)}`);
-    push(`Ended (UAE):         ${uae(S.ended_at)}`);
+    push(`Ended (UAE):         ${S.ended_at ? uae(S.ended_at) : rec.run && rec.run.stopped_before_end ? `— (stopped with "Start fresh" on ${uae(rec.run.closed_at)})` : uae(S.ended_at)}`);
     push(`Duration:            ${S.started_at && S.ended_at ? duration(minutesBetween(S.started_at, S.ended_at)) : "—"} (from the first inject to End, including any pause or break)`);
     push(`Rooms:               ${S.room_count || 1}`);
-    push(`Run:                 ${S.run_number} (earlier runs and trial runs are left out)`);
+    push(`Run:                 ${rec.run && rec.run.current === false ? `${S.run_number} of ${rec.run.latest_run} — an earlier run chosen on the admin page${rec.run.is_trial ? " (TRIAL RUN)" : ""}; the other runs are left out` : `${S.run_number}${rec.run && rec.run.is_trial ? " (TRIAL RUN)" : ""} (earlier runs and trial runs are left out)`}`);
     push(`Exported (UAE):      ${uae(o.exportedAt || rec.generated_at)}`);
-    push(`Notes:               ${rec.readiness && rec.readiness.notes_complete ? "closed (\"Notes complete\" pressed)" : rec.readiness && rec.readiness.notes_open ? "STILL OPEN" : "closed (48 hours after End)"}`);
+    push(`Notes:               ${rec.readiness && rec.readiness.notes_complete ? "closed (\"Notes complete\" pressed)" : rec.readiness && rec.readiness.notes_open ? "STILL OPEN" : rec.run && rec.run.current === false ? "closed (a new run was started)" : "closed (48 hours after End)"}`);
     push(`Feedback survey:     ${surveyClosedText(rec)}`);
     const w = warnings(rec);
     if (w.length) { push("", "WARNINGS"); w.forEach((x) => push("  ! " + x)); }

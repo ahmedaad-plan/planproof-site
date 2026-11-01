@@ -112,3 +112,39 @@ test("text says 'Warnings: none' and that more-time requests do not show what wa
   assert.match(t, /not whether extra time was given/);
   assert.match(t, /the level it SUPPORTS \(evidence, not the rating\)/);
 });
+
+// W4b (31 October 2026): a run chosen on the admin page.
+test("W4b: the current run's record reads as before when the run block says current", () => {
+  const rec = sample();
+  rec.run = { number: rec.session.run_number, current: true, is_trial: false, stopped_before_end: false, approximate: false, latest_run: rec.session.run_number };
+  const t = R.buildText(rec, {});
+  assert.match(t, /Run: +\d+ \(earlier runs and trial runs are left out\)/);
+  assert.doesNotMatch(t, /an earlier run chosen/);
+  assert.doesNotMatch(t, /TRIAL RUN/);
+});
+
+test("W4b: an earlier run says so in the header and in the warnings", () => {
+  const rec = sample();
+  rec.session.run_number = 2;
+  rec.run = { number: 2, current: false, is_trial: false, stopped_before_end: false, approximate: false, latest_run: 4, closed_at: rec.session.ended_at };
+  rec.readiness = { ...(rec.readiness || {}), notes_complete: false, notes_open: false, survey_open: false, survey_closed_how: "new_run" };
+  rec.survey = { ...(rec.survey || {}), open: false, closed_how: "new_run", answered: 3, registered: 5 };
+  const t = R.buildText(rec, {});
+  assert.match(t, /Run: +2 of 4 — an earlier run chosen on the admin page; the other runs are left out/);
+  assert.match(t, /Notes: +closed \(a new run was started\)/);
+  assert.match(t, /Feedback survey: +closed — a new run was started \(3 of 5 answered\)/);
+  assert.match(t, /This is an earlier run \(run 2; the latest run is 4\)/);
+  assert.match(t, /Registrations are kept across runs/);
+});
+
+test("W4b: a trial run and a run stopped before End are flagged", () => {
+  const rec = sample();
+  rec.session.ended_at = null;
+  rec.run = { number: 1, current: false, is_trial: true, stopped_before_end: true, approximate: true, latest_run: 2, closed_at: "2026-10-31T06:00:00Z" };
+  const t = R.buildText(rec, {});
+  assert.match(t, /\(TRIAL RUN\)/);
+  assert.match(t, /This is a TRIAL RUN/);
+  assert.match(t, /stopped with "Start fresh" on 31 Oct 2026/);
+  assert.match(t, /Ended \(UAE\): +— \(stopped with "Start fresh"/);
+  assert.match(t, /start time is estimated/);
+});
