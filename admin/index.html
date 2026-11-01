@@ -831,7 +831,7 @@ function doneSummary(n, ctx) {
   if (n === 1) {
     const open = (actions || []).filter((a) => a.status === "open" || a.status === "done").length;
     const x = (exercises || [])[0];
-    return h("span", {}, [h("bdi", {}, c.company_name || ""), s.match_status === "new_client" ? "new client" : (exercises || []).length ? "returning client" : "existing client",
+    return h("span", {}, [h("bdi", {}, c.company_name || ""), (exercises || []).length ? "returning client" : "new client",
       x ? "last exercise " + dMonth(x.exercise_date) + (x.overall_score != null ? ", " + Math.round(x.overall_score) + "%" : "") : null,
       open ? plural(open, "open action") + " to re-check" : null].filter(Boolean).flatMap((p, i) => i ? [" · ", p] : [p]),
       c.id ? [" · ", h("a", { href: "#client/" + c.id, onclick: (e) => e.stopPropagation() }, "client record")] : null);
@@ -1151,12 +1151,12 @@ function remarksBox(s, readOnly) {
   const box = h("div", { class: "remarks" }, h("h3", { class: "cap" }, "PlanProof remarks — team only, never shown to the client"), list);
   if (!readOnly) {
     const ta = h("textarea", { rows: 3, maxlength: 4000, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
-    const add = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
+    const addBtn = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
       const body = ta.value.trim(); if (!body) return;
       const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
       if (row) { toast("Remark added"); reloadKeepingPlace(); }
     } }, "Add remark");
-    const addForm = h("div", { hidden: true, style: "margin-top:10px" }, ta, h("div", { class: "row", style: "margin-top:8px" }, add));
+    const addForm = h("div", { hidden: true, style: "margin-top:10px" }, ta, h("div", { class: "row", style: "margin-top:8px" }, addBtn));
     add(box, h("div", { style: "margin-top:8px" }, h("button", { class: "btn quiet sm", type: "button", onclick: () => { addForm.hidden = !addForm.hidden; if (!addForm.hidden) ta.focus(); } }, "+ Add a remark")), addForm);
   }
   return box;
