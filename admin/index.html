@@ -305,7 +305,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v6.1</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -662,8 +662,11 @@ function stepOf(request, versions, comments, record) {
         strong: `Revise it with Claude, then record v${lastNo + 1} as sent — or approve v${v.version_no} if they accepted it as it is.`,
         buttons: ["record", "approve", "comment"], next: lastNo + 1, approve: v.version_no, due: "revise the scenario (client commented)" });
     }
-    return base(3, { sentence: `Sent on ${dShort(v.sent_on)} — waiting for the sponsor's comments or approval.`,
-      buttons: ["comment", "approve", "record"], next: lastNo + 1, approve: v.version_no, due: "waiting for the sponsor" });
+    // Waiting for the sponsor (Ahmed, 1 November 2026): nothing is due, so no
+    // button is red, and the sentence says which button fits which answer.
+    return base(3, { waiting: true, sentence: `v${v.version_no} was sent on ${dShort(v.sent_on)} — waiting for the sponsor.`,
+      strong: `If they accept it as it is, press Approve v${v.version_no}. If they send changes, press + Client comment.`,
+      buttons: ["approve", "comment", "record"], next: lastNo + 1, approve: v.version_no, due: "waiting for the sponsor" });
   }
 
   if (st === "delivered") {
@@ -1063,7 +1066,7 @@ function step3Body(ctx, readOnly, btns, forms) {
       } }, "Approve v" + latest.version_no) : null,
       comment: () => h("button", { class: "btn", type: "button", "data-act": "comment", onclick: () => showOnly(commentForm) }, "+ Client comment"),
     };
-    now.buttons.forEach((k, i) => { const b = B[k] && B[k](); if (b) { if (i === 0) b.classList.add("red"); add(btns, b); } });
+    now.buttons.forEach((k, i) => { const b = B[k] && B[k](); if (b) { if (i === 0 && !now.waiting) b.classList.add("red"); add(btns, b); } });
     add(forms, h("p", { class: "small", style: "margin:8px 0 0; color:var(--attn)" }, h("strong", {}, "Sponsor only — never participants.")));
   }
 
