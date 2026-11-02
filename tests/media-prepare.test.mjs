@@ -294,8 +294,13 @@ test("W6b: HeyGen v3 request — own audio, the plate, 1080p; engine and motion 
   assert.deepEqual(b, { type: "avatar", avatar_id: "Aditya_public_1", audio_url: "https://a/x.mp3", background: { type: "image", url: "https://a/p.jpg" }, resolution: "1080p", aspect_ratio: "16:9", title: "PlanProof Marsa News clip" });
   const iii = heygenRequest({ ...env, HEYGEN_ENGINE: "avatar_iii", HEYGEN_MOTION_PROMPT: "calm" }, { audioUrl: "u", backgroundUrl: "b" });
   assert.deepEqual(iii.engine, { type: "avatar_iii" });
-  assert.equal(iii.motion_prompt, undefined, "the motion prompt only goes with avatar_v");
+  assert.equal(iii.motion_prompt, undefined, "no motion prompt with avatar_iii");
   const v = heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", engine: "avatar_v", motionPrompt: "serious newsreader", avatarId: "other" });
   assert.equal(v.motion_prompt, "serious newsreader");
   assert.equal(v.avatar_id, "other");
+  assert.equal(v.remove_background, undefined);
+  const iv = heygenRequest({ ...env, HEYGEN_REMOVE_BG: "true" }, { audioUrl: "u", backgroundUrl: "b", engine: "avatar_iv", motionPrompt: "calm" });
+  assert.equal(iv.motion_prompt, "calm");
+  assert.equal(iv.remove_background, true);
+  assert.equal(heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", removeBackground: true }).remove_background, true);
 });
