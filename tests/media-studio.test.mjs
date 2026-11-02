@@ -22,8 +22,8 @@ function world(opts = {}) {
     if (u.pathname.startsWith("/storage/v1/object/public/exercise-media/")) return new Response(new Uint8Array(5000), { status: 200 });
     if (u.hostname.endsWith("tts.speech.microsoft.com")) { w.ssml.push(init.body); return new Response(new Uint8Array(24000 * 3), { status: 200 }); }
     if (u.hostname === "raw.githubusercontent.com") return new Response(new Uint8Array(9000), { status: 200 });
-    if (u.pathname === "/v2/avatars") return json({ data: { avatars: [{ avatar_id: "a1", avatar_name: "Studio man", gender: "male", preview_image_url: "https://files.heygen.ai/a1.jpg" }] } });
-    if (u.pathname === "/v2/user/remaining_quota") return json({ data: { remaining_quota: 1500 } });
+    if (u.pathname === "/v3/avatars/looks" && !u.searchParams.get("token")) return json({ data: [{ id: "a1", name: "Studio man", avatar_type: "studio_avatar", gender: "male", supported_api_engines: ["avatar_iii"] }], has_more: true, next_token: "p2" });
+    if (u.pathname === "/v3/avatars/looks") return json({ data: [{ id: "a2", name: "Studio woman", avatar_type: "studio_avatar", supported_api_engines: ["avatar_iv", "avatar_v"] }], has_more: false, next_token: null });
     if (u.pathname === "/v3/videos" && init.method === "POST") { w.heygenBody = JSON.parse(init.body); return json({ data: { video_id: "v1" } }); }
     if (u.pathname === "/v3/videos/v1") return json({ data: { status: "completed", video_url: "https://files.heygen.ai/v1.mp4", duration: 12.5 } });
     if (u.href === "https://files.heygen.ai/v1.mp4") return new Response(new Uint8Array(70000), { status: 200 });
@@ -79,7 +79,7 @@ test("tts, avatars, a HeyGen clip and an ffmpeg join: uploads, durations and a r
   ] });
   assert.equal(r.ok, true, JSON.stringify(r.results));
   assert.equal(r.results[0].duration, 3);
-  assert.equal(r.results[1].count, 1);
+  assert.equal(r.results[1].count, 2);
   assert.equal(r.results[2].duration, 12.5);
   assert.ok(w.uploads["studio/clip.mp4"]);
   assert.deepEqual([w.heygenBody.avatar_id, w.heygenBody.engine], ["a1", { type: "avatar_iii" }]);

@@ -12,7 +12,7 @@
 //
 // Steps (run in order, each result kept):
 //   { kind: "tts", ssml, out }                        Azure Speech → bucket
-//   { kind: "heygen_avatars", out }                    list the studio presenters → JSON
+//   { kind: "heygen_avatars", out, avatar_types }      list the public presenter looks → JSON
 //   { kind: "heygen_clip", audio, background, avatar_id, out }   presenter clip
 //   { kind: "ffmpeg", inputs: [url|bucket path], args: [...], out, type }
 //        args use {in0}, {in1}… and {out}; no shell.
@@ -93,15 +93,28 @@ export async function runStudio(deps, body) {
         r.bytes = audio.length;
         r.duration = Math.round((audio.length * 8 / 192000) * 100) / 100;
       } else if (s.kind === "heygen_avatars") {
+        // HeyGen v3 (v1/v2 ended 31 October 2026): public studio looks, with the
+        // engines each look supports (avatar_iii / avatar_iv / avatar_v).
         const H = { "X-Api-Key": env.HEYGEN_API_KEY, Accept: "application/json" };
-        const av = await (await deps.fetchFn("https://api.heygen.com/v2/avatars", { headers: H })).json();
-        let quota = null;
-        try { quota = await (await deps.fetchFn("https://api.heygen.com/v2/user/remaining_quota", { headers: H })).json(); } catch {}
-        const list = ((av && av.data && av.data.avatars) || []).map((a) => ({ id: a.avatar_id, name: a.avatar_name, gender: a.gender, preview: a.preview_image_url, video: a.preview_video_url, premium: a.premium, type: a.type }));
-        const out = JSON.stringify({ count: list.length, quota: quota && quota.data, avatars: list });
+        const types = Array.isArray(s.avatar_types) && s.avatar_types.length ? s.avatar_types : ["studio_avatar"];
+        const list = [];
+        for (const t of types) {
+          let token = null;
+          for (let page = 0; page < 60; page++) {
+            const q = new URLSearchParams({ avatar_type: t, ownership: "public", limit: "50" });
+            if (token) q.set("token", token);
+            const res = await deps.fetchFn(`https://api.heygen.com/v3/avatars/looks?${q}`, { headers: H });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(`HeyGen looks → HTTP ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
+            for (const a of j.data || []) list.push({ id: a.id, name: a.name, type: a.avatar_type || t, group: a.group_id, gender: a.gender,
+              engines: a.supported_api_engines || [], tags: a.tags, preview: a.preview_image_url, video: a.preview_video_url });
+            token = j.next_token;
+            if (!j.has_more || !token) break;
+          }
+        }
+        const out = JSON.stringify({ count: list.length, avatars: list });
         await api.upload(s.out, new TextEncoder().encode(out), "application/json");
         r.count = list.length;
-        r.quota = quota && quota.data;
       } else if (s.kind === "heygen_clip") {
         const clip = await heygenClip(deps, { audioUrl: inputUrl(env, s.audio), backgroundUrl: inputUrl(env, s.background),
           avatarId: s.avatar_id, engine: s.engine, motionPrompt: s.motion_prompt });
