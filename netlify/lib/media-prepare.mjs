@@ -63,7 +63,7 @@ export function urgencyOf(inject) {
   const v = inject.video;
   if (v && (v.script_en || v.script_ar)) return "urgent";
   const parts = messageParts(inject.desc || "");
-  if (parts.header && /alert|alarm|breaking|system/i.test(parts.header[0] || "")) return "urgent";
+  if (parts.header && /alert|alarm|breaking|system|news/i.test(parts.header[0] || "")) return "urgent";
   return "brisk";
 }
 // What a narration file was made with; a different key means "make it again".
@@ -289,7 +289,8 @@ export function planMedia(scenario, media, opts = {}) {
   injects.forEach((inj, i) => {
     const k = String(i);
     const have = items[k] || {};
-    const sensitive = inj && inj.narration === false;
+    // The scenario skill writes narration "on" / "off"; older files use false (W6b).
+    const sensitive = inj && (inj.narration === false || String(inj.narration).toLowerCase() === "off");
     if (sensitive) { plan.skipped.push({ index: i, why: "narration_false" }); return; }
     if (what === "all" || what === "narration") {
       for (const lang of langs) {

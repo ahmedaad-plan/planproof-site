@@ -277,3 +277,12 @@ test("W6b: narration made at an earlier urgency (or none recorded) is made again
   await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
   assert.equal(last(w).items["2"].narration_style.en, styleKey("en", "brisk"));
 });
+
+test("W6b: narration \"off\" (the scenario skill's wording) is treated like false; a News header is read urgent", () => {
+  const sc = { injects: [{ title: "A", desc: "a", narration: "off", video: { script_en: "News." } }, { title: "B", desc: "b", narration: "on" }] };
+  const p = planMedia(sc, {}, { langs: ["en"] });
+  assert.deepEqual(p.narration.map((j) => j.index), [1]);
+  assert.equal(p.clips.length, 0, "no clip for a sensitive inject either");
+  assert.ok(p.skipped.some((x) => x.index === 0 && x.why === "narration_false"));
+  assert.equal(urgencyOf({ desc: "News · Marsa News · 07:14\nFire at the warehouse." }), "urgent");
+});
