@@ -3,7 +3,8 @@
 // record was downloaded 30 days ago but the request was never marked
 // Delivered. Runs daily (netlify/functions/player-purge.mjs).
 //
-// What it removes, per exercise: the attachment FILES (Storage refuses SQL
+// What it removes, per exercise: the attachment FILES and (W6a) the narration
+// and news-clip files in exercise-media (Storage refuses SQL
 // removal, so they go first, through the Storage API), then — through
 // public.service_purge_session — registrations, answers, notes, messages and
 // the rest (see w5_purge_paste_into_supabase.sql). The database itself
@@ -16,6 +17,9 @@
 import { INBOX, sendViaResend } from "./intake-core.mjs";
 
 export const BUCKET = "submission-attachments";
+// W6a: an exercise's narration and news clips (briefing videos are shared and never removed).
+export const MEDIA_BUCKET = "exercise-media";
+export const mediaPrefixes = (sessionId) => [`narration/${sessionId}`, `clips/${sessionId}`];
 
 function headers(env, extra = {}) {
   // New-style secret keys go in the apikey header only (never as a Bearer token).
@@ -31,24 +35,24 @@ const rpc = (deps, name, args = {}) => call(deps, `/rest/v1/rpc/${name}`, {
   method: "POST", headers: headers(deps.env, { "Content-Type": "application/json" }), body: JSON.stringify(args) });
 
 // Every stored file under "<session id>/", however deep (folders have id null).
-export async function listFiles(deps, prefix, depth = 0) {
+export async function listFiles(deps, prefix, depth = 0, bucket = BUCKET) {
   if (depth > 6) return [];
   const out = [];
   for (let offset = 0; ; offset += 1000) {
-    const items = await call(deps, `/storage/v1/object/list/${BUCKET}`, {
+    const items = await call(deps, `/storage/v1/object/list/${bucket}`, {
       method: "POST", headers: headers(deps.env, { "Content-Type": "application/json" }),
       body: JSON.stringify({ prefix, limit: 1000, offset, sortBy: { column: "name", order: "asc" } }) }) || [];
     for (const it of items) {
       const p = `${prefix}/${it.name}`;
-      if (it.id == null) out.push(...await listFiles(deps, p, depth + 1)); else out.push(p);
+      if (it.id == null) out.push(...await listFiles(deps, p, depth + 1, bucket)); else out.push(p);
     }
     if (items.length < 1000) break;
   }
   return out;
 }
-export async function removeFiles(deps, paths) {
+export async function removeFiles(deps, paths, bucket = BUCKET) {
   for (let i = 0; i < paths.length; i += 100) {
-    await call(deps, `/storage/v1/object/${BUCKET}`, {
+    await call(deps, `/storage/v1/object/${bucket}`, {
       method: "DELETE", headers: headers(deps.env, { "Content-Type": "application/json" }), body: JSON.stringify({ prefixes: paths.slice(i, i + 100) }) });
   }
 }
@@ -72,6 +76,13 @@ export async function runPlayerPurge(deps) {
       await removeFiles(deps, files);
       const left = await listFiles(deps, x.session_id);
       if (left.length) throw new Error(`${left.length} file(s) could not be removed`);
+      // W6a: the exercise's narration and news clips go too (the database refuses while any remain).
+      let media = [];
+      for (const pre of mediaPrefixes(x.session_id)) media.push(...await listFiles(deps, pre, 0, MEDIA_BUCKET));
+      await removeFiles(deps, media, MEDIA_BUCKET);
+      let mediaLeft = [];
+      for (const pre of mediaPrefixes(x.session_id)) mediaLeft.push(...await listFiles(deps, pre, 0, MEDIA_BUCKET));
+      if (mediaLeft.length) throw new Error(`${mediaLeft.length} voice or video file(s) could not be removed`);
       const res = await rpc(deps, "service_purge_session", { p_session: x.session_id });
       report.removed.push({ ...x, files: files.length, result: res });
     } catch (err) {
