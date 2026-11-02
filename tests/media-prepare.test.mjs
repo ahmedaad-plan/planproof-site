@@ -155,7 +155,7 @@ test("refuses without the second factor, for a non-admin and while running — b
 
 test("a full run: narration for each non-sensitive inject, one English clip, progress saved, ready", async () => {
   const w = world();
-  const r = await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"] });
+  const r = await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], samples: false });
   assert.equal(r.ok, true);
   const m = last(w);
   assert.equal(m.status, "ready");
@@ -199,7 +199,7 @@ test("Azure down: every item failed, status failed; a later Retry makes only the
   assert.equal(m.status, "failed");
   assert.match(m.items["0"].failed.narration_en, /Azure Speech → HTTP 503/);
   const w2 = world({ media: { items: { "0": { narration: { en: "narration/old.mp3" } } } } });
-  await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration" });
+  await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
   assert.equal(w2.ssml.length, 1, "only inject 3 was missing");
   assert.equal(last(w2).items["0"].narration.en, "narration/old.mp3");
   assert.equal(last(w2).status, "ready");
@@ -210,4 +210,18 @@ test("HeyGen fails: the clip is failed with HeyGen's reason; the existing plate 
   await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "clips" });
   assert.match(last(w).items["0"].failed.clip_en, /HeyGen could not make the clip/);
   assert.ok(!w.uploads["plates/marsa-en.jpg"]);
+});
+
+test("the four voice samples are made once (Sonia, Fatima with English labels, Ryan, Hamdan) and kept", async () => {
+  const w = world({ env: { HEYGEN_API_KEY: "" } });
+  await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "narration" });
+  const names = Object.keys(w.uploads).filter((p) => p.startsWith("samples/"));
+  assert.equal(names.length, 4);
+  assert.ok(w.ssml.some((x) => /ar-AE-FatimaNeural/.test(x) && /"Submit answer"/.test(x) && /We need a few more minutes/.test(x)));
+  assert.ok(w.ssml.some((x) => /en-GB-SoniaNeural/.test(x) && /not individuals/.test(x)));
+  assert.ok(w.ssml.some((x) => /ar-AE-HamdanNeural/.test(x)));
+  assert.equal(last(w).samples.length, 4);
+  const w2 = world({ plateThere: true });
+  await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration" });
+  assert.equal(Object.keys(w2.uploads).filter((p) => p.startsWith("samples/")).length, 0, "already there: not made again");
 });

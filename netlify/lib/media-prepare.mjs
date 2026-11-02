@@ -239,6 +239,36 @@ export function planMedia(scenario, media, opts = {}) {
   return plan;
 }
 
+// ---------- the voice samples for Ahmed (W6a, scripts doc §8) ----------
+// Four short files, made once (kept under samples/ — no client data): Sonia
+// reading A2, Fatima reading A5 and A6 (English button names inside Arabic),
+// Ryan and Hamdan reading the demo clip's lead.
+const br = (ms) => `<break time="${ms}ms"/>`;
+export const SAMPLES = [
+  { name: "w6a-sample-1-sonia-en-A2.mp3", lang: "en", voice: VOICES.narration.en, rate: RATE.en,
+    inner: `First, the most important thing.${br(500)}This exercise tests the plan,${br(250)} not individuals. Findings are reported at team level, and the report names no one.` },
+  { name: "w6a-sample-2-fatima-ar-A5-A6.mp3", lang: "ar", voice: VOICES.narration.ar, rate: RATE.ar,
+    inner: `اضغطوا ${br(350)}"Submit answer" قبل انتهاء الوقت. وحتى ذلك الحين، يمكنكم التعديل بزر ${br(350)}"Edit answer"، ثم اضغطوا ${br(350)}"Submit changes".${br(600)}` +
+      `تحتاجون وقتاً إضافياً؟ من Messages أرسلوا ${br(350)}"We need a few more minutes". وإذا مُنح وقت إضافي، فهو للجميع. وتظهر رسائل الميسّر في أعلى الشاشة: Reply للرد، أو Got it للتأكيد.` },
+  { name: "w6a-sample-3-ryan-en-demo-lead.mp3", lang: "en", voice: VOICES.presenter.en, rate: "0%",
+    inner: `Good morning. We begin with breaking news.${br(500)}A network of private clinics in the UAE says its patient-record systems were locked by a cyber-attack early this morning.` },
+  { name: "w6a-sample-4-hamdan-ar-demo-lead.mp3", lang: "ar", voice: VOICES.presenter.ar, rate: "0%",
+    inner: `صباح الخير. نبدأ بخبر عاجل.${br(500)}تقول شبكة عيادات خاصة في دولة الإمارات إن أنظمة سجلات المرضى لديها تعطّلت جرّاء هجوم إلكتروني في ساعات الصباح الأولى.` },
+];
+export const sampleSsml = (x) => speak(x.lang, x.voice, x.rate, x.inner);
+async function ensureSamples(deps, api, note) {
+  const made = [];
+  for (const x of SAMPLES) {
+    const path = `samples/${x.name}`;
+    if (await api.exists(path)) continue;
+    const audio = await azureTts(deps, sampleSsml(x));
+    await api.upload(path, audio, "audio/mpeg");
+    made.push(path);
+  }
+  if (made.length) note(`Voice samples made: ${made.length}.`);
+  return SAMPLES.map((x) => api.publicUrl(`samples/${x.name}`));
+}
+
 // ---------- the run ----------
 export function jwtClaims(token) {
   try {
@@ -373,6 +403,9 @@ export async function runMediaPrepare(deps, args) {
   await save("preparing");
 
   const speechReady = !!(env.SPEECH_API_KEY && env.SPEECH_REGION);
+  if (speechReady && args.samples !== false) {
+    try { media.samples = await ensureSamples(deps, api, note); } catch (err) { note(`Voice samples: ${String(err.message || err).slice(0, 160)}`); }
+  }
   for (const job of plan.narration) {
     const key = `narration_${job.lang}`;
     try {
