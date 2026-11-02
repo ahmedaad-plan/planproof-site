@@ -2,6 +2,11 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# W6a: the newsroom background behind the HeyGen presenter, read by the
+# media-prepare function (uploaded once to the exercise-media bucket).
+[functions."media-prepare-background"]
+  included_files = ["netlify/media/*.jpg"]
+
 # The Supabase publishable (anon) key is public by design: browser pages need it,
 # and Row Level Security — not the key — protects every table (insert-only for
 # visitors; MFA-signed-in admin for client records). Netlify's secret scanner

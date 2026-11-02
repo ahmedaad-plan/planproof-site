@@ -260,6 +260,7 @@
   .linked-line strong{ color:var(--text); }
   .deliver-row{ display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; margin-top:12px; }
   ul.checks li > .btn{ margin-inline-start:auto; }
+  ul.media-problems{ margin:4px 0 0; padding-inline-start:18px; color:var(--text-muted); }
   ul.plainlist{ margin:0; padding-left:18px; font-size:14px; }
   .more{ margin-top:16px; }
   .more > summary{ color:var(--red-soft); font-size:14px; }
@@ -305,7 +306,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6.1</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v6.2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -1221,15 +1222,95 @@ async function buildRecordZip(sessionId, say, run) {
   return { rec, zip, base, fingerprint: await sha256hex(zip), counts: PPRecord.counts(rec), files: files.length + 1 };
 }
 // Lists every stored file of this exercise (all runs), however deep.
-async function listRecordFiles(prefix) {
+async function listRecordFiles(prefix, bucket = RECORD_BUCKET) {
   const out = [];
-  const { data, error } = await sb.storage.from(RECORD_BUCKET).list(prefix, { limit: 1000 });
+  const { data, error } = await sb.storage.from(bucket).list(prefix, { limit: 1000 });
   if (error) throw error;
   for (const item of data || []) {
     const path = prefix + "/" + item.name;
-    if (item.id == null) out.push(...await listRecordFiles(path)); else out.push(path);
+    if (item.id == null) out.push(...await listRecordFiles(path, bucket)); else out.push(path);
   }
   return out;
+}
+
+// ---- Voice and video (W6a, 2 November 2026) ----
+// One line in step 4: "Voice and video: prepare → preparing (n of m) → ready →
+// failed (Retry failed)". Prepare asks the background function
+// /api/media-prepare to make the inject narration (Azure Speech) and the news
+// clips (HeyGen presenter) days before the exercise; the room never calls
+// either service. Progress is read from admin_media_status every 5 seconds.
+const MEDIA_BUCKET = "exercise-media";
+const MEDIA_USD_PER_CLIP = 4;
+const MEDIA_STALE_MS = 17 * 60000; // a background run lasts at most 15 minutes
+function mediaFacts(m) {
+  const status = (m && m.status) || "none";
+  const stale = status === "preparing" && m.updated_at && Date.now() - Date.parse(m.updated_at) > MEDIA_STALE_MS;
+  const c = (m && m.counts) || { narration: 0, clips: 0 };
+  const failedItems = [];
+  for (const [k, it] of Object.entries((m && m.items) || {})) for (const [what, why] of Object.entries((it && it.failed) || {})) failedItems.push({ inject: Number(k) + 1, what, why });
+  return { status: stale ? "stopped" : status, counts: c, progress: (m && m.progress) || null, failedItems,
+    refused: (m && m.refused) || [], preparedAt: m && m.prepared_at };
+}
+function mediaWhat(key) {
+  const [kind, lang] = String(key).split("_");
+  return (kind === "clip" ? "news clip" : "narration") + (lang ? " (" + (lang === "ar" ? "Arabic" : "English") + ")" : "");
+}
+function mediaLineText(f) {
+  const both = `${plural(f.counts.narration, "narration file")} · ${plural(f.counts.clips, "news clip")}`;
+  if (f.status === "none") return ["Voice and video", " — not prepared yet. Prepare it a few days before the exercise (narration for each inject; news clips where the scenario has them)."];
+  if (f.status === "preparing") return ["Voice and video", ` — preparing${f.progress ? ` (${f.progress.done} of ${f.progress.total})` : ""}… you can leave this page; it carries on by itself.`];
+  if (f.status === "stopped") return ["Voice and video", " — the last run stopped before it finished. Press Retry failed."];
+  if (f.status === "ready") return ["Voice and video", ` — ready (${both})${f.preparedAt ? ", " + dt(f.preparedAt) : ""}`];
+  return ["Voice and video", ` — ${plural(f.failedItems.length || 1, "item")} failed (${both} ready). Press Retry failed.`];
+}
+function mediaTone(f) { return f.status === "ready" ? ["Ready", "ok"] : f.status === "preparing" ? ["Preparing", "wait"] : f.status === "none" ? ["Not yet", "none"] : ["Failed", "bad"]; }
+async function startMediaPrepare(sessionId) {
+  const { data } = await sb.auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) throw new Error("Sign in again first.");
+  const res = await fetch("/api/media-prepare", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+    body: JSON.stringify({ session_id: sessionId, langs: ["en", "ar"], what: "all" }) });
+  if (res.status !== 202 && !res.ok) throw new Error("The voice and video service did not start (HTTP " + res.status + "). Try again in a minute.");
+}
+function mediaLine(x, readOnly) {
+  const li = h("li", { class: "media-line" });
+  let timer = null;
+  const draw = (m) => {
+    const f = mediaFacts(m);
+    const [word, tone] = mediaTone(f);
+    const running = x.status === "running";
+    const btnText = f.status === "none" ? "Prepare" : f.status === "ready" ? "Prepare again" : f.status === "preparing" ? "Preparing…" : "Retry failed";
+    const btn = readOnly || x.purged ? null : h("button", { class: "btn sm" + (f.status === "none" ? " primary" : ""), type: "button", "data-act": "media_prepare",
+      disabled: f.status === "preparing" || running, title: running ? "Prepare voice and video before Start" : "", onclick: async () => {
+        let clips = 0;
+        try {
+          const sc = await q(sb.rpc("admin_session_scenario", { p_session: x.id }));
+          clips = ((sc && sc.scenario && sc.scenario.injects) || []).filter((i) => i && i.narration !== false && i.video && (i.video.script_en || i.video.script_ar)).length * 2;
+        } catch (err) { return fail(err); }
+        const ok = await confirmBox({ title: f.status === "none" ? "Make the voice files and news clips for this exercise now?" : f.status === "ready" ? "Check for anything missing and make it now?" : "Make the missing voice files and news clips again?",
+          text: clips ? `About USD ${MEDIA_USD_PER_CLIP} per clip (English and Arabic: up to ${clips} clips, about USD ${clips * MEDIA_USD_PER_CLIP}). Files already made are kept. It takes a few minutes; the page shows the progress.`
+            : "This scenario has no news clips, so only the narration is made (no HeyGen cost). Files already made are kept.",
+          ok: f.status === "none" ? "Prepare" : f.status === "ready" ? "Prepare again" : "Retry failed" });
+        if (!ok) return;
+        btn.disabled = true;
+        try { await startMediaPrepare(x.id); toast("Voice and video: started"); setTimeout(poll, 1500); }
+        catch (err) { btn.disabled = false; fail(err); }
+      } }, btnText);
+    const extra = [];
+    if (f.failedItems.length) extra.push(h("ul", { class: "media-problems small" }, ...f.failedItems.slice(0, 8).map((it) => h("li", {}, `Inject ${it.inject}, ${mediaWhat(it.what)}: ${it.why}`))));
+    if (f.refused.length) extra.push(h("ul", { class: "media-problems small" }, ...f.refused.slice(0, 6).map((it) => h("li", {}, `Inject ${it.index + 1}, ${mediaWhat("clip_" + it.lang)} not made: ${it.reason}`))));
+    li.replaceChildren(pill(word, tone), h("span", { class: "what" }, ...mediaLineText(f), ...extra), btn || "");
+    clearTimeout(timer);
+    if (f.status === "preparing") timer = setTimeout(poll, 5000);
+  };
+  const poll = async () => {
+    if (!li.isConnected && timer) return;
+    try { draw(await q(sb.rpc("admin_media_status", { p_session: x.id }))); }
+    catch (err) { li.replaceChildren(pill("—", "none"), h("span", { class: "what" }, "Voice and video", " — could not be read (" + (err.message || err) + ")")); }
+  };
+  draw(x.media || null);
+  if (!x.purged) setTimeout(poll, 0);
+  return li;
 }
 
 function step4Body(ctx, readOnly, btns, forms) {
@@ -1331,6 +1412,7 @@ function step4Body(ctx, readOnly, btns, forms) {
     line(pill("Closed", "ok"), ["Feedback survey (participants' feedback)", ` — closed (${chosen.survey} answer${chosen.survey === 1 ? "" : "s"} in this run)`]),
     line(pill(chosen.exported_at ? "Done" : "Not yet", chosen.exported_at ? "ok" : "none"), [`Run ${chosen.run_number} record downloaded`, chosen.exported_at ? " — " + dt(chosen.exported_at) : " — one zip for the report chat; never save it in OneDrive"], dl),
   ] : [
+    mediaLine({ id: x.id, status: x.status, purged: r.state === "purged" }, readOnly),
     line(pill(r.status === "ended" || r.state === "purged" ? "Done" : "Not yet", r.status === "ended" || r.state === "purged" ? "ok" : "none"), ["Exercise ended", r.ended_at ? " — " + dt(r.ended_at) : ""]),
     line(pill(r.notes_open ? "Open" : r.ended_at ? "Closed" : "—", r.notes_open ? "wait" : r.ended_at ? "ok" : "none"),
       ["Observer and facilitator notes", r.notes_open ? ` — open until ${until(r.notes_open_until)} (the facilitator can close them with "Notes complete")` : r.notes_complete ? ' — closed ("Notes complete")' : ""]),
@@ -1424,6 +1506,14 @@ function moreFold(ctx) {
         }
         paths = await listRecordFiles(x.id);
         if (paths.length) throw new Error(`${paths.length} file(s) could not be removed. If this keeps happening, paste w5_purge_paste_into_supabase.sql in Supabase → SQL Editor.`);
+        // W6a: the exercise's narration and news clips (the shared briefing videos stay).
+        let media = [...await listRecordFiles("narration/" + x.id, MEDIA_BUCKET), ...await listRecordFiles("clips/" + x.id, MEDIA_BUCKET)];
+        for (let i = 0; i < media.length; i += 100) {
+          const { error } = await sb.storage.from(MEDIA_BUCKET).remove(media.slice(i, i + 100));
+          if (error) throw error;
+        }
+        media = [...await listRecordFiles("narration/" + x.id, MEDIA_BUCKET), ...await listRecordFiles("clips/" + x.id, MEDIA_BUCKET)];
+        if (media.length) throw new Error(`${media.length} voice or video file(s) could not be removed. If this keeps happening, paste w6-purge-paste-into-supabase.sql in Supabase → SQL Editor.`);
         const res = await q(sb.rpc("admin_purge_player_data", { p_session: x.id }));
         toast(res && res.status === "already" ? "Already removed" : "Participants' data removed");
         reloadKeepingPlace();

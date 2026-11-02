@@ -5,7 +5,7 @@ import { runPlayerPurge } from "../netlify/lib/player-purge.mjs";
 
 const SID = "11111111-2222-4333-8444-555555555555";
 function world(opts = {}) {
-  const w = { files: new Set([`${SID}/0/IT/1-log.pdf`, `${SID}/2/IT/old.png`]), calls: [], emails: [], purged: [], reminded: [], ...opts };
+  const w = { files: new Set([`${SID}/0/IT/1-log.pdf`, `${SID}/2/IT/old.png`]), media: new Set([`narration/${SID}/a.mp3`, `clips/${SID}/b.mp4`, "briefing/participant-en.mp4"]), calls: [], emails: [], purged: [], reminded: [], ...opts };
   w.fetchFn = async (url, init = {}) => {
     const u = new URL(url); const body = init.body ? JSON.parse(init.body) : null;
     w.calls.push(`${init.method || "GET"} ${u.pathname}`);
@@ -18,12 +18,23 @@ function world(opts = {}) {
     if (u.pathname === "/rest/v1/rpc/service_mark_reminded") { w.reminded.push(body.p_session); return ok(null); }
     if (u.pathname === "/rest/v1/rpc/service_purge_session") {
       if ([...w.files].some((p) => p.startsWith(body.p_session + "/"))) return ok({ message: "files still stored" }, 400);
+      if ([...w.media].some((p) => p.includes(body.p_session))) return ok({ message: "media still stored" }, 400);
       w.purged.push(body.p_session); return ok({ status: "purged", registrations: 7, answers: 9, notes: 3, messages: 4 });
     }
     if (u.pathname === "/storage/v1/object/list/submission-attachments") {
       const pre = body.prefix; const names = new Map();
       for (const p of w.files) if (p.startsWith(pre + "/")) { const r = p.slice(pre.length + 1).split("/"); names.set(r[0], r.length > 1 ? null : "id"); }
       return ok([...names].map(([name, id]) => ({ name, id })));
+    }
+    // W6a: the exercise-media bucket (narration and clips of this exercise; briefings are shared)
+    if (u.pathname === "/storage/v1/object/list/exercise-media") {
+      const pre = body.prefix; const names = new Map();
+      for (const p of w.media) if (p.startsWith(pre + "/")) { const r = p.slice(pre.length + 1).split("/"); names.set(r[0], r.length > 1 ? null : "id"); }
+      return ok([...names].map(([name, id]) => ({ name, id })));
+    }
+    if (u.pathname === "/storage/v1/object/exercise-media" && init.method === "DELETE") {
+      if (!w.mediaStuck) body.prefixes.forEach((p) => w.media.delete(p));
+      return ok(body.prefixes.map((name) => ({ name })));
     }
     if (u.pathname === "/storage/v1/object/submission-attachments" && init.method === "DELETE") {
       if (!w.stuck) body.prefixes.forEach((p) => w.files.delete(p));
@@ -77,4 +88,19 @@ test("30-day reminder: one email, then marked so it is sent once", async () => {
   assert.match(w.emails[0].subject, /waiting to be marked Delivered/);
   assert.deepEqual(w.reminded, [SID]);
   assert.equal(r.reminded.length, 1);
+});
+
+test("W6a: the exercise's narration and clips are removed before the rows; shared briefings stay", async () => {
+  const w = world();
+  await runPlayerPurge({ fetchFn: w.fetchFn, env: w.env });
+  assert.deepEqual([...w.media], ["briefing/participant-en.mp4"]);
+  assert.deepEqual(w.purged, [SID]);
+  assert.ok(w.calls.indexOf("POST /rest/v1/rpc/service_purge_session") > w.calls.lastIndexOf("DELETE /storage/v1/object/exercise-media"));
+});
+
+test("W6a: media that will not go keeps the rows and asks for help", async () => {
+  const w = world({ mediaStuck: true });
+  const r = await runPlayerPurge({ fetchFn: w.fetchFn, env: w.env });
+  assert.equal(w.purged.length, 0);
+  assert.match(r.failed[0].error, /voice or video file/);
 });
