@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   timeWordsEn, timeWordsAr, headerSentence, messageParts, narrationSsml, clipSsml, clipCues,
-  planMedia, runMediaPrepare, wordCount, mp3Duration, MAX_CLIPS,
+  planMedia, runMediaPrepare, wordCount, mp3Duration, MAX_CLIPS, urgencyOf, styleKey, URGENT_PROFILES,
 } from "../netlify/lib/media-prepare.mjs";
 
 const SID = "7f674d9e-7aa2-4e0c-8bef-9b02e118734e";
@@ -38,18 +38,19 @@ test("the v7 header line is spoken as a sentence", () => {
 });
 
 test("narration SSML: header, 'Exercise.' once with a pause, subject, body; never the task or notes", () => {
-  const ssml = narrationSsml({ title: "Ransom", desc: V7, task: "SECRET TASK", facilitatorNotes: "NOTES", observerWatch: ["WATCH"] }, "en");
+  // W6b: read "calm" here so the base pauses are checked; brisk/urgent below.
+  const ssml = narrationSsml({ title: "Ransom", desc: V7, task: "SECRET TASK", facilitatorNotes: "NOTES", observerWatch: ["WATCH"], urgency: "calm" }, "en");
   assert.match(ssml, /voice name="en-GB-RyanNeural"/);
   assert.match(ssml, /prosody rate="-5%"/);
   assert.match(ssml, /An email from the Head of IT to the Crisis Management Team, at seven twelve\.<break time="400ms"\/>Exercise\.<break time="400ms"\/>Ransom note on screens<break time="300ms"\/><break time="600ms"\/>Staff report a message on every screen\.<break time="500ms"\/>Please confirm the next step\./);
   assert.doesNotMatch(ssml, /SECRET|NOTES|WATCH|EXERCISE –/);
-  const old = narrationSsml({ title: "Fire intensifies", desc: "Smoke & heat <rising>." }, "en");
+  const old = narrationSsml({ title: "Fire intensifies", desc: "Smoke & heat <rising>.", urgency: "calm" }, "en");
   assert.match(old, /Fire intensifies<break time="600ms"\/>Smoke &amp; heat &lt;rising&gt;\./);
 });
 
 test("Arabic narration only from Arabic text; Arabic rate and voice", () => {
   assert.equal(narrationSsml({ title: "Fire", desc: "English only" }, "ar"), null);
-  const ssml = narrationSsml({ title_ar: "حريق", desc_ar: "اندلع حريق في المستودع." }, "ar");
+  const ssml = narrationSsml({ title_ar: "حريق", desc_ar: "اندلع حريق في المستودع.", urgency: "calm" }, "ar");
   assert.match(ssml, /ar-AE-HamdanNeural/);
   assert.match(ssml, /rate="-8%"/);
   assert.match(ssml, /xml:lang="ar-AE"/);
@@ -73,7 +74,7 @@ test("the plan: sensitive injects skipped, existing files kept, word and clip li
     { title: "C", desc: "c", video: { script_en: long } },
     { title: "D", desc: "d" },
   ] };
-  const p = planMedia(sc, { items: { "3": { narration: { en: "narration/x/d.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } }, { langs: ["en", "ar"] });
+  const p = planMedia(sc, { items: { "3": { narration: { en: "narration/x/d.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: styleKey("en", "brisk") } } } }, { langs: ["en", "ar"] });
   assert.deepEqual(p.narration.map((j) => `${j.index}${j.lang}`), ["0en", "2en"]);
   assert.deepEqual(p.clips.map((j) => `${j.index}${j.lang}`), ["0en", "0ar"]);
   assert.equal(p.refused.length, 1);
@@ -198,7 +199,7 @@ test("Azure down: every item failed, status failed; a later Retry makes only the
   const m = last(w);
   assert.equal(m.status, "failed");
   assert.match(m.items["0"].failed.narration_en, /Azure Speech → HTTP 503/);
-  const w2 = world({ media: { items: { "0": { narration: { en: "narration/old.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } } });
+  const w2 = world({ media: { items: { "0": { narration: { en: "narration/old.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: styleKey("en", "urgent") } } } } });
   await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
   assert.equal(w2.ssml.length, 1, "only inject 3 was missing");
   assert.equal(last(w2).items["0"].narration.en, "narration/old.mp3");
@@ -230,7 +231,7 @@ test("voice change (2 November 2026): narration made with an earlier voice is ma
   const sc = { injects: [{ title: "A", desc: "a" }, { title: "B", desc: "b" }] };
   const p = planMedia(sc, { items: {
     "0": { narration: { en: "narration/x/sonia.mp3" } },
-    "1": { narration: { en: "narration/x/ryan.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } },
+    "1": { narration: { en: "narration/x/ryan.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: styleKey("en", "brisk") } },
   } }, { langs: ["en"], what: "narration" });
   assert.deepEqual(p.narration.map((j) => j.index), [0], "only the Sonia file is made again");
   const w = world({ media: { items: { "0": { narration: { en: "narration/old-sonia.mp3" } } } } });
@@ -239,4 +240,36 @@ test("voice change (2 November 2026): narration made with an earlier voice is ma
   assert.notEqual(m.items["0"].narration.en, "narration/old-sonia.mp3");
   assert.equal(m.items["0"].narration_voice.en, "en-GB-RyanNeural");
   assert.ok(w.ssml.some((x) => /en-GB-RyanNeural/.test(x)));
+});
+
+test("W6b urgency: brisk by default, urgent for news clips and alerts, the scenario's own level wins", () => {
+  assert.equal(urgencyOf({ desc: V7 }), "brisk");
+  assert.equal(urgencyOf({ desc: "Alert · From: Building management system · 07:30\nCooling failure." }), "urgent");
+  assert.equal(urgencyOf({ desc: "x", video: { script_en: "News." } }), "urgent");
+  assert.equal(urgencyOf({ desc: V7, urgency: "calm" }), "calm");
+  assert.equal(urgencyOf({ desc: V7, urgency: "nonsense" }), "brisk");
+  const brisk = narrationSsml({ desc: V7 }, "en");
+  assert.match(brisk, /prosody rate="\+3%" pitch="\+1%"/);
+  assert.match(brisk, /<break time="320ms"\/>Exercise\./, "pauses shortened (×0.8)");
+  const urgent = narrationSsml({ desc: V7, urgency: "urgent" }, "en");
+  assert.match(urgent, /prosody rate="\+12%" pitch="\+5%" volume="\+10%"/);
+  assert.match(urgent, /<prosody pitch="\+9%" volume="\+15%">An email from/);
+  assert.doesNotMatch(urgent, /break time="(\d{4,}|[0-9]{1,2})ms"/);
+  assert.ok(URGENT_PROFILES.mild && URGENT_PROFILES.strong);
+});
+
+test("W6b: a news clip is read urgent with the lead lifted and a short pause before the detail", () => {
+  const ssml = clipSsml("Good morning. We begin with breaking news. A clinic network says its systems were locked.\n\nMore later.", "en");
+  assert.match(ssml, /rate="\+12%"/);
+  assert.match(ssml, /<prosody pitch="\+9%" volume="\+15%">Good morning\. We begin with breaking news\.<\/prosody><break time="175ms"\/>A clinic network/);
+  assert.match(ssml, /<break time="250ms"\/>More later\./);
+});
+
+test("W6b: narration made at an earlier urgency (or none recorded) is made again, and the style recorded", async () => {
+  const sc = { injects: [{ title: "A", desc: "a" }] };
+  const p = planMedia(sc, { items: { "0": { narration: { en: "narration/x/a.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: "en-GB-RyanNeural|urgent-mild|w6b" } } } }, { langs: ["en"], what: "narration" });
+  assert.equal(p.narration.length, 1);
+  const w = world({ media: { items: { "2": { narration: { en: "narration/old.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } } });
+  await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
+  assert.equal(last(w).items["2"].narration_style.en, styleKey("en", "brisk"));
 });
