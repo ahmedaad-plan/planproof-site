@@ -24,8 +24,8 @@ function world(opts = {}) {
     if (u.hostname === "raw.githubusercontent.com") return new Response(new Uint8Array(9000), { status: 200 });
     if (u.pathname === "/v2/avatars") return json({ data: { avatars: [{ avatar_id: "a1", avatar_name: "Studio man", gender: "male", preview_image_url: "https://files.heygen.ai/a1.jpg" }] } });
     if (u.pathname === "/v2/user/remaining_quota") return json({ data: { remaining_quota: 1500 } });
-    if (u.pathname === "/v2/video/generate") return json({ data: { video_id: "v1" } });
-    if (u.pathname === "/v1/video_status.get") return json({ data: { status: "completed", video_url: "https://files.heygen.ai/v1.mp4", duration: 12.5 } });
+    if (u.pathname === "/v3/videos" && init.method === "POST") { w.heygenBody = JSON.parse(init.body); return json({ data: { video_id: "v1" } }); }
+    if (u.pathname === "/v3/videos/v1") return json({ data: { status: "completed", video_url: "https://files.heygen.ai/v1.mp4", duration: 12.5 } });
     if (u.href === "https://files.heygen.ai/v1.mp4") return new Response(new Uint8Array(70000), { status: 200 });
     return new Response("not found " + url, { status: 404 });
   };
@@ -73,7 +73,7 @@ test("tts, avatars, a HeyGen clip and an ffmpeg join: uploads, durations and a r
   const r = await runStudio(w.deps, { ticket: TICKET, steps: [
     { kind: "tts", ssml: "<speak>a</speak>", out: "samples/w6b-urgency-1.mp3" },
     { kind: "heygen_avatars", out: "studio/avatars.json" },
-    { kind: "heygen_clip", audio: "studio/a.mp3", background: "plates/marsa-en.jpg", avatar_id: "a1", out: "studio/clip.mp4" },
+    { kind: "heygen_clip", audio: "studio/a.mp3", background: "plates/marsa-en.jpg", avatar_id: "a1", engine: "avatar_iii", out: "studio/clip.mp4" },
     { kind: "ffmpeg", inputs: ["https://raw.githubusercontent.com/ahmedaad-plan/planproof-site/w6b/v.mp4", "studio/a.mp3"],
       args: ["-i", "{in0}", "-i", "{in1}", "-c:v", "copy", "{out}"], out: "briefing/participant-en.mp4" },
   ] });
@@ -82,6 +82,7 @@ test("tts, avatars, a HeyGen clip and an ffmpeg join: uploads, durations and a r
   assert.equal(r.results[1].count, 1);
   assert.equal(r.results[2].duration, 12.5);
   assert.ok(w.uploads["studio/clip.mp4"]);
+  assert.deepEqual([w.heygenBody.avatar_id, w.heygenBody.engine], ["a1", { type: "avatar_iii" }]);
   assert.deepEqual(w.ff[0], ["-i", "/tmp/x/in3_0.mp4", "-i", "/tmp/x/in3_1.mp3", "-c:v", "copy", "/tmp/x/out3.mp4"]);
   assert.ok(w.uploads["briefing/participant-en.mp4"]);
   assert.equal(w.reports.at(-1).p_status, "done");

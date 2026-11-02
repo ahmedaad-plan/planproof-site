@@ -29,6 +29,8 @@ export default async (req) => {
       SPEECH_REGION: Netlify.env.get("SPEECH_REGION"),
       HEYGEN_API_KEY: Netlify.env.get("HEYGEN_API_KEY"),
       HEYGEN_AVATAR_ID: Netlify.env.get("HEYGEN_AVATAR_ID"),
+      HEYGEN_ENGINE: Netlify.env.get("HEYGEN_ENGINE"),
+      HEYGEN_MOTION_PROMPT: Netlify.env.get("HEYGEN_MOTION_PROMPT"),
     };
     const done = await runMediaPrepare({
       fetchFn: fetch, env, token, now: () => Date.now(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)),

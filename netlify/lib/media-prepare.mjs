@@ -396,28 +396,36 @@ export async function azureTts(deps, ssml) {
   return buf;
 }
 
-export async function heygenClip(deps, { audioUrl, backgroundUrl }) {
+// HeyGen v3 (W6b, 2 November 2026): v1/v2 were supported only until
+// 31 October 2026. POST /v3/videos (type "avatar", our own audio by URL, the
+// newsroom plate as the background), then GET /v3/videos/{id} until
+// completed. The engine (avatar_iii keeps the actor's recorded motion and
+// only syncs the lips; avatar_iv generates the face from the audio; avatar_v
+// takes a motion prompt) is chosen with the presenter: HEYGEN_ENGINE,
+// HEYGEN_MOTION_PROMPT (avatar_v only).
+export function heygenRequest(env, { audioUrl, backgroundUrl, engine, motionPrompt, avatarId }) {
+  const body = { type: "avatar", avatar_id: avatarId || env.HEYGEN_AVATAR_ID, audio_url: audioUrl,
+    background: { type: "image", url: backgroundUrl }, resolution: "1080p", aspect_ratio: "16:9", title: "PlanProof Marsa News clip" };
+  const eng = engine || env.HEYGEN_ENGINE;
+  if (eng) body.engine = { type: eng };
+  const mp = motionPrompt || env.HEYGEN_MOTION_PROMPT;
+  if (mp && eng === "avatar_v") body.motion_prompt = String(mp).slice(0, 400);
+  return body;
+}
+export async function heygenClip(deps, opts) {
   const { env } = deps;
   const H = { "X-Api-Key": env.HEYGEN_API_KEY, "Content-Type": "application/json", Accept: "application/json" };
-  const gen = await deps.fetchFn("https://api.heygen.com/v2/video/generate", {
-    method: "POST", headers: H, signal: AbortSignal.timeout(60000),
-    body: JSON.stringify({
-      video_inputs: [{
-        character: { type: "avatar", avatar_id: env.HEYGEN_AVATAR_ID, avatar_style: "normal" },
-        voice: { type: "audio", audio_url: audioUrl },
-        background: { type: "image", url: backgroundUrl },
-      }],
-      dimension: { width: 1920, height: 1080 },
-    }),
+  const gen = await deps.fetchFn("https://api.heygen.com/v3/videos", {
+    method: "POST", headers: H, signal: AbortSignal.timeout(60000), body: JSON.stringify(heygenRequest(env, opts)),
   });
   const gj = await gen.json().catch(() => ({}));
-  const id = gj && gj.data && gj.data.video_id;
-  if (!gen.ok || !id) throw new Error(`HeyGen → HTTP ${gen.status}: ${JSON.stringify(gj.error || gj.message || gj).slice(0, 160)}`);
+  const id = gj && gj.data && (gj.data.video_id || gj.data.id);
+  if (!gen.ok || !id) throw new Error(`HeyGen → HTTP ${gen.status}: ${JSON.stringify(gj.error || gj.message || gj).slice(0, 200)}`);
   const started = deps.now();
-  const limit = deps.clipTimeoutMs ?? 11 * 60 * 1000;
+  const limit = deps.clipTimeoutMs ?? 12 * 60 * 1000;
   for (;;) {
     await deps.sleep(deps.pollMs ?? 15000);
-    const st = await deps.fetchFn(`https://api.heygen.com/v1/video_status.get?video_id=${encodeURIComponent(id)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+    const st = await deps.fetchFn(`https://api.heygen.com/v3/videos/${encodeURIComponent(id)}`, { headers: H, signal: AbortSignal.timeout(30000) });
     const sj = await st.json().catch(() => ({}));
     const d = (sj && sj.data) || {};
     if (d.status === "completed" && d.video_url) {
@@ -425,8 +433,8 @@ export async function heygenClip(deps, { audioUrl, backgroundUrl }) {
       if (!mp4.ok) throw new Error(`HeyGen video download → HTTP ${mp4.status}`);
       return { bytes: new Uint8Array(await mp4.arrayBuffer()), duration: d.duration || null, heygen_id: id };
     }
-    if (d.status === "failed") throw new Error(`HeyGen could not make the clip: ${JSON.stringify(d.error || "").slice(0, 160)}`);
-    if (deps.now() - started > limit) throw new Error("HeyGen took longer than 11 minutes; press Retry failed later.");
+    if (d.status === "failed" || d.status === "cancelled") throw new Error(`HeyGen could not make the clip: ${String(d.failure_message || d.failure_code || JSON.stringify(d.error || "")).slice(0, 200)}`);
+    if (deps.now() - started > limit) throw new Error("HeyGen took longer than 12 minutes; press Retry failed later.");
   }
 }
 

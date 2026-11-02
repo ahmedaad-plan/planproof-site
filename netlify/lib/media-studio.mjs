@@ -103,8 +103,8 @@ export async function runStudio(deps, body) {
         r.count = list.length;
         r.quota = quota && quota.data;
       } else if (s.kind === "heygen_clip") {
-        const clip = await heygenClip({ ...deps, env: { ...env, HEYGEN_AVATAR_ID: s.avatar_id || env.HEYGEN_AVATAR_ID } },
-          { audioUrl: inputUrl(env, s.audio), backgroundUrl: inputUrl(env, s.background) });
+        const clip = await heygenClip(deps, { audioUrl: inputUrl(env, s.audio), backgroundUrl: inputUrl(env, s.background),
+          avatarId: s.avatar_id, engine: s.engine, motionPrompt: s.motion_prompt });
         await api.upload(s.out, clip.bytes, "video/mp4");
         r.bytes = clip.bytes.length;
         r.duration = clip.duration;
