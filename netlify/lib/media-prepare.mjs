@@ -33,24 +33,30 @@ const RATE = { en: "-5%", ar: "-8%" }; // 0.95 / 0.92 (scripts doc §5)
 //   brisk  — ordinary emails, calls and messages
 //   urgent — news clips, alerts and injects the scenario marks urgent
 // The urgent strength (mild / medium / strong) was sampled for Ahmed; the one
-// he picked is URGENT_LEVEL. "lead" lifts the first sentence a little more.
+// he picked is URGENT_LEVEL.
+// Ahmed, 2 November 2026, 20:15: the first three samples were too fast and
+// the wrong tone; he liked the brisk read (sample 4) and asked for low /
+// medium / high urgency AT THAT SAME SPEED. So every urgent level keeps the
+// brisk rate and adds urgency only through pitch, force and shorter pauses
+// (samples B1–B3). "lead" lifts the first sentence a little more.
 export const URGENT_PROFILES = {
-  mild:   { rate: { en: "+7%",  ar: "+2%" }, pitch: "+3%", volume: "+5%",  gap: 0.65, lead: { pitch: "+6%",  volume: "+10%" } },
-  medium: { rate: { en: "+12%", ar: "+6%" }, pitch: "+5%", volume: "+10%", gap: 0.5,  lead: { pitch: "+9%",  volume: "+15%" } },
-  strong: { rate: { en: "+17%", ar: "+10%" }, pitch: "+8%", volume: "+15%", gap: 0.4, lead: { pitch: "+13%", volume: "+20%" } },
+  low:    { rate: { en: "+3%", ar: "-2%" }, pitch: "+2%", volume: "+5%",  gap: 0.75, lead: { pitch: "+4%",  volume: "+10%" } },
+  medium: { rate: { en: "+3%", ar: "-2%" }, pitch: "+4%", volume: "+10%", gap: 0.65, lead: { pitch: "+7%",  volume: "+15%" } },
+  high:   { rate: { en: "+3%", ar: "-2%" }, pitch: "+6%", volume: "+15%", gap: 0.55, lead: { pitch: "+10%", volume: "+20%" } },
 };
-export let URGENT_LEVEL = "medium";
+export const URGENT_LEVEL = "medium";
 export const PROFILES = {
   calm:  { rate: RATE, pitch: "+0%", volume: "+0%", gap: 1, lead: null },
   brisk: { rate: { en: "+3%", ar: "-2%" }, pitch: "+1%", volume: "+0%", gap: 0.8, lead: null },
 };
-export const URGENCY = ["calm", "brisk", "urgent"];
+// A scenario may write "urgent" (the standard level) or name one: urgent-low,
+// urgent-medium, urgent-high.
+export const URGENCY = ["calm", "brisk", "urgent", "urgent-low", "urgent-medium", "urgent-high"];
 export function profileFor(urgency, level = URGENT_LEVEL) {
-  if (urgency === "urgent") return URGENT_PROFILES[level] || URGENT_PROFILES.medium;
+  if (urgency === "urgent") return URGENT_PROFILES[level];
+  if (typeof urgency === "string" && urgency.startsWith("urgent-") && URGENT_PROFILES[urgency.slice(7)]) return URGENT_PROFILES[urgency.slice(7)];
   return PROFILES[urgency] || PROFILES.brisk;
 }
-// The level an inject is read at: the scenario's own `urgency` when it gives
-// one; otherwise urgent for a news clip or an alert, brisk for everything else.
 export function urgencyOf(inject) {
   if (!inject) return "brisk";
   if (URGENCY.includes(inject.urgency)) return inject.urgency;
@@ -63,7 +69,7 @@ export function urgencyOf(inject) {
 // What a narration file was made with; a different key means "make it again".
 export function styleKey(lang, urgency) {
   const v = VOICES.narration[lang];
-  return urgency === "urgent" ? `${v}|urgent-${URGENT_LEVEL}|w6b` : `${v}|${urgency}|w6b`;
+  return urgency === "urgent" ? `${v}|urgent-${URGENT_LEVEL}|w6b2` : `${v}|${urgency}|w6b2`;
 }
 const XML_LANG = { en: "en-GB", ar: "ar-AE" };
 const AUDIO_FORMAT = "audio-48khz-192kbitrate-mono-mp3";
@@ -252,7 +258,7 @@ function leadSentences(p, prof) {
   const head = sent.slice(0, k + 1).map((x) => xmlEscape(x.trim())).join(" ");
   const tail = sent.slice(k + 1).map((x) => xmlEscape(x.trim())).join(" ");
   const h = prof.lead ? `<prosody pitch="${prof.lead.pitch}" volume="${prof.lead.volume}">${head}</prosody>` : head;
-  return tail ? `${h}<break time="350ms"/>${tail}` : h;
+  return tail ? `${h}<break time="400ms"/>${tail}` : h;
 }
 
 // Where the lower-third changes to headline2: the start of the second
