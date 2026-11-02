@@ -116,9 +116,9 @@ export async function runStudio(deps, body) {
         await api.upload(s.out, new TextEncoder().encode(out), "application/json");
         r.count = list.length;
       } else if (s.kind === "heygen_clip") {
-        const clip = await heygenClip(deps, { audioUrl: inputUrl(env, s.audio), backgroundUrl: inputUrl(env, s.background),
-          avatarId: s.avatar_id, engine: s.engine, motionPrompt: s.motion_prompt, removeBackground: s.remove_background });
-        await api.upload(s.out, clip.bytes, "video/mp4");
+        const clip = await heygenClip(deps, { audioUrl: inputUrl(env, s.audio), backgroundUrl: s.background ? inputUrl(env, s.background) : undefined,
+          avatarId: s.avatar_id, engine: s.engine, motionPrompt: s.motion_prompt, removeBackground: s.remove_background, fit: s.fit, outputFormat: s.output_format });
+        await api.upload(s.out, clip.bytes, s.output_format === "webm" ? "video/webm" : "video/mp4");
         r.bytes = clip.bytes.length;
         r.duration = clip.duration;
         r.heygen_id = clip.heygen_id;

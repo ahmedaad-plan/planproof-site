@@ -47,6 +47,7 @@ export default async (req) => {
       HEYGEN_ENGINE: Netlify.env.get("HEYGEN_ENGINE"),
       HEYGEN_MOTION_PROMPT: Netlify.env.get("HEYGEN_MOTION_PROMPT"),
       HEYGEN_REMOVE_BG: Netlify.env.get("HEYGEN_REMOVE_BG"),
+      HEYGEN_FIT: Netlify.env.get("HEYGEN_FIT"),
     };
     const dir = await mkdtemp(`${tmpdir()}/studio-`);
     let bin = null;
