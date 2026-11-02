@@ -252,22 +252,26 @@ test("W6b urgency: brisk by default, urgent for news clips and alerts, the scena
   assert.match(brisk, /prosody rate="\+3%" pitch="\+1%"/);
   assert.match(brisk, /<break time="320ms"\/>Exercise\./, "pauses shortened (×0.8)");
   const urgent = narrationSsml({ desc: V7, urgency: "urgent" }, "en");
-  assert.match(urgent, /prosody rate="\+12%" pitch="\+5%" volume="\+10%"/);
-  assert.match(urgent, /<prosody pitch="\+9%" volume="\+15%">An email from/);
+  assert.match(urgent, /prosody rate="\+3%" pitch="\+4%" volume="\+10%"/, "urgent keeps the brisk speed (Ahmed, 20:15)");
+  assert.match(urgent, /<prosody pitch="\+7%" volume="\+15%">An email from/);
+  assert.match(narrationSsml({ desc: V7, urgency: "urgent-high" }, "en"), /rate="\+3%" pitch="\+6%" volume="\+15%"/);
+  assert.match(narrationSsml({ desc: V7, urgency: "urgent-low" }, "en"), /rate="\+3%" pitch="\+2%" volume="\+5%"/);
+  assert.equal(urgencyOf({ desc: V7, urgency: "urgent-low" }), "urgent-low");
   assert.doesNotMatch(urgent, /break time="(\d{4,}|[0-9]{1,2})ms"/);
-  assert.ok(URGENT_PROFILES.mild && URGENT_PROFILES.strong);
+  assert.ok(URGENT_PROFILES.low && URGENT_PROFILES.high);
+  for (const k of Object.keys(URGENT_PROFILES)) assert.equal(URGENT_PROFILES[k].rate.en, "+3%");
 });
 
 test("W6b: a news clip is read urgent with the lead lifted and a short pause before the detail", () => {
   const ssml = clipSsml("Good morning. We begin with breaking news. A clinic network says its systems were locked.\n\nMore later.", "en");
-  assert.match(ssml, /rate="\+12%"/);
-  assert.match(ssml, /<prosody pitch="\+9%" volume="\+15%">Good morning\. We begin with breaking news\.<\/prosody><break time="175ms"\/>A clinic network/);
-  assert.match(ssml, /<break time="250ms"\/>More later\./);
+  assert.match(ssml, /rate="\+3%" pitch="\+4%"/);
+  assert.match(ssml, /<prosody pitch="\+7%" volume="\+15%">Good morning\. We begin with breaking news\.<\/prosody><break time="260ms"\/>A clinic network/);
+  assert.match(ssml, /<break time="325ms"\/>More later\./);
 });
 
 test("W6b: narration made at an earlier urgency (or none recorded) is made again, and the style recorded", async () => {
   const sc = { injects: [{ title: "A", desc: "a" }] };
-  const p = planMedia(sc, { items: { "0": { narration: { en: "narration/x/a.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: "en-GB-RyanNeural|urgent-mild|w6b" } } } }, { langs: ["en"], what: "narration" });
+  const p = planMedia(sc, { items: { "0": { narration: { en: "narration/x/a.mp3" }, narration_voice: { en: "en-GB-RyanNeural" }, narration_style: { en: "en-GB-RyanNeural|urgent-low|w6b" } } } }, { langs: ["en"], what: "narration" });
   assert.equal(p.narration.length, 1);
   const w = world({ media: { items: { "2": { narration: { en: "narration/old.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } } });
   await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
