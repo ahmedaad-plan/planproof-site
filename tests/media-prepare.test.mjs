@@ -303,4 +303,7 @@ test("W6b: HeyGen v3 request — own audio, the plate, 1080p; engine and motion 
   assert.equal(iv.motion_prompt, "calm");
   assert.equal(iv.remove_background, true);
   assert.equal(heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", removeBackground: true }).remove_background, true);
+  const w = heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", removeBackground: true, fit: "contain", outputFormat: "webm" });
+  assert.equal(w.output_format, "webm"); assert.equal(w.fit, "contain");
+  assert.equal(w.background, undefined); assert.equal(w.remove_background, undefined);
 });

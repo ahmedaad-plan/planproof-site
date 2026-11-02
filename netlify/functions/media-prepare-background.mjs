@@ -32,6 +32,7 @@ export default async (req) => {
       HEYGEN_ENGINE: Netlify.env.get("HEYGEN_ENGINE"),
       HEYGEN_MOTION_PROMPT: Netlify.env.get("HEYGEN_MOTION_PROMPT"),
       HEYGEN_REMOVE_BG: Netlify.env.get("HEYGEN_REMOVE_BG"),
+      HEYGEN_FIT: Netlify.env.get("HEYGEN_FIT"),
     };
     const done = await runMediaPrepare({
       fetchFn: fetch, env, token, now: () => Date.now(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
