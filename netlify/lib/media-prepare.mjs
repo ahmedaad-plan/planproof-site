@@ -403,13 +403,17 @@ export async function azureTts(deps, ssml) {
 // only syncs the lips; avatar_iv generates the face from the audio; avatar_v
 // takes a motion prompt) is chosen with the presenter: HEYGEN_ENGINE,
 // HEYGEN_MOTION_PROMPT (avatar_v only).
-export function heygenRequest(env, { audioUrl, backgroundUrl, engine, motionPrompt, avatarId }) {
+export function heygenRequest(env, { audioUrl, backgroundUrl, engine, motionPrompt, avatarId, removeBackground }) {
   const body = { type: "avatar", avatar_id: avatarId || env.HEYGEN_AVATAR_ID, audio_url: audioUrl,
     background: { type: "image", url: backgroundUrl }, resolution: "1080p", aspect_ratio: "16:9", title: "PlanProof Marsa News clip" };
   const eng = engine || env.HEYGEN_ENGINE;
   if (eng) body.engine = { type: eng };
   const mp = motionPrompt || env.HEYGEN_MOTION_PROMPT;
-  if (mp && eng === "avatar_v") body.motion_prompt = String(mp).slice(0, 400);
+  // HeyGen's pages disagree on which engine takes a motion prompt (IV, V or both); send it to both.
+  if (mp && (eng === "avatar_v" || eng === "avatar_iv" || !eng)) body.motion_prompt = String(mp).slice(0, 400);
+  // Presenters filmed in a room (not on a plain screen) need their own background cut out.
+  const rb = removeBackground ?? /^(1|true|yes)$/i.test(String(env.HEYGEN_REMOVE_BG || ""));
+  if (rb) body.remove_background = true;
   return body;
 }
 export async function heygenClip(deps, opts) {
