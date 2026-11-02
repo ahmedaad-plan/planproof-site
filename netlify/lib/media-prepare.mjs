@@ -18,7 +18,9 @@ export const MAX_CLIPS = 6;
 export const USD_PER_CLIP = 4;
 
 export const VOICES = {
-  narration: { en: "en-GB-SoniaNeural", ar: "ar-AE-FatimaNeural" },
+  // Ahmed, 2 November 2026: Ryan and Hamdan only (Sonia and Fatima dropped);
+  // one voice per language, never English and Arabic in one recording.
+  narration: { en: "en-GB-RyanNeural", ar: "ar-AE-HamdanNeural" },
   presenter: { en: "en-GB-RyanNeural", ar: "ar-AE-HamdanNeural" },
 };
 const RATE = { en: "-5%", ar: "-8%" }; // 0.95 / 0.92 (scripts doc §5)
@@ -217,7 +219,9 @@ export function planMedia(scenario, media, opts = {}) {
     if (what === "all" || what === "narration") {
       for (const lang of langs) {
         if (!injectText(inj, lang)) { plan.skipped.push({ index: i, lang, kind: "narration", why: "no_text_in_language" }); continue; }
-        if (!force && have.narration && have.narration[lang]) continue;
+        // A file made with an earlier voice is made again with the current one.
+        const sameVoice = have.narration_voice && have.narration_voice[lang] === VOICES.narration[lang];
+        if (!force && have.narration && have.narration[lang] && sameVoice) continue;
         plan.narration.push({ index: i, lang });
       }
     }
@@ -242,12 +246,14 @@ export function planMedia(scenario, media, opts = {}) {
 // ---------- the voice samples for Ahmed (W6a, scripts doc §8) ----------
 // Four short files, made once (kept under samples/ — no client data): Sonia
 // reading A2, Fatima reading A5 and A6 (English button names inside Arabic),
-// Ryan and Hamdan reading the demo clip's lead.
+// Ryan and Hamdan reading the demo clip's lead. Samples 1 and 2 keep the
+// voices they were made with (Ahmed dropped Sonia and Fatima, 2 November
+// 2026); the files already exist, so they are never made again.
 const br = (ms) => `<break time="${ms}ms"/>`;
 export const SAMPLES = [
-  { name: "w6a-sample-1-sonia-en-A2.mp3", lang: "en", voice: VOICES.narration.en, rate: RATE.en,
+  { name: "w6a-sample-1-sonia-en-A2.mp3", lang: "en", voice: "en-GB-SoniaNeural", rate: RATE.en,
     inner: `First, the most important thing.${br(500)}This exercise tests the plan,${br(250)} not individuals. Findings are reported at team level, and the report names no one.` },
-  { name: "w6a-sample-2-fatima-ar-A5-A6.mp3", lang: "ar", voice: VOICES.narration.ar, rate: RATE.ar,
+  { name: "w6a-sample-2-fatima-ar-A5-A6.mp3", lang: "ar", voice: "ar-AE-FatimaNeural", rate: RATE.ar,
     inner: `اضغطوا ${br(350)}"Submit answer" قبل انتهاء الوقت. وحتى ذلك الحين، يمكنكم التعديل بزر ${br(350)}"Edit answer"، ثم اضغطوا ${br(350)}"Submit changes".${br(600)}` +
       `تحتاجون وقتاً إضافياً؟ من Messages أرسلوا ${br(350)}"We need a few more minutes". وإذا مُنح وقت إضافي، فهو للجميع. وتظهر رسائل الميسّر في أعلى الشاشة: Reply للرد، أو Got it للتأكيد.` },
   { name: "w6a-sample-3-ryan-en-demo-lead.mp3", lang: "en", voice: VOICES.presenter.en, rate: "0%",
@@ -417,6 +423,7 @@ export async function runMediaPrepare(deps, args) {
       const k = String(job.index);
       media.items[k] = { ...(media.items[k] || {}) };
       media.items[k].narration = { ...(media.items[k].narration || {}), [job.lang]: path };
+      media.items[k].narration_voice = { ...(media.items[k].narration_voice || {}), [job.lang]: VOICES.narration[job.lang] };
       media.items[k].narration_duration = { ...(media.items[k].narration_duration || {}), [job.lang]: mp3Duration(audio.length) };
       clearFail(job.index, key);
     } catch (err) { fail(job.index, key, err); }

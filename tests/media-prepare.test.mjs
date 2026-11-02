@@ -39,7 +39,7 @@ test("the v7 header line is spoken as a sentence", () => {
 
 test("narration SSML: header, 'Exercise.' once with a pause, subject, body; never the task or notes", () => {
   const ssml = narrationSsml({ title: "Ransom", desc: V7, task: "SECRET TASK", facilitatorNotes: "NOTES", observerWatch: ["WATCH"] }, "en");
-  assert.match(ssml, /voice name="en-GB-SoniaNeural"/);
+  assert.match(ssml, /voice name="en-GB-RyanNeural"/);
   assert.match(ssml, /prosody rate="-5%"/);
   assert.match(ssml, /An email from the Head of IT to the Crisis Management Team, at seven twelve\.<break time="400ms"\/>Exercise\.<break time="400ms"\/>Ransom note on screens<break time="300ms"\/><break time="600ms"\/>Staff report a message on every screen\.<break time="500ms"\/>Please confirm the next step\./);
   assert.doesNotMatch(ssml, /SECRET|NOTES|WATCH|EXERCISE –/);
@@ -50,7 +50,7 @@ test("narration SSML: header, 'Exercise.' once with a pause, subject, body; neve
 test("Arabic narration only from Arabic text; Arabic rate and voice", () => {
   assert.equal(narrationSsml({ title: "Fire", desc: "English only" }, "ar"), null);
   const ssml = narrationSsml({ title_ar: "حريق", desc_ar: "اندلع حريق في المستودع." }, "ar");
-  assert.match(ssml, /ar-AE-FatimaNeural/);
+  assert.match(ssml, /ar-AE-HamdanNeural/);
   assert.match(ssml, /rate="-8%"/);
   assert.match(ssml, /xml:lang="ar-AE"/);
 });
@@ -73,7 +73,7 @@ test("the plan: sensitive injects skipped, existing files kept, word and clip li
     { title: "C", desc: "c", video: { script_en: long } },
     { title: "D", desc: "d" },
   ] };
-  const p = planMedia(sc, { items: { "3": { narration: { en: "narration/x/d.mp3" } } } }, { langs: ["en", "ar"] });
+  const p = planMedia(sc, { items: { "3": { narration: { en: "narration/x/d.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } }, { langs: ["en", "ar"] });
   assert.deepEqual(p.narration.map((j) => `${j.index}${j.lang}`), ["0en", "2en"]);
   assert.deepEqual(p.clips.map((j) => `${j.index}${j.lang}`), ["0en", "0ar"]);
   assert.equal(p.refused.length, 1);
@@ -198,7 +198,7 @@ test("Azure down: every item failed, status failed; a later Retry makes only the
   const m = last(w);
   assert.equal(m.status, "failed");
   assert.match(m.items["0"].failed.narration_en, /Azure Speech → HTTP 503/);
-  const w2 = world({ media: { items: { "0": { narration: { en: "narration/old.mp3" } } } } });
+  const w2 = world({ media: { items: { "0": { narration: { en: "narration/old.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } } } } });
   await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
   assert.equal(w2.ssml.length, 1, "only inject 3 was missing");
   assert.equal(last(w2).items["0"].narration.en, "narration/old.mp3");
@@ -224,4 +224,19 @@ test("the four voice samples are made once (Sonia, Fatima with English labels, R
   const w2 = world({ plateThere: true });
   await runMediaPrepare(w2.deps, { session_id: SID, langs: ["en"], what: "narration" });
   assert.equal(Object.keys(w2.uploads).filter((p) => p.startsWith("samples/")).length, 0, "already there: not made again");
+});
+
+test("voice change (2 November 2026): narration made with an earlier voice is made again with Ryan / Hamdan, and the voice is recorded", async () => {
+  const sc = { injects: [{ title: "A", desc: "a" }, { title: "B", desc: "b" }] };
+  const p = planMedia(sc, { items: {
+    "0": { narration: { en: "narration/x/sonia.mp3" } },
+    "1": { narration: { en: "narration/x/ryan.mp3" }, narration_voice: { en: "en-GB-RyanNeural" } },
+  } }, { langs: ["en"], what: "narration" });
+  assert.deepEqual(p.narration.map((j) => j.index), [0], "only the Sonia file is made again");
+  const w = world({ media: { items: { "0": { narration: { en: "narration/old-sonia.mp3" } } } } });
+  await runMediaPrepare(w.deps, { session_id: SID, langs: ["en"], what: "narration", samples: false });
+  const m = last(w);
+  assert.notEqual(m.items["0"].narration.en, "narration/old-sonia.mp3");
+  assert.equal(m.items["0"].narration_voice.en, "en-GB-RyanNeural");
+  assert.ok(w.ssml.some((x) => /en-GB-RyanNeural/.test(x)));
 });
