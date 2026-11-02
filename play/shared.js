@@ -202,7 +202,14 @@ async function patchSession(sessionId, fields) {
     // inside withRetry, so a rejected action silently retried 3 times with
     // backoff — up to ~1.5s — before finally showing the error; fixed
     // 5 October 2026.)
-    if (!res.ok) throw new Error(T("shared.error.updateSessionFailed", { status: res.status }));
+    if (!res.ok) {
+      // W6a: the database's own refusal of Start while the briefings are not
+      // done is shown in its words (every other failure as before).
+      const detail = res.status === 400 ? await readErrorDetail(res).catch(() => "") : "";
+      const gateRefusal = PPLang.dbMessage("The briefings have not finished on every screen — see the Before Start panel."); // i18n-ok: the database's English text, looked up in the catalogue
+      if (detail && detail === gateRefusal) throw new Error(detail);
+      throw new Error(T("shared.error.updateSessionFailed", { status: res.status }));
+    }
     const rows = await res.json();
     if (rows.length === 0) {
       throw new Error(T("shared.error.updateRejected"));
@@ -666,7 +673,7 @@ function subscribeToDoorbell(supabaseClient, sessionId, onRing, onStatus) {
     .channel(`pp-${sessionId}`, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "ring" }, (msg) => {
       const kind = msg && msg.payload && msg.payload.kind;
-      onRing(kind === "message" || kind === "inbox" || kind === "observer" || kind === "writer" ? kind : "session");
+      onRing(kind === "message" || kind === "inbox" || kind === "observer" || kind === "writer" || kind === "briefing" ? kind : "session");
     })
     .subscribe((status) => onStatus && onStatus(status));
 }
@@ -1428,6 +1435,23 @@ function stopSfx() {
   currentSfxAudios = [];
 }
 
+// W6a (2 November 2026): the narration lowers the inject's sound and then
+// lets it fade out (media.js narrate). Volumes are relative to the normal 0.8.
+function sfxFade(volume, ms) {
+  const from = currentSfxAudios.map((a) => a.volume);
+  const steps = Math.max(1, Math.round(ms / 50));
+  let i = 0;
+  const id = setInterval(() => {
+    i += 1;
+    currentSfxAudios.forEach((a, k) => { try { a.volume = Math.max(0, Math.min(1, from[k] + (volume - from[k]) * (i / steps))); } catch { /* gone */ } });
+    if (i >= steps) clearInterval(id);
+  }, 50);
+}
+function sfxFadeOut(ms) {
+  sfxFade(0, ms);
+  setTimeout(() => stopSfx(), ms + 60);
+}
+
 function playSfxLayer(name) {
   const path = SFX_FILES[name];
   if (!path) {
@@ -1487,7 +1511,10 @@ function rowSignature(row) {
     row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
     JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
     row.run_number, row.paused_at, row.inject_replay_count, row.is_trial,
-    row.survey_open, row.survey_closed_how].join("|");
+    row.survey_open, row.survey_closed_how,
+    // W6a: the lobby settings, the briefing and the media of played injects.
+    row.briefing_language, row.narration_enabled, row.captions_on_screens,
+    JSON.stringify(row.briefing || null), JSON.stringify(row.media || null), row.media_status].join("|");
 }
 
 function createLiveStatus() {
@@ -1705,6 +1732,8 @@ function startCheckins(opts) {
           p_sound: st.sound || null,
           p_awake: st.awake || null,
           p_live: st.live || null,
+          // W6a: the briefing's state on this screen (only sent when the page has one).
+          ...(st.briefing ? { p_briefing: st.briefing } : {}),
         }),
       });
       if (res.ok) {
@@ -1734,6 +1763,31 @@ function startCheckins(opts) {
   setInterval(beat, opts.intervalMs || CHECKIN_INTERVAL_MS);
   onReconnect(beat);
   return { beat, beatSoon };
+}
+
+// ---- Briefings before Start (W6a, 2 November 2026) -------------------------
+async function briefingRpc(name, args, facilitatorToken) {
+  const res = await withRetry(() => fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST", cache: "no-store", headers: rpcHeaders(facilitatorToken || null), body: JSON.stringify(args),
+  }));
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+const playBriefing = (sessionId, replay, token) => briefingRpc("facilitator_play_briefing", { p_session_id: sessionId, p_replay: !!replay }, token);
+const replayObserverBriefing = (sessionId, room, token) => briefingRpc("facilitator_replay_observer_briefing", { p_session_id: sessionId, p_room: room || null }, token);
+const briefingOverride = (sessionId, token) => briefingRpc("facilitator_briefing_override", { p_session_id: sessionId }, token);
+const fetchBriefingStatus = (sessionId, token) => briefingRpc("facilitator_briefing_status", { p_session_id: sessionId }, token);
+const reportBriefingWatched = (sessionId, attendeeId, deviceId) => briefingRpc("briefing_watched", { p_session_id: sessionId, p_attendee_id: attendeeId, p_device_id: deviceId || null });
+// The media of a played inject in one language (null when there is none).
+function injectMedia(row, idx, lang) {
+  const it = row && row.media && row.media[String(idx)];
+  if (!it) return { narration: null, clip: null };
+  const clipFor = (l) => (it.clip && it.clip[l] && it.clip[l].path ? it.clip[l] : null);
+  return {
+    narration: (it.narration && (it.narration[lang] || null)) || null,
+    clip: clipFor(lang),
+  };
 }
 
 // ---- The control tower's own calls (facilitator token only) ----------------

@@ -181,6 +181,22 @@
   .end-strip .t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 2px; }
   .end-strip ul { margin: 6px 0 0; padding-inline-start: 20px; }
   .tower-section h3 { font-size: 0.95rem; margin: 14px 0 6px; }
+  /* W6a: Before Start */
+  .brief-panel { border-color: var(--attn); }
+  .brief-panel h2 { margin: 0 0 8px; }
+  .brief-settings { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 0.95rem; }
+  .brief-set { display: inline-flex; align-items: center; gap: 8px; }
+  .brief-set select { font: inherit; }
+  .brief-actions, .brief-start { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .brief-note { margin: 10px 0 4px; font-size: 0.92rem; color: var(--text-muted); }
+  .brief-status { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.92rem; }
+  .brief-status li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--border); }
+  .brief-status li .st { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .brief-status li .st.bad { color: var(--red-soft); font-weight: 600; }
+  .brief-status li .st.ok { color: var(--green-soft); }
+  .brief-escape { margin-top: 10px; }
+  .linklike { background: none; border: 0; padding: 0; color: var(--text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 0.9rem; }
+  .pp-brief-hint { font-size: 0.82rem; color: var(--attn); align-self: center; }
   .tower-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
   .tower-headline small { font-family: var(--font-body); font-size: 0.86rem; font-weight: 400; color: var(--text-muted); margin-inline-start: 8px; }
   .tower-warn { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: transparent; border: 1px solid var(--attn); font-size: 0.9rem; }
@@ -368,6 +384,7 @@
       <div class="pp-grp" role="group" aria-label="Injects" data-i18n-attr="aria-label:fac.cmd.groupInjects">
         <button id="prevBtn" title="Go back one inject; it starts again with its full time" data-i18n="fac.controls.previous" data-i18n-attr="title:fac.controls.previousTitle">&larr; Previous</button>
         <button class="primary" id="startBtn" data-i18n="fac.controls.start">Start exercise</button>
+        <span class="pp-brief-hint" id="briefHint" hidden data-i18n="fac.brief.startHint">Briefings first — see the panel</span>
         <button class="primary" id="nextBtn" data-i18n="fac.controls.next">Next inject &rarr;</button>
         <button id="replayBtn" title="Play this inject again from the start, with its full time" data-i18n="fac.controls.replay" data-i18n-attr="title:fac.controls.replayTitle">Replay</button>
       </div>
@@ -450,6 +467,34 @@
          watches, each a door to its tab. -->
     <div class="kpi-strip" id="kpiStrip" role="list" aria-label="At a glance" data-i18n-attr="aria-label:fac.kpi.aria"></div>
     <div class="pp-col">
+      <!-- W6a (2 November 2026): Before Start — the briefings, narration and captions, in one place. -->
+      <div class="pp-card brief-panel" id="briefPanel" hidden>
+        <h2 data-i18n="fac.brief.heading">Before Start</h2>
+        <div class="brief-settings">
+          <label class="brief-set"><span data-i18n="fac.brief.language">Briefing language</span>
+            <select id="briefLang"><option value="en" data-i18n="fac.brief.langEn">English</option><option value="ar" data-i18n="fac.brief.langAr">العربية</option></select></label>
+          <label class="brief-set tog"><input type="checkbox" id="narrationToggle"> <span data-i18n="fac.brief.narration">Narration of the injects</span></label>
+          <label class="brief-set tog"><input type="checkbox" id="captionsToggle"> <span data-i18n="fac.brief.captions">Captions on room screens</span></label>
+        </div>
+        <div class="brief-actions">
+          <button class="primary" type="button" id="playBriefBtn" data-i18n="fac.brief.play">Play participant briefing</button>
+          <button type="button" id="replayObsBtn" data-i18n="fac.brief.replayObservers">Play the Observer briefing again</button>
+        </div>
+        <p class="brief-note" id="briefNote" role="status"></p>
+        <ul class="brief-status" id="briefStatus"></ul>
+        <div class="brief-escape">
+          <button type="button" class="linklike" id="briefEscapeBtn" data-i18n="fac.brief.escape">Briefing could not be played? I briefed them myself</button>
+          <div class="start-check" id="briefEscapeCheck" hidden role="alertdialog" aria-labelledby="briefEscapeTitle">
+            <div class="t" id="briefEscapeTitle" data-i18n="fac.brief.escapeTitle">Brief the room yourself, then open Start?</div>
+            <div class="why" data-i18n="fac.brief.escapeWhy">Read the spoken briefing from the Facilitator Guide (the no-fault line first), then press "I briefed them". Start opens for this run; nothing else changes.</div>
+            <div class="b">
+              <button type="button" id="briefEscapeBack" data-i18n="fac.common.goBack">Go back</button>
+              <button type="button" class="primary" id="briefEscapeOk" data-i18n="fac.brief.escapeOk">I briefed them</button>
+            </div>
+          </div>
+        </div>
+        <div class="brief-start"><button class="primary" type="button" id="briefStartBtn" data-i18n="fac.controls.start">Start exercise</button></div>
+      </div>
       <div class="pp-card" id="currentInjectCard">
         <h2 data-i18n="fac.exercise.currentHeading">Current inject</h2>
         <div class="current-inject" id="currentInject">—</div>
@@ -704,6 +749,7 @@
 <script src="/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./media.js"></script>
 <script src="./layout.js"></script>
 <script src="./mic.js"></script>
 <script src="./notes.js"></script>
@@ -1098,6 +1144,10 @@
       // (a Start pressed mid-exercise would have sent everyone back to inject 1).
       startBtn.textContent = canResume() ? resumeLabel() : T("fac.controls.start");
       startBtn.hidden = !!isRunning;
+      // W6a: in the lobby Start waits for the briefings (the database checks too).
+      const briefHold = !!(currentRow && currentRow.status === "lobby" && window.__ppBriefHold);
+      if (briefHold) startBtn.disabled = true;
+      document.getElementById("briefHint").hidden = !briefHold;
       nextBtn.hidden = !isRunning;
       prevBtn.disabled = !isRunning || atStart;
       nextBtn.disabled = !isRunning || atEnd;
@@ -1515,6 +1565,7 @@
     let ringRefreshAt = 0;
     const doorbell = subscribeToDoorbell(supabaseClient, sessionId, (kind) => {
       if (kind === "inbox") refreshInbox(true);
+      else if (kind === "briefing") { if (window.__ppRefreshBrief) window.__ppRefreshBrief(); } // W6a: an Observer or remote participant finished the briefing
       else if (kind === "session" && Date.now() - ringRefreshAt > 1000) {
         ringRefreshAt = Date.now();
         refresh().catch(() => {});
@@ -1882,6 +1933,7 @@
     }
     function shownText(d) {
       if (d.shown_status === "running" && Number.isInteger(d.shown_inject)) return injectName(d.shown_inject);
+      if (d.shown_status === "lobby" && d.briefing_state && d.briefing_state !== "none") return T("fac.tower.shownLobbyBriefing", { state: briefStateText(d.briefing_state, d.briefing_position, d.briefing_state === "watched").text }); // W6a
       if (d.shown_status === "lobby") return T("fac.tower.shownLobby");
       if (d.shown_status === "ended") return T("fac.tower.shownEnded");
       return T("fac.tower.shownNothing");
@@ -2460,6 +2512,102 @@
     // "time's up" happen on time, between the 5-second data polls.
     setInterval(renderStatus, 1000);
     onReconnect(refreshRoster);
+
+    // ---- W6a (2 November 2026): Before Start ---------------------------------
+    // One panel in the lobby: briefing language, narration, captions on room
+    // screens, Play participant briefing, one status line per screen or
+    // person (ready · playing 0:48 · watched · not yet · could not play), the
+    // escape, and Start. Start stays greyed until the briefings are done
+    // (or there is no briefing video, a trial run, or "I briefed them").
+    const briefPanel = document.getElementById("briefPanel");
+    const briefStatusEl = document.getElementById("briefStatus");
+    const briefNoteEl = document.getElementById("briefNote");
+    const briefLangEl = document.getElementById("briefLang");
+    const narrationEl = document.getElementById("narrationToggle");
+    const captionsEl = document.getElementById("captionsToggle");
+    const playBriefBtn = document.getElementById("playBriefBtn");
+    const replayObsBtn = document.getElementById("replayObsBtn");
+    let briefData = null;
+    let briefBusy = false;
+    window.__ppBriefHold = false;
+    function briefStateText(st, pos, watched) {
+      if (watched) return { text: T("fac.brief.st.watched"), cls: "ok" };
+      if (st === "playing") return { text: T("fac.brief.st.playing", { time: PPMedia.fmt(pos || 0) }), cls: "" };
+      if (st === "failed") return { text: T("fac.brief.st.failed"), cls: "bad" };
+      if (st === "ready") return { text: T("fac.brief.st.ready"), cls: "" };
+      return { text: T("fac.brief.st.notYet"), cls: "" };
+    }
+    function drawBrief() {
+      const lobby = !!(currentRow && currentRow.status === "lobby");
+      briefPanel.hidden = !lobby;
+      if (!lobby) { window.__ppBriefHold = false; return; }
+      if (document.activeElement !== briefLangEl) briefLangEl.value = currentRow.briefing_language || "en";
+      narrationEl.checked = currentRow.narration_enabled !== false;
+      captionsEl.checked = !!currentRow.captions_on_screens;
+      const d = briefData;
+      const files = (d && d.files) || (currentRow.briefing && currentRow.briefing.files) || {};
+      const lang = currentRow.briefing_language || "en";
+      const hasRoomVideo = !!(files.participant && files.participant[lang]);
+      const hasObsVideo = !!(files.observer && (files.observer.en || files.observer.ar));
+      playBriefBtn.hidden = !hasRoomVideo;
+      playBriefBtn.textContent = d && d.played_at ? T("fac.brief.playAgain") : T("fac.brief.play");
+      replayObsBtn.hidden = !hasObsVideo || !(d && (d.people || []).some((p) => p.kind === "observer"));
+      const gate = d && d.gate;
+      const trial = !!currentRow.is_trial;
+      window.__ppBriefHold = !!(gate && gate.ok === false && !trial);
+      if (!d) briefNoteEl.textContent = T("fac.brief.note.loading");
+      else if (d.override_at) briefNoteEl.textContent = T("fac.brief.note.override");
+      else if (!hasRoomVideo && !hasObsVideo) briefNoteEl.textContent = T("fac.brief.note.noVideo");
+      else if (gate && gate.ok) briefNoteEl.textContent = T("fac.brief.note.ready");
+      else if (!d.played_at && hasRoomVideo && (d.screens || []).length) briefNoteEl.textContent = T("fac.brief.note.pressPlay");
+      else briefNoteEl.textContent = T("fac.brief.note.waiting");
+      const rows = [];
+      (d && d.screens || []).forEach((sc, i) => {
+        const st = briefStateText(sc.state, sc.position, sc.watched_after_play);
+        rows.push(`<li><span>${escapeHtml(sc.room ? T("fac.brief.screenRoom", { n: i + 1, room: sc.room }) : T("fac.brief.screen", { n: i + 1 }))}</span><span class="st ${st.cls}">${escapeHtml(st.text)}</span></li>`); // i18n-ok: markup only
+      });
+      (d && d.people || []).forEach((pp) => {
+        const st = briefStateText(pp.state, pp.position, pp.watched);
+        rows.push(`<li><span>${escapeHtml(T(pp.kind === "observer" ? "fac.brief.observer" : "fac.brief.remote", { name: String(pp.name || ""), department: String(pp.department || "") }))}</span><span class="st ${st.cls}">${escapeHtml(st.text)}</span></li>`); // i18n-ok: markup only
+      });
+      briefStatusEl.innerHTML = rows.join("");
+      document.getElementById("briefEscapeBtn").hidden = !!(d && (d.override_at || (gate && gate.ok)));
+      document.getElementById("briefStartBtn").disabled = window.__ppBriefHold || actionBusy;
+      updateButtonAvailability();
+    }
+    async function refreshBrief() {
+      if (!currentRow || currentRow.status !== "lobby") { drawBrief(); return; }
+      try { briefData = await fetchBriefingStatus(sessionId, facilitatorToken); }
+      catch { briefData = null; window.__ppBriefHold = false; } // the database still checks at Start
+      drawBrief();
+    }
+    async function briefAction(fn) {
+      if (briefBusy) return;
+      briefBusy = true;
+      errorBoxEl.style.display = "none";
+      try { await fn(); await refresh(); await refreshBrief(); }
+      catch (err) { errorBoxEl.textContent = T("fac.error.actionFailed", { message: PPLang.dbMessage(err.message) }); errorBoxEl.style.display = "block"; }
+      finally { briefBusy = false; }
+    }
+    playBriefBtn.addEventListener("click", () => briefAction(() => playBriefing(sessionId, !!(briefData && briefData.played_at), facilitatorToken)));
+    replayObsBtn.addEventListener("click", () => briefAction(() => replayObserverBriefing(sessionId, null, facilitatorToken)));
+    briefLangEl.addEventListener("change", () => briefAction(() => patchSession(sessionId, { briefing_language: briefLangEl.value })));
+    narrationEl.addEventListener("change", () => briefAction(() => patchSession(sessionId, { narration_enabled: narrationEl.checked })));
+    captionsEl.addEventListener("change", () => briefAction(() => patchSession(sessionId, { captions_on_screens: captionsEl.checked })));
+    document.getElementById("briefEscapeBtn").addEventListener("click", () => { document.getElementById("briefEscapeCheck").hidden = false; });
+    document.getElementById("briefEscapeBack").addEventListener("click", () => { document.getElementById("briefEscapeCheck").hidden = true; });
+    document.getElementById("briefEscapeOk").addEventListener("click", () => {
+      document.getElementById("briefEscapeCheck").hidden = true;
+      briefAction(() => briefingOverride(sessionId, facilitatorToken));
+    });
+    document.getElementById("briefStartBtn").addEventListener("click", () => startBtn.click());
+    setInterval(() => { if (currentRow && currentRow.status === "lobby") refreshBrief(); }, 10000);
+    window.__ppRefreshBrief = () => setTimeout(refreshBrief, 300);
+    let briefLastStatus = null;
+    setInterval(() => {
+      const st = currentRow ? `${currentRow.status}|${currentRow.run_number}|${JSON.stringify(currentRow.briefing || null)}` : null;
+      if (st !== briefLastStatus) { briefLastStatus = st; refreshBrief(); }
+    }, 1000);
     onReconnect(() => refreshInbox());
 
     // Same reasoning as the room display: a dropped connection or a

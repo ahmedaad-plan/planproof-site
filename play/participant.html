@@ -214,6 +214,16 @@
     <button class="pp-btn" id="remoteGateBtn" data-i18n="part.remote.gateButton">Tap to start — this turns sound on</button>
     <div class="gate-error" id="remoteGateError" hidden></div>
   </div>
+  <!-- W6a (2 November 2026): "Take over" asks in the page's own dialog (was the browser's confirm()). -->
+  <div class="pp-confirm-back" id="takeoverDlg" hidden>
+    <div class="pp-confirm" role="alertdialog" aria-modal="true" aria-labelledby="takeoverDlgText">
+      <p id="takeoverDlgText"></p>
+      <div class="pp-confirm-b">
+        <button type="button" class="pp-btn ghost" id="takeoverBackBtn" data-i18n="part.writer.takeoverBack">Go back</button>
+        <button type="button" class="pp-btn" id="takeoverOkBtn" data-i18n="part.writer.takeOver">Take over</button>
+      </div>
+    </div>
+  </div>
   <!-- The slim header (17 October 2026): who, where the exercise is, the clock — on every tab. -->
   <div class="pp-slim" id="slimBar" hidden>
     <span class="who" id="slimWho"></span>
@@ -233,6 +243,7 @@
   </div>
   <div class="pp-cols part-cols">
     <section class="pp-col" id="tabInject">
+      <div id="briefingCard" class="pp-brief-card" hidden></div>
       <main id="main" data-i18n-nodes="part.loading">Loading…</main>
     </section>
     <section class="pp-col" id="tabMessages" hidden>
@@ -263,6 +274,7 @@
 <script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="./lang.js"></script>
 <script src="./shared.js"></script>
+<script src="./media.js"></script>
 <script src="./layout.js"></script>
 <script src="./survey.js"></script>
 <script>
@@ -345,6 +357,55 @@
   let autoStartTried = false;
   let checkins = null;
 
+  // ---- W6a (2 November 2026): the briefing and media on a REMOTE device ----
+  // Before Start: the participant briefing in a card on the Inject tab (Play,
+  // English / العربية, captions on). During the exercise: a played inject's
+  // news clip, or its narration after the sound. In-room phones stay silent.
+  const partMedia = (() => {
+    let player = null, playerKey = null;
+    const card = document.getElementById("briefingCard");
+    const lang = (row) => (row && row.briefing_language) || "en";
+    function clear() { if (player) player.destroy(); player = null; playerKey = null; card.hidden = true; card.innerHTML = ""; }
+    return {
+      onRow(row) {
+        const files = (row && row.briefing && row.briefing.files && row.briefing.files.participant) || {};
+        if (!row || row.status !== "lobby" || !remote || (!files.en && !files.ar)) { if (playerKey) clear(); return; }
+        const key = String(row.run_number);
+        if (key === playerKey) return;
+        if (player) player.destroy();
+        card.hidden = false;
+        player = PPMedia.briefing(card, {
+          sessionId, run: row.run_number, role: "participant", lang: lang(row), files: row.briefing.files, small: true,
+          captions: true, langToggle: true, fullscreen: false, playedAt: "self",
+          onState: () => { if (checkins) checkins.beatSoon(); },
+          onWatched: () => {
+            reportBriefingWatched(sessionId, identity.attendeeId, personDeviceId()).catch(() => { /* reported again next time */ });
+            if (checkins) checkins.beat();
+          },
+        });
+        playerKey = key;
+      },
+      briefingReport() {
+        if (!player || !latestRow || latestRow.status !== "lobby") return null;
+        return { state: player.state(), position: player.position() };
+      },
+      // true when a news clip took this inject (the sound is not played).
+      inject(row, idx, inject) {
+        const m = injectMedia(row, idx, lang(row));
+        if (m.clip) {
+          stopSfx();
+          PPMedia.clip({ clip: m.clip, video: inject.video || {}, lang: lang(row), closeButton: true,
+            onFail: () => { if (inject.sfx) playSfx(inject.sfx); } });
+          return true;
+        }
+        if (inject.sfx) playSfx(inject.sfx);
+        if (m.narration && row.narration_enabled !== false) PPMedia.narrate(PPMedia.url(m.narration), { hasSfx: !!inject.sfx });
+        return true;
+      },
+    };
+  })();
+
+
   if (!sessionId) {
     mainEl.innerHTML = `<div class="center-note">${escapeHtml(T("part.error.noSession"))}</div>`;
   } else {
@@ -398,6 +459,7 @@
       supabaseClient,
       onRow: (row) => {
         render(row);
+        partMedia.onRow(row);
         awake.update();
         maybeAutoStartSound();
         if (checkins) checkins.beatSoon();
@@ -434,6 +496,7 @@
         sound: remote ? (muted ? "muted" : audioUnlocked ? "on" : "off") : "na",
         awake: awake.state(),
         live: sync.liveState(),
+        briefing: partMedia.briefingReport(),
       }),
       onReply: (reply) => {
         applyRemoteFromReply(reply);
@@ -840,9 +903,32 @@
       }
     } catch { /* checked again on the next ring or renewal */ }
   }
+  // The page's own question (W6a): Go back / Take over; Escape or a tap
+  // outside is Go back. Resolves true only for Take over.
+  function askTakeover(text) {
+    const back = document.getElementById("takeoverDlg");
+    const okBtn = document.getElementById("takeoverOkBtn");
+    const noBtn = document.getElementById("takeoverBackBtn");
+    document.getElementById("takeoverDlgText").textContent = text;
+    back.hidden = false;
+    okBtn.focus();
+    return new Promise((resolve) => {
+      const done = (v) => {
+        back.hidden = true;
+        okBtn.removeEventListener("click", yes); noBtn.removeEventListener("click", no);
+        back.removeEventListener("click", outside); document.removeEventListener("keydown", esc);
+        resolve(v);
+      };
+      const yes = () => done(true), no = () => done(false);
+      const outside = (e) => { if (e.target === back) done(false); };
+      const esc = (e) => { if (e.key === "Escape") done(false); };
+      okBtn.addEventListener("click", yes); noBtn.addEventListener("click", no);
+      back.addEventListener("click", outside); document.addEventListener("keydown", esc);
+    });
+  }
   async function takeOver(idx, inject) {
     const name = writerHeld ? writerHeld.writer_name : "";
-    if (!confirm(T("part.writer.confirmTakeover", { name: String(name), department: String(identity.department) }))) return;
+    if (!(await askTakeover(T("part.writer.confirmTakeover", { name: String(name), department: String(identity.department) })))) return;
     const btn = document.getElementById("takeOverBtn");
     if (btn) btn.disabled = true;
     try {
@@ -929,6 +1015,7 @@
     if (row.status === "ended") {
       clearInjectTimer();
       stopSfx(); // a remote device's inject sound must not carry on over the thank-you
+      PPMedia.stopAll();
       pendingSfx = null;
       // Item 8 (11 October 2026): keep what is on screen on this device
       // first — if End was pressed by mistake and the exercise carries on,
@@ -1775,6 +1862,7 @@
       } else {
         muted = true;
         stopSfx();
+        PPMedia.stopAll();
         pendingSfx = null;
         try { localStorage.setItem(`pp_remote_muted_${sessionId}`, "1"); } catch { /* ignore */ }
       }
@@ -1803,10 +1891,13 @@
     return !deadline || deadline > Date.now();
   }
   function playInjectSound(row, idx, inject) {
-    if (!remote || !inject || !inject.sfx) return;
+    if (!remote || !inject) return;
     if (injectWasResumed(row, idx)) { pendingSfx = null; return; }
     if (muted) { pendingSfx = null; return; }
     if (!timeLeftFor(row, inject)) { pendingSfx = null; return; } // time's up: no sound
+    // W6a: a news clip plays instead of the sound; otherwise the narration follows it.
+    if (audioUnlocked && partMedia.inject(row, idx, inject)) { pendingSfx = null; return; }
+    if (!inject.sfx) return;
     if (audioUnlocked) playSfx(inject.sfx);
     else pendingSfx = inject.sfx;
   }
