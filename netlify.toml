@@ -7,6 +7,12 @@
 [functions."media-prepare-background"]
   included_files = ["netlify/media/*.jpg"]
 
+# W6b: the media studio joins sound and pictures with ffmpeg (a static Linux
+# build from the npm package, kept out of the bundler so the binary ships).
+[functions."media-studio-background"]
+  included_files = ["netlify/media/*.jpg"]
+  external_node_modules = ["@ffmpeg-installer/ffmpeg", "@ffmpeg-installer/linux-x64"]
+
 # The Supabase publishable (anon) key is public by design: browser pages need it,
 # and Row Level Security — not the key — protects every table (insert-only for
 # visitors; MFA-signed-in admin for client records). Netlify's secret scanner
