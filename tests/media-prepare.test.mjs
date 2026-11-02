@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  heygenRequest,
   timeWordsEn, timeWordsAr, headerSentence, messageParts, narrationSsml, clipSsml, clipCues,
   planMedia, runMediaPrepare, wordCount, mp3Duration, MAX_CLIPS, urgencyOf, styleKey, URGENT_PROFILES,
 } from "../netlify/lib/media-prepare.mjs";
@@ -125,10 +126,10 @@ function world(opts = {}) {
     }
     if (u.hostname === "api.heygen.com") {
       assert.equal(init.headers["X-Api-Key"], "heygen_test");
-      if (u.pathname === "/v2/video/generate") { w.heygen.push(JSON.parse(init.body)); return json({ code: 100, data: { video_id: "vid1" } }); }
-      if (u.pathname === "/v1/video_status.get") {
+      if (u.pathname === "/v3/videos" && init.method === "POST") { w.heygen.push(JSON.parse(init.body)); return json({ data: { video_id: "vid1" } }); }
+      if (u.pathname === "/v3/videos/vid1") {
         w.polls += 1;
-        if (opts.heygenFails) return json({ code: 100, data: { status: "failed", error: { message: "bad audio" } } });
+        if (opts.heygenFails) return json({ data: { status: "failed", failure_message: "bad audio" } });
         return json({ code: 100, data: w.polls < 2 ? { status: "processing" } : { status: "completed", video_url: "https://files.test/v.mp4", duration: 41.5 } });
       }
     }
@@ -171,11 +172,11 @@ test("a full run: narration for each non-sensitive inject, one English clip, pro
   assert.equal(m.progress.done, m.progress.total);
   // the presenter clip: audio from Azure (Ryan), our plate as background, 1080p
   const g = w.heygen[0];
-  assert.equal(g.video_inputs[0].character.avatar_id, "avatar_test");
-  assert.equal(g.video_inputs[0].voice.type, "audio");
-  assert.match(g.video_inputs[0].voice.audio_url, /^https:\/\/db\.test\/storage\/v1\/object\/public\/exercise-media\/clips\//);
-  assert.match(g.video_inputs[0].background.url, /plates\/marsa-en\.jpg$/);
-  assert.deepEqual(g.dimension, { width: 1920, height: 1080 });
+  assert.equal(g.type, "avatar"); // W6b: HeyGen v3
+  assert.equal(g.avatar_id, "avatar_test");
+  assert.match(g.audio_url, /^https:\/\/db\.test\/storage\/v1\/object\/public\/exercise-media\/clips\//);
+  assert.match(g.background.url, /plates\/marsa-en\.jpg$/);
+  assert.equal(g.resolution, "1080p");
   assert.ok(w.ssml.some((s) => /en-GB-RyanNeural/.test(s)));
   assert.equal(w.uploads["plates/marsa-en.jpg"], "image/jpeg");
   assert.ok(Object.entries(w.uploads).some(([p, t]) => p.endsWith(".mp4") && t === "video/mp4"));
@@ -285,4 +286,16 @@ test("W6b: narration \"off\" (the scenario skill's wording) is treated like fals
   assert.equal(p.clips.length, 0, "no clip for a sensitive inject either");
   assert.ok(p.skipped.some((x) => x.index === 0 && x.why === "narration_false"));
   assert.equal(urgencyOf({ desc: "News · Marsa News · 07:14\nFire at the warehouse." }), "urgent");
+});
+
+test("W6b: HeyGen v3 request — own audio, the plate, 1080p; engine and motion prompt only when chosen", () => {
+  const env = { HEYGEN_AVATAR_ID: "Aditya_public_1" };
+  const b = heygenRequest(env, { audioUrl: "https://a/x.mp3", backgroundUrl: "https://a/p.jpg" });
+  assert.deepEqual(b, { type: "avatar", avatar_id: "Aditya_public_1", audio_url: "https://a/x.mp3", background: { type: "image", url: "https://a/p.jpg" }, resolution: "1080p", aspect_ratio: "16:9", title: "PlanProof Marsa News clip" });
+  const iii = heygenRequest({ ...env, HEYGEN_ENGINE: "avatar_iii", HEYGEN_MOTION_PROMPT: "calm" }, { audioUrl: "u", backgroundUrl: "b" });
+  assert.deepEqual(iii.engine, { type: "avatar_iii" });
+  assert.equal(iii.motion_prompt, undefined, "the motion prompt only goes with avatar_v");
+  const v = heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", engine: "avatar_v", motionPrompt: "serious newsreader", avatarId: "other" });
+  assert.equal(v.motion_prompt, "serious newsreader");
+  assert.equal(v.avatar_id, "other");
 });
