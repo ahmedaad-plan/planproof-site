@@ -243,6 +243,28 @@
     body.observer-mode .obs-right { border-inline-start: 1px solid var(--border); padding-inline-start: 24px; }
     body.observer-mode .obs-right .pp-tabs { padding: 12px 0; border-bottom: 0; }
   }
+  /* W6c (3 November 2026): the join code on the room screen and for Observers.
+     The QR always sits on white, so a phone camera reads it on the black page. */
+  .lobby-join { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 5vw, 64px); flex-wrap: wrap; text-align: start; }
+  .lobby-join .qr, .rejoin-banner .qr, .join-code-overlay .qr { background: #fff; border-radius: 16px; box-sizing: border-box; aspect-ratio: 1; }
+  .lobby-join .qr { width: min(46vh, 440px); padding: 18px; }
+  .lobby-join .qr svg, .rejoin-banner .qr svg, .join-code-overlay .qr svg { width: 100%; height: 100%; display: block; }
+  .lobby-join .scan { font-family: var(--font-display); font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 700; color: var(--text); }
+  .lobby-join .name { font-size: clamp(1.2rem, 2.2vw, 1.8rem); color: var(--text); margin-top: 8px; max-width: 18em; }
+  .lobby-join .wait { font-size: clamp(1rem, 1.6vw, 1.3rem); color: var(--text-muted); margin-top: 22px; }
+  .rejoin-banner { position: fixed; inset-inline: 0; top: 0; z-index: 60; background: var(--bg); border-bottom: 2px solid var(--text); padding: 16px 24px 20px; display: none; }
+  .rejoin-banner.show { display: flex; align-items: center; justify-content: center; gap: 32px; }
+  .rejoin-banner .qr { width: min(30vh, 300px); padding: 12px; flex: 0 0 auto; }
+  .rejoin-banner .t1 { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.6rem); font-weight: 700; color: var(--text); }
+  .rejoin-banner .t2 { font-size: clamp(1rem, 1.6vw, 1.4rem); color: var(--text-muted); margin-top: 6px; }
+  .rejoin-banner .timebar { position: absolute; inset-inline-start: 0; bottom: 0; height: 4px; background: var(--text); width: 100%; transform-origin: left; }
+  .slim-join { flex: 0 0 auto; background: transparent; color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 12px; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; min-height: 30px; }
+  .join-code-overlay { position: fixed; inset: 0; z-index: 300; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; text-align: center; }
+  .join-code-overlay[hidden] { display: none; }
+  .join-code-overlay .qr { width: min(86vw, 62vh, 520px); padding: 16px; }
+  .join-code-overlay .t1 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--text); }
+  .join-code-overlay .t2 { color: var(--text-muted); max-width: 30em; }
+  .join-code-overlay button { min-height: 48px; min-width: 160px; border-radius: 12px; border: 1px solid var(--text); background: var(--text); color: var(--bg); font: inherit; font-weight: 700; font-size: 1.05rem; }
 </style>
 </head>
 <body>
@@ -284,11 +306,26 @@
   <div class="timebar" id="broadcastTimebar"></div>
 </div>
 
+<!-- W6c: the join code as a 30-second banner on room screens ("Show rejoin code on room screens"). -->
+<div class="rejoin-banner" id="rejoinBanner" role="status" aria-live="polite">
+  <div class="qr" id="rejoinQr"></div>
+  <div><div class="t1" data-i18n="room.rejoin.title">Lost your page? Scan to rejoin</div><div class="t2" id="rejoinName"></div></div>
+  <div class="timebar" id="rejoinTimebar"></div>
+</div>
+<!-- W6c: an Observer's "Show join code" fills the screen with the join code. -->
+<div class="join-code-overlay" id="joinCodeOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="joinCodeTitle">
+  <div class="t1" id="joinCodeTitle" data-i18n="room.joinCode.title">Scan to join or rejoin</div>
+  <div class="qr" id="joinCodeQr"></div>
+  <div class="t2" data-i18n="room.joinCode.hint">A participant scans this with their phone's camera. If they registered before, they see “Welcome back” and carry on.</div>
+  <button type="button" id="joinCodeClose" data-i18n="room.joinCode.close">Close</button>
+</div>
+
 <!-- The Observer's slim header (17 October 2026): who, where the exercise is, the clock. -->
 <div class="pp-slim" id="slimBar" hidden>
   <span class="who" id="slimWho"></span>
   <span class="pos" id="slimPos"></span>
   <span class="pp-cmd-clock" id="slimClock" data-state="none" hidden></span>
+  <button type="button" class="slim-join" id="slimJoinBtn" data-i18n="room.joinCode.button">Show join code</button>
 </div>
 <div class="obs-cols" id="obsCols">
 <section id="tabExercise" class="pp-col">
@@ -339,6 +376,7 @@
 <script src="./shared.js"></script>
 <script src="./media.js"></script>
 <script src="./layout.js"></script>
+<script src="/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="./mic.js"></script>
 <script src="./notes.js"></script>
 <script src="./survey.js"></script>
@@ -914,6 +952,76 @@
   }
   if (observerMode) setInterval(() => { loadObserverExtra(false); }, 10000);
 
+  // ---- W6c (3 November 2026): the join code --------------------------------
+  // The exercise's own join link, drawn live as a QR (nothing per client is
+  // baked into a video). Waiting screen: large, with "Scan to join" and the
+  // exercise name. "Show rejoin code on room screens": a 30-second banner from
+  // the moment the facilitator pressed it (server time). Observer: "Show join
+  // code" fills the screen. If the QR library is missing, the plain waiting
+  // line stays and the banner/overlay say to ask the facilitator.
+  function joinUrl() {
+    const lang = PPLang.lang();
+    return `${location.origin}/play/join.html?session=${encodeURIComponent(sessionId)}${lang === "en" ? "" : `&lang=${lang}`}`;
+  }
+  function lobbyJoinHtml(row) {
+    return `<div class="lobby-join"><div class="qr" id="lobbyQr" aria-label="${escapeHtml(T("room.lobby.qrAria"))}"></div>` +
+      `<div><div class="scan">${escapeHtml(T("room.lobby.scan"))}</div>` +
+      `<div class="name">${escapeHtml(row.label || "")}</div>` +
+      `<div class="wait">${escapeHtml(T("room.lobby.waiting"))}</div></div></div>`;
+  }
+  function drawLobbyQr() {
+    const el = document.getElementById("lobbyQr");
+    if (!el) return;
+    if (!PPLayout.qr(el, joinUrl(), { cellSize: 8 })) {
+      mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
+    }
+  }
+  const REJOIN_MS = 30 * 1000;
+  const rejoin = (() => {
+    const el = document.getElementById("rejoinBanner");
+    const bar = document.getElementById("rejoinTimebar");
+    let shownAt = null, timer = null;
+    function hide() { clearTimeout(timer); timer = null; el.classList.remove("show"); }
+    return {
+      onRow(row) {
+        const at = row && row.rejoin_code_at;
+        if (observerMode) return;
+        // Only while the exercise runs: the waiting screen already shows the
+        // code large, and after End there is nothing to rejoin.
+        if (!at || row.status !== "running") { hide(); shownAt = at || null; return; }
+        if (at === shownAt) return;
+        shownAt = at;
+        const serverNow = row.server_now ? Date.parse(row.server_now) : Date.now();
+        const left = REJOIN_MS - Math.max(0, serverNow - Date.parse(at));
+        if (!(left > 0)) return;
+        if (!PPLayout.qr(document.getElementById("rejoinQr"), joinUrl(), { cellSize: 6 })) {
+          document.getElementById("rejoinQr").hidden = true;
+        }
+        document.getElementById("rejoinName").textContent = row.label || "";
+        bar.style.animation = "none";
+        void bar.offsetWidth;
+        bar.style.animation = `shrink ${left}ms linear forwards`; // i18n-ok: CSS animation value
+        el.classList.add("show");
+        clearTimeout(timer);
+        timer = setTimeout(hide, left);
+      },
+    };
+  })();
+  if (observerMode) {
+    const overlay = document.getElementById("joinCodeOverlay");
+    const openBtn = document.getElementById("slimJoinBtn");
+    openBtn.addEventListener("click", () => {
+      const ok = PPLayout.qr(document.getElementById("joinCodeQr"), joinUrl(), { cellSize: 8 });
+      document.getElementById("joinCodeQr").hidden = !ok;
+      overlay.hidden = false;
+      document.getElementById("joinCodeClose").focus();
+    });
+    document.getElementById("joinCodeClose").addEventListener("click", () => { overlay.hidden = true; openBtn.focus(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !overlay.hidden) { overlay.hidden = true; openBtn.focus(); } });
+  } else {
+    document.getElementById("slimJoinBtn").hidden = true;
+  }
+
   function render(row) {
     if (!row || window.__ppRemoved) return;
     latestRow = row;
@@ -923,6 +1031,7 @@
       updateSlim();
     }
     clientLabelEl.textContent = row.label || "PlanProof";
+    rejoin.onRow(row);
 
     // A banner belongs to the inject (or the lobby) it was sent during:
     // once the screen has moved on, it goes, even if its 30 seconds aren't up.
@@ -940,7 +1049,8 @@
       // shared room screen never shows a person's name.
       mainEl.innerHTML = observerMode
         ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
-        : `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
+        : lobbyJoinHtml(row);
+      if (!observerMode) drawLobbyQr();
       lastRenderedIndex = null;
       obsPageFresh = false; // seen waiting here: the first inject is new
       obsCameFromLobby = true;

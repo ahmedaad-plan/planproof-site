@@ -360,6 +360,11 @@
     .kpi:nth-child(4) { border-inline-start: 0; }
     .kpi:last-child:nth-child(odd) { grid-column: span 3; }
   }
+  /* W6c: "Show rejoin code on room screens" (one tap, 30 seconds). */
+  .rejoin-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 12px; }
+  .rejoin-row[hidden] { display: none; }
+  .rejoin-row button { min-height: 40px; }
+  .rejoin-row .pp-hint { flex: 1 1 220px; margin: 0; }
 </style>
 </head>
 <body class="pp-has-tabs">
@@ -507,6 +512,10 @@
     <div class="pp-col">
       <div class="pp-card tower-section" id="towerSection">
         <h2 data-i18n="fac.tower.screensHeading">Room screens</h2>
+        <div class="rejoin-row" id="rejoinRow" hidden>
+          <button type="button" id="rejoinBtn" data-i18n="fac.rejoin.button">Show rejoin code on room screens</button>
+          <span class="pp-hint" id="rejoinHint" data-i18n="fac.rejoin.hint">For when several people lose their page at once, for example a Wi-Fi cut. The join code shows on every room screen for 30 seconds.</span>
+        </div>
         <div id="towerScreens"></div>
         <div id="towerError" style="display:none; margin-top:8px; color:var(--red-soft); font-size:0.9rem;"></div>
         <div class="tower-legend">
@@ -3157,6 +3166,46 @@
     // Only the most recently started refresh is applied (refreshSeq), so the
     // 15-second check can never put an older copy of the session back after
     // an action.
+    // ---- W6c (3 November 2026): "Show rejoin code on room screens" ----------
+    // One tap, no question: the database stamps the time and every room
+    // screen shows the join code as a banner for 30 seconds. Only while the
+    // exercise runs. The countdown here is from the database's own time.
+    const rejoinRow = document.getElementById("rejoinRow");
+    const rejoinBtn = document.getElementById("rejoinBtn");
+    const rejoinHint = document.getElementById("rejoinHint");
+    let rejoinUntil = 0, rejoinTick = null;
+    function rejoinLeft() { return Math.max(0, Math.ceil((rejoinUntil - Date.now()) / 1000)); }
+    function drawRejoin() {
+      const left = rejoinLeft();
+      rejoinBtn.disabled = left > 0;
+      rejoinHint.textContent = left > 0 ? T("fac.rejoin.shown", { seconds: String(left) }) : T("fac.rejoin.hint");
+      if (!left && rejoinTick) { clearInterval(rejoinTick); rejoinTick = null; }
+    }
+    function updateRejoin() {
+      const running = !!(currentRow && currentRow.status === "running");
+      rejoinRow.hidden = !running;
+      if (currentRow && currentRow.rejoin_code_at && currentRow.server_now) {
+        const left = 30000 - (Date.parse(currentRow.server_now) - Date.parse(currentRow.rejoin_code_at));
+        const until = Date.now() + left;
+        if (left > 0 && Math.abs(until - rejoinUntil) > 1500) rejoinUntil = until;
+      }
+      if (rejoinLeft() && !rejoinTick) rejoinTick = setInterval(drawRejoin, 1000);
+      drawRejoin();
+    }
+    rejoinBtn.addEventListener("click", async () => {
+      rejoinBtn.disabled = true;
+      try {
+        await showRejoinCode(sessionId, facilitatorToken);
+        rejoinUntil = Date.now() + 30000;
+        if (!rejoinTick) rejoinTick = setInterval(drawRejoin, 1000);
+        drawRejoin();
+        refresh().catch(() => {});
+      } catch (err) {
+        rejoinBtn.disabled = false;
+        rejoinHint.textContent = T("fac.error.actionFailed", { message: err.message });
+      }
+    });
+
     async function refresh() {
       const seq = ++refreshSeq;
       const row = await fetchSession(sessionId);
@@ -3166,6 +3215,7 @@
       const prevShown = !!(currentRow && currentRow.show_earlier_runs);
       currentRow = row;
       updateButtonAvailability();
+      updateRejoin();
       // A Reset (new run) or a change of state relabels the conversation
       // ("Earlier run", Reply shown or not) without waiting for a new message.
       if (row && (row.run_number !== prevRun || row.status !== prevStatus) && typeof renderInbox === "function") renderInbox();

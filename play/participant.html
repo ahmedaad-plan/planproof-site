@@ -195,6 +195,14 @@
     .part-cols > #tabMessages { border-inline-start: 1px solid var(--border); padding-inline-start: 24px; }
     .msg-banner-inner { max-width: 1192px; }
   }
+  /* W6c (3 November 2026): "Watch the briefing" for a participant who registered after Start. */
+  .late-brief { border: 1px solid var(--border-strong); border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .late-brief p { margin: 0; flex: 1 1 220px; color: var(--text-muted); font-size: 0.95rem; }
+  .late-brief button { min-height: 44px; border-radius: 10px; border: 1px solid var(--text); background: transparent; color: var(--text); font: inherit; font-weight: 700; padding: 0 16px; }
+  .late-brief-layer { position: fixed; inset: 0; z-index: 400; background: var(--bg); overflow: auto; padding: 16px; }
+  .late-brief-layer[hidden] { display: none; }
+  .late-brief-box { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .late-brief-box > button { align-self: center; min-height: 48px; min-width: 160px; border-radius: 12px; border: 1px solid var(--text); background: var(--text); color: var(--bg); font: inherit; font-weight: 700; }
 </style>
 </head>
 <body class="pp-has-tabs part-page">
@@ -241,8 +249,16 @@
       <button id="msgBannerOk" data-i18n="part.msg.gotIt">Got it</button>
     </div>
   </div>
+  <div class="late-brief-layer" id="lateBriefLayer" hidden role="dialog" aria-modal="true">
+    <div class="late-brief-box"><div id="lateBriefPlayer"></div>
+      <button type="button" id="lateBriefClose" data-i18n="part.late.close">Close</button></div>
+  </div>
   <div class="pp-cols part-cols">
     <section class="pp-col" id="tabInject">
+      <div id="lateBrief" class="late-brief" hidden>
+        <p data-i18n="part.late.text">Joined after the start? You can watch the briefing quietly on your own device, with captions on.</p>
+        <button type="button" id="lateBriefBtn" data-i18n="part.late.link">Watch the briefing</button>
+      </div>
       <div id="briefingCard" class="pp-brief-card" hidden></div>
       <main id="main" data-i18n-nodes="part.loading">Loading…</main>
     </section>
@@ -357,6 +373,43 @@
   let autoStartTried = false;
   let checkins = null;
 
+  // ---- W6c (3 November 2026): "Watch the briefing" after a late registration ----
+  // Shown only on the device of a participant who registered after Start,
+  // while the exercise runs, until they have watched it. It plays here only,
+  // captions on; the room screen is never interrupted and nothing is reported.
+  const lateBrief = (() => {
+    const box = document.getElementById("lateBrief");
+    const layer = document.getElementById("lateBriefLayer");
+    const holder = document.getElementById("lateBriefPlayer");
+    let player = null, lastRow = null;
+    const doneKey = () => `pp_late_brief_${sessionId}_${identity && identity.attendeeId}`;
+    const done = () => { try { return localStorage.getItem(doneKey()) === "1"; } catch { return false; } };
+    function close() { if (player) { player.destroy(); player = null; } holder.innerHTML = ""; layer.hidden = true; }
+    document.getElementById("lateBriefClose").addEventListener("click", () => { close(); if (lastRow) lateBrief.onRow(lastRow); });
+    document.getElementById("lateBriefBtn").addEventListener("click", () => {
+      if (!lastRow) return;
+      const lang = lastRow.briefing_language || "en";
+      close();
+      layer.hidden = false;
+      player = PPMedia.briefing(holder, {
+        sessionId, run: lastRow.run_number, role: "participant", lang, files: lastRow.briefing.files, small: true,
+        captions: true, langToggle: false, fullscreen: false, playedAt: "late",
+        onWatched: () => { try { localStorage.setItem(doneKey(), "1"); } catch { /* the link simply stays */ } },
+      });
+      player.play();
+    });
+    return {
+      onRow(row) {
+        lastRow = row;
+        const files = (row && row.briefing && row.briefing.files && row.briefing.files.participant) || {};
+        const lang = (row && row.briefing_language) || "en";
+        const show = !!(identity && identity.lateJoin && identity.role !== "observer" && row && row.status === "running" && files[lang] && !done());
+        box.hidden = !show;
+        if (row && row.status !== "running" && !layer.hidden) close();
+      },
+    };
+  })();
+
   // ---- W6a (2 November 2026): the briefing and media on a REMOTE device ----
   // Before Start: the participant briefing in a card on the Inject tab (Play,
   // English / العربية, captions on). During the exercise: a played inject's
@@ -463,6 +516,7 @@
       onRow: (row) => {
         render(row);
         partMedia.onRow(row);
+        lateBrief.onRow(row);
         awake.update();
         maybeAutoStartSound();
         if (checkins) checkins.beatSoon();

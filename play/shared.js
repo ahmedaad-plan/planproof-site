@@ -644,6 +644,23 @@ async function setAttendeeRemote(sessionId, attendeeId, remote, room, facilitato
   return res.json();
 }
 
+// W6c (3 November 2026): "Show rejoin code on room screens" — the checked
+// database function stamps the time; room screens show the join code for 30 s.
+async function showRejoinCode(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) throw new Error(T("shared.error.noFacilitatorToken"));
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_show_rejoin_code`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
 // Fires `callback` whenever this device looks like it just came back —
 // either the browser's own "online" event, or the tab becoming visible
 // again (mobile browsers suspend/throttle background tabs, which can drop
@@ -1513,7 +1530,7 @@ function rowSignature(row) {
     row.run_number, row.paused_at, row.inject_replay_count, row.is_trial,
     row.survey_open, row.survey_closed_how,
     // W6a: the lobby settings, the briefing and the media of played injects.
-    row.briefing_language, row.narration_enabled, row.captions_on_screens,
+    row.briefing_language, row.narration_enabled, row.captions_on_screens, row.rejoin_code_at,
     JSON.stringify(row.briefing || null), JSON.stringify(row.media || null), row.media_status].join("|");
 }
 

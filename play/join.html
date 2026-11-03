@@ -530,6 +530,11 @@
       const attendeeId = crypto.randomUUID();
       try {
         await joinSession(sessionId, { id: attendeeId, ...pending });
+        // W6c: registered after Start? The participant page then offers
+        // "Watch the briefing" on this device (the room screen is never
+        // interrupted). The status is read again at this moment.
+        let lateJoin = session && session.status !== "lobby";
+        try { const now = await fetchSession(sessionId); if (now) lateJoin = now.status !== "lobby"; } catch { /* keep the status seen on load */ }
         // No login exists, so this is how the next page knows who just
         // joined — including the attendee id that individual answers are
         // filed under. A same-browser handoff, not the reload-proof
@@ -548,6 +553,7 @@
               room: pending.room,
               remote: !!pending.remote,
               deviceId: personDeviceId(),
+              lateJoin: !!lateJoin,
             })
           );
         } catch {
