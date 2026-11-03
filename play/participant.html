@@ -363,6 +363,7 @@
   // news clip, or its narration after the sound. In-room phones stay silent.
   const partMedia = (() => {
     let player = null, playerKey = null;
+    let narrationFailed = null; // W6b: the last inject whose narration file failed on this device
     const card = document.getElementById("briefingCard");
     const lang = (row) => (row && row.briefing_language) || "en";
     function clear() { if (player) player.destroy(); player = null; playerKey = null; card.hidden = true; card.innerHTML = ""; }
@@ -386,8 +387,10 @@
         playerKey = key;
       },
       briefingReport() {
-        if (!player || !latestRow || latestRow.status !== "lobby") return null;
-        return { state: player.state(), position: player.position() };
+        // W6b: a failed narration is reported in the next check-in (the tower shows it).
+        const nf = narrationFailed && latestRow && narrationFailed.run === latestRow.run_number ? { narration_failed: narrationFailed.idx } : null;
+        if (!player || !latestRow || latestRow.status !== "lobby") return nf;
+        return { state: player.state(), position: player.position(), ...(nf || {}) };
       },
       // true when a news clip took this inject (the sound is not played).
       inject(row, idx, inject) {
@@ -399,7 +402,7 @@
           return true;
         }
         if (inject.sfx) playSfx(inject.sfx);
-        if (m.narration && row.narration_enabled !== false) PPMedia.narrate(PPMedia.url(m.narration), { hasSfx: !!inject.sfx });
+        if (m.narration && row.narration_enabled !== false) PPMedia.narrate(PPMedia.url(m.narration), { hasSfx: !!inject.sfx, onFail: () => { narrationFailed = { idx, run: row.run_number }; } });
         return true;
       },
     };

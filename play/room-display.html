@@ -438,6 +438,7 @@
   // the Exercise tab before Start; the phone stays silent during the exercise.
   const roomMedia = (() => {
     let player = null, playerKey = null, pending = null, pendingInject = null, lastHandled = null;
+    let narrationFailed = null; // W6b: the last inject whose narration file failed on this screen
     const layer = document.getElementById("briefingLayer");
     const card = document.getElementById("briefingCard");
     const roomLang = (row) => (row && row.briefing_language) || "en";
@@ -513,8 +514,10 @@
         if (pendingInject) { const p = pendingInject; pendingInject = null; p(); }
       },
       briefingReport() {
-        if (!player || !latestRow || latestRow.status !== "lobby") return null;
-        return { state: player.state(), position: player.position() };
+        // W6b: a failed narration is reported in the next check-in (the tower shows it).
+        const nf = narrationFailed && latestRow && narrationFailed.run === latestRow.run_number ? { narration_failed: narrationFailed.idx } : null;
+        if (!player || !latestRow || latestRow.status !== "lobby") return nf;
+        return { state: player.state(), position: player.position(), ...(nf || {}) };
       },
       // A news clip for this inject (room screen): true when it plays (or waits for the tap).
       newInject(row, idx, inject) {
@@ -539,7 +542,7 @@
         const go = () => PPMedia.narrate(PPMedia.url(m.narration), {
           hasSfx: !!inject.sfx,
           onStatus: (t) => { sfxStatusEl.textContent = T("room.sound.status", { msg: t }); },
-          onFail: () => { sfxStatusEl.textContent = T("room.sound.status", { msg: T("media.status.narrationFailed") }); },
+          onFail: () => { narrationFailed = { idx, run: row.run_number }; sfxStatusEl.textContent = T("room.sound.status", { msg: T("media.status.narrationFailed") }); },
         });
         if (audioUnlocked) go(); else pendingInject = go;
       },

@@ -271,7 +271,9 @@
     const items = [1, 2, 3].map((n) => T(`media.news.ticker${n}.${lang}`)).join("   •   ");
     tick.textContent = `${items}   •   ${items}`;
     ticker.append(tick);
-    const endCard = el("div", "pp-news-end", T("media.news.end"));
+    // W6b: the end card's English and Arabic on their own lines (one line mixed the two directions badly).
+    const endCard = el("div", "pp-news-end");
+    String(T("media.news.end")).split(" · ").forEach((line) => { const d = el("div", null, line); d.dir = "auto"; endCard.append(d); });
     g.append(bug, label, clock, band, ticker, endCard);
     layer.append(video, g);
     if (opts.closeButton) {

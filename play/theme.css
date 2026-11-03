@@ -627,7 +627,7 @@ body.pp-has-tabs { padding-bottom: 24px; }
 .pp-news-gfx { position: absolute; inset: 0; pointer-events: none; }
 .pp-news-bug { position: absolute; top: 3.2cqw; inset-inline-start: 3cqw; display: flex; align-items: center; gap: 1cqw; background: rgba(15,76,92,.92); padding: .7cqw 1.4cqw; border-radius: .4cqw; font-weight: 700; letter-spacing: .14em; font-size: max(13px, 1.9cqw); }
 .pp-news.ar .pp-news-bug { letter-spacing: 0; }
-.pp-news-mark { width: 2.2cqw; height: 1.6cqw; min-width: 16px; min-height: 12px; border: .35cqw solid #fff; border-bottom: 0; border-radius: 2cqw 2cqw 0 0; box-shadow: 0 .45cqw 0 -.05cqw #fff; }
+.pp-news-mark { width: 2.4cqw; height: 2.4cqw; min-width: 18px; min-height: 18px; flex: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23fff'/%3E%3Cpath d='M12 34V14l12 13 12-13v20' fill='none' stroke='%230f4c5c' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'/%3E%3Crect x='12' y='39' width='24' height='3.2' rx='1.6' fill='%23e8a24a'/%3E%3C/svg%3E") center / contain no-repeat; }
 .pp-news-label { position: absolute; top: 3.2cqw; inset-inline-end: 3cqw; background: rgba(0,0,0,.7); padding: .6cqw 1.2cqw; border-radius: .3cqw; font-weight: 700; font-size: max(11px, 1.35cqw); letter-spacing: .06em; font-family: "IBM Plex Sans", "Noto Sans Arabic", system-ui, sans-serif; }
 .pp-news-clock { position: absolute; bottom: 12.4cqw; inset-inline-end: 3cqw; background: rgba(6,22,28,.9); padding: .4cqw 1cqw; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: max(11px, 1.5cqw); }
 .pp-news-clock:empty { display: none; }
@@ -644,6 +644,7 @@ body.pp-has-tabs { padding-bottom: 24px; }
 .pp-news.ar .pp-news-tickin { animation-name: ppNewsTickRtl; }
 .pp-news-end { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8cqw; background: #000; font-weight: 700; font-size: max(15px, 2.6cqw); line-height: 1.5; opacity: 0; transition: opacity .25s; font-family: "Space Grotesk", "Noto Sans Arabic", system-ui, sans-serif; }
 .pp-news.ending .pp-news-end { opacity: 1; }
+.pp-news-end { flex-direction: column; gap: 1.2cqw; } /* W6b: English line, then the Arabic line */
 .pp-news.opening .pp-news-head, .pp-news.opening .pp-news-ticker { opacity: 0; }
 .pp-news.leaving { opacity: 0; transition: opacity .25s; }
 .pp-news-close { position: absolute; bottom: 7cqw; inset-inline-end: 3cqw; transform: translateY(-120%); font: inherit; font-size: 0.9rem; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.6); background: rgba(0,0,0,.55); color: #fff; cursor: pointer; pointer-events: auto; }

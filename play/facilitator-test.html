@@ -2007,6 +2007,7 @@
           if (d.awake === "off") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.maySleep"))}</span>`);
           if (d.live === "poll") extras.push(`<span class="soft">${escapeHtml(T("fac.tower.livePoll"))}</span>`);
         }
+        if (Number.isInteger(d.narration_failed_inject)) extras.push(`<span class="bad">${escapeHtml(T("fac.tower.narrationFailed", { number: d.narration_failed_inject + 1 }))}</span>`); // W6b
         let cmd = "";
         if (d.pending_command) {
           cmd = ` <span class="soft">· ${escapeHtml(d.pending_command === "reload" ? T("fac.tower.reloadSent") : T("fac.tower.refreshSent"))}</span>`;
@@ -2086,6 +2087,7 @@
             if (x.d.sound === "on") extras.push(escapeHtml(T("fac.tower.remoteSoundOn")));
             else if (x.d.sound === "muted") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.remoteSoundMuted"))}</span>`);
             else extras.push(`<span class="bad">${escapeHtml(T("fac.tower.remoteSoundOff"))}</span>`);
+            if (Number.isInteger(x.d.narration_failed_inject)) extras.push(`<span class="bad">${escapeHtml(T("fac.tower.narrationFailed", { number: x.d.narration_failed_inject + 1 }))}</span>`); // W6b
             if (x.d.awake === "off") extras.push(`<span class="bad">${escapeHtml(T("fac.tower.maySleep"))}</span>`);
             if (currentRow && currentRow.status === "running") {
               if (x.d.sound === "muted") warnings.push({ red: false, text: T("fac.tower.warnRemoteMuted", { name: x.a.name }) });

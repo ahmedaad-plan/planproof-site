@@ -751,6 +751,7 @@
       "fac.tower.soundOn": "sound on",
       "fac.tower.soundOff": "sound off — needs a tap on \"Tap to start\"",
       "fac.tower.maySleep": "may go to sleep",
+      "fac.tower.narrationFailed": "narration failed on inject {number} — sound and text played as usual",
       "fac.tower.livePoll": "live connection down — updating every 15 seconds",
       "fac.tower.reloadSent": "Full reload sent — waiting for the screen (up to 20 seconds)",
       "fac.tower.refreshSent": "Refresh sent — waiting for the screen (up to 20 seconds)",
