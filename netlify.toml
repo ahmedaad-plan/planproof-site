@@ -1,30 +1,81 @@
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# W6a: the newsroom background behind the HeyGen presenter, read by the
+# media-prepare function (uploaded once to the exercise-media bucket).
+[functions."media-prepare-background"]
+  included_files = ["netlify/media/*.jpg"]
+
+# W6b: the media studio joins sound and pictures with ffmpeg (a static Linux
+# build from the npm package, kept out of the bundler so the binary ships).
+[functions."media-studio-background"]
+  included_files = ["netlify/media/*.jpg"]
+  external_node_modules = ["@ffmpeg-installer/ffmpeg", "@ffmpeg-installer/linux-x64"]
 
 # Wording guard for the exercise player (language foundation, 13 October 2026).
 # Every word a person sees on play/* lives in play/lang.js. This check stops
 # the deploy if wording has been typed into a page instead (it needs nothing
-# installed — plain Node). Run it by hand with: node tools/check-lang.js
+# installed — plain Node). Netlify never publishes a failed build, so the
+# live site stays as it was. Run it by hand with: node tools/check-lang.js
 [build]
   command = "node tools/check-lang.js"
 
+# The Supabase publishable (anon) key is public by design: browser pages need it,
+# and Row Level Security — not the key — protects every table (insert-only for
+# visitors; MFA-signed-in admin for client records). Netlify's secret scanner
+# flags it because the same value is also set as an environment variable for the
+# form function. Skip ONLY this key; any other secret still blocks the build.
 [build.environment]
-  # play/shared.js embeds the Supabase anon key for client-side use — that's
-  # expected and safe (it's the same public key already used by the form
-  # function; Row Level Security controls what it can do, not secrecy of the
-  # key). Without this, Netlify's secret scanner fails the build because the
-  # literal value matches the SUPABASE_PUBLISHABLE_KEY site env var — the
-  # scan matches by env var NAME, so it's the key name that must be omitted,
-  # not the file path.
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_PUBLISHABLE_KEY"
 
-# The exercise-player prototype (play/*) is being redeployed many times a day
-# while under active testing. Without this, a browser can hang onto a stale
-# cached copy of play/shared.js (or the HTML pages) from an earlier deploy —
-# indistinguishable, from the user's side, from a real bug, since the page
-# looks fine but runs old code. Forcing no-cache here means every load always
-# gets the exact version that was just deployed.
+# Private admin page (client records). Never indexed, framed or cached.
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Cache-Control = "no-store"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://qryfayienxrngavhwfgw.supabase.co wss://qryfayienxrngavhwfgw.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+# The exercise player (moved onto plan-proof.com 5 November 2026).
+# - Never cached: a browser must never run an old copy of a page or shared.js
+#   after a fix (indistinguishable from a real bug).
+# - Never indexed or framed; the Facilitator link carries its private token in
+#   the address, so it is never passed on to another site (no-referrer).
+# - The pages load only from plan-proof.com and the PlanProof database
+#   (data, live updates, briefing videos, narration, clips, attachments).
+#   The microphone stays allowed for Observers' voice notes.
 [[headers]]
   for = "/play/*"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(), geolocation=(), microphone=(self)"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://qryfayienxrngavhwfgw.supabase.co; media-src 'self' blob: https://qryfayienxrngavhwfgw.supabase.co; connect-src 'self' https://qryfayienxrngavhwfgw.supabase.co wss://qryfayienxrngavhwfgw.supabase.co; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+# Third-party libraries served from plan-proof.com itself (pinned versions,
+# integrity-checked by the pages), so a CDN outage or a silent library update
+# cannot break the admin page or the exercise player. Versioned file names, so
+# they can be cached for good.
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    X-Content-Type-Options = "nosniff"
+
+# Insights (answer library, 25 October 2026): /blog is a common guess.
+[[redirects]]
+  from = "/blog"
+  to = "/insights/"
+  status = 301
+[[redirects]]
+  from = "/blog/*"
+  to = "/insights/"
+  status = 301

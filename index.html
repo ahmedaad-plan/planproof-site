@@ -12,6 +12,7 @@
 <link rel="icon" href="favicon-96.png" type="image/png" sizes="96x96">
 <link rel="icon" href="favicon-48.png" type="image/png" sizes="48x48">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="PlanProof Insights" href="/insights/feed.xml">
 <meta name="theme-color" content="#10151b">
 <link rel="preload" as="image" href="hero.webp" type="image/webp">
 
@@ -67,16 +68,24 @@
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Self-service tabletop exercise kit",
-              "description": "A complete, ready-to-run exercise package: scenario briefing, timed injects, facilitator notes and debrief questions."
+              "name": "Facilitated tabletop exercise — 60-minute duration (Focused)",
+              "description": "One critical risk or one part of your continuity plan, tested with a small team. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           },
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Facilitated tabletop exercise session",
-              "description": "A specialist facilitates the live exercise with your team and delivers a written debrief report."
+              "name": "Facilitated tabletop exercise — 90-minute duration (Standard)",
+              "description": "Several departments working the same incident, from the first alert to recovery decisions. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Facilitated tabletop exercise — 120-minute duration (Extended)",
+              "description": "Complex or multi-site scenarios with more departments, more pressure and a longer structured debrief. Scenario designed for your organization, reviewed by you, run by our facilitator, with a bilingual scored report within 3 working days."
             }
           }
         ]
@@ -85,6 +94,14 @@
     {
       "@type": "FAQPage",
       "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why choose PlanProof?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PlanProof designs realistic, high-pressure exercises built on ISO 22301 and NCEMA 7000:2021 and shaped by real incidents in the region. Every exercise is designed for your organization and reviewed by you before the day. Our facilitator runs it live with your team, supported by our own exercise technology, and a bilingual English and Arabic report with a readiness score follows within 3 working days. We then re-test against your actions, so you can show your board and auditors real progress. One service, from scenario design to findings, re-testing and improvement."
+          }
+        },
         {
           "@type": "Question",
           "name": "What is a business continuity tabletop exercise?",
@@ -106,7 +123,7 @@
           "name": "How long does an exercise take?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. You choose the duration when you submit your request, and the number and pace of injects is designed to fit it."
+            "text": "Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. For larger or multi-site exercises we also design longer sessions of 150 or 180 minutes. You choose the duration in your request, and the number and pace of injects is designed to fit it."
           }
         },
         {
@@ -119,10 +136,34 @@
         },
         {
           "@type": "Question",
-          "name": "What is the difference between the self-service kit and a facilitated session?",
+          "name": "How quickly can we get started?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The self-service kit is a complete, ready-to-run exercise package your own team runs internally. In a facilitated session, a specialist runs the live exercise with your team and then delivers a written debrief report identifying real gaps in your plan."
+            "text": "Once we have confirmed the details with you, your initial scenario is ready for your review within 5 working days. We then agree the exercise date with you."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How often should we test our plans?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both ISO 22301 and NCEMA 7000:2021 expect exercises at planned intervals and after significant changes. Most organizations test their different plans at least once a year, and many run several tabletop exercises a year, each testing a different scenario. It is also good practice to exercise again after a significant change, such as a new site, a new system, an updated plan or a restructure."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the exercise run in Arabic?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Exercises can run fully in Arabic on request; please allow about four weeks from booking for your first Arabic exercise. Whichever language the exercise runs in, your report is always delivered in both English and Arabic."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens after we send a request?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We contact you to confirm the details, then design your scenario and send it to you to review. Once you are happy with it, we agree the date, our facilitator runs the live exercise with your team, and your bilingual scored report follows within 3 working days."
           }
         },
         {
@@ -130,7 +171,15 @@
           "name": "What do we receive at the end?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "A debrief report summarizing what was tested, key findings, and concrete recommendations tied to what actually happened in the exercise."
+            "text": "A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does an exercise cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The price depends on the duration, the number of departments and sites, and whether the exercise is built from your own plan. Please contact us for details and we’ll send you a proposal."
           }
         },
         {
@@ -650,16 +699,63 @@
     box-shadow: 0 8px 20px var(--shadow);
   }
   .dept-dropdown.open{ display: block; }
+  /* A group title in a pick list — a heading, never an option (22 Oct 2026) */
   .dept-group-label{
-    font-size: 11px; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.04em; padding: 8px 12px 4px;
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+    padding: 12px 12px 6px; margin-top: 4px; border-top: 1px solid var(--border);
+    cursor: default; user-select: none;
   }
+  .dept-done + .dept-group-label{ border-top: none; margin-top: 0; }
   .dept-option{ padding: 8px 12px; font-size: 14px; cursor: pointer; }
   .dept-option:hover{ background: var(--panel-raised); }
   .dept-empty{ padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
+  .dept-other{ margin-top: 8px; }
+  .dept-other-row{ display: flex; gap: 8px; align-items: stretch; }
+  .dept-other-row input{ flex: 1 1 auto; min-width: 0; margin: 0; }
+  .dept-other-add{ flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 600; padding: 0 18px; min-height: 42px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
+  .dept-done{ position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px 10px 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dept-done-hint{ font-size: 12.5px; color: var(--text-muted); }
+  .dept-done-btn{ flex: 0 0 auto; font: inherit; font-size: 14px; font-weight: 600; padding: 7px 18px; border-radius: 7px; border: 1px solid #d84a3a; background: #d84a3a; color: #fff; cursor: pointer; }
+  .intake-card .optout-note .not-kept{ color: #d84a3a; font-weight: 700; }
   .risk-note{ font-size: 12px; color: var(--text-muted); margin: -2px 0 8px; min-height: 0; }
   .risk-note:empty{ display: none; }
 
+  /* Returning clients (client history) */
+  .intake-card .choice-row{ display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid transparent; border-radius: 8px; padding: 2px; }
+  .intake-card .choice-row label{
+    display: inline-flex; align-items: center; gap: 8px; margin: 0;
+    padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--panel-raised); color: var(--text); font-size: 14px; cursor: pointer;
+  }
+  .intake-card .choice-row label:has(input:checked){ border-color: var(--amber); }
+  .intake-card .choice-row input, .intake-card .optout input{ width: auto; margin: 0; accent-color: #d84a3a; }
+  .intake-card .returning{ border-top: 1px solid var(--border); margin-top: 22px; padding-top: 6px; }
+  .intake-card .returning-q{ font-size: 14px; color: var(--text); margin: 14px 0 8px; }
+  .intake-card .choice-row label .opt{ font-style: italic; opacity: 0.8; color: var(--text-muted); font-size: 13px; }
+  .intake-card .returning-q .opt{ font-style: italic; opacity: 0.8; color: var(--text-muted); font-size: 13px; }
+  .intake-card .returning-panel{ border-left: 2px solid var(--amber); padding-left: 14px; margin-top: 6px; }
+  .intake-card .ref-row{ display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; border: 1px solid transparent; border-radius: 8px; padding: 2px; }
+  .intake-card .ref-row .ref-fixed{ font-weight: 600; color: var(--text); font-size: 15px; letter-spacing: 0.04em; }
+  .intake-card .ref-row .ref-dash{ color: var(--text-muted); }
+  .intake-card .ref-row input.ref-box{ width: 5.2em; flex: 0 0 5.2em; margin: 0; text-align: center; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+  .intake-card .when-row{ display: flex; gap: 10px; border: 1px solid transparent; border-radius: 8px; padding: 2px; }
+  .intake-card .when-row select{ margin: 0; flex: 1 1 0; min-width: 0; }
+  .intake-card .when-row select:last-of-type{ flex: 0 1 8em; }
+  .intake-card .field-hint{ font-size: 13px; color: #d84a3a; margin: 6px 0 0; }
+  .intake-card .returning-note{ font-size: 13.5px; color: var(--text-muted); margin: 10px 0 0; }
+  .intake-card label.optout{ display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 14px; margin: 20px 0 4px; cursor: pointer; }
+  .intake-card .optout-note{ margin-top: 0; }
+  .intake-card .optout-note a{ color: inherit; }
+  @media (max-width: 480px){ .intake-card .choice-row.stack-mobile label{ width: 100%; } }
+
+  /* Consent (18 October 2026): every choice is opt-in — nothing is ticked for the visitor. */
+  .consent{ margin: 18px 0 4px; text-align: start; }
+  .consent-row{ display: flex !important; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; color: var(--text); margin: 0 0 10px !important; cursor: pointer; font-weight: 400; }
+  .consent-row input{ width: auto !important; margin: 3px 0 0 !important; flex: 0 0 auto; accent-color: #d84a3a; }
+  .consent-row a{ color: inherit; text-decoration: underline; }
+  .consent-row .opt{ color: var(--text-muted); }
+  .consent-row input.field-error{ outline: 2px solid #d84a3a; outline-offset: 2px; }
+  .consent-row input.field-error + span{ color: #d84a3a; }
   .field-error{
     border-color: #d84a3a !important;
     background: rgba(216,74,58,0.08) !important;
@@ -731,8 +827,29 @@
     gap: 16px;
   }
   .nav-links{ display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+  .nav-toggle{ display: none; }
+  /* Phones (24 October 2026): one slim, solid line — logo and a Menu button;
+     the links open as a panel under it. Nothing shows through the menu. */
   @media (max-width: 780px){
-    .nav-inner{ grid-template-columns: 1fr; justify-items: center; }
+    .sitenav{ background: #10151b; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .nav-inner{ grid-template-columns: 1fr auto; justify-items: stretch; padding: 10px 16px; gap: 0; }
+    .nav-toggle{
+      display: inline-flex; align-items: center; gap: 8px; justify-self: end;
+      font: 700 15px "Space Grotesk", sans-serif; color: #f2f3f5;
+      background: transparent; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px;
+      padding: 0 14px; min-height: 40px; cursor: pointer;
+    }
+    .nav-toggle-bars{ display: inline-flex; flex-direction: column; gap: 3px; }
+    .nav-toggle-bars span{ display: block; width: 16px; height: 2px; background: currentColor; border-radius: 2px; }
+    .nav-links{
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: #10151b; padding: 4px 16px 10px; border-top: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 16px 30px rgba(0,0,0,.45);
+    }
+    .sitenav.open .nav-links{ display: flex; }
+    .nav-links a, .nav-links a:hover{ font-size: 16px; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sitenav.open .nav-toggle{ border-color: #d84a3a; }
   }
   .brand{
     font-family: "Space Grotesk", sans-serif;
@@ -964,7 +1081,8 @@
   .choice-title{
     font-family: "Space Grotesk", sans-serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    color: #d84a3a;
     margin-bottom: 8px;
   }
   .choice-card p{
@@ -1011,7 +1129,7 @@
 
   .intake-card{
     background: var(--panel-raised);
-    border: 1px solid var(--border);
+    border: 1.5px solid #d84a3a; /* red edge on every form (24 October 2026) */
     border-radius: 12px;
     padding: 28px 30px;
     max-width: 620px;
@@ -1037,6 +1155,7 @@
     font-size: 20px;
     margin: 0 0 6px;
   }
+  .intake-card .form-label-red{ color: #d84a3a; font-weight: 700; }
   .intake-sub{
     font-size: 13.5px;
     color: var(--text-muted);
@@ -1082,8 +1201,6 @@
 
   /* ===== Mobile polish pass ===== */
   @media (max-width: 480px){
-    .nav-links{ gap: 12px 16px; }
-    .nav-links a{ font-size: 14px; }
     .brand{ font-size: 19px; }
     .brand-mark{ width: 28px; height: 28px; }
 
@@ -1118,7 +1235,7 @@
   }
 
   /* --- Layout fit fixes (Sep 2026): keep key content inside one laptop screen --- */
-  section[id]{ scroll-margin-top: 72px; }               /* headings no longer hide under the sticky menu */
+  section[id]{ scroll-margin-top: calc(var(--nav-h, 64px) + 10px); } /* headings never hide under the sticky menu (its height is measured; two lines on a phone) */
   .hero-photo{ min-height: 400px; }
   .hero-photo-inner{ padding: 40px 24px; }
   .hero-steps{ padding: 28px 24px; }
@@ -1167,79 +1284,153 @@
   .faq-item summary::after{ content: "+"; position: absolute; right: 4px; top: 13px; font-size: 20px; color: var(--red); font-weight: 400; }
   .faq-item[open] summary::after{ content: "\2212"; }
   .faq-item p{ margin: 0 0 16px; color: var(--text-muted); font-size: 14.5px; line-height: 1.65; }
+
+  /* --- 22 Oct 2026: six-step "How it works" + one service in three lengths --- */
+  .how-band{ border-top: 1px solid var(--border); }
+  .how-inner{ max-width: 1180px; margin: 0 auto; padding: 40px 24px 44px; }
+  .how-inner > h2{ font-family: "Space Grotesk", sans-serif; font-size: 26px; text-align: center; margin: 0 0 8px; }
+  .flow{ list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 18px; position: relative; }
+  .flow::before{ content: ""; position: absolute; left: calc(100% / 12); right: calc(100% / 12); top: 15px; height: 2px; background: var(--border); }
+  .flow-step{ position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .flow-marker{ position: relative; z-index: 1; padding: 0 6px; background: var(--panel); }
+  .flow-num{ width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; border: 2px solid #000; color: #d84a3a; font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 700; box-sizing: border-box; }
+  .flow-body{ display: flex; flex-direction: column; align-items: center; margin-top: 12px; }
+  .flow-head{ display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .flow-icon{ width: 22px; height: 22px; color: #d84a3a; flex-shrink: 0; }
+  .flow-who{ font-size: 11.5px; font-weight: 600; line-height: 1; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+  .flow-who.who-us{ color: var(--text); background: var(--red-dim); border-color: rgba(194,81,63,0.45); }
+  .flow-who.who-both{ color: var(--text); background: var(--amber-dim); border-color: rgba(226,166,59,0.5); }
+  .flow-title{ font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 15.5px; line-height: 1.3; margin: 0 0 6px; }
+  .flow-step p{ color: var(--text-muted); font-size: 13.5px; line-height: 1.55; margin: 0; max-width: 30ch; }
+  @media (max-width: 1099px){
+    .flow{ grid-template-columns: repeat(3, 1fr); gap: 28px 22px; }
+    .flow::before{ display: none; }
+  }
+  @media (max-width: 700px){
+    .how-inner{ padding: 34px 18px 36px; }
+    .flow{ grid-template-columns: 1fr; gap: 0; }
+    .flow::before{ display: block; left: 15px; right: auto; top: 16px; bottom: 16px; width: 2px; height: auto; }
+    .flow-step{ flex-direction: row; align-items: flex-start; text-align: left; gap: 14px; padding-bottom: 20px; }
+    .flow-step:last-child{ padding-bottom: 0; }
+    .flow-marker{ padding: 0 0 4px; }
+    .flow-body{ align-items: flex-start; margin-top: 4px; }
+    .flow-step p{ max-width: none; }
+  }
+
+  .length-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 8px 0 22px; }
+  .length-card{ position: relative; display: flex; flex-direction: column; align-items: flex-start; text-decoration: none; color: inherit; cursor: pointer; background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px 22px 22px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .length-card:hover, .length-card:focus-visible{ transform: translateY(-3px); border-color: #d84a3a; box-shadow: 0 10px 24px var(--shadow); outline: none; }
+  .length-card.featured:hover, .length-card.featured:focus-visible{ border-color: #d84a3a; }
+  .length-go{ display: inline-block; margin-top: auto; padding-top: 10px; font-size: 13.5px; font-weight: 600; color: #d84a3a; }
+  .length-card:hover .length-go{ text-decoration: underline; text-underline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce){ .length-card{ transition: none; } .length-card:hover, .length-card:focus-visible{ transform: none; } }
+  .chosen-duration{ max-width: 760px; margin: 0 auto 14px; text-align: center; font-size: 14.5px; color: var(--text); }
+  .chosen-duration strong{ color: #d84a3a; }
+  .chosen-duration button{ background: none; border: none; color: var(--text-muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; margin-left: 6px; }
+  .length-card.featured{ border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); }  /* 2px amber edge without changing the card's size, so all three cards line up (25 October 2026) */
+  .length-card.featured:hover, .length-card.featured:focus-visible{ box-shadow: 0 0 0 1px #d84a3a, 0 10px 24px var(--shadow); }
+  .length-badge{ position: absolute; top: -11px; left: 20px; background: var(--amber); color: #10151b; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .length-time{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .length-min{ font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 44px; line-height: 1; color: var(--text); letter-spacing: -0.02em; }
+  .length-unit{ color: var(--text-muted); font-size: 14px; }
+  .length-card h3{ font-family: "Space Grotesk", sans-serif; font-size: 18px; margin: 0 0 8px; padding-left: 10px; border-left: 3px solid #d84a3a; }
+  .length-card p{ color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0; }
+  .included{ max-width: 560px; margin: 0 auto; }
+  .included h3{ font-family: "Space Grotesk", sans-serif; font-size: 17px; text-align: center; margin: 0 0 12px; }
+  .included-list{ list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .included-list li{ display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.5; color: var(--text); }
+  .incl-tick{ width: 18px; height: 18px; color: #3fae6b; flex-shrink: 0; margin-top: 2px; }
+  .services-cta{ display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; }
+  .btn-pill-outline{ background: transparent; color: var(--text); border: 1.4px solid var(--border); }
+  .btn-pill-outline:hover{ border-color: #d84a3a; }
+  .length-longer{ text-align: center; color: var(--text-muted); font-size: 14px; max-width: 620px; margin: -6px auto 22px; }
+  .length-longer strong{ color: #d84a3a; font-weight: 700; }
+  @media (max-width: 700px){ .services-cta .btn-pill{ flex: 1 1 100%; } }
+  .services-cta .btn-pill-primary{ background: #d84a3a; color: #fff; }
+  .services-cta .btn-pill-primary:hover{ background: #b73b2d; }
+  @media (max-width: 760px){ .length-grid{ grid-template-columns: 1fr; gap: 20px; } }
+  @media (max-width: 700px){ .length-min{ font-size: 38px; } }
+
+  /* --- 24 Oct 2026: Services and Get in touch fit one laptop screen --- */
+  .services > .section-inner, .contact > .section-inner{ padding-top: 16px; padding-bottom: 36px; }
+  .services > .section-inner > h2, .contact > .section-inner > h2{ margin: 0 0 6px; }
+  .services .section-lead, .contact .section-lead{ margin-bottom: 14px; }
+  .length-grid{ margin: 4px 0 14px; gap: 16px; }
+  .length-card{ padding: 18px 20px 16px; }
+  .length-min{ font-size: 40px; }
+  .length-card h3{ margin-bottom: 6px; }
+  .length-card p{ line-height: 1.5; }
+  .length-longer{ margin: 0 auto 12px; }
+  .included h3{ margin-bottom: 8px; }
+  .included-list{ gap: 6px; }
+  .services .service-note{ margin-top: 8px; }
+  .services-cta{ margin-top: 10px; }
+  .length-card{ padding: 15px 20px 14px; }
+  .length-time{ margin-bottom: 2px; }
+  .length-go{ padding-top: 6px; }
+  .length-longer{ margin-bottom: 10px; }
+  .contact-form{ max-width: 720px; margin: 0 auto; padding: 22px 28px; }
+  .contact-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .contact-form .returning-q{ margin-top: 12px; }
+  @media (max-width: 700px){
+    .contact-grid{ grid-template-columns: 1fr; }
+    .contact-form{ padding: 20px 18px; }
+  }
+  /* 26 Oct 2026 (Ahmed): on laptops the whole contact form, Send button
+     included, fits the window after "Contact" — tighter vertical spacing only. */
+  @media (min-width: 761px){
+    .contact > .section-inner{ padding-top: 8px; }
+    .contact .section-lead{ margin-bottom: 10px; }
+    .contact-form{ padding-top: 14px; padding-bottom: 16px; }
+    .contact-form label[for]{ margin-top: 9px; margin-bottom: 4px; }
+    .contact-form .returning-q{ margin-top: 10px; margin-bottom: 6px; }
+    .contact-form .consent{ margin-top: 12px; }
+    .contact-form .consent-row{ margin-bottom: 6px; }
+    .contact-form #submitContact{ margin-top: 10px !important; }
+  }
+
+  /* --- 24 Oct 2026: demo controls on phones — one bar above the video that
+     stays pinned just under the menu while the demo is on screen, so the next
+     action ("Start exercise", "Reveal next inject") is always visible. --- */
+  .demo-mbar{ display: none; }
+  @media (max-width: 820px){
+    .demo-mbar{
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: var(--nav-h, 60px); z-index: 40;
+      background: var(--panel-raised); border: 1.5px solid #d84a3a; border-radius: 12px;
+      padding: 10px 12px; margin: 0 0 14px; box-shadow: 0 8px 20px var(--shadow);
+    }
+    .demo-mbar-clock{ display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; }
+    .demo-mbar-label{ font-size: 11px; color: var(--text-muted); }
+    .demo-mbar-time{ font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 700; color: var(--text); }
+    .demo-mbar-btn{
+      font: inherit; font-size: 15px; font-weight: 700; color: #fff; background: #d84a3a;
+      border: none; border-radius: 999px; padding: 6px 16px; min-height: 46px; cursor: pointer;
+      flex: 0 1 auto; min-width: 0; white-space: normal; line-height: 1.15; text-align: center;
+    }
+    .demo-mbar-btn:disabled{ opacity: .55; cursor: default; }
+    .demo-mbar-clock{ flex: 0 0 auto; }
+    .demo-mbar-reset{ flex: 0 0 auto; }
+    @media (max-width: 380px){
+      .demo-mbar{ gap: 8px; padding: 8px 10px; }
+      .demo-mbar-label{ display: none; }
+      .demo-mbar-time{ font-size: 16px; }
+      .demo-mbar-btn{ font-size: 14px; padding: 6px 12px; }
+      .demo-mbar-reset{ font-size: 13px; padding: 0 10px; }
+    }
+    .demo-mbar-reset{
+      font: inherit; font-size: 13.5px; color: var(--text); background: transparent;
+      border: 1px solid var(--border); border-radius: 999px; padding: 0 12px; min-height: 40px; cursor: pointer;
+    }
+    .demo-mbar-btn.nudge{ animation: mbarNudge 1.2s ease 2; }
+    @keyframes mbarNudge{ 0%,100%{ box-shadow: 0 0 0 0 rgba(216,74,58,.0); } 50%{ box-shadow: 0 0 0 8px rgba(216,74,58,.35); } }
+    @media (prefers-reduced-motion: reduce){ .demo-mbar-btn.nudge{ animation: none; } }
+    /* the rail's own button, reset and clock are replaced by the bar on phones */
+    #demoApp .rail #mainBtn, #demoApp .rail #resetBtn, #demoApp .rail .timer-block{ display: none !important; }
+  }
 </style>
 </head>
 <body>
-
-<form name="contact-request" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="demo-walkthrough" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="name">
-  <input type="text" name="organization">
-  <input type="email" name="email">
-  <input type="tel" name="mobile">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="generic-scenario" data-netlify="true" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <input type="text" name="industry">
-  <input type="text" name="industry_other">
-  <input type="text" name="location">
-  <input type="text" name="size">
-  <input type="text" name="risk">
-  <input type="text" name="risk_other">
-  <input type="text" name="operations">
-  <input type="text" name="framework">
-  <input type="text" name="audience">
-  <input type="text" name="audience_other">
-  <input type="text" name="duration">
-  <input type="text" name="service_type">
-  <textarea name="focus"></textarea>
-  <textarea name="incidents"></textarea>
-  <input type="text" name="peak_periods">
-  <textarea name="remarks"></textarea>
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
-<form name="plan-review" data-netlify="true" enctype="multipart/form-data" netlify-honeypot="bot-field" hidden>
-  <input type="text" name="organization">
-  <input type="text" name="name">
-  <input type="tel" name="mobile">
-  <input type="email" name="email">
-  <input type="text" name="industry">
-  <input type="text" name="industry_other">
-  <input type="text" name="location">
-  <input type="text" name="size">
-  <input type="text" name="risk">
-  <input type="text" name="risk_other">
-  <input type="text" name="operations">
-  <input type="text" name="framework">
-  <input type="text" name="audience">
-  <input type="text" name="audience_other">
-  <input type="text" name="duration">
-  <input type="text" name="service_type">
-  <textarea name="focus"></textarea>
-  <textarea name="incidents"></textarea>
-  <input type="text" name="peak_periods">
-  <textarea name="remarks"></textarea>
-  <input type="file" name="plan_document">
-  <textarea name="formatted_summary"></textarea>
-  <input name="bot-field">
-</form>
-
 
 <nav class="sitenav">
   <div class="nav-inner">
@@ -1250,12 +1441,17 @@
       </svg>
       <span class="brand-plan">Plan</span><span class="brand-proof">Proof</span>
     </a>
-    <div class="nav-links">
+    <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks">
+      <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu
+    </button>
+    <div class="nav-links" id="navLinks">
       <a href="#home">Home</a>
       <a href="#tool">Start an exercise</a>
       <a href="#services">Services</a>
       <a href="#demo" id="navDemoLink">Watch a Demo</a>
       <a href="#about">About</a>
+      <a href="#faq">FAQ</a>
+      <a href="/insights/">Insights</a>
       <a href="#contact">Contact</a>
     </div>
   </div>
@@ -1267,25 +1463,65 @@
     <p class="hero-sub hero-sub-light">PlanProof designs realistic BCM tabletop exercises and crisis simulations for organizations — ISO 22301 and NCEMA 7000:2021 aligned, built either from a short profile of your organization, or from a direct review of your existing BCM plan.</p>
     <div class="hero-actions">
       <a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a>
-      <a href="#demo" class="btn-pill btn-pill-primary btn-link">See how it works</a>
+      <a href="#how-it-works" class="btn-pill btn-pill-primary btn-link">See how it works</a>
     </div>
   </div>
 </section>
 
-<section class="hero-steps-band">
-  <div class="hero-steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-body"><div class="step-title">Tell us about your organization</div><p>Answer a short intake, or share your existing continuity plan for review.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3" stroke-linecap="round"/></svg></div></div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body"><div class="step-title">We design your exercise</div><p>A tailored, regionally realistic scenario is built around your real risk profile.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20l4.5-1.2L19 8.3a1.6 1.6 0 0 0 0-2.3l-1-1a1.6 1.6 0 0 0-2.3 0L5.2 15.5 4 20z" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke-linecap="round"/></svg></div></div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body"><div class="step-title">We facilitate it, or your team does</div><p>Choose a live session run by our specialist, or the self-service kit for your own team to run — either way, you'll get a full debrief report.</p><div class="step-icon"><svg viewBox="0 0 24 24" class="step-icon-svg" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5v-7z" fill="currentColor" stroke="none"/></svg></div></div>
-    </div>
+<section id="how-it-works" class="hero-steps-band how-band" aria-labelledby="howTitle">
+  <div class="how-inner">
+    <h2 id="howTitle">How it works</h2>
+    <p class="section-lead">Six steps from your first message to your re-test. You stay in control of the scenario; we do the design, the facilitation and the report.</p>
+    <ol class="flow">
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">1</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3" stroke-linecap="round"/></svg><span class="flow-who who-you">You</span></div>
+        <h3 class="flow-title">Tell us</h3>
+        <p>Answer a short intake about your organization, or share your continuity plan for review.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">2</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20l4.5-1.2L19 8.3a1.6 1.6 0 0 0 0-2.3l-1-1a1.6 1.6 0 0 0-2.3 0L5.2 15.5 4 20z" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke-linecap="round"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">We design</h3>
+        <p>A realistic scenario built around your real risks, aligned with ISO 22301 and NCEMA 7000:2021.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">3</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8"/></svg><span class="flow-who who-you">You</span></div>
+        <h3 class="flow-title">You review it</h3>
+        <p>You see the scenario before the day and tell us what to change. We revise it until it is right.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">4</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5v-7z" fill="currentColor" stroke="none"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">We deliver</h3>
+        <p>Our facilitator runs the live, timed exercise with your team, followed by a structured debrief.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">5</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" stroke-linejoin="round"/><path d="M14 3v4h4" stroke-linejoin="round"/><path d="M9 17v-3M12 17v-6M15 17v-4" stroke-linecap="round"/></svg><span class="flow-who who-us">PlanProof</span></div>
+        <h3 class="flow-title">Your report in 3 working days</h3>
+        <p>A bilingual English and Arabic report with a readiness score, findings and actions.</p>
+      </div>
+    </li>
+    <li class="flow-step">
+      <div class="flow-marker"><span class="flow-num">6</span></div>
+      <div class="flow-body">
+        <div class="flow-head"><svg viewBox="0 0 24 24" class="flow-icon" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" stroke-linecap="round"/><path d="M19.8 4.5v3.6h-3.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="flow-who who-both">Together</span></div>
+        <h3 class="flow-title">Re-test and track progress</h3>
+        <p>When you are ready, next quarter or next year, we re-test against your actions, so your new report shows the progress made.</p>
+      </div>
+    </li>
+    </ol>
   </div>
 </section>
 
@@ -1298,18 +1534,51 @@
 
 <section id="services" class="services">
   <div class="section-inner">
-    <h2>Two ways to run your exercise</h2>
-    <div class="service-grid">
-      <div class="service-card">
+    <h2>One expert-led exercise, three durations</h2>
+    <p class="section-lead">Every PlanProof exercise is designed for you and run by our facilitator. Choose the duration that matches the scope of what you want to test.</p>
+    <div class="length-grid">
+      <a href="#tool" class="length-card" data-duration="60 minutes" aria-label="Choose 60 minutes (Focused) and start your exercise request">
+        <div class="length-time"><span class="length-min">60</span><span class="length-unit">minutes</span></div>
+        <h3>Focused</h3>
+        <p>One critical risk or one part of your plan, tested with a small team. A good first exercise, or a single department.</p>
+        <span class="length-go">Choose 60 minutes</span>
+      </a>
+      <a href="#tool" class="length-card featured" data-duration="90 minutes" aria-label="Choose 90 minutes (Standard) and start your exercise request">
+        <span class="length-badge">Recommended</span><div class="length-time"><span class="length-min">90</span><span class="length-unit">minutes</span></div>
+        <h3>Standard</h3>
+        <p>The full picture: several departments working the same incident, from the first alert to the recovery decisions.</p>
+        <span class="length-go">Choose 90 minutes</span>
+      </a>
+      <a href="#tool" class="length-card" data-duration="120 minutes" aria-label="Choose 120 minutes (Extended) and start your exercise request">
+        <div class="length-time"><span class="length-min">120</span><span class="length-unit">minutes</span></div>
+        <h3>Extended</h3>
+        <p>Complex or multi-site scenarios, with more departments, more pressure and a longer structured debrief.</p>
+        <span class="length-go">Choose 120 minutes</span>
+      </a>
+    </div>
+    <p class="length-longer"><strong>Need a longer session?</strong> We also design 150- and 180-minute exercises, for example a half-day exercise across several sites or agencies.</p>
+    <div class="included">
+      <h3>Every duration includes</h3>
+      <ul class="included-list">
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A scenario designed for your organization and your real risks</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Your review of the scenario before the day, revised until it is right</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The live, timed exercise, run by our facilitator</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A structured debrief at the end of the session</span></li>
+        <li><svg viewBox="0 0 24 24" class="incl-tick" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>A bilingual English and Arabic report with a readiness score, within 3 working days</span></li>
+      </ul>
+    </div>
+    <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
+    <div class="services-cta"><a href="#tool" class="btn-pill btn-pill-primary btn-link">Start an exercise</a><a href="#contact" class="btn-pill btn-pill-outline btn-link">Contact us</a></div>
+    <!-- SELF-SERVICE KIT — switched off 22 October 2026 (decision 11): facilitator-side
+         material is never given to a client. Kept here, inert, so it can be restored:
+         set FEATURES.selfServiceKit = true in the page script and the card comes back.
+         A <template> is never shown, read aloud or indexed. -->
+    <template data-feature="selfServiceKit" data-target=".length-grid" data-place="before">
+      <div class="service-card kit-card">
         <h3>Self-service kit</h3>
         <p>You receive a complete, ready-to-run exercise package: scenario briefing, timed injects, facilitator notes, and debrief questions, to run internally with your own team.</p>
       </div>
-      <div class="service-card featured">
-        <h3>Facilitated session</h3>
-        <p>A specialist personally facilitates the live exercise with your team, then delivers a written debrief report identifying real gaps in your plan.</p>
-      </div>
-    </div>
-    <p class="service-note">Every exercise can be built either from a short intake about your organization, or from a direct review of your existing continuity plan.</p>
+    </template>
   </div>
 </section>
 
@@ -1318,6 +1587,11 @@
     <h2>See a real exercise unfold</h2>
     <p class="demo-sub">This is what a client's team actually experiences — a simulated breaking-news alert, followed by a live, timed exercise with real decision points.</p>
 
+<div class="demo-mbar" id="demoBar" aria-label="Demo controls">
+      <div class="demo-mbar-clock"><span class="demo-mbar-label">Exercise time</span><span class="demo-mbar-time" data-sync="time">00:00</span></div>
+      <button type="button" class="demo-mbar-reset" data-sync="reset" hidden>Restart</button>
+      <button type="button" class="demo-mbar-btn" data-sync="main">Start exercise</button>
+    </div>
     <div class="app" id="demoApp">
       <aside class="rail">
         <div class="eyebrow" id="railEyebrow">Tabletop exercise</div>
@@ -1357,6 +1631,11 @@
   <div class="section-inner">
     <h2>Frequently asked questions</h2>
     <div class="faq-list">
+      <!-- One list: the JSON-LD FAQPage at the top of the page is generated from the same questions. -->
+      <details class="faq-item">
+        <summary>Why choose PlanProof?</summary>
+        <p>PlanProof designs realistic, high-pressure exercises built on ISO 22301 and NCEMA 7000:2021 and shaped by real incidents in the region. Every exercise is designed for your organization and reviewed by you before the day. Our facilitator runs it live with your team, supported by our own exercise technology, and a bilingual English and Arabic report with a readiness score follows within 3 working days. We then re-test against your actions, so you can show your board and auditors real progress. One service, from scenario design to findings, re-testing and improvement.</p>
+      </details>
       <details class="faq-item">
         <summary>What is a business continuity tabletop exercise?</summary>
         <p>A tabletop exercise is a facilitated, discussion-based session in which your team works through a realistic disruption scenario. Timed injects — new developments such as a system outage, a media inquiry or a regulatory question — test how your plans, roles and decisions hold up, without disrupting live operations.</p>
@@ -1367,19 +1646,42 @@
       </details>
       <details class="faq-item">
         <summary>How long does an exercise take?</summary>
-        <p>Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. You choose the duration when you submit your request, and the number and pace of injects is designed to fit it.</p>
+        <p>Most exercises run 60, 90 or 120 minutes, including a structured debrief at the end. For larger or multi-site exercises we also design longer sessions of 150 or 180 minutes. You choose the duration in your request, and the number and pace of injects is designed to fit it.</p>
       </details>
       <details class="faq-item">
         <summary>Who should take part?</summary>
         <p>The people who would make or carry out decisions in a real incident — typically executive leadership, operations, IT, communications, HR, legal and compliance, plus any department central to the scenario. You select the participating departments in the request form.</p>
       </details>
       <details class="faq-item">
+        <summary>How quickly can we get started?</summary>
+        <p>Once we have confirmed the details with you, your initial scenario is ready for your review within 5 working days. We then agree the exercise date with you.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How often should we test our plans?</summary>
+        <p>Both ISO 22301 and NCEMA 7000:2021 expect exercises at planned intervals and after significant changes. Most organizations test their different plans at least once a year, and many run several tabletop exercises a year, each testing a different scenario. It is also good practice to exercise again after a significant change, such as a new site, a new system, an updated plan or a restructure.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Can the exercise run in Arabic?</summary>
+        <p>Yes. Exercises can run fully in Arabic on request; please allow about four weeks from booking for your first Arabic exercise. Whichever language the exercise runs in, your report is always delivered in both English and Arabic.</p>
+      </details>
+      <details class="faq-item" id="faqAfterRequest">
+        <summary>What happens after we send a request?</summary>
+        <p>We contact you to confirm the details, then design your scenario and send it to you to review. Once you are happy with it, we agree the date, our facilitator runs the live exercise with your team, and your bilingual scored report follows within 3 working days.</p>
+      </details>
+      <!-- SELF-SERVICE KIT FAQ — switched off 22 October 2026 (see the Services section). -->
+      <template data-feature="selfServiceKit" data-target="#faqAfterRequest" data-place="after">
+      <details class="faq-item">
         <summary>What is the difference between the self-service kit and a facilitated session?</summary>
         <p>The self-service kit is a complete, ready-to-run exercise package your own team runs internally. In a facilitated session, a specialist runs the live exercise with your team and then delivers a written debrief report identifying real gaps in your plan.</p>
       </details>
+      </template>
       <details class="faq-item">
         <summary>What do we receive at the end?</summary>
-        <p>A debrief report summarizing what was tested, key findings, and concrete recommendations tied to what actually happened in the exercise.</p>
+        <p>A report in English and Arabic, within 3 working days of the exercise: a readiness score, what was tested, key findings and concrete actions, each tied to what actually happened in the exercise and mapped to ISO 22301 and NCEMA 7000:2021.</p>
+      </details>
+      <details class="faq-item">
+        <summary>How much does an exercise cost?</summary>
+        <p>The price depends on the duration, the number of departments and sites, and whether the exercise is built from your own plan. Please <a href="#contact" class="mail-link">contact us</a> for details and we’ll send you a proposal.</p>
       </details>
       <details class="faq-item">
         <summary>Is the information we share kept confidential?</summary>
@@ -1392,27 +1694,48 @@
 <section id="contact" class="contact">
   <div class="section-inner">
     <h2>Get in touch</h2>
-    <p class="section-lead">Leave your details and we'll get back to you — or email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
+    <p class="section-lead">Leave your details and we'll reply by email or call you back, whichever you prefer. You can also email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
 
-    <form class="intake-card" id="contactFormEl" name="contact-request" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate style="max-width:480px;margin:0 auto;">
+    <form class="intake-card contact-form" id="contactFormEl" name="contact-request" method="POST" novalidate>
       <input type="hidden" name="form-name" value="contact-request">
       <input name="bot-field" style="display:none;">
 
-      <label for="c_organization">Organization name</label>
-      <input type="text" name="organization" id="c_organization" placeholder="Your company or organization">
+      <div class="contact-grid">
+        <div><label for="c_organization">Organization name</label>
+        <input type="text" name="organization" id="c_organization" placeholder="Your company or organization"></div>
+        <div><label for="c_name">Your name <span class="opt">(required)</span></label>
+        <input type="text" name="name" id="c_name" placeholder="Full name"></div>
+        <div><label for="c_mobile">Mobile number <span class="opt">(required)</span></label>
+        <input type="tel" name="mobile" id="c_mobile" placeholder=""></div>
+        <div><label for="c_email">Email address <span class="opt">(required)</span></label>
+        <input type="email" name="email" id="c_email" placeholder="you@company.com"></div>
+      </div>
 
-      <label for="c_name">Your name <span class="opt">(required)</span></label>
-      <input type="text" name="name" id="c_name" placeholder="Full name">
+      <p class="returning-q" id="c_replyLabel">How would you like us to reply?</p>
+      <div class="choice-row" role="radiogroup" aria-labelledby="c_replyLabel" id="c_replyGroup">
+        <label><input type="radio" name="reply_by" value="email" checked> By email</label>
+        <label><input type="radio" name="reply_by" value="call"> Call me back</label>
+      </div>
+      <div id="c_callbackBox" hidden>
+        <label for="c_callback_time">Best time to call you <span class="opt">(UAE time)</span></label>
+        <select name="callback_time" id="c_callback_time">
+          <option value="Morning (9 am to 12 pm)">Morning, 9 am to 12 pm</option>
+          <option value="Afternoon (12 to 5 pm)">Afternoon, 12 to 5 pm</option>
+          <option value="Evening (5 to 8 pm)">Evening, 5 to 8 pm</option>
+        </select>
+        <p class="returning-note">We call the mobile number above. A call takes about 20 minutes.</p>
+      </div>
 
-      <label for="c_mobile">Mobile number <span class="opt">(required)</span></label>
-      <input type="tel" name="mobile" id="c_mobile" placeholder="">
+      <label for="c_message">What would you like to talk about? <span class="opt">(optional)</span></label>
+      <textarea name="message" id="c_message" rows="2" maxlength="2000" placeholder="e.g. an exercise for our leadership team before the summer season"></textarea>
 
-      <label for="c_email">Email address <span class="opt">(required)</span></label>
-      <input type="email" name="email" id="c_email" placeholder="you@company.com">
+      <div class="consent" id="c_consent">
+        <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="c_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
+        <label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="c_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional — you can unsubscribe at any time)</span></span></label>
+      </div>
 
       <button type="submit" class="btn-primary" id="submitContact" style="margin-top:18px;background:#d84a3a;color:#fff;">Send</button>
       <p class="empty-note" id="contactMsg"></p>
-      <p class="empty-note">Prefer not to use the form, or didn't hear back? Email us directly at <a href="mailto:exercises@plan-proof.com" class="mail-link">exercises@plan-proof.com</a>.</p>
     </form>
 
     <div class="privacy-note">
@@ -1427,7 +1750,7 @@
     <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;width:100%;">
       <div class="footer-email">Email us at <a href="mailto:exercises@plan-proof.com">exercises@plan-proof.com</a></div>
       <div class="footer-links">
-        <a href="#home">Home</a><a href="#tool">Start an exercise</a><a href="#services">Services</a><a href="#demo">Watch a Demo</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="#contact">Contact</a><a href="privacy-policy.html">Privacy Policy</a>
+        <a href="#home">Home</a><a href="#tool">Start an exercise</a><a href="#services">Services</a><a href="#demo">Watch a Demo</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="/insights/">Insights</a><a href="#contact">Contact</a><a href="privacy-policy.html">Privacy Policy</a>
       </div>
       <div class="footer-copyright">© 2026 PlanProof. All rights reserved.</div>
     </div>
@@ -1436,6 +1759,41 @@
 </footer>
 
 <script>
+// Switched-off features (kept in the code, not deleted). 22 October 2026:
+// the self-service kit is withdrawn — PlanProof offers the facilitated
+// exercise only (decision 11). Turning it back on also brings back the
+// <template data-feature="selfServiceKit"> blocks on this page.
+const FEATURES = Object.freeze({ selfServiceKit: false });
+// Keep every section heading clear of the sticky menu when a link jumps to it.
+// The menu wraps to two lines on a phone, so its real height is measured.
+// Phone menu (24 October 2026): the Menu button opens and closes the links;
+// choosing a link, pressing Escape or tapping elsewhere closes them.
+(function phoneMenu(){
+  const nav = document.querySelector(".sitenav");
+  const btn = document.getElementById("navToggle");
+  if(!nav || !btn) return;
+  const set = (open)=>{ nav.classList.toggle("open", open); btn.setAttribute("aria-expanded", open ? "true" : "false"); };
+  btn.addEventListener("click", ()=> set(!nav.classList.contains("open")));
+  nav.querySelectorAll(".nav-links a").forEach((a)=> a.addEventListener("click", ()=> set(false)));
+  document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") set(false); });
+  document.addEventListener("click", (e)=>{ if(nav.classList.contains("open") && !nav.contains(e.target)) set(false); });
+})();
+(function trackMenuHeight(){
+  const nav = document.querySelector(".sitenav");
+  if(!nav) return;
+  const set = ()=> document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
+  set();
+  window.addEventListener("resize", set);
+  if(window.ResizeObserver) new ResizeObserver(set).observe(nav);
+})();
+(function restoreFeatureBlocks(){
+  document.querySelectorAll("template[data-feature]").forEach((t)=>{
+    if(!FEATURES[t.dataset.feature]) return;
+    const target = document.querySelector(t.dataset.target);
+    if(!target) return;
+    target.insertAdjacentElement(t.dataset.place === "after" ? "afterend" : "beforebegin", t.content.firstElementChild.cloneNode(true));
+  });
+})();
 
 const icons = {
   monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/><path d="M8 9l2.5 2.5L14 8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1566,20 +1924,94 @@ function renderTimeline(){
 
 const CONTACT_EMAIL = "exercises@plan-proof.com"; // TODO: replace with your real inbox once this address is live
 
-// Send a form to Netlify, retrying automatically so a brief network or server
-// hiccup never reaches the visitor. Throws only if every attempt fails.
-async function submitToNetlify(formData){
+// Send a form to PlanProof's own intake service (netlify/functions/intake.mjs),
+// retrying automatically so a brief network or server hiccup never reaches the
+// visitor. Throws only if every attempt fails (the visitor then gets the email
+// fallback below). Requests no longer go through Netlify Forms, whose spam
+// filter could silently drop a real client request.
+const PAGE_OPENED_AT = Date.now();
+const UPLOAD_PART_BYTES = 2 * 1024 * 1024; // must match CHUNK_BYTES in netlify/lib/intake-core.mjs
+
+async function postWithRetry(url, options){
   const waits = [0, 1500, 4000];
   let lastError = null;
   for(const wait of waits){
     if(wait) await new Promise(r => setTimeout(r, wait));
     try{
-      const res = await fetch("/", { method: "POST", body: formData });
-      if(res.ok) return;
+      const res = await fetch(url, options);
+      if(res.ok) return res;
       lastError = new Error("HTTP " + res.status);
+      if(res.status >= 400 && res.status < 500 && res.status !== 429) break; // a retry won't help
     }catch(err){ lastError = err; }
   }
   throw lastError;
+}
+
+// Plan documents go up in parts of at most 2 MB (a single request is limited to
+// about 4.5 MB; plans may be up to 8 MB).
+async function uploadPlanFile(file, onProgress){
+  const uploadId = crypto.randomUUID();
+  const parts = Math.max(1, Math.ceil(file.size / UPLOAD_PART_BYTES));
+  for(let i = 0; i < parts; i++){
+    if(onProgress) onProgress(i + 1, parts);
+    const chunk = file.slice(i * UPLOAD_PART_BYTES, (i + 1) * UPLOAD_PART_BYTES);
+    await postWithRetry("/api/intake-upload?id=" + uploadId + "&part=" + i + "&parts=" + parts, {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: chunk
+    });
+  }
+  return { upload_id: uploadId, name: file.name, type: file.type, size: file.size, parts: parts };
+}
+
+// Returns { fileUploadFailed } so the plan form can tell the visitor to email the file.
+// Consent (Ahmed, 18 October 2026: opt-in everywhere — opt-out is against
+// the UAE personal-data law). One required tick (privacy policy) and one
+// optional, unticked marketing tick on every form.
+function consentHTML(p){
+  return '<div class="consent" id="' + p + '_consent">' +
+    '<label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="' + p + '_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>' +
+    '<label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="' + p + '_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional \u2014 you can unsubscribe at any time)</span></span></label>' +
+  '</div>';
+}
+// Marks the privacy tick when it is missing; returns true when it is ticked.
+function checkConsent(p, markInvalid){
+  const el = document.getElementById(p + "_privacy");
+  if(el && el.checked) return true;
+  if(el) markInvalid(el);
+  return false;
+}
+function consentPairs(p){
+  const m = document.getElementById(p + "_marketing");
+  return [["Privacy policy", "Read and agreed (ticked by the visitor)"], ["Marketing emails", m && m.checked ? "Yes \u2014 opted in" : "No"]];
+}
+const CONSENT_MISSING_MSG = "Please tick the box to confirm you have read the privacy policy \u2014 we can't send your request without it.";
+
+async function submitIntake(formData, onProgress){
+  const data = {};
+  let formName = null, honeypot = "", fileObj = null;
+  for(const [key, value] of formData.entries()){
+    if(value instanceof File){ if(value.size > 0) fileObj = value; continue; }
+    if(key === "form-name"){ formName = value; continue; }
+    if(key === "bot-field"){ honeypot = value; continue; }
+    if(key in data) data[key] = [].concat(data[key], value); else data[key] = value;
+  }
+  let file = null, fileUploadFailed = false;
+  if(fileObj){
+    try{ file = await uploadPlanFile(fileObj, onProgress); }
+    catch(err){ fileUploadFailed = true; } // still send the request itself: never lose it over the file
+  }
+  const body = {
+    submission_id: crypto.randomUUID(), // the same id on every retry, so a retry is never a duplicate
+    form_name: formName,
+    data: data,
+    honeypot: honeypot,
+    elapsed_ms: Date.now() - PAGE_OPENED_AT,
+    file: file,
+    file_upload_failed: fileUploadFailed ? { name: fileObj.name, size: fileObj.size } : null
+  };
+  await postWithRetry("/api/intake", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  return { fileUploadFailed: fileUploadFailed };
 }
 
 // Last resort after all retries: keep the visitor's answers on the page and
@@ -1594,24 +2026,89 @@ function buildMailto(subject, bodyLines){
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function outsideIntakeClickHandler(e){
-  const card = document.querySelector('.intake-card');
-  if(card && !card.contains(e.target)){
-    closeIntakeForm();
-  }
+// Closing an intake form (12 October 2026, Ahmed's remark). A click outside
+// the form used to close it and throw the answers away without a word. Now
+// the form closes only with its own close button, and anything that would
+// lose answers asks first. intakeDirty is true once the visitor has typed,
+// chosen or picked anything on the open form; it is cleared when a form
+// opens and when a request has been sent.
+let intakeDirty = false;
+const LEAVE_FORM_QUESTION = "Leave this form? Your answers will be lost.";
+function intakeHasAnswers(){
+  return intakeDirty && !!document.querySelector("#genericFormEl, #planFormEl");
+}
+function trackIntakeAnswers(form){
+  intakeDirty = false;
+  const mark = ()=>{ intakeDirty = true; };
+  form.addEventListener("input", mark);
+  form.addEventListener("change", mark);
+  // Picking from a list is handled on mousedown and stops there, so listen on the way down.
+  form.addEventListener("mousedown", (e)=>{ if(e.target.closest(".dept-option")) mark(); }, true);
 }
 function closeIntakeForm(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
+  if(intakeHasAnswers() && !confirm(LEAVE_FORM_QUESTION)) return;
+  intakeDirty = false;
   renderScenarioChoice();
 }
-function armOutsideClose(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
-  setTimeout(()=>{ document.addEventListener('click', outsideIntakeClickHandler); }, 0);
+// Reloading, closing the tab or following a link away: the browser asks first.
+window.addEventListener("beforeunload", (e)=>{
+  if(intakeHasAnswers()){ e.preventDefault(); e.returnValue = ""; }
+});
+
+// Going back from an open form (24 October 2026): Home, "Start an exercise"
+// and the browser's Back button bring back the two choices. Opening a form
+// adds one step to the browser history, so Back closes the form instead of
+// leaving the page. Answers are never lost without the usual question.
+function formIsOpen(){ return !!document.querySelector("#genericFormEl, #planFormEl"); }
+function noteFormOpened(){
+  try{ history.pushState({ ppForm: true }, "", "#tool"); }catch(e){ /* history not available */ }
+}
+function leaveFormToChoices(){
+  if(!formIsOpen()) return true;
+  if(intakeHasAnswers() && !confirm(LEAVE_FORM_QUESTION)) return false;
+  intakeDirty = false;
+  renderScenarioChoice();
+  return true;
+}
+window.addEventListener("popstate", ()=>{
+  if(!formIsOpen()) return;
+  if(!leaveFormToChoices()){
+    try{ history.pushState({ ppForm: true }, "", "#tool"); }catch(e){}
+    return;
+  }
+  const tool = document.getElementById("tool");
+  if(tool) tool.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.addEventListener("click", (e)=>{
+  const a = e.target.closest('a[href="#home"], a[href="#tool"]:not(.length-card)');
+  if(!a || !formIsOpen()) return;
+  if(!leaveFormToChoices()) e.preventDefault();
+}, true);
+
+// A duration card in Services was clicked (24 October 2026): remember it,
+// say so above the two choices, and pre-select it in whichever form opens.
+let chosenDuration = null;
+function chosenDurationHTML(){
+  if(!chosenDuration) return "";
+  return `<p class="chosen-duration" id="chosenDuration"><strong>${chosenDuration}</strong> chosen \u2014 now choose how we build your scenario.<button type="button" id="clearDuration">Change</button></p>`;
+}
+document.querySelectorAll(".length-card[data-duration]").forEach((card)=>card.addEventListener("click", (e)=>{
+  if(formIsOpen()){
+    // A form is already open: set its duration instead of closing it.
+    const sel = document.querySelector("#f_duration, #p_duration");
+    if(sel){ sel.value = card.dataset.duration; intakeDirty = true; }
+    return;
+  }
+  chosenDuration = card.dataset.duration;
+  renderScenarioChoice();
+}));
+function applyChosenDuration(p){
+  const sel = document.getElementById(p + "_duration");
+  if(sel && chosenDuration) sel.value = chosenDuration;
 }
 
 function renderScenarioChoice(){
-  document.removeEventListener('click', outsideIntakeClickHandler);
-  requestStage.innerHTML = `
+  requestStage.innerHTML = chosenDurationHTML() + `
     <div class="choice-grid">
       <button class="choice-card" data-key="generic">
         <div class="choice-title">Generic scenario</div>
@@ -1627,22 +2124,30 @@ function renderScenarioChoice(){
       <p>Details and plans shared with us are reviewed directly, one-to-one, and are never published or made publicly accessible. We ask that you remove or redact information that isn't essential to the exercise design \u2014 individual staff names, ID numbers, and exact financial figures. Materials are deleted after your exercise package is delivered unless you ask us to retain them, and a mutual NDA is available on request.</p>
     </div>
   `;
-  document.querySelector('[data-key="generic"]').addEventListener("click", renderGenericForm);
-  document.querySelector('[data-key="planTest"]').addEventListener("click", renderPlanForm);
+  document.querySelector('[data-key="generic"]').addEventListener("click", ()=>{ renderGenericForm(); applyChosenDuration("f"); noteFormOpened(); });
+  document.querySelector('[data-key="planTest"]').addEventListener("click", ()=>{ renderPlanForm(); applyChosenDuration("p"); noteFormOpened(); });
+  const clearBtn = document.getElementById("clearDuration");
+  if(clearBtn) clearBtn.addEventListener("click", ()=>{
+    chosenDuration = null;
+    const services = document.getElementById("services");
+    renderScenarioChoice();
+    if(services) services.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function renderGenericForm(){
   requestStage.innerHTML = `
-    <form class="intake-card" id="genericFormEl" name="generic-scenario" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+    <form class="intake-card" id="genericFormEl" name="generic-scenario" method="POST" novalidate>
       <input type="hidden" name="form-name" value="generic-scenario">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
-      <div class="eyebrow" style="margin-bottom:6px;">Generic scenario intake</div>
+      <div class="eyebrow form-label-red" style="margin-bottom:6px;">Generic scenario intake</div>
       <h2 class="intake-title">Tell us about your organization</h2>
       <p class="intake-sub">The more specific your answers, the less generic the exercise \u2014 this replaces guesswork with your real context.</p>
 
       <label for="f_organization">Organization name <span class="opt">(required)</span></label>
       <input type="text" name="organization" id="f_organization" placeholder="Your company or organization" required>
+${orgUnitHTML("f")}
 
       <label for="f_name">Your name <span class="opt">(required)</span></label>
       <input type="text" name="name" id="f_name" placeholder="Full name" required>
@@ -1703,19 +2208,18 @@ function renderGenericForm(){
         <input type="text" id="f_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
         <div class="dept-dropdown" id="f_deptDropdown"></div>
       </div>
+      <div class="dept-other" id="f_deptOtherWrap" hidden>
+        <label for="f_deptOther">Other department \u2014 please specify</label>
+        <div class="dept-other-row">
+          <input type="text" id="f_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
+          <button type="button" class="dept-other-add" id="f_deptOtherAdd">Add</button>
+        </div>
+      </div>
       <input type="hidden" name="audience" id="f_audience">
 
-      <label for="f_duration">Preferred exercise duration</label>
-      <select name="duration" id="f_duration">
-        <option>60 minutes</option><option>90 minutes</option><option>120 minutes</option>
-      </select>
+${lengthAndServiceHTML("f")}
 
-      <label for="f_service_type">Type of service required <span class="opt">(required)</span></label>
-      <select name="service_type" id="f_service_type" required>
-        <option value="">\u2014 Select \u2014</option>
-        <option>Self-service kit</option><option>Facilitated session</option>
-      </select>
-
+${languageHTML("f")}
       <label for="f_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
       <textarea name="focus" id="f_focus" rows="2" placeholder="e.g. our IT escalation steps, or our supplier failover process"></textarea>
 
@@ -1728,17 +2232,21 @@ function renderGenericForm(){
       <label for="f_remarks">Remarks or anything else you'd like us to know <span class="opt">(optional)</span></label>
       <textarea name="remarks" id="f_remarks" rows="2" placeholder="Anything else that would help us design this exercise"></textarea>
 
+${returningHTML("f")}
+${consentHTML("f")}
       <button type="submit" class="btn-primary" id="submitGeneric" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="genericMsg"></p>
     </form>
   `;
   document.getElementById("intakeCloseBtn").addEventListener("click", closeIntakeForm);
-  armOutsideClose();
+  trackIntakeAnswers(document.getElementById("genericFormEl"));
   document.getElementById("f_industry").addEventListener("change", (e)=>{
     document.getElementById("industryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
   initRiskPicker("f", "riskOtherWrap");
   initDeptPicker("f");
+  initReturning("f");
+  initLanguage("f");
   let genericSummaryText = "";
   document.getElementById("genericFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1772,9 +2280,11 @@ function renderGenericForm(){
     if(/(^|, )Other( \(main\))?(,|$)/.test(riskEl.value) && !riskOtherEl.value.trim()) markInvalid(riskOtherEl);
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
+    checkReturning("f", markInvalid);
+    const consentOk = checkConsent("f", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("genericMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
+      document.getElementById("genericMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1785,6 +2295,7 @@ function renderGenericForm(){
     try{
       const fieldPairs = [
         ["Organization", document.getElementById("f_organization").value],
+        ["Exercise is for", document.getElementById("f_org_unit").value],
         ["Name", document.getElementById("f_name").value],
         ["Mobile", document.getElementById("f_mobile").value],
         ["Email", email],
@@ -1795,12 +2306,15 @@ function renderGenericForm(){
         ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
-        ["Preferred duration", document.getElementById("f_duration").value],
-        ["Type of service required", document.getElementById("f_service_type").value],
+        ["Exercise duration", document.getElementById("f_duration").value],
+        ["Service", document.getElementById("f_service_type").value],
+        languagePair("f"),
         ["Specific focus areas", document.getElementById("f_focus").value],
         ["Recent incidents/near-misses", document.getElementById("f_incidents").value],
         ["Peak/critical periods", document.getElementById("f_peak").value],
-        ["Remarks", document.getElementById("f_remarks").value]
+        ["Remarks", document.getElementById("f_remarks").value],
+        ...returningPairs("f"),
+        ...consentPairs("f")
       ];
       const summaryLines = [
         "New generic scenario request",
@@ -1813,9 +2327,10 @@ function renderGenericForm(){
       genericSummaryText = summaryLines.join("\n");
       const formData = new FormData(e.target);
       formData.append("formatted_summary", genericSummaryText);
-      await submitToNetlify(formData);
+      await submitIntake(formData);
+      intakeDirty = false; // sent: nothing left to lose
       requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll design your exercise and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
-      requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
+      showThanksClear(requestStage);
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
     }catch(err){
       document.getElementById("submitGeneric").disabled = false;
@@ -1824,18 +2339,263 @@ function renderGenericForm(){
   });
 }
 
+// ===== Returning clients (client history) — shared by both intake forms =====
+function orgUnitHTML(p){ return `
+      <label for="${p}_org_scope">Which part of your organization is this exercise for? <span class="opt">(required)</span></label>
+      <select id="${p}_org_scope">
+        <option value="whole">The whole organization</option>
+        <option value="unit">A business unit, department or site</option>
+      </select>
+      <div id="${p}_orgUnitWrap" style="display:none;">
+        <label for="${p}_org_unit_name">Which one?</label>
+        <input type="text" id="${p}_org_unit_name" placeholder="e.g. Dubai warehouse, retail division" maxlength="200">
+      </div>
+      <input type="hidden" name="org_unit" id="${p}_org_unit">`; }
+
+// Preferred exercise language (12 October 2026; updated 24 October 2026,
+// decision 8). Arabic is built on request: the note says the first Arabic
+// exercise needs about four weeks from booking, and the email tells PlanProof.
+// Exercise length and service (22 October 2026, decision 11 and 12).
+// PlanProof offers one service — a facilitated exercise — in three lengths. The
+// self-service kit is switched off: no choice is shown and every request is sent
+// as "Facilitated session", so the email, the database and the admin page keep
+// the same field. Set FEATURES.selfServiceKit = true to bring the choice back.
+// The option values stay "60 minutes" etc. so stored data and emails don't change.
+function lengthAndServiceHTML(p){
+  const length = `
+      <label for="${p}_duration">Exercise duration</label>
+      <select name="duration" id="${p}_duration">
+        <option value="60 minutes">60 minutes \u2014 Focused</option>
+        <option value="90 minutes" selected>90 minutes \u2014 Standard (recommended)</option>
+        <option value="120 minutes">120 minutes \u2014 Extended</option>
+        <option value="Longer session (150 or 180 minutes)">Longer session (150 or 180 minutes)</option>
+      </select>
+`;
+  if(!FEATURES.selfServiceKit){
+    return length + `      <input type="hidden" name="service_type" id="${p}_service_type" value="Facilitated session">
+`;
+  }
+  return length + `
+      <label for="${p}_service_type">Type of service required <span class="opt">(required)</span></label>
+      <select name="service_type" id="${p}_service_type" required>
+        <option value="">\u2014 Select \u2014</option>
+        <option>Self-service kit</option><option>Facilitated session</option>
+      </select>
+`;
+}
+
+function languageHTML(p){ return `
+      <p class="returning-q" id="${p}_langLabel">Which language would you prefer for the exercise?</p>
+      <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_langLabel" id="${p}_langGroup">
+        <label><input type="radio" name="exercise_language" value="english" checked> English</label>
+        <label><input type="radio" name="exercise_language" value="arabic"> Arabic</label>
+      </div>
+      <p class="returning-note" id="${p}_langNote" hidden>Thank you — your exercise can run fully in Arabic. Please allow about four weeks from booking for your first Arabic exercise; we'll confirm the timing with you. Your report is always delivered in both English and Arabic.</p>`; }
+
+function initLanguage(p){
+  document.querySelectorAll("#" + p + "_langGroup input").forEach((r)=>r.addEventListener("change", ()=>{
+    const v = (document.querySelector("#" + p + "_langGroup input:checked") || {}).value;
+    document.getElementById(p + "_langNote").hidden = v !== "arabic";
+  }));
+}
+
+function languagePair(p){
+  const v = (document.querySelector("#" + p + "_langGroup input:checked") || {}).value;
+  return ["Preferred exercise language", v === "arabic" ? "Arabic (first Arabic exercise: about four weeks from booking)" : "English"];
+}
+
+// Returning clients (12 October 2026, Ahmed's remarks): the client reference
+// always has the same shape, so "PP –" and the second dash are already there
+// and only the digits are typed; the last exercise is a month and a year
+// chosen from lists (a day would only be guessed); and a line says where the
+// risk for this exercise will come from, so it is not asked twice.
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const FIRST_EXERCISE_YEAR = 2026; // PlanProof's first year
+function lastExerciseYears(){
+  const now = new Date().getFullYear(); const years = [];
+  for(let y = Math.max(now, FIRST_EXERCISE_YEAR); y >= FIRST_EXERCISE_YEAR; y--) years.push(y);
+  return years;
+}
+const RETEST_NOTES = {
+  retest: "We'll re-test the risk from your last exercise, using our record of it.",
+  new: "We'll use the risk concerns you selected above. The first one is your main concern."
+};
+
+function returningHTML(p){ return `
+      <div class="returning">
+        <p class="returning-q" id="${p}_usedLabel">Have you done a PlanProof exercise before? <span class="opt">(required)</span></p>
+        <div class="choice-row" role="radiogroup" aria-labelledby="${p}_usedLabel" id="${p}_usedGroup">
+          <label><input type="radio" name="used_before" value="yes"> Yes</label>
+          <label><input type="radio" name="used_before" value="no"> No</label>
+          <label><input type="radio" name="used_before" value="not_sure"> Not sure</label>
+        </div>
+        <div class="returning-panel" id="${p}_returningYes" hidden>
+          <label for="${p}_ref_year">Your client reference <span class="opt">(optional — on the first page of your last report, e.g. PP-2026-0007)</span></label>
+          <div class="ref-row" id="${p}_refRow">
+            <span class="ref-fixed" aria-hidden="true">PP</span><span class="ref-dash" aria-hidden="true">–</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="${p}_ref_year" class="ref-box" maxlength="4" placeholder="2026" autocomplete="off" aria-label="Client reference: the 4-digit year">
+            <span class="ref-dash" aria-hidden="true">–</span>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="${p}_ref_num" class="ref-box" maxlength="4" placeholder="0007" autocomplete="off" aria-label="Client reference: the last 4 digits">
+            <input type="hidden" name="client_ref" id="${p}_client_ref">
+          </div>
+          <p class="field-hint" id="${p}_refHint" hidden>Please enter both parts of the reference: the 4-digit year and the number.</p>
+          <label for="${p}_last_month">Roughly when was your last exercise? <span class="opt">(month and year)</span></label>
+          <div class="when-row" id="${p}_whenRow">
+            <select id="${p}_last_month" aria-label="Month of your last exercise">
+              <option value="">Month</option>${MONTH_NAMES.map((m)=>`<option>${m}</option>`).join("")}
+            </select>
+            <select id="${p}_last_year" aria-label="Year of your last exercise">
+              <option value="">Year</option>${lastExerciseYears().map((y)=>`<option>${y}</option>`).join("")}
+            </select>
+            <input type="hidden" name="last_exercise_when" id="${p}_last_when">
+          </div>
+          <p class="field-hint" id="${p}_whenHint" hidden></p>
+          <p class="returning-q" id="${p}_retestLabel">This time, would you like to…</p>
+          <div class="choice-row stack-mobile" role="radiogroup" aria-labelledby="${p}_retestLabel">
+            <label><input type="radio" name="retest_or_new" value="retest"> Re-test the same risk</label>
+            <label><input type="radio" name="retest_or_new" value="new"> Test a new risk</label>
+            <label><input type="radio" name="retest_or_new" value="unsure"> Not sure yet</label>
+          </div>
+          <p class="returning-note" id="${p}_retestNote" hidden></p>
+          <label for="${p}_changed">What has changed since? <span class="opt">(structure, key people, systems, plan)</span></label>
+          <textarea name="what_changed" id="${p}_changed" rows="2" maxlength="3000"></textarea>
+          <label for="${p}_actions_done">Which actions from your last report are done?</label>
+          <textarea name="actions_done" id="${p}_actions_done" rows="2" maxlength="3000" placeholder="e.g. call tree updated, backup supplier contracted"></textarea>
+          <label for="${p}_plan_updated">Has your continuity plan changed since? <span class="opt">(if so, which version)</span></label>
+          <input type="text" name="plan_updated" id="${p}_plan_updated" placeholder="e.g. Yes, version 3 (June 2026)" maxlength="200">
+          ${p === "f" ? '<p class="empty-note">If your plan has changed, you can email the new version to exercises@plan-proof.com.</p>' : ''}
+        </div>
+        <p class="returning-note" id="${p}_returningUnsure" hidden>Thank you — we'll check our records and let you know if your organization has exercised with us before.</p>
+        <label class="optout"><input type="checkbox" name="history_opt_in" value="yes"> Yes, keep our exercise history <span class="opt">(optional)</span></label>
+        <p class="empty-note optout-note">If you tick this, we keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 5 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Leave it unticked and we keep none of it after delivery. You can change your mind or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
+      </div>`; }
+
+// Puts the two reference boxes together as PP-YYYY-NNNN (the number padded to
+// four digits) in the hidden field the form sends. Empty unless both are in.
+function syncClientRef(p){
+  const y = document.getElementById(p + "_ref_year").value, n = document.getElementById(p + "_ref_num").value;
+  document.getElementById(p + "_client_ref").value = (y.length === 4 && n.length >= 1) ? "PP-" + y + "-" + n.padStart(4, "0") : "";
+}
+// "March 2026" in the hidden field, empty unless both are chosen.
+function syncLastWhen(p){
+  const m = document.getElementById(p + "_last_month").value, y = document.getElementById(p + "_last_year").value;
+  document.getElementById(p + "_last_when").value = (m && y) ? m + " " + y : "";
+}
+function syncRetestNote(p){
+  const v = (document.querySelector("#" + p + "_returningYes input[name=retest_or_new]:checked") || {}).value;
+  const note = document.getElementById(p + "_retestNote");
+  note.textContent = RETEST_NOTES[v] || "";
+  note.hidden = !RETEST_NOTES[v];
+}
+function initReturningDetails(p){
+  const yearEl = document.getElementById(p + "_ref_year"), numEl = document.getElementById(p + "_ref_num");
+  const row = document.getElementById(p + "_refRow"), hint = document.getElementById(p + "_refHint");
+  const clearError = ()=>{ row.classList.remove("field-error"); hint.hidden = true; };
+  // A whole reference pasted or typed into either box ("PP-2026-0007", "pp 2026 7", "20260007") is split up.
+  const takeWhole = (text)=>{
+    const m = String(text).trim().match(/^(?:PP)?[\s\-–—_/.]*(\d{4})[\s\-–—_/.]*(\d{1,4})$/i);
+    if(!m) return false;
+    yearEl.value = m[1]; numEl.value = m[2]; syncClientRef(p); clearError(); numEl.focus();
+    return true;
+  };
+  [yearEl, numEl].forEach((el)=>{
+    el.addEventListener("paste", (e)=>{
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      if(takeWhole(text)){ e.preventDefault(); el.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+    el.addEventListener("input", ()=>{
+      if(/[^0-9]/.test(el.value) && takeWhole(el.value)) return;
+      el.value = el.value.replace(/[^0-9]/g, "").slice(0, 4);
+      if(el === yearEl && el.value.length === 4) numEl.focus();
+      syncClientRef(p); clearError();
+    });
+  });
+  // Backspace in the empty second box goes back to the year.
+  numEl.addEventListener("keydown", (e)=>{ if(e.key === "Backspace" && !numEl.value){ yearEl.focus(); } });
+
+  const whenRow = document.getElementById(p + "_whenRow"), whenHint = document.getElementById(p + "_whenHint");
+  [document.getElementById(p + "_last_month"), document.getElementById(p + "_last_year")].forEach((el)=>el.addEventListener("change", ()=>{
+    syncLastWhen(p); whenRow.classList.remove("field-error"); whenHint.hidden = true;
+  }));
+  document.querySelectorAll("#" + p + "_returningYes input[name=retest_or_new]").forEach((r)=>r.addEventListener("change", ()=>syncRetestNote(p)));
+}
+
+function initReturning(p){
+  initReturningDetails(p);
+  const scope = document.getElementById(p + "_org_scope");
+  scope.addEventListener("change", ()=>{
+    document.getElementById(p + "_orgUnitWrap").style.display = scope.value === "unit" ? "block" : "none";
+  });
+  document.querySelectorAll("#" + p + "_usedGroup input").forEach((r)=>r.addEventListener("change", ()=>{
+    const v = (document.querySelector("#" + p + "_usedGroup input:checked") || {}).value;
+    document.getElementById(p + "_returningYes").hidden = v !== "yes";
+    document.getElementById(p + "_returningUnsure").hidden = v !== "not_sure";
+    document.getElementById(p + "_usedGroup").classList.remove("field-error");
+  }));
+}
+
+function checkReturning(p, markInvalid){
+  const scope = document.getElementById(p + "_org_scope");
+  const unitName = document.getElementById(p + "_org_unit_name");
+  if(scope.value === "unit" && !unitName.value.trim()) markInvalid(unitName);
+  document.getElementById(p + "_org_unit").value = scope.value === "unit" ? unitName.value.trim() : "Whole organization";
+  const used = document.querySelector("#" + p + "_usedGroup input:checked");
+  if(!used) markInvalid(document.getElementById(p + "_usedGroup"));
+  if(used && used.value !== "yes"){
+    // Only "Yes" answers are kept, so a changed mind never sends stale returning-client details.
+    document.querySelectorAll("#" + p + "_returningYes input[type=text], #" + p + "_returningYes input[type=hidden], #" + p + "_returningYes textarea, #" + p + "_returningYes select").forEach((el)=>{ el.value = ""; });
+    document.querySelectorAll("#" + p + "_returningYes input[type=radio]").forEach((el)=>{ el.checked = false; });
+    syncRetestNote(p);
+  }
+  if(used && used.value === "yes"){
+    // The reference and the date stay optional, but never half-filled.
+    syncClientRef(p); syncLastWhen(p);
+    const y = document.getElementById(p + "_ref_year").value, n = document.getElementById(p + "_ref_num").value;
+    const refHint = document.getElementById(p + "_refHint");
+    const refBad = (y || n) && !(y.length === 4 && n.length >= 1);
+    refHint.hidden = !refBad;
+    if(refBad) markInvalid(document.getElementById(p + "_refRow"));
+    const m = document.getElementById(p + "_last_month").value, yr = document.getElementById(p + "_last_year").value;
+    const whenHint = document.getElementById(p + "_whenHint");
+    let whenMsg = "";
+    if((m || yr) && !(m && yr)) whenMsg = "Please choose both the month and the year, or leave both empty.";
+    else if(m && yr){
+      const now = new Date();
+      if(Number(yr) === now.getFullYear() && MONTH_NAMES.indexOf(m) > now.getMonth()) whenMsg = "That month is still in the future. Please check the month and year.";
+    }
+    whenHint.textContent = whenMsg; whenHint.hidden = !whenMsg;
+    if(whenMsg) markInvalid(document.getElementById(p + "_whenRow"));
+  }
+}
+
+function returningPairs(p){
+  const val = (id)=>{ const el = document.getElementById(p + id); return el ? el.value.trim() : ""; };
+  const used = (document.querySelector("#" + p + "_usedGroup input:checked") || {}).value;
+  const retest = (document.querySelector("#" + p + "_returningYes input[name=retest_or_new]:checked") || {}).value;
+  const optIn = document.querySelector("#" + p + "_usedGroup").closest(".returning").querySelector("input[name=history_opt_in]").checked;
+  const pairs = [["Done a PlanProof exercise before", { yes: "Yes", no: "No", not_sure: "Not sure — check our records" }[used] || ""]];
+  if(used === "yes"){
+    pairs.push(["Client reference", val("_client_ref")], ["Last exercise", val("_last_when")],
+      ["Re-test or new risk for this exercise", { retest: "Re-test the same risk as last time", new: "Test a new risk (see the risk concerns above)", unsure: "Not decided yet \u2014 to agree with the client" }[retest] || ""],
+      ["What has changed", val("_changed")], ["Actions done since", val("_actions_done")], ["Plan changed", val("_plan_updated")]);
+  }
+  pairs.push(["Exercise history", optIn ? "Keep for 5 years (client opted in)" : "Don't keep (not opted in)"]);
+  return pairs;
+}
+
 function renderPlanForm(){
   requestStage.innerHTML = `
-    <form class="intake-card" id="planFormEl" name="plan-review" method="POST" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+    <form class="intake-card" id="planFormEl" name="plan-review" method="POST" novalidate>
       <input type="hidden" name="form-name" value="plan-review">
       <input name="bot-field" style="display:none;">
       <button type="button" class="intake-close" id="intakeCloseBtn" aria-label="Close">×</button>
-      <div class="eyebrow" style="margin-bottom:6px;">Test my plan</div>
+      <div class="eyebrow form-label-red" style="margin-bottom:6px;">Test my plan</div>
       <h2 class="intake-title">Share your continuity plan for review</h2>
       <p class="intake-sub">The more specific your answers, the less generic the exercise \u2014 this replaces guesswork with your real context. Please remove or redact information that isn't essential \u2014 individual staff names, ID numbers, and exact financial figures. See the confidentiality note below.</p>
 
       <label for="p_organization">Organization name <span class="opt">(required)</span></label>
       <input type="text" name="organization" id="p_organization" placeholder="Your company or organization" required>
+${orgUnitHTML("p")}
 
       <label for="p_name">Your name <span class="opt">(required)</span></label>
       <input type="text" name="name" id="p_name" placeholder="Full name" required>
@@ -1896,19 +2656,18 @@ function renderPlanForm(){
         <input type="text" id="p_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
         <div class="dept-dropdown" id="p_deptDropdown"></div>
       </div>
+      <div class="dept-other" id="p_deptOtherWrap" hidden>
+        <label for="p_deptOther">Other department \u2014 please specify</label>
+        <div class="dept-other-row">
+          <input type="text" id="p_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
+          <button type="button" class="dept-other-add" id="p_deptOtherAdd">Add</button>
+        </div>
+      </div>
       <input type="hidden" name="audience" id="p_audience">
 
-      <label for="p_duration">Preferred exercise duration</label>
-      <select name="duration" id="p_duration">
-        <option>60 minutes</option><option>90 minutes</option><option>120 minutes</option>
-      </select>
+${lengthAndServiceHTML("p")}
 
-      <label for="p_service_type">Type of service required <span class="opt">(required)</span></label>
-      <select name="service_type" id="p_service_type" required>
-        <option value="">\u2014 Select \u2014</option>
-        <option>Self-service kit</option><option>Facilitated session</option>
-      </select>
-
+${languageHTML("p")}
       <label for="p_focus">Anything specific you want this exercise to test? <span class="opt">(optional)</span></label>
       <textarea name="focus" id="p_focus" rows="2" placeholder="e.g. our IT escalation steps, or our supplier failover process"></textarea>
 
@@ -1925,6 +2684,8 @@ function renderPlanForm(){
       <input type="file" name="plan_document" id="p_file" accept=".pdf,.doc,.docx" required>
       <p class="empty-note" style="margin-top:6px;color:#d84a3a;">Maximum file size 8MB. Please redact sensitive details before attaching the file.</p>
 
+${returningHTML("p")}
+${consentHTML("p")}
       <button type="submit" class="btn-primary" id="submitPlan" style="margin-top:18px;background:#d84a3a;color:#fff;">Send for review</button>
       <p class="empty-note" id="planMsg"></p>
     </form>
@@ -1934,12 +2695,14 @@ function renderPlanForm(){
     </div>
   `;
   document.getElementById("intakeCloseBtn").addEventListener("click", closeIntakeForm);
-  armOutsideClose();
+  trackIntakeAnswers(document.getElementById("planFormEl"));
   document.getElementById("p_industry").addEventListener("change", (e)=>{
     document.getElementById("planIndustryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
   initRiskPicker("p", "planRiskOtherWrap");
   initDeptPicker("p");
+  initReturning("p");
+  initLanguage("p");
   let planSummaryText = "";
   document.getElementById("planFormEl").addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1972,9 +2735,11 @@ function renderPlanForm(){
     if(/(^|, )Other( \(main\))?(,|$)/.test(document.getElementById("p_risk").value) && !document.getElementById("p_risk_other").value.trim()) markInvalid(document.getElementById("p_risk_other"));
     if(!fileInput.files.length) markInvalid(fileInput);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
+    checkReturning("p", markInvalid);
+    const consentOk = checkConsent("p", markInvalid);
 
     if(firstInvalid){
-      document.getElementById("planMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, and at least one risk concern and one department must be selected.";
+      document.getElementById("planMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits, at least one risk concern and one department must be selected, and please tell us whether you've done a PlanProof exercise before." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       firstInvalid.focus();
       return;
@@ -1990,6 +2755,7 @@ function renderPlanForm(){
     try{
       const fieldPairs = [
         ["Organization", document.getElementById("p_organization").value],
+        ["Exercise is for", document.getElementById("p_org_unit").value],
         ["Name", document.getElementById("p_name").value],
         ["Mobile", document.getElementById("p_mobile").value],
         ["Email", document.getElementById("p_email").value],
@@ -2000,13 +2766,16 @@ function renderPlanForm(){
         ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
-        ["Preferred duration", document.getElementById("p_duration").value],
-        ["Type of service required", document.getElementById("p_service_type").value],
+        ["Exercise duration", document.getElementById("p_duration").value],
+        ["Service", document.getElementById("p_service_type").value],
+        languagePair("p"),
         ["Specific focus areas", document.getElementById("p_focus").value],
         ["Recent incidents/near-misses", document.getElementById("p_incidents").value],
         ["Peak/critical periods", document.getElementById("p_peak").value],
         ["Remarks", document.getElementById("p_remarks").value],
-        ["Plan document attached", fileInput.files[0].name]
+        ["Plan document attached", fileInput.files[0].name],
+        ...returningPairs("p"),
+        ...consentPairs("p")
       ];
       const summaryLines = [
         "Plan review request",
@@ -2019,9 +2788,17 @@ function renderPlanForm(){
       planSummaryText = summaryLines.join("\n");
       const formData = new FormData(form);
       formData.append("formatted_summary", planSummaryText);
-      await submitToNetlify(formData);
-      requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your plan and details have been received. We'll review it and be in touch at the email you provided.</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
-      requestStage.scrollIntoView({ behavior: "smooth", block: "start" });
+      const planMsgEl = document.getElementById("planMsg");
+      const sent = await submitIntake(formData, (part, parts)=>{
+        planMsgEl.textContent = parts > 1 ? `Uploading your plan\u2026 part ${part} of ${parts}` : "Uploading your plan\u2026";
+      });
+      planMsgEl.textContent = "Sending\u2026";
+      const planThanks = sent.fileUploadFailed
+        ? `Your details have been received, but your plan document didn't upload. Please email it to <a class="mail-link" href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we'll match it to your request.`
+        : `Your plan and details have been received. We'll review it and be in touch at the email you provided.`;
+      intakeDirty = false; // sent: nothing left to lose
+      requestStage.innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>${planThanks}</p><button type="button" class="btn-ghost" id="closeThanksBtn" style="margin-top:10px;">Close</button></div>`;
+      showThanksClear(requestStage);
       document.getElementById("closeThanksBtn").addEventListener("click", renderScenarioChoice);
     }catch(err){
       document.getElementById("submitPlan").disabled = false;
@@ -2117,9 +2894,9 @@ function initRiskPicker(prefix, otherWrapId){
   function renderDropdown(term){
     const t = term.trim().toLowerCase();
     const matches = RISKS.filter(r => !selected.includes(r) && r.toLowerCase().includes(t));
-    dropdownEl.innerHTML = matches.length
+    dropdownEl.innerHTML = DONE_ROW_HTML + (matches.length
       ? matches.map(r => `<div class="dept-option" data-name="${r}">${r}</div>`).join("")
-      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`;
+      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`);
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
         e.preventDefault();
@@ -2127,12 +2904,32 @@ function initRiskPicker(prefix, otherWrapId){
         addRisk(opt.dataset.name);
       });
     });
+    wireListClose(dropdownEl, searchEl);
     dropdownEl.classList.add("open");
   }
+  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
   searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("blur", ()=> setTimeout(()=> dropdownEl.classList.remove("open"), 150));
   sync();
+}
+
+// The pick lists stay open after each choice so several can be chosen. A
+// "Done" button (and Escape) closes them — before, the only way was to click
+// somewhere else (12 October 2026, Ahmed's remark).
+// The button sits at the TOP of the list and stays there while the list is
+// scrolled: at the bottom it could be cut off by the edge of the window.
+const DONE_ROW_HTML = `<div class="dept-done"><span class="dept-done-hint">Choose all that apply, then press Done</span><button type="button" class="dept-done-btn">Done</button></div>`;
+function closePickList(dropdownEl, searchEl){
+  dropdownEl.classList.remove("open");
+  searchEl.value = "";
+  searchEl.blur();
+}
+function wireListClose(dropdownEl, searchEl){
+  const btn = dropdownEl.querySelector(".dept-done-btn");
+  if(!btn) return;
+  btn.addEventListener("mousedown", (e)=>{ e.preventDefault(); e.stopPropagation(); closePickList(dropdownEl, searchEl); });
+  btn.addEventListener("click", (e)=>{ e.preventDefault(); closePickList(dropdownEl, searchEl); }); // keyboard
 }
 
 function initDeptPicker(prefix){
@@ -2171,10 +2968,30 @@ function initDeptPicker(prefix){
     searchEl.focus();
   }
 
+  // "Other (specify)" opens a typing box inside the form, under the list —
+  // like "Other" for the risks — instead of the browser's pop-up at the top.
+  const otherWrap = document.getElementById(prefix + "_deptOtherWrap");
+  const otherInput = document.getElementById(prefix + "_deptOther");
+  const otherAdd = document.getElementById(prefix + "_deptOtherAdd");
   function addOtherDept(){
-    const custom = prompt("Please specify the department:");
-    if(custom && custom.trim()) addDept(custom.trim());
+    closePickList(dropdownEl, searchEl);
+    otherWrap.hidden = false;
+    otherInput.focus();
   }
+  function commitOther(){
+    const v = otherInput.value.trim();
+    if(!v) { otherInput.focus(); return; }
+    otherInput.value = "";
+    otherWrap.hidden = true;
+    if(!selected.includes(v)) selected.push(v);
+    renderChips();
+    syncHidden();
+  }
+  otherAdd.addEventListener("click", commitOther);
+  otherInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); commitOther(); }
+    if(e.key === "Escape"){ otherInput.value = ""; otherWrap.hidden = true; }
+  });
 
   function renderDropdown(term){
     const t = term.trim().toLowerCase();
@@ -2184,12 +3001,12 @@ function initDeptPicker(prefix){
       const matches = list.filter(d => !selected.includes(d) && d.toLowerCase().includes(t));
       if(matches.length){
         anyMatch = true;
-        html += `<div class="dept-group-label">${group}</div>`;
+        html += `<div class="dept-group-label" role="presentation" aria-hidden="true">${group}</div>`;
         html += matches.map(d => `<div class="dept-option" data-name="${d}">${d}</div>`).join("");
       }
     });
     html += `<div class="dept-option" data-name="__other__">+ Other (specify)</div>`;
-    dropdownEl.innerHTML = html;
+    dropdownEl.innerHTML = DONE_ROW_HTML + html;
     dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
       opt.addEventListener("mousedown", (e)=>{
         e.preventDefault();
@@ -2198,8 +3015,10 @@ function initDeptPicker(prefix){
         else addDept(opt.dataset.name);
       });
     });
+    wireListClose(dropdownEl, searchEl);
     dropdownEl.classList.add("open");
   }
+  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
 
   searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
   searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
@@ -2289,6 +3108,22 @@ function addMicButton(textareaId){
   });
 }
 
+// On a phone the inject appears above the button that revealed it, off the
+// screen (24 October 2026): bring its title into view below the menu each time
+// an inject is shown — on a laptop only when it is not already in view.
+function showInjectInView(){
+  const card = stage.firstElementChild;
+  if(!card) return;
+  const nav = document.querySelector(".sitenav");
+  const bar = document.getElementById("demoBar");
+  const barH = bar && getComputedStyle(bar).display !== "none" ? bar.offsetHeight + 10 : 0;
+  const navH = (nav ? nav.offsetHeight : 70) + barH;
+  const r = card.getBoundingClientRect();
+  const narrow = window.matchMedia("(max-width: 900px)").matches;
+  if(!narrow && r.top >= navH && r.top < window.innerHeight * 0.6) return;
+  window.scrollTo({ top: Math.max(0, r.top + window.scrollY - navH - 12), behavior: "smooth" });
+}
+
 function renderCurrentInject(){
   const inj = activeScenario.injects[viewingIndex];
   const tint = iconTint[inj.icon];
@@ -2368,6 +3203,7 @@ function renderCurrentInject(){
     addMicButton("taskCapture");
   }
   speak(speakText);
+  showInjectInView();
 }
 
 function renderTeaserEnd(){
@@ -2378,15 +3214,15 @@ function renderTeaserEnd(){
       <h2>Unlock the full exercise</h2>
       <p class="teaser-hook">You've seen the first 30 minutes.<br>The part that makes an exercise work is still locked.</p>
       <ul class="teaser-locks">
-        <li>${lockIcon}<div><strong>Facilitator notes</strong><span>What to watch for in the room</span></div></li>
+        <li>${lockIcon}<div><strong>Live facilitation</strong><span>Run by our facilitator, start to finish</span></div></li>
         <li>${lockIcon}<div><strong>Remaining injects</strong><span>Media, social media, regulators</span></div></li>
         <li>${lockIcon}<div><strong>Participant access</strong><span>Any device, routed by department</span></div></li>
         <li>${lockIcon}<div><strong>Live dashboard</strong><span>Every team's responses, live</span></div></li>
         <li>${lockIcon}<div><strong>Structured debrief</strong><span>Discussion turned into findings</span></div></li>
-        <li>${lockIcon}<div><strong>Automatic final report</strong><span>Board-ready Word, sample included</span></div></li>
+        <li>${lockIcon}<div><strong>Bilingual scored report</strong><span>English and Arabic, in 3 working days</span></div></li>
       </ul>
       <p class="teaser-cta-line">Fill in your details and we'll walk you through it.</p>
-      <form id="walkthroughFormEl" name="demo-walkthrough" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+      <form id="walkthroughFormEl" name="demo-walkthrough" method="POST" novalidate>
         <input type="hidden" name="form-name" value="demo-walkthrough">
         <input name="bot-field" style="display:none;">
         <div class="teaser-form-row">
@@ -2396,6 +3232,10 @@ function renderTeaserEnd(){
         <div class="teaser-form-row">
           <div><label for="w_email">Email</label><input type="email" name="email" id="w_email" placeholder="you@company.com"></div>
           <div><label for="w_mobile">Mobile number</label><input type="tel" name="mobile" id="w_mobile" placeholder=""></div>
+        </div>
+        <div class="consent" id="w_consent">
+          <label class="consent-row"><input type="checkbox" name="privacy_ack" value="yes" id="w_privacy"><span>I have read the <a href="privacy-policy.html" target="_blank" rel="noopener">privacy policy</a> and agree that PlanProof uses these details to reply to my request. <span class="opt">(required)</span></span></label>
+          <label class="consent-row"><input type="checkbox" name="marketing_opt_in" value="yes" id="w_marketing"><span>Yes, send me occasional PlanProof news and offers by email. <span class="opt">(optional — you can unsubscribe at any time)</span></span></label>
         </div>
         <button type="submit" class="btn-primary" id="submitWalkthrough" style="margin-top:14px;background:#d84a3a;color:#fff;">Get the full demo</button>
         <p class="empty-note" id="walkthroughMsg"></p>
@@ -2429,10 +3269,11 @@ function renderTeaserEnd(){
     if(!orgEl.value.trim()) markInvalid(orgEl);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) markInvalid(emailEl);
     if(mobileEl.value.replace(/\D/g, "").length < 10) markInvalid(mobileEl);
+    const consentOk = checkConsent("w", markInvalid);
 
     const msgEl = document.getElementById("walkthroughMsg");
     if(firstInvalid){
-      msgEl.textContent = "All four fields are required — please fill in the highlighted ones (a valid email, and a mobile number with at least 10 digits).";
+      msgEl.textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "All four fields are required — please fill in the highlighted ones (a valid email, and a mobile number with at least 10 digits)." + (consentOk ? "" : " Please also tick the privacy box.");
       firstInvalid.focus();
       return;
     }
@@ -2448,10 +3289,10 @@ function renderTeaserEnd(){
         "Company: " + orgEl.value.trim(),
         "Email: " + emailEl.value.trim(),
         "Mobile: " + mobileEl.value.trim()
-      ];
+      ].concat(consentPairs("w").map(([k, v]) => k + ": " + v));
       const formData = new FormData(form);
       formData.append("formatted_summary", summaryLines.join("\n"));
-      await submitToNetlify(formData);
+      await submitIntake(formData);
       form.outerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your request has been received. We'll be in touch shortly to arrange your walkthrough.</p><p style="margin-top:8px;font-weight:600;">Taking you to your exercise request in <span id="goCountdown">8</span>\u2026</p><button type="button" class="btn-ghost" id="goToRequestBtn" style="margin-top:10px;">Start my exercise request \u2192</button></div>`;
       let jumped = false;
       let secondsLeft = 8;
@@ -2464,7 +3305,7 @@ function renderTeaserEnd(){
       const goToRequest = ()=>{
         if(jumped) return; jumped = true;
         clearInterval(countdownTimer);
-        renderScenarioChoice(); // make sure the two options are showing, not a half-filled form
+        if(!intakeHasAnswers()) renderScenarioChoice(); // show the two options — but never replace a form someone has started filling in
         const section = document.getElementById("tool");
         const nav = document.querySelector(".sitenav");
         const offset = (nav ? nav.offsetHeight : 70) + 12;
@@ -2510,7 +3351,7 @@ function beginExerciseAfterVideo(){
   renderTimeline();
 }
 
-function handleMainAction(){
+function handleMainAction(fromVideo){
   if(!started){
     started = true;
     const video = stage.querySelector(".demo-video");
@@ -2522,13 +3363,16 @@ function handleMainAction(){
         if(advanced || current !== -1) return; advanced = true; // ignore if an inject was already opened from the timeline
         mainBtn.disabled = false;
         mainBtn.textContent = "Reveal first inject";
+        if(window.nudgeDemoButton) window.nudgeDemoButton();
       };
       video.addEventListener("ended", videoDone, { once: true });
       video.addEventListener("error", videoDone, { once: true });
       setTimeout(()=>{ if(!advanced && video.readyState === 0) videoDone(); }, 4000);
-      const playPromise = video.play();
-      if(playPromise && playPromise.catch){
-        playPromise.catch(videoDone);
+      if(fromVideo !== true){
+        const playPromise = video.play();
+        if(playPromise && playPromise.catch){
+          playPromise.catch(videoDone);
+        }
       }
     } else {
       mainBtn.textContent = "Reveal first inject";
@@ -2557,12 +3401,12 @@ function handleMainAction(){
     renderTimeline();
   }
 }
-mainBtn.addEventListener("click", handleMainAction);
+mainBtn.addEventListener("click", ()=> handleMainAction());
 
 const demoIntroHTML = `
   <div class="demo-video-wrap">
-    <video controls preload="metadata" poster="data:image/jpeg;base64,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" class="demo-video">
-      <source src="demo-video.mp4" type="video/mp4">
+    <video controls playsinline preload="metadata" poster="https://qryfayienxrngavhwfgw.supabase.co/storage/v1/object/public/exercise-media/site/demo-newsroom-en.jpg" class="demo-video">
+      <source src="https://qryfayienxrngavhwfgw.supabase.co/storage/v1/object/public/exercise-media/site/demo-newsroom-en.mp4" type="video/mp4">
       Your browser does not support embedded video.
     </video>
   </div>
@@ -2574,6 +3418,10 @@ const demoIntroHTML = `
 
 function renderDemoIntro(){
   stage.innerHTML = demoIntroHTML;
+  // Pressing play on the video itself starts the demo, exactly like
+  // "Start exercise" (on a phone the video's own play button is what people tap).
+  const video = stage.querySelector(".demo-video");
+  if(video) video.addEventListener("play", ()=>{ if(!started && activeScenario) handleMainAction(true); });
 }
 
 resetBtn.addEventListener("click", ()=>{
@@ -2605,6 +3453,7 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   function markInvalid(el){ el.classList.add("field-error"); if(!firstInvalid) firstInvalid = el; }
 
   const nameEl = document.getElementById("c_name");
+  const wantsCall = (document.querySelector("#c_replyGroup input:checked") || {}).value === "call";
   const mobileEl = document.getElementById("c_mobile");
   const emailEl = document.getElementById("c_email");
 
@@ -2612,9 +3461,10 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
   const mobileDigits = mobileEl.value.replace(/\D/g, "");
   if(mobileDigits.length < 10) markInvalid(mobileEl);
   if(!emailEl.value.trim()) markInvalid(emailEl);
+  const consentOk = checkConsent("c", markInvalid);
 
   if(firstInvalid){
-    document.getElementById("contactMsg").textContent = "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits.";
+    document.getElementById("contactMsg").textContent = (firstInvalid.name === "privacy_ack") ? CONSENT_MISSING_MSG : "Please fill in the highlighted fields \u2014 mobile numbers need at least 10 digits." + (consentOk ? "" : " Please also tick the privacy box.");
     firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.focus();
     return;
@@ -2629,25 +3479,148 @@ document.getElementById("contactFormEl").addEventListener("submit", async (e)=>{
       "Organization: " + document.getElementById("c_organization").value,
       "Name: " + nameEl.value,
       "Mobile: " + mobileEl.value,
-      "Email: " + emailEl.value
-    ];
+      "Email: " + emailEl.value,
+      "Reply by: " + (wantsCall ? "CALL ME BACK \u2014 " + document.getElementById("c_callback_time").value + ", UAE time" : "Email"),
+      "Message: " + (document.getElementById("c_message").value.trim() || "(none)")
+    ].concat(consentPairs("c").map(([k, v]) => k + ": " + v));
     contactSummaryText = summaryLines.join("\n");
     const formData = new FormData(e.target);
     formData.append("formatted_summary", contactSummaryText);
-    await submitToNetlify(formData);
-    document.getElementById("contact").querySelector(".section-inner").innerHTML = `<div class="thanks-card"><h2>Thank you</h2><p>Your message has been received. We'll be in touch at the details you provided. If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p></div>`;
+    await submitIntake(formData);
+    showContactThanks(wantsCall);
   }catch(err){
     document.getElementById("submitContact").disabled = false;
     showSendFallback(document.getElementById("contactMsg"), "Website enquiry \u2014 " + (document.getElementById("c_organization").value || nameEl.value), contactSummaryText);
   }
 });
 
+// Phone demo bar (24 October 2026): one bar above the video, pinned under the
+// menu by CSS (position: sticky) while the demo is on screen. It mirrors the
+// real button, Reset and clock in the rail and simply presses them.
+(function demoBars(){
+  const bars = [...document.querySelectorAll(".demo-mbar")];
+  if(!bars.length) return;
+  const timer = document.getElementById("timerValue");
+  function sync(){
+    const resetShown = resetBtn.style.display !== "none";
+    bars.forEach((bar)=>{
+      bar.querySelector('[data-sync="time"]').textContent = timer.textContent;
+      const b = bar.querySelector('[data-sync="main"]');
+      b.textContent = mainBtn.textContent;
+      b.disabled = mainBtn.disabled;
+      bar.querySelector('[data-sync="reset"]').hidden = !resetShown;
+    });
+  }
+  const mo = new MutationObserver(sync);
+  [mainBtn, resetBtn, timer].forEach((el)=> mo.observe(el, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["disabled", "style"] }));
+  bars.forEach((bar)=>{
+    bar.querySelector('[data-sync="main"]').addEventListener("click", ()=>{ if(!mainBtn.disabled) mainBtn.click(); });
+    bar.querySelector('[data-sync="reset"]').addEventListener("click", ()=>{
+      resetBtn.click();
+      const demo = document.getElementById("demo");
+      if(demo) demo.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  sync();
+  // A short pulse on the button when the next step becomes available.
+  window.nudgeDemoButton = ()=>{
+    bars.forEach((bar)=>{
+      const b = bar.querySelector('[data-sync="main"]');
+      b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge");
+    });
+  };
+})();
+
+// "Watch a Demo" always starts the demo again from the beginning (24 October
+// 2026) — stopping the timer, the sound and the reading voice — unless it is
+// already at the beginning.
 document.querySelectorAll('a[href="#demo"]').forEach(link=>{
   link.addEventListener("click", ()=>{
-    const previewFinished = closed || (activeScenario && viewingIndex === activeScenario.injects.length);
-    if(previewFinished) resetBtn.click();
+    const video = stage.querySelector(".demo-video");
+    if(video && !video.paused) video.pause();
+    if(started || current !== -1 || closed) resetBtn.click();
   });
 });
+
+// Contact form thank-you (fixed 23 October 2026): the form is hidden, not
+// destroyed, and the message has a Close button. Close — or any later jump to
+// Contact from the menu or a "Request a callback" button — brings back a
+// fresh, empty form.
+function showContactThanks(wantsCall){
+  const form = document.getElementById("contactFormEl");
+  const lead = document.querySelector("#contact .section-lead");
+  const done = wantsCall
+    ? "We'll call you back on the mobile number you gave, at the time you chose."
+    : "We'll reply by email at the address you gave.";
+  const card = document.createElement("div");
+  card.className = "thanks-card";
+  card.id = "contactThanks";
+  card.style.maxWidth = "560px";
+  card.style.margin = "0 auto";
+  card.innerHTML = `<h2>Thank you</h2><p>Your message has been received. ${done} If you don't hear back soon, please email us directly at <a href="mailto:${CONTACT_EMAIL}" style="color:#d84a3a;">${CONTACT_EMAIL}</a>.</p><button type="button" class="btn-ghost" id="closeContactThanks" style="margin-top:10px;">Close</button>`;
+  form.hidden = true;
+  if(lead) lead.hidden = true;
+  form.insertAdjacentElement("beforebegin", card);
+  document.getElementById("closeContactThanks").addEventListener("click", ()=> resetContactForm(false));
+  showThanksClear(card);
+}
+function resetContactForm(callMode){
+  const card = document.getElementById("contactThanks");
+  if(!card) return;
+  card.remove();
+  const form = document.getElementById("contactFormEl");
+  form.reset();
+  form.querySelectorAll(".field-error").forEach(el=>el.classList.remove("field-error"));
+  document.getElementById("contactMsg").textContent = "";
+  document.getElementById("submitContact").disabled = false;
+  const lead = document.querySelector("#contact .section-lead");
+  if(lead) lead.hidden = false;
+  form.hidden = false;
+  if(callMode){ const r = document.querySelector('#c_replyGroup input[value="call"]'); if(r) r.checked = true; }
+  syncCallbackBox();
+}
+document.querySelectorAll('a[href="#contact"]').forEach((a)=>a.addEventListener("click", ()=> resetContactForm(a.hasAttribute("data-callback"))));
+// 26 Oct 2026 (Ahmed): on a short laptop window (e.g. with display scaling),
+// after a jump to Contact, scroll a little further so the whole form — Send
+// button included — is on screen. Never further than the top of the form.
+function fitContactForm(){
+  const form = document.getElementById("contactFormEl"), btn = document.getElementById("submitContact"), nav = document.querySelector(".sitenav");
+  if(!form || !btn || form.hidden || window.innerWidth <= 760) return;
+  const over = btn.getBoundingClientRect().bottom + 12 - window.innerHeight;
+  if(over <= 0) return;
+  const room = form.getBoundingClientRect().top - (nav ? nav.offsetHeight : 0) - 8;
+  if(room > 0) window.scrollBy({ top: Math.min(over, room), behavior: "smooth" });
+}
+function fitContactAfterScroll(){
+  let done = false;
+  const go = ()=>{ if(done) return; done = true; window.removeEventListener("scrollend", go); fitContactForm(); };
+  window.addEventListener("scrollend", go);
+  setTimeout(go, 900);   // browsers without "scrollend", or no scroll needed
+}
+document.querySelectorAll('a[href="#contact"], a[href="/#contact"]').forEach((a)=>a.addEventListener("click", fitContactAfterScroll));
+if(location.hash === "#contact") window.addEventListener("load", ()=> setTimeout(fitContactForm, 300));
+
+// Contact form: "Call me back" shows the best-time question; any
+// "Request a callback" link opens the form with that choice made.
+function syncCallbackBox(){
+  const call = (document.querySelector("#c_replyGroup input:checked") || {}).value === "call";
+  const box = document.getElementById("c_callbackBox");
+  if(box) box.hidden = !call;
+}
+document.querySelectorAll("#c_replyGroup input").forEach((r)=>r.addEventListener("change", syncCallbackBox));
+document.querySelectorAll("a[data-callback]").forEach((a)=>a.addEventListener("click", ()=>{
+  const r = document.querySelector('#c_replyGroup input[value="call"]');
+  if(r){ r.checked = true; syncCallbackBox(); }
+}));
+
+// Brings a thank-you message fully into view, just below the sticky menu
+// (scrolling it to the very top hid half of it under the menu).
+function showThanksClear(container){
+  const card = container.querySelector(".thanks-card") || container;
+  const nav = document.querySelector(".sitenav");
+  const offset = (nav ? nav.offsetHeight : 70) + 24;
+  window.scrollTo({ top: Math.max(0, card.getBoundingClientRect().top + window.scrollY - offset), behavior: "smooth" });
+}
 
 // initial state
 renderScenarioChoice();
