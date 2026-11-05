@@ -512,6 +512,10 @@
     <div class="pp-col">
       <div class="pp-card tower-section" id="towerSection">
         <h2 data-i18n="fac.tower.screensHeading">Room screens</h2>
+        <div class="rejoin-row" id="joinCodeRow" hidden>
+          <button type="button" id="facJoinCodeBtn" data-i18n="fac.joinCode.button">Show join code</button>
+          <span class="pp-hint" data-i18n="fac.joinCode.hint">Fills this screen with the join code, for an Observer who joins early or a participant who has lost their page.</span>
+        </div>
         <div class="rejoin-row" id="rejoinRow" hidden>
           <button type="button" id="rejoinBtn" data-i18n="fac.rejoin.button">Show rejoin code on room screens</button>
           <span class="pp-hint" id="rejoinHint" data-i18n="fac.rejoin.hint">For when several people lose their page at once, for example a Wi-Fi cut. The join code shows on every room screen for 30 seconds.</span>
@@ -948,6 +952,16 @@
         qrLargeEl.hidden = false;
         document.getElementById("qrLargeClose").focus();
       });
+    });
+    // W6d (4 November 2026): "Show join code" on the Exercise tab — the same
+    // join code an Observer shows, on the facilitator's own phone or laptop.
+    document.getElementById("facJoinCodeBtn").addEventListener("click", () => {
+      const url = joinLinkEl.value;
+      document.getElementById("qrLargeTitle").textContent = T("room.joinCode.title");
+      document.getElementById("qrLargeUrl").textContent = url;
+      PPLayout.qr(document.getElementById("qrLargeCode"), url, { cellSize: 8 });
+      qrLargeEl.hidden = false;
+      document.getElementById("qrLargeClose").focus();
     });
     document.getElementById("qrLargeClose").addEventListener("click", () => { qrLargeEl.hidden = true; });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") qrLargeEl.hidden = true; });
@@ -3184,6 +3198,8 @@
     function updateRejoin() {
       const running = !!(currentRow && currentRow.status === "running");
       rejoinRow.hidden = !running;
+      // W6d: "Show join code" while waiting and while the exercise runs.
+      document.getElementById("joinCodeRow").hidden = !(currentRow && (currentRow.status === "lobby" || currentRow.status === "running" || currentRow.status === "paused"));
       if (currentRow && currentRow.rejoin_code_at && currentRow.server_now) {
         const left = 30000 - (Date.parse(currentRow.server_now) - Date.parse(currentRow.rejoin_code_at));
         const until = Date.now() + left;

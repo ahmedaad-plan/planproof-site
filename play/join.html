@@ -533,8 +533,11 @@
         // W6c: registered after Start? The participant page then offers
         // "Watch the briefing" on this device (the room screen is never
         // interrupted). The status is read again at this moment.
-        let lateJoin = session && session.status !== "lobby";
-        try { const now = await fetchSession(sessionId); if (now) lateJoin = now.status !== "lobby"; } catch { /* keep the status seen on load */ }
+        // W6d (4 November 2026): also late when the room video has already
+        // been played (the facilitator pressed Play), even before Start.
+        const isLate = (r) => !!r && (r.status !== "lobby" || !!(r.briefing && r.briefing.played_at));
+        let lateJoin = isLate(session);
+        try { const now = await fetchSession(sessionId); if (now) lateJoin = isLate(now); } catch { /* keep the status seen on load */ }
         // No login exists, so this is how the next page knows who just
         // joined — including the attendee id that individual answers are
         // filed under. A same-browser handoff, not the reload-proof

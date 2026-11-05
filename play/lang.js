@@ -405,6 +405,9 @@
       // W6c (3 November 2026): the join code on room screens and for Observers.
       "room.lobby.scan": "Scan to join",
       "room.lobby.qrAria": "Join code for this exercise",
+      // W6d (4 November 2026): the calm welcome before the participant briefing.
+      "room.lobby.welcome": "Welcome",
+      "room.lobby.briefingSoon": "The briefing will start shortly.",
       "room.rejoin.title": "Lost your page? Scan to rejoin",
       "room.joinCode.button": "Show join code",
       "room.joinCode.title": "Scan to join or rejoin",
@@ -1135,12 +1138,16 @@
       "fac.brief.play": "Play participant briefing",
       "fac.brief.playAgain": "Play the participant briefing again",
       "fac.brief.replayObservers": "Play the Observer briefing again",
+      // W6d (4 November 2026): the facilitator's own "Show join code".
+      "fac.joinCode.button": "Show join code",
+      "fac.joinCode.hint": "Fills this screen with the join code, for an Observer who joins early or a participant who has lost their page.",
       // W6c: the join code as a 30-second banner on every room screen.
       "fac.rejoin.button": "Show rejoin code on room screens",
       "fac.rejoin.hint": "For when several people lose their page at once, for example a Wi-Fi cut. The join code shows on every room screen for 30 seconds.",
       "fac.rejoin.shown": "Showing on the room screens — {seconds} s left",
       // W6c: a participant who registers after Start may watch the briefing on their own device.
       "part.late.text": "Joined after the start? You can watch the briefing quietly on your own device, with captions on.",
+      "part.late.textLobby": "Joined after the briefing? You can watch it quietly on your own device, with captions on.",
       "part.late.link": "Watch the briefing",
       "part.late.close": "Close",
       "fac.brief.escape": "Briefing could not be played? I briefed them myself",
@@ -1151,7 +1158,7 @@
       "fac.brief.note.loading": "Checking the screens…",
       "fac.brief.note.override": "You briefed them yourself — Start is open for this run.",
       "fac.brief.note.noVideo": "No briefing video for this exercise yet — brief the room yourself. Start is not held.",
-      "fac.brief.note.ready": "The briefings are done — you can start.",
+      "fac.brief.note.ready": "The briefings are done — the room screens now show the join code. Start when everyone has joined.",
       "fac.brief.note.pressPlay": "Press Play when everyone is seated. Start opens when every screen and person below has watched.",
       "fac.brief.note.waiting": "Start opens when every screen and person below has watched.",
       "fac.brief.screen": "Room screen {n}",

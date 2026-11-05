@@ -245,6 +245,10 @@
   }
   /* W6c (3 November 2026): the join code on the room screen and for Observers.
      The QR always sits on white, so a phone camera reads it on the black page. */
+  .lobby-welcome { text-align: center; max-width: 22em; margin: 0 auto; padding-top: clamp(24px, 14vh, 180px); }
+  .lobby-welcome .hello { font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 700; color: var(--text); }
+  .lobby-welcome .name { font-size: clamp(1.2rem, 2.4vw, 1.9rem); color: var(--text); margin-top: 10px; }
+  .lobby-welcome .soon { font-size: clamp(1.05rem, 1.8vw, 1.4rem); color: var(--text-muted); margin-top: 28px; }
   .lobby-join { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 5vw, 64px); flex-wrap: wrap; text-align: start; }
   .lobby-join .qr, .rejoin-banner .qr, .join-code-overlay .qr { background: #fff; border-radius: 16px; box-sizing: border-box; aspect-ratio: 1; }
   .lobby-join .qr { width: min(46vh, 440px); padding: 18px; }
@@ -511,16 +515,19 @@
         let done = false;
         try { done = localStorage.getItem(mark(key)) === "1"; } catch { /* ok */ }
         if (b.played_at && !done) { pending = key; if (audioUnlocked) startPending(); }
+        refreshLobby();
       } else if (player && b.played_at) {
         player.el.classList.toggle("no-captions", !row.captions_on_screens);
       }
     }
+    function keyOf(row) { return `${row.run_number}|${(row.briefing || {}).played_at || "none"}|${roomLang(row)}`; }
     function startPending() {
       if (!pending || pending !== playerKey || !player) return;
       pending = null;
       layer.hidden = false;
       document.body.classList.add("pp-briefing-on");
       player.play();
+      refreshLobby();
     }
     function observerRow(row) {
       const has = files(row).observer || {};
@@ -546,6 +553,17 @@
       onRow(row) {
         if (!row || row.status !== "lobby") { if (playerKey) clear(); return; }
         if (observerMode) observerRow(row); else roomRow(row);
+      },
+      // W6d: does this exercise have a participant briefing in the room's language?
+      hasBriefing(row) { return !!(files(row).participant || {})[roomLang(row)]; },
+      // W6d: the facilitator has pressed Play, but the video has not started
+      // on this screen yet (it waits for "Tap to begin", or the screen has
+      // just learnt of it). A screen that has already watched this play is
+      // not waiting.
+      waitingToPlay(row) {
+        const key = keyOf(row);
+        if (key === playerKey) return pending === key;
+        try { return localStorage.getItem(mark(key)) !== "1"; } catch { return true; }
       },
       unlocked() {
         startPending();
@@ -963,6 +981,37 @@
     const lang = PPLang.lang();
     return `${location.origin}/play/join.html?session=${encodeURIComponent(sessionId)}${lang === "en" ? "" : `&lang=${lang}`}`;
   }
+  // W6d (4 November 2026): before the participant briefing the waiting
+  // screen is a calm welcome without the code; the code appears once the
+  // briefing has played on this screen. It also appears when there is no
+  // briefing to wait for (no video in the room's language, or the
+  // facilitator used the escape), so a room is never left without a code.
+  function lobbyShowsCode(row) {
+    const b = (row && row.briefing) || {};
+    if (b.override) return true;
+    if (!roomMedia.hasBriefing(row)) return true;
+    if (!b.played_at) return false;
+    return !roomMedia.waitingToPlay(row);
+  }
+  function lobbyHtml(row) {
+    lobbyMode = lobbyShowsCode(row) ? "code" : "welcome";
+    return lobbyMode === "code" ? lobbyJoinHtml(row) : lobbyWelcomeHtml(row);
+  }
+  function lobbyWelcomeHtml(row) {
+    return `<div class="lobby-welcome"><div class="hello">${escapeHtml(T("room.lobby.welcome"))}</div>` +
+      `<div class="name">${escapeHtml(row.label || "")}</div>` +
+      `<div class="soon">${escapeHtml(T("room.lobby.briefingSoon"))}</div></div>`;
+  }
+  // Called by the briefing layer when its state changes on this screen
+  // (the video starts, or this screen learns of a new play): the waiting
+  // screen switches between the welcome and the code without a refetch.
+  function refreshLobby() {
+    if (observerMode || !latestRow || latestRow.status !== "lobby") return;
+    const want = lobbyShowsCode(latestRow) ? "code" : "welcome";
+    if (want === lobbyMode) return;
+    mainEl.innerHTML = lobbyHtml(latestRow);
+    drawLobbyQr();
+  }
   function lobbyJoinHtml(row) {
     return `<div class="lobby-join"><div class="qr" id="lobbyQr" aria-label="${escapeHtml(T("room.lobby.qrAria"))}"></div>` +
       `<div><div class="scan">${escapeHtml(T("room.lobby.scan"))}</div>` +
@@ -976,6 +1025,7 @@
       mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
     }
   }
+  let lobbyMode = null;
   const REJOIN_MS = 30 * 1000;
   const rejoin = (() => {
     const el = document.getElementById("rejoinBanner");
@@ -1049,7 +1099,7 @@
       // shared room screen never shows a person's name.
       mainEl.innerHTML = observerMode
         ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
-        : lobbyJoinHtml(row);
+        : lobbyHtml(row);
       if (!observerMode) drawLobbyQr();
       lastRenderedIndex = null;
       obsPageFresh = false; // seen waiting here: the first inject is new

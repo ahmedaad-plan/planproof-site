@@ -403,9 +403,13 @@
         lastRow = row;
         const files = (row && row.briefing && row.briefing.files && row.briefing.files.participant) || {};
         const lang = (row && row.briefing_language) || "en";
-        const show = !!(identity && identity.lateJoin && identity.role !== "observer" && row && row.status === "running" && files[lang] && !done());
+        // W6d: also on the waiting screen for someone who registered after
+        // the room video (a remote participant already has the briefing card there).
+        const inLobby = !!(row && row.status === "lobby" && !remote);
+        const show = !!(identity && identity.lateJoin && identity.role !== "observer" && row && (row.status === "running" || inLobby) && files[lang] && !done());
+        if (show) box.querySelector("p").textContent = (inLobby ? T("part.late.textLobby") : T("part.late.text"));
         box.hidden = !show;
-        if (row && row.status !== "running" && !layer.hidden) close();
+        if (row && row.status !== "running" && row.status !== "lobby" && !layer.hidden) close();
       },
     };
   })();
