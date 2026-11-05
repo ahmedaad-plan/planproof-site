@@ -222,6 +222,11 @@
   .obs-box h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; margin: 0 0 8px; }
   .obs-box ul { margin: 0; padding-inline-start: 18px; }
   .obs-box li { margin: 0 0 4px; }
+  /* W6e: the Answers button in the "Answers, this inject" box */
+  .obs-resp-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .obs-resp-head h3 { margin: 0; }
+  .obs-answers-btn { min-height: 44px; padding: 8px 16px; border-color: var(--accent); }
+  .obs-end-answers { margin-top: 12px; }
   .obs-resp { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.95rem; }
   .obs-resp:first-of-type { border-top: 0; }
   .obs-resp .st { text-align: end; }
@@ -384,6 +389,7 @@
 <script src="./mic.js"></script>
 <script src="./notes.js"></script>
 <script src="./survey.js"></script>
+<script src="./answers.js"></script>
 <script>
   const sessionId = getSessionId();
   // Observer mode: only when the join page sent this device here as an
@@ -942,7 +948,12 @@
     const el = document.getElementById("obsExtra");
     if (!el) return;
     const row = obsExtraRow;
-    if (!obsExtra || !row || obsExtra.idx !== row.current_inject_index) { el.innerHTML = ""; return; }
+    if (!obsExtra || !row || obsExtra.idx !== row.current_inject_index) {
+      // W6e: the Answers button stays even when the status could not be read.
+      const btn = row && (row.status === "running" || row.status === "paused") ? obsAnswersButtonHtml() : "";
+      el.innerHTML = btn ? `<div class="obs-box" id="obsResp"><div class="obs-resp-head"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${btn}</div></div>` : "";
+      return;
+    }
     const inject = ((row.scenario && row.scenario.injects) || [])[obsExtra.idx] || {};
     const watch = (obsExtra.watch || []).filter((w) => typeof w === "string" && w.trim());
     const resp = injectResponsible(inject);
@@ -966,9 +977,33 @@
     });
     el.innerHTML =
       (watch.length ? `<div class="obs-box" id="obsWatch"><h3>${escapeHtml(T("room.obs.watchTitle"))}</h3><ul>${watch.map((w) => `<li dir="auto">${escapeHtml(w)}</li>`).join("")}</ul></div>` : "") +
-      (lines.length ? `<div class="obs-box" id="obsResp"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${lines.join("")}</div>` : "");
+      `<div class="obs-box" id="obsResp"><div class="obs-resp-head"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${obsAnswersButtonHtml()}</div>${lines.join("")}</div>`;
   }
   if (observerMode) setInterval(() => { loadObserverExtra(false); }, 10000);
+
+  // ---- W6e (5 November 2026): the Answers page ------------------------------
+  // The answers to the inject, grouped by department, through the checked
+  // route observer_answers: this Observer's own room only, never a name, open
+  // for the same five hours as the notes after End (answers.js).
+  var obsAnswersClosed = false;
+  var obsAnswers = observerMode && observer
+    ? PPAnswers.create({ role: "observer", sessionId, attendeeId: observer.attendeeId, getRow: () => latestRow,
+        onClosed: (why) => { if (why === "window" || why === "purged") { obsAnswersClosed = true; drawObserverExtra(); drawObserverEndAnswers(); } } })
+    : null;
+  function obsAnswersButtonHtml() {
+    return obsAnswers && !obsAnswersClosed ? `<button type="button" class="pp-btn ghost obs-answers-btn" data-obs-answers>${escapeHtml(T("ans.button"))}</button>` : "";
+  }
+  // After End, on the Exercise tab, under the line that points to Notes.
+  function drawObserverEndAnswers() {
+    const el = document.getElementById("obsEndAnswers");
+    if (!el) return;
+    const open = latestRow && latestRow.status === "ended" && observerAfterEndLine(latestRow).open && !obsAnswersClosed;
+    el.innerHTML = open ? obsAnswersButtonHtml() : (obsAnswersClosed ? `<p class="pp-hint">${escapeHtml(T("ans.closedWindow"))}</p>` : "");
+  }
+  if (obsAnswers) {
+    document.addEventListener("click", (e) => { if (e.target.closest("[data-obs-answers]")) obsAnswers.open(); });
+    setInterval(drawObserverEndAnswers, 30000);
+  }
 
   // ---- W6c (3 November 2026): the join code --------------------------------
   // The exercise's own join link, drawn live as a QR (nothing per client is
@@ -1076,6 +1111,7 @@
     if (!row || window.__ppRemoved) return;
     latestRow = row;
     if (observerMode) {
+      if (obsAnswers) obsAnswers.onRow(row);
       refreshObserverNotes();
       updateObserverMessageControls();
       updateSlim();
@@ -1140,9 +1176,10 @@
           survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: observer.attendeeId, observer: true });
           // Simplicity (17 October 2026): no second, larger thank-you beside
           // the Observer's own card — one plain line pointing to it.
-          mainEl.innerHTML = `<p class="pp-hint obs-ended-line">${escapeHtml(T("room.observer.endedSeeNotes"))}</p>`;
+          mainEl.innerHTML = `<p class="pp-hint obs-ended-line">${escapeHtml(T("room.observer.endedSeeNotes"))}</p><div id="obsEndAnswers" class="obs-end-answers"></div>`;
         }
         updateObserverEndWindow();
+        drawObserverEndAnswers();
         survey.refresh(row);
         if (!wasEnded && tabsApi) tabsApi.show("notes");
       }

@@ -224,6 +224,10 @@
   .end-strip { max-width: none; }
   .pp-card.status-section, .pp-card.roster-section, .pp-card.tower-section, .pp-card.inbox-section, .pp-card.notes-section, .pp-card.broadcast-section { margin-top: 0; max-width: none; }
   .pp-card.status-section { margin-top: 14px; }
+  /* W6e: the Answers button beside "Response status — this inject" */
+  .ans-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .ans-head h2 { margin: 0; }
+  #facAnswersBtn { min-height: 44px; padding: 8px 16px; border-color: var(--accent); }
   .pp-card h2 { margin: 0 0 10px; }
   /* Control tower layout (21 October 2026). */
   header.pp-top { padding: 8px 16px; }
@@ -530,7 +534,10 @@
         </div>
       </div>
       <div class="pp-card status-section">
-        <h2 data-i18n="fac.status.heading">Response status — this inject</h2>
+        <div class="ans-head">
+          <h2 data-i18n="fac.status.heading">Response status — this inject</h2>
+          <button type="button" class="pp-btn ghost" id="facAnswersBtn" hidden data-i18n="ans.button" data-i18n-attr="title:ans.facHint" title="Opens every submitted answer to this inject, full screen, with the writer's name on individual answers.">Answers</button>
+        </div>
         <div id="statusSection" data-i18n="fac.common.loading">Loading…</div>
         <div class="legend">
           <span data-i18n-html="fac.status.legendWaiting_html"><i class="dot wait"></i> Waiting · <i class="dot grey"></i> not required</span>
@@ -766,6 +773,7 @@
 <script src="./layout.js"></script>
 <script src="./mic.js"></script>
 <script src="./notes.js"></script>
+<script src="./answers.js"></script>
 <script>
   const sessionId = getSessionId();
   const facilitatorToken = getFacilitatorToken();
@@ -1822,7 +1830,27 @@
       else showTop();
     });
 
+    // ---- W6e (5 November 2026): the Answers page ----------------------------
+    // Every submitted answer to an inject, grouped by department, with names on
+    // individual answers (answers.js; the checked route facilitator_answers).
+    // Shown from Start until the player data is removed, so it serves the hot
+    // debrief and the report check (Ahmed, 5 November 2026).
+    const answersBtnEl = document.getElementById("facAnswersBtn");
+    const answersPage = PPAnswers.create({ role: "facilitator", sessionId, token: facilitatorToken, getRow: () => currentRow });
+    answersBtnEl.addEventListener("click", () => answersPage.open());
+    function updateAnswersBtn() {
+      const r = currentRow;
+      const show = !!(r && (r.status === "running" || r.status === "ended") && !r.purged_at && r.current_inject_index != null && r.current_inject_index >= 0);
+      answersBtnEl.hidden = !show;
+      if (!show) return;
+      const idx = r.current_inject_index;
+      const n = (lastSubmissions || []).filter((x) => x.inject_index === idx && x.status === "submitted").length;
+      const label = n ? T("ans.buttonCount", { n }) : T("ans.button");
+      if (answersBtnEl.textContent !== label) answersBtnEl.textContent = label;
+    }
+
     function renderStatus() {
+      updateAnswersBtn();
       renderCommandBar();
       renderKpis();
       if (!currentRow || !lastSubmissions || !lastAttendees) return;
@@ -3232,6 +3260,8 @@
       currentRow = row;
       updateButtonAvailability();
       updateRejoin();
+      // W6e: the Answers button and page follow the exercise (never in the way of the rest)
+      try { updateAnswersBtn(); answersPage.onRow(row); } catch (err) { console.warn("Answers:", err && err.message); }
       // A Reset (new run) or a change of state relabels the conversation
       // ("Earlier run", Reply shown or not) without waiting for a new message.
       if (row && (row.run_number !== prevRun || row.status !== prevStatus) && typeof renderInbox === "function") renderInbox();
