@@ -1,0 +1,1802 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="room.page.title">PlanProof — Exercise room display</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
+<style>
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css.
+     Sized to be read from the back of a meeting room. */
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  header.pp-top { padding: 18px 32px; }
+  .room-context { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; color: var(--text); }
+  main {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px; gap: 26px;
+  }
+  .timer-row { display: flex; gap: 40px; }
+  /* The room screen (19 October 2026, Ahmed): the clock sits at the top,
+     beside "Inject 1 of 10", large enough for the back of the room; the
+     inject reads below it. */
+  .room-head {
+    width: min(1240px, 100%); display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border); text-align: start;
+  }
+  .room-head .inject-pos { flex: 1 1 auto; min-width: 0; }
+  .room-head .timer-row { flex: 0 0 auto; text-align: end; }
+  .room-head .timer-row .value { font-size: clamp(3rem, 7.5vw, 6rem); }
+  .room-head .timer-row .label { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  body:not(.observer-mode) main { justify-content: flex-start; padding-top: 28px; }
+  @media (max-width: 700px) {
+    .room-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .room-head .timer-row { text-align: start; }
+  }
+  /* Paused (19 October 2026): replaces "Now playing", like the phones. */
+  .paused-card {
+    width: min(720px, 90vw); padding: 34px 24px; border: 2px dashed var(--attn); border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .paused-card .paused-title { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; color: var(--attn); }
+  .paused-card .paused-sub { font-size: clamp(1rem, 1.8vw, 1.3rem); color: var(--text-muted); }
+  .mine-group { margin-bottom: 14px; }
+  .mine-group-title { font-size: 0.95rem; margin: 10px 0 6px; color: var(--text-muted); font-weight: 600; }
+  .timer-row .label { font-size: 1rem; color: var(--text-muted); display: block; }
+  .timer-row .value {
+    display: block; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums;
+    font-size: clamp(3.2rem, 9vw, 6.5rem); line-height: 1.1; color: var(--text);
+    direction: ltr; unicode-bidi: isolate;
+  }
+  .timer-row .value.warn { color: var(--attn); }
+  .timer-row .value.paused { color: var(--attn); }
+  .timer-row .value.up { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; direction: inherit; unicode-bidi: normal; }
+  .timer-row .value.nolimit { font-family: var(--font-display); font-weight: 600; font-size: 2rem; color: var(--text-muted); line-height: 1.6; direction: inherit; unicode-bidi: normal; }
+  .video-card {
+    width: min(720px, 90vw); aspect-ratio: 16/9;
+    background: var(--panel);
+    border: 2px solid var(--accent); border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  .video-card .tag { color: var(--accent); font-size: 0.9rem; font-weight: 600; }
+  .video-card .title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; padding: 0 24px; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(242,244,247,0.0); } 50% { box-shadow: 0 0 40px 4px rgba(242,244,247,0.18); } }
+  .inject-title { font-family: var(--font-display); font-size: clamp(2rem, 4.6vw, 3.4rem); font-weight: 700; line-height: 1.15; max-width: 1100px; text-wrap: balance; }
+  .inject-desc { font-size: clamp(1.2rem, 2.2vw, 1.7rem); max-width: 900px; color: var(--text); text-wrap: pretty; }
+  .lobby { font-size: 1.6rem; color: var(--text-muted); text-wrap: balance; }
+  .ended { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; }
+  footer { text-align: center; padding: 14px; font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; }
+  .sound-gate {
+    position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px; z-index: 10; padding: 24px; text-align: center;
+  }
+  .sound-gate .gate-title { font-size: 1.15rem; color: var(--text-muted); }
+  .sound-gate #startBtn { font-size: 1.3rem; padding: 16px 32px; border-radius: 10px; }
+  /* Item 6 (11 October 2026): with more than one room, the screen asks once
+     which room it is in, so the control tower can say which room's screen
+     is down or behind. */
+  .room-pick { text-align: center; }
+  .room-pick .q { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; margin-bottom: 12px; }
+  .room-pick .room-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .sound-gate .room-buttons button {
+    font: inherit; font-size: 1.1rem; padding: 12px 20px; background: transparent; color: var(--text);
+    border: 2px solid var(--border-strong); border-radius: 10px; font-weight: 600; cursor: pointer;
+  }
+  .sound-gate .room-buttons button.sel { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .screen-room { font-size: 0.95rem; color: var(--text-muted); font-family: var(--font-body); font-weight: 500; }
+  .screen-room button {
+    margin-inline-start: 6px; font: inherit; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+    background: transparent; color: inherit; border: 1px solid var(--border-strong);
+  }
+  /* Shows what the last sound attempt actually did (playing / blocked / no
+     file) right on screen, so a sound problem can be diagnosed on the room's
+     own laptop without opening dev tools. */
+  #sfxStatus {
+    position: fixed; inset-inline-start: 12px; bottom: 12px; font-size: 0.8rem; font-family: var(--font-mono);
+    color: var(--text-muted); opacity: 0.8; z-index: 5;
+  }
+  /* Facilitator broadcast (added 5 October 2026). A strip between the header
+     and the inject — in the page flow, never on top of the inject — that
+     hides itself after BANNER_SECONDS, or as soon as the inject changes.
+     The bar along the bottom shows how long it has left. */
+  .broadcast-banner {
+    display: none; position: relative; overflow: hidden;
+    background: var(--accent); color: var(--accent-ink);
+    padding: 14px 32px 18px; text-align: center;
+  }
+  .broadcast-banner.show { display: block; }
+  .broadcast-banner .label { font-size: 0.95rem; font-weight: 600; opacity: 0.8; }
+  .broadcast-banner .text { font-family: var(--font-display); font-size: 2rem; font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; }
+  .broadcast-banner .timebar {
+    position: absolute; inset-inline-start: 0; bottom: 0; height: 5px; width: 100%;
+    background: rgba(32,20,4,0.5); transform-origin: left center;
+  }
+  @keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+  /* Observer mode (roadmap item 5, 11 October 2026): the same live view on
+     an Observer's phone, sized for a phone, plus the notes area underneath.
+     Silent — sound comes from the room's display. */
+  body.observer-mode { min-height: 0; }
+  body.observer-mode header.pp-top { padding: 12px 16px; }
+  body.observer-mode .room-context { font-size: 0.95rem; }
+  body.observer-mode main { flex: 0 0 auto; padding: 18px 16px 8px; gap: 12px; justify-content: flex-start; }
+  body.observer-mode .inject-title { font-size: 1.4rem; }
+  body.observer-mode .inject-desc { font-size: 1rem; }
+  body.observer-mode .lobby { font-size: 1.05rem; }
+  body.observer-mode .ended { font-size: 1.25rem; }
+  body.observer-mode .timer-row .label { font-size: 0.85rem; }
+  body.observer-mode .timer-row .value { font-size: 2.4rem; }
+  body.observer-mode .timer-row .value.nolimit { font-size: 1.2rem; }
+  body.observer-mode .video-card { width: 100%; }
+  body.observer-mode .video-card .title { font-size: 1rem; }
+  body.observer-mode .broadcast-banner { padding: 10px 16px 14px; }
+  body.observer-mode .broadcast-banner .text { font-size: 1.15rem; }
+  body.observer-mode #sfxStatus { display: none; }
+  body.observer-mode footer { display: none; }
+  .observer-who { display: block; font-family: var(--font-body); font-size: 0.85rem; font-weight: 400; color: var(--text-muted); text-align: end; }
+  .observer-panel { padding: 8px 16px 64px; max-width: 720px; width: 100%; margin: 0 auto; }
+  .observer-panel h2 { font-size: 1.1rem; margin: 18px 0 8px; }
+  .observer-panel .mine { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 6px 16px; }
+  .observer-panel .mine .empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
+
+  /* Observer <-> Facilitator messages (roadmap item 7, 11 October 2026).
+     A reply from the facilitator must be impossible to miss on a silent
+     phone: a banner that stays at the top of the screen until "Got it", a
+     count on the link to the messages, and a count in the tab title. */
+  .obs-banner {
+    position: sticky; top: 0; z-index: 6; background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+  .obs-banner-inner { max-width: 720px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .obs-banner-inner > div { flex: 1; min-width: 0; }
+  .obs-banner .label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
+  .obs-banner .text { font-size: 1.08rem; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+  .obs-banner button {
+    flex: 0 0 auto; font: inherit; font-weight: 700; padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    background: var(--accent-ink); color: var(--accent); border: none;
+  }
+  /* Tabs (17 October 2026): Exercise / Notes / Messages on a phone (bottom
+     bar); on a laptop the exercise stays on the left and Notes / Messages
+     are tabs on the right. The shared room screen is unchanged: the wrapper
+     adds nothing outside Observer mode. */
+  body.observer-mode .observer-panel { padding-bottom: 24px; }
+  body.observer-mode .obs-banner { top: 44px; }
+  body.observer-mode .obs-thread li .msg-reply-btn { margin-top: 4px; font: inherit; font-size: 0.82rem; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+  body.observer-mode .inject-pos { font-size: 0.9rem; color: var(--text-muted); }
+  .inject-pos { font-size: clamp(1rem, 1.8vw, 1.5rem); color: var(--accent); font-weight: 600; letter-spacing: 0.01em; }
+  @media (min-width: 900px) {
+    body.observer-mode .obs-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+    body.observer-mode .obs-cols > .pp-col { min-width: 0; }
+    body.observer-mode .obs-right { min-width: 0; }
+    body.observer-mode .obs-right .pp-tabs { padding: 0; }
+    body.observer-mode .observer-panel { padding-inline: 0; }
+    body.observer-mode main { padding-inline: 0; }
+  }
+  .obs-badge {
+    display: inline-block; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink); font-family: var(--font-body); font-size: 0.75rem; font-weight: 700;
+  }
+  .obs-thread { list-style: none; margin: 0; padding: 2px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+  .obs-thread li { padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+  .obs-thread li:first-child { border-top: none; }
+  .obs-thread .meta { display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); }
+  .obs-thread li.from-fac { border-inline-start: 3px solid var(--accent); margin-inline-start: -16px; padding-inline-start: 13px; }
+  .obs-thread li.unread { font-weight: 600; }
+  .obs-thread li.mine-sent { color: var(--text-muted); }
+  .obs-thread .empty { color: var(--text-muted); font-size: 0.9rem; }
+  .obs-msg-card { margin-top: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 16px 18px; }
+  .obs-msg-card h3 { font-size: 1.02rem; margin: 0 0 4px; }
+  .obs-msg-card .pp-hint { margin: 0 0 12px; }
+  .obs-msg-card label { margin-top: 12px; }
+  .obs-msg-card textarea { min-height: 76px; resize: vertical; border-width: 2px; }
+  .obs-msg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .obs-msg-row .count { font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
+  .obs-msg-feedback { font-size: 0.88rem; margin-top: 8px; min-height: 1.2em; }
+  .obs-msg-feedback.ok { color: var(--teal-soft); }
+  .obs-msg-feedback.err { color: var(--red-soft); }
+
+  /* W4 redesign (30 October 2026). The inject is the message card (shared
+     .pp-msg); the room screen keeps its large type inside it. Tabs at the
+     top on every size: on a phone the Observer's tab row comes first. */
+  .pp-msg { width: 100%; max-width: 1100px; }
+  body:not(.observer-mode) .pp-msg-hd { padding: 16px 24px; }
+  body:not(.observer-mode) .pp-msg-meta { font-size: clamp(0.95rem, 1.4vw, 1.25rem); }
+  body:not(.observer-mode) .pp-msg-bd { padding: 24px; }
+  body:not(.observer-mode) .pp-msg-ch { width: 44px; height: 44px; }
+  body:not(.observer-mode) .pp-msg-ch svg { width: 24px; height: 24px; }
+  .pp-msg .inject-title { margin-bottom: 12px; }
+  body.observer-mode .pp-msg-body p { margin-bottom: 10px; }
+  body.observer-mode .timer-row { border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; text-align: start; }
+  body.observer-mode .timer-row > div { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; }
+  body.observer-mode .timer-row .value { grid-row: 1 / span 2; grid-column: 2; text-align: end; }
+  body.observer-mode .timer-row .label { text-transform: none; letter-spacing: 0; }
+  body.observer-mode .inject-pos { color: var(--text); font-weight: 600; }
+  body.observer-mode .slim-who-hidden { display: none; }
+  body.observer-mode main { align-items: stretch; text-align: start; }
+  body.observer-mode .timer-row { width: 100%; }
+  .obs-extra:empty { display: none; }
+  .obs-extra { display: grid; gap: 12px; }
+  .obs-box { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .obs-box h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; margin: 0 0 8px; }
+  .obs-box ul { margin: 0; padding-inline-start: 18px; }
+  .obs-box li { margin: 0 0 4px; }
+  /* W6e: the Answers button in the "Answers, this inject" box */
+  .obs-resp-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .obs-resp-head h3 { margin: 0; }
+  .obs-answers-btn { min-height: 44px; padding: 8px 16px; border-color: var(--accent); }
+  .obs-end-answers { margin-top: 12px; }
+  .obs-resp { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.95rem; }
+  .obs-resp:first-of-type { border-top: 0; }
+  .obs-resp .st { text-align: end; }
+  .obs-banner { background: var(--bg); color: var(--text); border-bottom: 1px solid var(--border); box-shadow: none; }
+  .obs-banner-inner { border: 1px solid var(--accent); border-radius: 12px; margin: 10px auto; }
+  .obs-banner .label { color: var(--text-muted); opacity: 1; }
+  .obs-banner button { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+  .obs-banner #obsBannerOk { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .obs-badge { background: var(--attn); color: #0b0f14; }
+  .observer-panel h2 { font-size: 1rem; }
+  @media (max-width: 899px) {
+    body.observer-mode .obs-cols { display: flex; flex-direction: column; }
+    body.observer-mode .obs-right { display: contents; }
+    body.observer-mode #obsTabs { order: -1; }
+    body.observer-mode .obs-banner { top: 40px; }
+  }
+  @media (min-width: 900px) {
+    body.observer-mode .obs-cols { gap: 24px; padding: 8px 24px 0; max-width: 1280px; }
+    body.observer-mode .obs-right { border-inline-start: 1px solid var(--border); padding-inline-start: 24px; }
+    body.observer-mode .obs-right .pp-tabs { padding: 12px 0; border-bottom: 0; }
+  }
+  /* W6c (3 November 2026): the join code on the room screen and for Observers.
+     The QR always sits on white, so a phone camera reads it on the black page. */
+  .lobby-welcome { text-align: center; max-width: 22em; margin: 0 auto; padding-top: clamp(24px, 14vh, 180px); }
+  .lobby-welcome .hello { font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 700; color: var(--text); }
+  .lobby-welcome .name { font-size: clamp(1.2rem, 2.4vw, 1.9rem); color: var(--text); margin-top: 10px; }
+  .lobby-welcome .soon { font-size: clamp(1.05rem, 1.8vw, 1.4rem); color: var(--text-muted); margin-top: 28px; }
+  .lobby-join { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 5vw, 64px); flex-wrap: wrap; text-align: start; }
+  .lobby-join .qr, .rejoin-banner .qr, .join-code-overlay .qr { background: #fff; border-radius: 16px; box-sizing: border-box; aspect-ratio: 1; }
+  .lobby-join .qr { width: min(46vh, 440px); padding: 18px; }
+  .lobby-join .qr svg, .rejoin-banner .qr svg, .join-code-overlay .qr svg { width: 100%; height: 100%; display: block; }
+  .lobby-join .scan { font-family: var(--font-display); font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 700; color: var(--text); }
+  .lobby-join .name { font-size: clamp(1.2rem, 2.2vw, 1.8rem); color: var(--text); margin-top: 8px; max-width: 18em; }
+  .lobby-join .wait { font-size: clamp(1rem, 1.6vw, 1.3rem); color: var(--text-muted); margin-top: 22px; }
+  .rejoin-banner { position: fixed; inset-inline: 0; top: 0; z-index: 60; background: var(--bg); border-bottom: 2px solid var(--text); padding: 16px 24px 20px; display: none; }
+  .rejoin-banner.show { display: flex; align-items: center; justify-content: center; gap: 32px; }
+  .rejoin-banner .qr { width: min(30vh, 300px); padding: 12px; flex: 0 0 auto; }
+  .rejoin-banner .t1 { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.6rem); font-weight: 700; color: var(--text); }
+  .rejoin-banner .t2 { font-size: clamp(1rem, 1.6vw, 1.4rem); color: var(--text-muted); margin-top: 6px; }
+  .rejoin-banner .timebar { position: absolute; inset-inline-start: 0; bottom: 0; height: 4px; background: var(--text); width: 100%; transform-origin: left; }
+  .slim-join { flex: 0 0 auto; background: transparent; color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 12px; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; min-height: 30px; }
+  .join-code-overlay { position: fixed; inset: 0; z-index: 300; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; text-align: center; }
+  .join-code-overlay[hidden] { display: none; }
+  .join-code-overlay .qr { width: min(86vw, 62vh, 520px); padding: 16px; }
+  .join-code-overlay .t1 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--text); }
+  .join-code-overlay .t2 { color: var(--text-muted); max-width: 30em; }
+  .join-code-overlay button { min-height: 48px; min-width: 160px; border-radius: 12px; border: 1px solid var(--text); background: var(--text); color: var(--bg); font: inherit; font-weight: 700; font-size: 1.05rem; }
+</style>
+</head>
+<body>
+
+<!-- W6a: the participant briefing, full screen on a room screen (above everything but the start gate). -->
+<div class="pp-brief-layer" id="briefingLayer" hidden></div>
+<div class="sound-gate" id="soundGate">
+  <span class="pp-brand large" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <div class="gate-title" data-i18n="room.gate.title">Exercise room display</div>
+  <div class="room-pick" id="roomPick" hidden>
+    <div class="q" data-i18n="room.gate.question">Which room is this screen in?</div>
+    <div class="room-buttons" id="roomButtons"></div>
+  </div>
+  <button class="pp-btn" id="startBtn" data-i18n="room.gate.begin">Tap to start — this turns sound on</button>
+</div>
+
+<header class="pp-top">
+  <span class="pp-brand" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span>
+  <div class="room-context">
+    <span><span id="clientLabel" data-i18n-skip>PlanProof</span></span>
+    <span class="screen-room" id="screenRoom" hidden></span>
+  </div>
+</header>
+
+<div class="obs-banner" id="obsBanner" role="status" aria-live="polite" hidden>
+  <div class="obs-banner-inner">
+    <div>
+      <div class="label" data-i18n-nodes="room.obsBanner.label">Message from the facilitator <span id="obsBannerTime"></span></div>
+      <div class="text" id="obsBannerText"></div>
+    </div>
+    <button type="button" id="obsBannerReply" data-i18n="room.obsBanner.reply">Reply</button>
+    <button type="button" id="obsBannerOk" data-i18n="room.obsBanner.gotIt">Got it</button>
+  </div>
+</div>
+
+<div class="broadcast-banner" id="broadcastBanner" role="status" aria-live="polite">
+  <div class="label" data-i18n="room.broadcast.label">Message from the facilitator</div>
+  <div class="text" id="broadcastText"></div>
+  <div class="timebar" id="broadcastTimebar"></div>
+</div>
+
+<!-- W6c: the join code as a 30-second banner on room screens ("Show rejoin code on room screens"). -->
+<div class="rejoin-banner" id="rejoinBanner" role="status" aria-live="polite">
+  <div class="qr" id="rejoinQr"></div>
+  <div><div class="t1" data-i18n="room.rejoin.title">Lost your page? Scan to rejoin</div><div class="t2" id="rejoinName"></div></div>
+  <div class="timebar" id="rejoinTimebar"></div>
+</div>
+<!-- W6c: an Observer's "Show join code" fills the screen with the join code. -->
+<div class="join-code-overlay" id="joinCodeOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="joinCodeTitle">
+  <div class="t1" id="joinCodeTitle" data-i18n="room.joinCode.title">Scan to join or rejoin</div>
+  <div class="qr" id="joinCodeQr"></div>
+  <div class="t2" data-i18n="room.joinCode.hint">A participant scans this with their phone's camera. If they registered before, they see “Welcome back” and carry on.</div>
+  <button type="button" id="joinCodeClose" data-i18n="room.joinCode.close">Close</button>
+</div>
+
+<!-- The Observer's slim header (17 October 2026): who, where the exercise is, the clock. -->
+<div class="pp-slim" id="slimBar" hidden>
+  <span class="who" id="slimWho"></span>
+  <span class="pos" id="slimPos"></span>
+  <span class="pp-cmd-clock" id="slimClock" data-state="none" hidden></span>
+  <button type="button" class="slim-join" id="slimJoinBtn" data-i18n="room.joinCode.button">Show join code</button>
+</div>
+<div class="obs-cols" id="obsCols">
+<section id="tabExercise" class="pp-col">
+<div id="briefingCard" class="pp-brief-card" hidden></div>
+<main id="main">
+  <div class="lobby" data-i18n="room.lobby.waiting">Waiting for the facilitator to start the exercise…</div>
+</main>
+</section>
+<div class="obs-right">
+<nav class="pp-tabs" id="obsTabs" hidden aria-label="Sections" data-i18n-attr="aria-label:room.tabs.aria"></nav>
+<section id="tabNotes" class="pp-col" hidden>
+<section class="observer-panel" id="observerPanel" hidden aria-label="Observer notes" data-i18n-attr="aria-label:room.observer.panelLabel">
+  <div id="obsEndRoot"></div>
+  <h2 data-i18n="room.notes.heading">Your notes</h2>
+  <div id="noteForm"></div>
+  <h2 data-i18n="room.notes.loggedHeading">Notes you've logged</h2>
+  <div class="mine" id="myNotes"><div class="empty" data-i18n="room.notes.noneYet">None yet.</div></div>
+</section>
+</section>
+<section id="tabMessages" class="pp-col" hidden>
+<section class="observer-panel" id="observerMsgPanel" hidden aria-label="Messages from the facilitator" data-i18n-attr="aria-label:room.observer.msgPanelLabel">
+  <h2 id="obsMessages" data-i18n-nodes="room.msg.heading">Messages from the facilitator<span class="obs-badge" id="obsBadge" hidden></span></h2>
+  <ul class="obs-thread" id="obsThread"><li class="empty" data-i18n="room.msg.none">No messages yet.</li></ul>
+  <div class="obs-msg-card pp-form">
+    <h3 data-i18n="room.msg.cardTitle">Send a message to the facilitator</h3>
+    <p class="pp-hint" id="obsMsgHint" data-i18n="room.msg.hint">Sent on behalf of the Observers in your room, not under your name. For what you observed, log a note instead.</p>
+    <div class="pp-label" data-i18n="room.msg.presetLabel">Ready-made</div>
+    <div class="pp-chips" id="obsMsgPresets"></div>
+    <label for="obsMsgText" data-i18n="room.msg.textLabel">Or type your own message</label>
+    <textarea id="obsMsgText" maxlength="280" placeholder="Tap here and type your message" data-i18n-attr="placeholder:room.msg.textPlaceholder"></textarea>
+    <div class="obs-msg-row">
+      <span class="count" id="obsMsgCount">0 / 280</span>
+      <button type="button" class="pp-btn" id="obsMsgSendBtn" disabled data-i18n="room.msg.send">Send &rarr;</button>
+    </div>
+    <div class="obs-msg-feedback" id="obsMsgFeedback"></div>
+  </div>
+</section>
+</section>
+</div>
+</div>
+
+<footer data-i18n="room.page.footer">Exercise room display</footer>
+<div id="sfxStatus" data-i18n="room.sound.idle">sound: —</div>
+
+<!-- Pinned and served from plan-proof.com (system review, 9 October 2026): a CDN outage or a silent library update can no longer break the player. -->
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
+<script src="./lang.js"></script>
+<script src="./shared.js"></script>
+<script src="./media.js"></script>
+<script src="./layout.js"></script>
+<script src="/vendor/qrcode-generator-1.4.4.js"></script>
+<script src="./mic.js"></script>
+<script src="./notes.js"></script>
+<script src="./survey.js"></script>
+<script src="./answers.js"></script>
+<script>
+  const sessionId = getSessionId();
+  // Observer mode: only when the join page sent this device here as an
+  // Observer (&observer=1) AND it holds that Observer's registration. A plain
+  // room-display link is always the shared room screen, unchanged.
+  const observerMode = new URLSearchParams(location.search).get("observer") === "1";
+  let observer = null;
+  let survey = null; // the Observer's feedback survey under the thank-you (survey.js)
+  if (observerMode && sessionId) {
+    try {
+      observer = JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null");
+    } catch {
+      observer = null;
+    }
+    if (!observer || observer.role !== "observer" || !observer.attendeeId) {
+      location.replace(`./join.html?session=${encodeURIComponent(sessionId)}`);
+      throw new Error("No Observer registration on this device — sent back to the join page."); // i18n-ok: developer only (the page is already leaving for the join page)
+    }
+    document.body.classList.add("observer-mode");
+    document.getElementById("soundGate").style.display = "none";
+    document.getElementById("clientLabel").insertAdjacentHTML(
+      "afterend",
+      `<span class="observer-who" id="observerWho"></span>`
+    );
+    document.getElementById("observerWho").textContent =
+      observer.room
+        ? T("room.observer.whoRoom", { name: String(observer.name), department: String(observer.department), room: observer.room })
+        : T("room.observer.who", { name: String(observer.name), department: String(observer.department) });
+    watchDeviceMoved(sessionId, observer); // item 10: the newest device wins (W4)
+    document.getElementById("observerPanel").hidden = false;
+    document.getElementById("observerMsgPanel").hidden = false;
+    document.body.classList.add("pp-has-tabs");
+    document.getElementById("obsTabs").hidden = false;
+    document.getElementById("slimBar").hidden = false;
+    document.getElementById("slimWho").textContent = observer.room
+      ? T("room.slim.whoRoom", { room: observer.room })
+      : T("room.slim.who");
+  }
+  // Tabs (17 October 2026), Observer mode only: Exercise / Notes / Messages.
+  // On a laptop the exercise is pinned on the left; the open tab is
+  // remembered on the device. Opening Messages counts as reading them.
+  let tabsApi = null;
+  if (observerMode) {
+    tabsApi = PPLayout.tabs({
+      nav: document.getElementById("obsTabs"),
+      storageKey: `pp_obstab_${sessionId}`,
+      pinned: (id) => id === "exercise",
+      tabs: [
+        { id: "exercise", label: T("room.tabs.exercise"), panel: document.getElementById("tabExercise") },
+        { id: "notes", label: T("room.tabs.notes"), panel: document.getElementById("tabNotes") },
+        { id: "messages", label: T("room.tabs.messages"), panel: document.getElementById("tabMessages") },
+      ],
+      onShow: (id) => { if (id === "messages") markObserverMessagesRead(); if (id === "exercise") tabsApi.dot("exercise", false); updateSlim(); },
+    });
+    PPLayout.watchKeyboard();
+  }
+  function updateSlim() {
+    if (!observerMode || !latestRow) return;
+    const injects = (latestRow.scenario && latestRow.scenario.injects) || [];
+    const idx = latestRow.current_inject_index;
+    document.getElementById("slimPos").textContent = latestRow.status === "running" && idx >= 0
+      ? T("room.slim.inject", { number: idx + 1, total: injects.length })
+      : latestRow.status === "ended" ? T("room.slim.ended") : T("room.slim.waiting");
+    document.getElementById("slimClock").hidden = !(latestRow.status === "running" && tabsApi && !tabsApi.isCurrent("exercise"));
+  }
+  const mainEl = document.getElementById("main");
+  const clientLabelEl = document.getElementById("clientLabel");
+  const sfxStatusEl = document.getElementById("sfxStatus");
+  let lastRenderedIndex = null;
+  let lastRenderedReplay = null;
+  let lastRenderedPaused = false; // Resume takes an Observer back to the Exercise tab (19 October 2026) // inject_replay_count last drawn (Replay this inject, 18 October 2026)
+  let obsPageFresh = true; // true until this page has shown the lobby or an inject
+  let obsCameFromLobby = false; // the next inject drawn is the start of the exercise
+  let injectTimerInterval = null;
+  // Audio can only play after a user gesture. If this page loads (or
+  // reloads) while an inject is already showing — not starting fresh from
+  // the lobby — render() runs immediately, before "Tap to begin" has been
+  // clicked, and its playSfx() call gets silently blocked by the browser.
+  // Nothing used to retry it: the sound for whatever inject was already
+  // live when the page loaded was just lost. audioUnlocked / pendingSfx
+  // track that case so the sound plays (or catches up) the moment the gate
+  // is actually dismissed, instead of only on the next inject change.
+  let audioUnlocked = false;
+  let pendingSfx = null;
+  let checkins = null;
+  const screenId = observerMode || !sessionId ? null : loadScreenIdentity(sessionId);
+
+  // ---- W6a (2 November 2026): briefing, narration and news clips -----------
+  // Room screen: the participant briefing plays full screen when the
+  // facilitator presses Play (row.briefing.played_at); the screen reports
+  // ready / playing / watched / failed in its check-in. During the exercise a
+  // played inject's news clip plays instead of its sound; otherwise its
+  // narration follows the sound. Observer: the Observer briefing in a card on
+  // the Exercise tab before Start; the phone stays silent during the exercise.
+  const roomMedia = (() => {
+    let player = null, playerKey = null, pending = null, pendingInject = null, lastHandled = null;
+    let narrationFailed = null; // W6b: the last inject whose narration file failed on this screen
+    const layer = document.getElementById("briefingLayer");
+    const card = document.getElementById("briefingCard");
+    const roomLang = (row) => (row && row.briefing_language) || "en";
+    const files = (row) => (row && row.briefing && row.briefing.files) || {};
+    const mark = (k) => `pp_brief_done_${sessionId}_${k}`;
+    function clear() {
+      if (player) { player.destroy(); player = null; playerKey = null; }
+      layer.hidden = true; layer.innerHTML = "";
+      card.hidden = true; card.innerHTML = "";
+      document.body.classList.remove("pp-briefing-on");
+    }
+    function roomRow(row) {
+      const b = row.briefing || {};
+      const lang = roomLang(row);
+      if (!(files(row).participant || {})[lang]) { clear(); return; }
+      const key = `${row.run_number}|${b.played_at || "none"}|${lang}`;
+      if (key !== playerKey) {
+        if (player) player.destroy();
+        layer.innerHTML = "";
+        player = PPMedia.briefing(layer, {
+          sessionId, run: row.run_number, role: "participant", lang, files: files(row), small: false,
+          captions: !!row.captions_on_screens, langToggle: false, fullscreen: true, playedAt: b.played_at || "none",
+          onState: () => { if (checkins) checkins.beatSoon(); },
+          onWatched: () => {
+            try { localStorage.setItem(mark(key), "1"); } catch { /* ok */ }
+            if (checkins) checkins.beat();
+            setTimeout(() => { if (playerKey === key) { layer.hidden = true; document.body.classList.remove("pp-briefing-on"); } }, 4000);
+          },
+        });
+        playerKey = key;
+        layer.hidden = true;
+        let done = false;
+        try { done = localStorage.getItem(mark(key)) === "1"; } catch { /* ok */ }
+        if (b.played_at && !done) { pending = key; if (audioUnlocked) startPending(); }
+        refreshLobby();
+      } else if (player && b.played_at) {
+        player.el.classList.toggle("no-captions", !row.captions_on_screens);
+      }
+    }
+    function keyOf(row) { return `${row.run_number}|${(row.briefing || {}).played_at || "none"}|${roomLang(row)}`; }
+    function startPending() {
+      if (!pending || pending !== playerKey || !player) return;
+      pending = null;
+      layer.hidden = false;
+      document.body.classList.add("pp-briefing-on");
+      player.play();
+      refreshLobby();
+    }
+    function observerRow(row) {
+      const has = files(row).observer || {};
+      if (!has.en && !has.ar) { clear(); return; }
+      const rep = (row.briefing && row.briefing.replay) || null;
+      const replayKey = rep && (rep.room == null || rep.room === observer.room) ? rep.at : "self";
+      const key = `${row.run_number}|${replayKey}`;
+      if (key === playerKey) return;
+      if (player) player.destroy();
+      card.hidden = false;
+      player = PPMedia.briefing(card, {
+        sessionId, run: row.run_number, role: "observer", lang: roomLang(row), files: files(row), small: true,
+        captions: true, langToggle: true, fullscreen: false, playedAt: replayKey,
+        onState: () => { if (checkins) checkins.beatSoon(); },
+        onWatched: () => {
+          reportBriefingWatched(sessionId, observer.attendeeId, personDeviceId()).catch(() => { /* the next watch reports again */ });
+          if (checkins) checkins.beat();
+        },
+      });
+      playerKey = key;
+    }
+    return {
+      onRow(row) {
+        if (!row || row.status !== "lobby") { if (playerKey) clear(); return; }
+        if (observerMode) observerRow(row); else roomRow(row);
+      },
+      // W6d: does this exercise have a participant briefing in the room's language?
+      hasBriefing(row) { return !!(files(row).participant || {})[roomLang(row)]; },
+      // W6d: the facilitator has pressed Play, but the video has not started
+      // on this screen yet (it waits for "Tap to begin", or the screen has
+      // just learnt of it). A screen that has already watched this play is
+      // not waiting.
+      waitingToPlay(row) {
+        const key = keyOf(row);
+        if (key === playerKey) return pending === key;
+        try { return localStorage.getItem(mark(key)) !== "1"; } catch { return true; }
+      },
+      unlocked() {
+        startPending();
+        if (pendingInject) { const p = pendingInject; pendingInject = null; p(); }
+      },
+      briefingReport() {
+        // W6b: a failed narration is reported in the next check-in (the tower shows it).
+        const nf = narrationFailed && latestRow && narrationFailed.run === latestRow.run_number ? { narration_failed: narrationFailed.idx } : null;
+        if (!player || !latestRow || latestRow.status !== "lobby") return nf;
+        return { state: player.state(), position: player.position(), ...(nf || {}) };
+      },
+      // A news clip for this inject (room screen): true when it plays (or waits for the tap).
+      newInject(row, idx, inject) {
+        const m = injectMedia(row, idx, roomLang(row));
+        if (!m.clip || injectWasResumed(row, idx)) return false;
+        const go = () => {
+          stopSfx();
+          PPMedia.clip({ clip: m.clip, video: inject.video || {}, lang: roomLang(row),
+            onStatus: (t) => { sfxStatusEl.textContent = T("room.sound.status", { msg: t }); },
+            onFail: () => { if (inject.sfx) playSfx(inject.sfx); setTimeout(() => { sfxStatusEl.textContent = T("room.sound.status", { msg: T("media.status.clipFailed") }); }, 400); } });
+        };
+        lastHandled = `${idx}|${row.inject_replay_count || 0}`;
+        if (audioUnlocked) go(); else pendingInject = go;
+        return true;
+      },
+      narrate(row, idx, inject) {
+        if (row.narration_enabled === false) return;
+        const key = `${idx}|${row.inject_replay_count || 0}`;
+        if (lastHandled === key) return; // the clip took this inject
+        const m = injectMedia(row, idx, roomLang(row));
+        if (!m.narration) return;
+        const go = () => PPMedia.narrate(PPMedia.url(m.narration), {
+          hasSfx: !!inject.sfx,
+          onStatus: (t) => { sfxStatusEl.textContent = T("room.sound.status", { msg: t }); },
+          onFail: () => { narrationFailed = { idx, run: row.run_number }; sfxStatusEl.textContent = T("room.sound.status", { msg: T("media.status.narrationFailed") }); },
+        });
+        if (audioUnlocked) go(); else pendingInject = go;
+      },
+    };
+  })();
+
+
+  setSfxStatusHandler((msg) => {
+    sfxStatusEl.textContent = T("room.sound.status", { msg });
+  });
+
+  if (!sessionId) {
+    mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.error.noSession"))}</div>`;
+  } else {
+    // ---- Start gate, room question and sound (item 6, 11 October 2026) ---
+    // A shared room screen has no registration, so it keeps its own id in
+    // this browser, plus (with more than one room) which room it is in.
+    const gateEl = document.getElementById("soundGate");
+    const startBtnEl = document.getElementById("startBtn");
+    const roomPickEl = document.getElementById("roomPick");
+    const roomButtonsEl = document.getElementById("roomButtons");
+    const screenRoomEl = document.getElementById("screenRoom");
+    let gateOpen = !observerMode;
+    let roomsKnown = 0; // the session's room_count, once loaded
+
+    function roomNeeded() {
+      return !observerMode && roomsKnown > 1 && !(screenId.me.room >= 1 && screenId.me.room <= roomsKnown);
+    }
+    function drawGate() {
+      if (observerMode) return;
+      const many = roomsKnown > 1;
+      roomPickEl.hidden = !many;
+      if (many) {
+        roomButtonsEl.innerHTML = Array.from({ length: roomsKnown }, (_, i) => i + 1)
+          .map((n) => `<button type="button" data-room="${n}" class="${screenId.me.room === n ? "sel" : ""}">${escapeHtml(n === 1 ? T("room.gate.roomFacilitator", { n }) : T("room.gate.room", { n }))}</button>`)
+          .join("");
+      }
+      startBtnEl.disabled = roomNeeded();
+      startBtnEl.textContent = audioUnlocked ? T("room.gate.done") : T("room.gate.begin");
+      gateEl.style.display = gateOpen ? "" : "none";
+      screenRoomEl.hidden = !(many && screenId.me.room && !gateOpen);
+      if (!screenRoomEl.hidden) {
+        screenRoomEl.innerHTML = `${escapeHtml(T("room.screen.room", { room: screenId.me.room }))} <button type="button" id="changeRoomBtn">${escapeHtml(T("room.screen.change"))}</button>`;
+      }
+    }
+    // Called on every session update: a room count that grew or shrank can
+    // make the stored room invalid — then the screen asks again.
+    function updateRoomUi(row) {
+      if (observerMode || !row) return;
+      roomsKnown = row.room_count || 1;
+      if (roomsKnown > 1 && screenId.me.room && screenId.me.room > roomsKnown) {
+        screenId.me.room = null;
+        screenId.store();
+      }
+      if (roomNeeded()) gateOpen = true;
+      drawGate();
+    }
+    roomButtonsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-room]");
+      if (!btn) return;
+      screenId.me.room = Number(btn.dataset.room);
+      screenId.store();
+      drawGate();
+    });
+    screenRoomEl.addEventListener("click", (e) => {
+      if (!e.target.closest("#changeRoomBtn")) return;
+      gateOpen = true;
+      drawGate();
+    });
+
+    function onSoundUnlocked() {
+      audioUnlocked = true;
+      sfxStatusEl.textContent = T("room.sound.unlocked");
+      // Catch up on the sound for whatever inject was already showing
+      // before sound was on, since its own playSfx() attempt was blocked.
+      if (pendingSfx) {
+        const toPlay = pendingSfx;
+        pendingSfx = null;
+        playSfx(toPlay);
+      }
+      roomMedia.unlocked();
+      drawGate();
+      if (checkins) checkins.beat();
+    }
+    // Plays one real clip for an instant. Inside the "Tap to begin" gesture
+    // it is silent (volume 0) and unlocks sound for the rest of the session,
+    // including on stricter browsers (Safari). Without a gesture — after a
+    // reload — it is barely audible (volume 0.01) so the browser's own
+    // answer is truthful: it resolves only if this laptop allows sound for
+    // this site without a tap.
+    function tryUnlockSound(volume) {
+      unlockChime();
+      const unlock = new Audio(SFX_SILENT);
+      unlock.volume = volume;
+      return unlock.play().then(() => {
+        unlock.pause();
+      });
+    }
+
+    startBtnEl.addEventListener("click", () => {
+      if (roomNeeded()) return;
+      gateOpen = false;
+      screenId.me.started = true;
+      screenId.store();
+      drawGate();
+      if (audioUnlocked) {
+        if (checkins) checkins.beat();
+        return;
+      }
+      tryUnlockSound(0)
+        .then(onSoundUnlocked)
+        .catch((err) => {
+          sfxStatusEl.textContent = T("room.sound.unlockFailed", { message: err.message });
+        });
+    });
+
+    // After a reload (for example "Full reload" from the control tower) a
+    // screen that was already started tries to start itself: no room
+    // question left to answer, and sound only if the browser allows it
+    // without a tap. Otherwise "Tap to begin" stays, as before.
+    let autoStartTried = false;
+    function maybeAutoStart() {
+      if (observerMode || autoStartTried || !screenId.me.started || roomNeeded()) return;
+      autoStartTried = true;
+      tryUnlockSound(0.01)
+        .then(() => {
+          gateOpen = false;
+          onSoundUnlocked();
+        })
+        .catch(() => {
+          /* the browser wants a tap — the gate stays up */
+        });
+    }
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // Live updates (the doorbell) plus the safety net (shared.js
+    // keepSessionInSync): a silently dropped live connection is noticed and
+    // the screen refetches within seconds, with a status pill in the corner.
+    const sync = keepSessionInSync({
+      sessionId,
+      supabaseClient,
+      onRow: (row) => {
+        render(row);
+        roomMedia.onRow(row);
+        updateRoomUi(row);
+        maybeAutoStart();
+        awake.update();
+        if (checkins) checkins.beatSoon();
+      },
+      // After a drop or a WiFi change, don't trust that the live stream
+      // caught everything — re-check for a broadcast missed meanwhile.
+      onRecovered: (row) => {
+        catchUpBroadcast(row, false);
+        if (observerMode) loadObserverMessages(false);
+      },
+      // A new message for participants: fetch it; chime if it really is new.
+      // "observer" (item 7): the facilitator has written to Observers.
+      onRing: (kind) => {
+        if (kind === "message") catchUpBroadcast(latestRow, true);
+        else if (kind === "observer" && observerMode) loadObserverMessages(true);
+      },
+    });
+
+    // Keep the screen awake: a room screen until the exercise ends; an
+    // Observer's phone until their notes hour closes.
+    const awake = keepAwake({
+      wanted: () => {
+        if (!latestRow) return true;
+        if (!observerMode) return latestRow.status !== "ended";
+        return latestRow.status === "lobby" || notesWindow(latestRow, "observer").open;
+      },
+      onChange: (st) => setNotice("awakeNotice", st === "off" ? AWAKE_NOTICE : null),
+    });
+
+    // Check-ins for the Facilitator's control tower; the reply also tells
+    // this screen where the exercise really is, and carries "Refresh this
+    // screen" / "Full reload" from the tower.
+    checkins = startCheckins({
+      sessionId,
+      kind: observerMode ? "person" : "room_screen",
+      attendeeId: observer ? observer.attendeeId : null,
+      deviceId: observerMode ? null : screenId.me.deviceId,
+      getState: () => ({
+        room: observerMode ? null : screenId.me.room,
+        page: observerMode ? "observer" : "room",
+        shownStatus: latestRow ? latestRow.status : null,
+        shownInject: latestRow && latestRow.status === "running" ? latestRow.current_inject_index : null,
+        sound: observerMode ? "na" : audioUnlocked ? "on" : "off",
+        awake: awake.state(),
+        live: sync.liveState(),
+        briefing: roomMedia.briefingReport(),
+      }),
+      onReply: (reply) =>
+        handleCheckinReply(reply, {
+          sync,
+          getRow: () => latestRow,
+          onSoft: () => showToast(T("room.toast.refreshed"), 6000),
+        }),
+      onRefused: observerMode
+        ? () => showRemovedScreen(sessionId)
+        : null,
+    });
+
+    try {
+      if (sessionStorage.getItem("pp_reloaded_by_facilitator")) {
+        sessionStorage.removeItem("pp_reloaded_by_facilitator");
+        showToast(T("room.toast.reloaded"), 6000);
+      }
+    } catch { /* ignore */ }
+
+    if (observerMode) {
+      watchAway({
+        onBack: async (ms) => {
+          await sync.resync("back");
+          showToast(awayText(ms, latestRow));
+          loadObserverMessages(false); // a reply may have arrived while the phone was locked
+        },
+      });
+    }
+
+    drawGate();
+    fetchSession(sessionId)
+      .then((row) => {
+        sync.deliver(row);
+        return catchUpBroadcast(row, false);
+      })
+      .catch((err) => {
+        mainEl.innerHTML = `<div class="lobby">${T("room.error.loadSession", { message: err.message })}</div>`;
+      });
+  }
+
+  // ---- Facilitator broadcast banner (added 5 October 2026) ----------------
+  // Shown for BANNER_SECONDS, then hidden, so it never stays in the way of
+  // the inject. Also hidden straight away when the inject changes.
+  // Room screens only show messages for everyone (department null);
+  // department messages (roadmap item 4) go to that department's phones.
+  const BANNER_SECONDS = 30;
+  const bannerEl = document.getElementById("broadcastBanner");
+  const bannerTextEl = document.getElementById("broadcastText");
+  const bannerBarEl = document.getElementById("broadcastTimebar");
+  let bannerTimer = null;
+  let bannerMsg = null;
+  let bannerShownId = null;
+
+  function showBroadcast(m, durationMs) {
+    if (!m || m.department) return false;
+    if (m.id && m.id === bannerShownId && bannerMsg) return false; // already up
+    if (durationMs <= 0) return false;
+    clearTimeout(bannerTimer);
+    bannerMsg = m;
+    bannerShownId = m.id || null;
+    bannerTextEl.textContent = m.body;
+    // Restart the countdown bar's animation from full.
+    bannerBarEl.style.animation = "none";
+    void bannerBarEl.offsetWidth;
+    bannerBarEl.style.animation = `shrink ${durationMs}ms linear forwards`; // i18n-ok: CSS animation value
+    bannerEl.classList.add("show");
+    bannerTimer = setTimeout(hideBroadcast, durationMs);
+    return true;
+  }
+
+  function hideBroadcast() {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+    bannerMsg = null;
+    bannerEl.classList.remove("show");
+  }
+
+  // The inject context a message belongs to: the inject index while
+  // running, null before the start.
+  function rowContext(row) {
+    return row && row.status === "running" ? row.current_inject_index : null;
+  }
+
+  // On load, reconnect or a doorbell ring: if the latest message for
+  // everyone was sent for what's showing now and its 30 seconds aren't up,
+  // show it for the time it has left. It chimes only when it arrived by a
+  // ring and has not been seen on this screen before.
+  const seenBroadcastIds = new Set();
+  let broadcastFetching = false;
+  let broadcastAgain = false;
+  async function catchUpBroadcast(row, fromRing) {
+    if (observerMode) { if (observer) loadObserverInfo(); return; } // an Observer reads it in Messages, not as the room banner
+    if (!row || row.status === "ended") return;
+    if (broadcastFetching) {
+      // A ring that arrives mid-fetch is never dropped: fetch once more after.
+      broadcastAgain = broadcastAgain || !!fromRing;
+      return;
+    }
+    broadcastFetching = true;
+    try {
+      const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+      const latest = msgs[msgs.length - 1];
+      const firstLoad = seenBroadcastIds.size === 0 && !fromRing;
+      const isNew = latest && !seenBroadcastIds.has(latest.id);
+      msgs.forEach((m) => seenBroadcastIds.add(m.id));
+      if (!latest) return;
+      const msgContext = latest.inject_index === undefined ? null : latest.inject_index;
+      if (msgContext !== rowContext(latestRow || row)) return;
+      const ageMs = Math.max(0, Date.now() - new Date(latest.created_at).getTime());
+      const shown = showBroadcast(latest, BANNER_SECONDS * 1000 - ageMs);
+      if (shown && isNew && fromRing && !firstLoad && audioUnlocked) playChime();
+    } catch (err) {
+      console.warn("Couldn't load messages:", err.message);
+    } finally {
+      broadcastFetching = false;
+      if (broadcastAgain) {
+        broadcastAgain = false;
+        catchUpBroadcast(latestRow, true);
+      }
+    }
+  }
+
+  let wasEnded = false;
+  // ---- "Watch for" and the answer status for Observers (W4, decision A,
+  // 30 October 2026). Read-only, through the checked route
+  // observer_inject_view (an Observer registration of this exercise): the
+  // scenario's observerWatch points for the inject on screen and, per
+  // responsible department, whether it has answered — never what it wrote,
+  // never who. If the route fails the two boxes are simply not shown.
+  let obsExtra = null; // { idx, watch, subs, eligible }
+  let obsExtraRow = null;
+  let obsExtraAt = 0;
+  let obsExtraBusy = false;
+  async function loadObserverExtra(force) {
+    if (!observerMode || !observer || obsExtraBusy) return;
+    const row = obsExtraRow;
+    if (!row || !(row.status === "running" || row.status === "paused") || row.current_inject_index == null) { obsExtra = null; drawObserverExtra(); return; }
+    if (!force && Date.now() - obsExtraAt < 8000) return;
+    obsExtraBusy = true;
+    try {
+      const r = await callNotesRpc("observer_inject_view", { p_session_id: sessionId, p_attendee_id: observer.attendeeId });
+      obsExtra = r && r.inject_index != null ? { idx: r.inject_index, watch: r.watch || [], subs: r.subs || [], eligible: r.eligible || [] } : null;
+      obsExtraAt = Date.now();
+    } catch { obsExtra = null; }
+    obsExtraBusy = false;
+    drawObserverExtra();
+  }
+  function drawObserverExtra() {
+    const el = document.getElementById("obsExtra");
+    if (!el) return;
+    const row = obsExtraRow;
+    if (!obsExtra || !row || obsExtra.idx !== row.current_inject_index) {
+      // W6e: the Answers button stays even when the status could not be read.
+      const btn = row && (row.status === "running" || row.status === "paused") ? obsAnswersButtonHtml() : "";
+      el.innerHTML = btn ? `<div class="obs-box" id="obsResp"><div class="obs-resp-head"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${btn}</div></div>` : "";
+      return;
+    }
+    const inject = ((row.scenario && row.scenario.injects) || [])[obsExtra.idx] || {};
+    const watch = (obsExtra.watch || []).filter((w) => typeof w === "string" && w.trim());
+    const resp = injectResponsible(inject);
+    const depts = resp.some((d) => String(d).toLowerCase() === "all") ? sessionDepartments(row) : resp;
+    const individual = injectOutput(inject) === "individual";
+    const lines = depts.filter((d) => isDepartmentResponsible(inject, d, row, obsExtra.idx)).map((d) => {
+      const mine = (obsExtra.subs || []).filter((x) => String(x.department) === String(d) && x.status === "submitted");
+      let st;
+      if (individual) {
+        const n = ((obsExtra.eligible || []).find((e) => String(e.department) === String(d)) || {}).n || 0;
+        st = mine.length >= n && n > 0 ? `<span class="tone-ok">${escapeHtml(T("room.obs.someOf", { done: mine.length, total: n }))}</span>`
+          : `<span class="tone-wait">${escapeHtml(T("room.obs.someOf", { done: mine.length, total: n }))}</span>`;
+      } else if (mine.length) {
+        const t = formatMessageTime(mine[0].submitted_at);
+        st = mine[0].on_time === false ? `<span class="tone-wait">${escapeHtml(T("room.obs.answeredLate", { time: t }))}</span>`
+          : `<span class="tone-ok">${escapeHtml(T("room.obs.answered", { time: t }))}</span>`;
+      } else {
+        st = `<span class="tone-wait">${escapeHtml(T("room.obs.waiting"))}</span>`;
+      }
+      return `<div class="obs-resp"><span dir="auto">${escapeHtml(d)}</span><span class="st">${st}</span></div>`;
+    });
+    el.innerHTML =
+      (watch.length ? `<div class="obs-box" id="obsWatch"><h3>${escapeHtml(T("room.obs.watchTitle"))}</h3><ul>${watch.map((w) => `<li dir="auto">${escapeHtml(w)}</li>`).join("")}</ul></div>` : "") +
+      `<div class="obs-box" id="obsResp"><div class="obs-resp-head"><h3>${escapeHtml(T("room.obs.respTitle"))}</h3>${obsAnswersButtonHtml()}</div>${lines.join("")}</div>`;
+  }
+  if (observerMode) setInterval(() => { loadObserverExtra(false); }, 10000);
+
+  // ---- W6e (5 November 2026): the Answers page ------------------------------
+  // The answers to the inject, grouped by department, through the checked
+  // route observer_answers: this Observer's own room only, never a name, open
+  // for the same five hours as the notes after End (answers.js).
+  var obsAnswersClosed = false;
+  var obsAnswers = observerMode && observer
+    ? PPAnswers.create({ role: "observer", sessionId, attendeeId: observer.attendeeId, getRow: () => latestRow,
+        onClosed: (why) => { if (why === "window" || why === "purged") { obsAnswersClosed = true; drawObserverExtra(); drawObserverEndAnswers(); } } })
+    : null;
+  function obsAnswersButtonHtml() {
+    return obsAnswers && !obsAnswersClosed ? `<button type="button" class="pp-btn ghost obs-answers-btn" data-obs-answers>${escapeHtml(T("ans.button"))}</button>` : "";
+  }
+  // After End, on the Exercise tab, under the line that points to Notes.
+  function drawObserverEndAnswers() {
+    const el = document.getElementById("obsEndAnswers");
+    if (!el) return;
+    const open = latestRow && latestRow.status === "ended" && observerAfterEndLine(latestRow).open && !obsAnswersClosed;
+    el.innerHTML = open ? obsAnswersButtonHtml() : (obsAnswersClosed ? `<p class="pp-hint">${escapeHtml(T("ans.closedWindow"))}</p>` : "");
+  }
+  if (obsAnswers) {
+    document.addEventListener("click", (e) => { if (e.target.closest("[data-obs-answers]")) obsAnswers.open(); });
+    setInterval(drawObserverEndAnswers, 30000);
+  }
+
+  // ---- W6c (3 November 2026): the join code --------------------------------
+  // The exercise's own join link, drawn live as a QR (nothing per client is
+  // baked into a video). Waiting screen: large, with "Scan to join" and the
+  // exercise name. "Show rejoin code on room screens": a 30-second banner from
+  // the moment the facilitator pressed it (server time). Observer: "Show join
+  // code" fills the screen. If the QR library is missing, the plain waiting
+  // line stays and the banner/overlay say to ask the facilitator.
+  function joinUrl() {
+    const lang = PPLang.lang();
+    return `${location.origin}/play/join.html?session=${encodeURIComponent(sessionId)}${lang === "en" ? "" : `&lang=${lang}`}`;
+  }
+  // W6d (4 November 2026): before the participant briefing the waiting
+  // screen is a calm welcome without the code; the code appears once the
+  // briefing has played on this screen. It also appears when there is no
+  // briefing to wait for (no video in the room's language, or the
+  // facilitator used the escape), so a room is never left without a code.
+  function lobbyShowsCode(row) {
+    const b = (row && row.briefing) || {};
+    if (b.override) return true;
+    if (!roomMedia.hasBriefing(row)) return true;
+    if (!b.played_at) return false;
+    return !roomMedia.waitingToPlay(row);
+  }
+  function lobbyHtml(row) {
+    lobbyMode = lobbyShowsCode(row) ? "code" : "welcome";
+    return lobbyMode === "code" ? lobbyJoinHtml(row) : lobbyWelcomeHtml(row);
+  }
+  function lobbyWelcomeHtml(row) {
+    return `<div class="lobby-welcome"><div class="hello">${escapeHtml(T("room.lobby.welcome"))}</div>` +
+      `<div class="name">${escapeHtml(row.label || "")}</div>` +
+      `<div class="soon">${escapeHtml(T("room.lobby.briefingSoon"))}</div></div>`;
+  }
+  // Called by the briefing layer when its state changes on this screen
+  // (the video starts, or this screen learns of a new play): the waiting
+  // screen switches between the welcome and the code without a refetch.
+  function refreshLobby() {
+    if (observerMode || !latestRow || latestRow.status !== "lobby") return;
+    const want = lobbyShowsCode(latestRow) ? "code" : "welcome";
+    if (want === lobbyMode) return;
+    mainEl.innerHTML = lobbyHtml(latestRow);
+    drawLobbyQr();
+  }
+  function lobbyJoinHtml(row) {
+    return `<div class="lobby-join"><div class="qr" id="lobbyQr" aria-label="${escapeHtml(T("room.lobby.qrAria"))}"></div>` +
+      `<div><div class="scan">${escapeHtml(T("room.lobby.scan"))}</div>` +
+      `<div class="name">${escapeHtml(row.label || "")}</div>` +
+      `<div class="wait">${escapeHtml(T("room.lobby.waiting"))}</div></div></div>`;
+  }
+  function drawLobbyQr() {
+    const el = document.getElementById("lobbyQr");
+    if (!el) return;
+    if (!PPLayout.qr(el, joinUrl(), { cellSize: 8 })) {
+      mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.lobby.waiting"))}</div>`;
+    }
+  }
+  let lobbyMode = null;
+  const REJOIN_MS = 30 * 1000;
+  const rejoin = (() => {
+    const el = document.getElementById("rejoinBanner");
+    const bar = document.getElementById("rejoinTimebar");
+    let shownAt = null, timer = null;
+    function hide() { clearTimeout(timer); timer = null; el.classList.remove("show"); }
+    return {
+      onRow(row) {
+        const at = row && row.rejoin_code_at;
+        if (observerMode) return;
+        // Only while the exercise runs: the waiting screen already shows the
+        // code large, and after End there is nothing to rejoin.
+        if (!at || row.status !== "running") { hide(); shownAt = at || null; return; }
+        if (at === shownAt) return;
+        shownAt = at;
+        const serverNow = row.server_now ? Date.parse(row.server_now) : Date.now();
+        const left = REJOIN_MS - Math.max(0, serverNow - Date.parse(at));
+        if (!(left > 0)) return;
+        if (!PPLayout.qr(document.getElementById("rejoinQr"), joinUrl(), { cellSize: 6 })) {
+          document.getElementById("rejoinQr").hidden = true;
+        }
+        document.getElementById("rejoinName").textContent = row.label || "";
+        bar.style.animation = "none";
+        void bar.offsetWidth;
+        bar.style.animation = `shrink ${left}ms linear forwards`; // i18n-ok: CSS animation value
+        el.classList.add("show");
+        clearTimeout(timer);
+        timer = setTimeout(hide, left);
+      },
+    };
+  })();
+  if (observerMode) {
+    const overlay = document.getElementById("joinCodeOverlay");
+    const openBtn = document.getElementById("slimJoinBtn");
+    openBtn.addEventListener("click", () => {
+      const ok = PPLayout.qr(document.getElementById("joinCodeQr"), joinUrl(), { cellSize: 8 });
+      document.getElementById("joinCodeQr").hidden = !ok;
+      overlay.hidden = false;
+      document.getElementById("joinCodeClose").focus();
+    });
+    document.getElementById("joinCodeClose").addEventListener("click", () => { overlay.hidden = true; openBtn.focus(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !overlay.hidden) { overlay.hidden = true; openBtn.focus(); } });
+  } else {
+    document.getElementById("slimJoinBtn").hidden = true;
+  }
+
+  function render(row) {
+    if (!row || window.__ppRemoved) return;
+    latestRow = row;
+    if (observerMode) {
+      if (obsAnswers) obsAnswers.onRow(row);
+      refreshObserverNotes();
+      updateObserverMessageControls();
+      updateSlim();
+    }
+    clientLabelEl.textContent = row.label || "PlanProof";
+    rejoin.onRow(row);
+
+    // A banner belongs to the inject (or the lobby) it was sent during:
+    // once the screen has moved on, it goes, even if its 30 seconds aren't up.
+    if (bannerMsg) {
+      const msgContext = bannerMsg.inject_index === undefined ? null : bannerMsg.inject_index;
+      if (row.status === "ended" || msgContext !== rowContext(row)) hideBroadcast();
+    }
+
+    if (observerMode && wasEnded) { document.getElementById("obsEndRoot").innerHTML = ""; survey = null; }
+    wasEnded = false;
+    if (row.status === "lobby") {
+      clearInjectTimer();
+      if (!observerMode) PPMedia.stopAll();
+      // An Observer is greeted by name on their own device (item 8); the
+      // shared room screen never shows a person's name.
+      mainEl.innerHTML = observerMode
+        ? welcomeScreenHtml({ name: greetingName(observer), observer: true })
+        : lobbyHtml(row);
+      if (!observerMode) drawLobbyQr();
+      lastRenderedIndex = null;
+      obsPageFresh = false; // seen waiting here: the first inject is new
+      obsCameFromLobby = true;
+      return;
+    }
+    if (row.status === "ended") {
+      clearInjectTimer();
+      // Item 8 (11 October 2026). Room screen: "Thank you, everyone", and
+      // any inject sound still playing stops. Observer: a compact card by
+      // name, with how long the notes area and the message box under it
+      // stay usable — they are not covered or moved.
+      if (!observerMode) {
+        stopSfx();
+        PPMedia.stopAll();
+        pendingSfx = null;
+        // The room screen carries one line inviting everyone to the feedback
+        // survey on their own device (16 October 2026).
+        mainEl.innerHTML = endScreenHtml({
+          everyone: true, label: row.label || "", close: false,
+          // Once the survey has closed (everyone answered, PlanProof closed it,
+          // or 48 hours) the invitation is no longer shown (W5b, 27 Oct 2026).
+          extraHtml: row.survey_open === false ? "" : `<p class="pp-thanks-survey">${escapeHtml(T("room.end.survey"))}</p>`,
+        });
+      } else {
+        // Drawn once, at the top of the Notes tab (17 October 2026): the
+        // feedback survey under the card keeps its taps, and the notes area
+        // below is never covered or moved (16 October 2026). The Exercise
+        // tab says where to look.
+        const endRoot = document.getElementById("obsEndRoot");
+        if (!endRoot.querySelector(".pp-thanks-end")) {
+          endRoot.innerHTML = endScreenHtml({
+            name: greetingName(observer),
+            compact: true,
+            close: false,
+            extraHtml: `<p class="pp-thanks-window" id="obsEndWindow" role="status"></p>`,
+          }) + '<div id="surveyRoot" hidden></div>';
+          survey = createSurvey(document.getElementById("surveyRoot"), { sessionId, attendeeId: observer.attendeeId, observer: true });
+          // Simplicity (17 October 2026): no second, larger thank-you beside
+          // the Observer's own card — one plain line pointing to it.
+          mainEl.innerHTML = `<p class="pp-hint obs-ended-line">${escapeHtml(T("room.observer.endedSeeNotes"))}</p><div id="obsEndAnswers" class="obs-end-answers"></div>`;
+        }
+        updateObserverEndWindow();
+        drawObserverEndAnswers();
+        survey.refresh(row);
+        if (!wasEnded && tabsApi) tabsApi.show("notes");
+      }
+      wasEnded = true;
+      lastRenderedIndex = null;
+      return;
+    }
+
+    const injects = (row.scenario && row.scenario.injects) || [];
+    const idx = row.current_inject_index;
+    const inject = injects[idx];
+    if (!inject) {
+      mainEl.innerHTML = `<div class="lobby">${escapeHtml(T("room.error.noInject", { idx: String(idx) }))}</div>`;
+      return;
+    }
+
+    // Replay this inject counts as a new inject here: its sound plays again
+    // and an Observer is taken back to the Exercise tab.
+    const replayCount = row.inject_replay_count || 0;
+    const isNewInject = idx !== lastRenderedIndex
+      || (lastRenderedReplay !== null && replayCount > lastRenderedReplay);
+    lastRenderedIndex = idx;
+    lastRenderedReplay = replayCount;
+    const resumedNow = lastRenderedPaused && !isPaused(row) && !isNewInject;
+    lastRenderedPaused = isPaused(row);
+
+    const pausedNow = isPaused(row);
+    const videoBlock = pausedNow
+      ? `<div class="paused-card" id="pausedCard" role="status"><div class="paused-title">${escapeHtml(T("room.paused.title"))}</div><div class="paused-sub">${escapeHtml(T("room.paused.sub"))}</div></div>`
+      : inject.video
+      ? `<div class="video-card"><div class="tag">${escapeHtml(T("room.video.nowPlaying"))}</div><div class="title">${escapeHtml(inject.video.title)}</div></div>`
+      : "";
+
+    // "Inject 7 of 20 · Finance and IT to respond · Group answer" (17 October 2026).
+    const respList = injectResponsible(inject);
+    const who = respList.some((d) => String(d).toLowerCase() === "all")
+      ? T("room.inject.allDepartments")
+      : (respList.length > 1 ? T("room.inject.listAnd", { list: respList.slice(0, -1).join(T("room.inject.listSep")), last: respList[respList.length - 1] }) : respList.join(""));
+    const posLine = T("room.inject.line", { number: idx + 1, total: injects.length, who, kind: injectOutput(inject) === "individual" ? T("room.inject.individual") : T("room.inject.group") });
+    // A new inject opens the Exercise tab by itself (17 October 2026),
+    // unless the Observer is in the middle of a note or a message.
+    if (isNewInject && tabsApi && !tabsApi.isCurrent("exercise")) {
+      const boxes = [document.querySelector("#noteForm textarea"), document.getElementById("obsMsgText")];
+      const typing = boxes.some((b) => b && (document.activeElement === b || b.value.trim()));
+      // the first inject after opening or reloading keeps the remembered tab
+      // every new inject opens Exercise (Ahmed, 18 October 2026); a draft
+      // note or message is kept in its box. Only the first inject drawn
+      // after a reload keeps the remembered tab.
+      void typing;
+      if (obsCameFromLobby || !obsPageFresh) tabsApi.show("exercise"); else tabsApi.dot("exercise", true);
+    }
+    obsPageFresh = false;
+    obsCameFromLobby = false;
+    const timerBlock = `
+      <div class="timer-row">
+        <div>
+          <span class="label">${escapeHtml(T("room.timer.label"))}</span>
+          <span class="value" id="injectTimerValue">--:--</span>
+          <span class="label" id="injectTimerNote" style="margin-top:4px;"></span>
+        </div>
+      </div>`;
+    // An Observer sees where the exercise is and the time left first, at the
+    // top (Ahmed, 18 October 2026); the room screen keeps its big layout.
+    mainEl.innerHTML = observerMode ? `
+      <div class="inject-pos">${escapeHtml(posLine)}</div>
+      ${timerBlock}
+      <div class="obs-extra" id="obsExtra"></div>
+      ${injectMessageHTML(inject)}
+      ${videoBlock}
+    ` : `
+      <div class="room-head">
+        <div class="inject-pos">${escapeHtml(posLine)}</div>
+        ${timerBlock}
+      </div>
+      ${videoBlock}
+      ${injectMessageHTML(inject)}
+    `;
+    if (observerMode) { obsExtraRow = row; if (isNewInject) loadObserverExtra(true); else drawObserverExtra(); } // "Watch for" and the answer status (W4)
+
+    // An Observer's phone stays silent: the room's display plays the sound.
+    // A resumed inject comes back without its sound (shared.js
+    // injectWasResumed) — also on a screen that was reloaded meanwhile.
+    if (isNewInject && inject.sfx && !observerMode && injectWasResumed(row, idx)) {
+      pendingSfx = null;
+      sfxStatusEl.textContent = T("room.sound.resumed", { name: inject.sfx });
+    } else if (isNewInject && !observerMode && !pausedNow && roomMedia.newInject(row, idx, inject)) {
+      // W6a: a news clip plays instead of the inject's sound and narration.
+      pendingSfx = null;
+    } else if (isNewInject && inject.sfx && !observerMode) {
+      if (audioUnlocked) {
+        playSfx(inject.sfx);
+      } else {
+        // Don't attempt a doomed play() before the gate is tapped — queue
+        // it so the unlock handler above can play it the moment it can.
+        pendingSfx = inject.sfx;
+        sfxStatusEl.textContent = T("room.sound.waiting", { name: inject.sfx });
+      }
+    }
+    // W6a: the narration (after the inject's sound, or on its own).
+    if (isNewInject && !observerMode && !pausedNow && !injectWasResumed(row, idx)) roomMedia.narrate(row, idx, inject);
+
+    // Same deadline as the participants' phones and the database's on-time
+    // check: the server's start time for this inject + its duration + any
+    // "+5 min". Recalculated on every update (not only when the inject
+    // changes), so a reload mid-inject resumes at the real time left and an
+    // extension shows straight away. (Fixed 6 October 2026 — the room screen
+    // used to start its own stopwatch when it first showed the inject.)
+    // Paused: the room goes quiet (19 October 2026).
+    if (isPaused(row)) { stopSfx(); pendingSfx = null; PPMedia.stopAll(); }
+    // Resume: an Observer is taken back to the inject, like the phones.
+    if (resumedNow && observerMode && tabsApi && !tabsApi.isCurrent("exercise")) tabsApi.show("exercise");
+    startInjectTimer(row, inject, row.inject_extra_minutes || 0);
+  }
+
+  // The deadline is worked out again every second, so a Pause holds the
+  // time left still (shared.js injectDeadlineMs).
+  function startInjectTimer(row, inject, extraMinutes) {
+    clearInjectTimer();
+    const paused = isPaused(row);
+    const noteEl = document.getElementById("injectTimerNote");
+    if (noteEl) noteEl.textContent = paused ? T("room.timer.paused")
+      : extraMinutes > 0 ? T("room.timer.extra", { count: extraMinutes }) : "";
+    const slim = document.getElementById("slimClock");
+    const hasDeadline = !!injectDeadlineMs(row, inject);
+    function tick() {
+      const el = document.getElementById("injectTimerValue");
+      if (!el) return;
+      const deadlineMs = injectDeadlineMs(row, inject);
+      if (!deadlineMs) {
+        el.textContent = T("room.timer.noLimit");
+        el.className = "value nolimit";
+        if (slim) { slim.textContent = el.textContent; slim.dataset.state = "none"; }
+        return;
+      }
+      const remainingMs = deadlineMs - Date.now();
+      if (remainingMs <= 0) {
+        // Phones lock at this point; the room screen says so rather than
+        // counting into negative time.
+        el.textContent = T("room.timer.up");
+        el.className = "value warn up";
+        if (slim) { slim.textContent = el.textContent; slim.dataset.state = "up"; }
+        return;
+      }
+      const m = Math.floor(remainingMs / 60000);
+      const s = Math.floor((remainingMs % 60000) / 1000);
+      el.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      // Amber in the last minute, as on the phones.
+      el.className = paused ? "value paused" : remainingMs < 60000 ? "value warn" : "value"; // i18n-ok: CSS class names
+      // The Observer's slim header carries the same clock.
+      if (slim) { slim.textContent = el.textContent; slim.dataset.state = paused ? "paused" : remainingMs < 60000 ? "warn" : "run"; }
+    }
+    tick();
+    if (hasDeadline) injectTimerInterval = setInterval(tick, 1000);
+  }
+
+  function clearInjectTimer() {
+    if (injectTimerInterval) clearInterval(injectTimerInterval);
+    injectTimerInterval = null;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  // ---- Observer notes (roadmap item 5, built 11 October 2026) -------------
+  // The form (notes.js) keeps an unfinished note on this phone and keeps the
+  // inject the note was started on. The list below it is this Observer's own
+  // notes, kept on this phone only — nobody, including this Observer, can
+  // read notes back from the server — and cleared from the phone once notes
+  // close.
+  var latestRow = null;
+  let noteForm = null;
+  const myNotesKey = observer ? `pp_obsnotes_${sessionId}_${observer.attendeeId}` : null;
+  const draftKey = observer ? `pp_obsdraft_${sessionId}_${observer.attendeeId}` : null;
+  let withdrawArmed = null; // note id waiting for the second tap
+
+  function loadMyNotes() {
+    try {
+      const list = JSON.parse(localStorage.getItem(myNotesKey) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+  function storeMyNotes(list) {
+    try {
+      if (list.length) localStorage.setItem(myNotesKey, JSON.stringify(list));
+      else localStorage.removeItem(myNotesKey);
+    } catch { /* storage blocked — the list just won't survive a reload */ }
+  }
+  let myNotes = observer ? loadMyNotes() : [];
+  let noteMic = null;
+  // Voice notes: wording for the mic, and the exercise's own words for the speech service.
+  function micLabels() {
+    return {
+      title: T("shared.mic.title"), tapToSpeak: T("shared.mic.tapToSpeak"), listening: T("shared.mic.listening"),
+      working: T("shared.mic.working"), refused: T("shared.mic.refused"), noConnection: T("shared.mic.noConnection"),
+      unsupported: T("shared.mic.unsupported"), nothingHeard: T("shared.mic.nothingHeard"), failed: T("shared.mic.failed"),
+    };
+  }
+  function speechVocabulary() {
+    const words = ["PlanProof", "RTO", "RPO", "BCM", "NCEMA", "inject"]; // i18n-ok: words for the speech service, not shown
+    if (latestRow) { if (latestRow.label) words.push(latestRow.label); sessionDepartments(latestRow).forEach((d) => words.push(d)); }
+    return words;
+  }
+
+  function refreshObserverNotes() {
+    if (!observerMode || !latestRow) return;
+    if (!noteForm) {
+      noteForm = createNoteForm(document.getElementById("noteForm"), {
+        role: "observer",
+        draftKey,
+        getRow: () => latestRow,
+        save: (payload) => saveObserverNote(sessionId, payload, { attendeeId: observer.attendeeId }),
+        beforeSave: () => { if (noteMic) noteMic.stop(); },
+        onSaved: (result, payload) => {
+          const entry = Object.assign({}, payload, {
+            runNumber: result && result.run_number,
+            injectIndex: result ? result.inject_index : payload.injectIndex,
+            createdAt: result && result.created_at,
+            updatedAt: result && result.updated_at,
+            withdrawn: false,
+          });
+          const i = myNotes.findIndex((n) => n.id === entry.id);
+          if (i >= 0) myNotes[i] = Object.assign({}, myNotes[i], entry, { createdAt: myNotes[i].createdAt || entry.createdAt });
+          else myNotes.push(entry);
+          storeMyNotes(myNotes);
+          renderMyNotes();
+        },
+      });
+    }
+    if (!noteMic) {
+      noteMic = PPMic.attach(noteForm.textarea, {
+        who: { sessionId, attendeeId: observer.attendeeId },
+        labels: micLabels(),
+        vocabulary: () => speechVocabulary(),
+      });
+    }
+    noteForm.refresh();
+
+    const win = notesWindow(latestRow, "observer");
+    // Keep only this run's notes; once notes close after the end, clear the
+    // phone (the server copy is what the report uses).
+    const before = myNotes.length;
+    myNotes = myNotes.filter((n) => !latestRow.run_number || n.runNumber === latestRow.run_number);
+    if (!win.open && latestRow.status === "ended") {
+      myNotes = [];
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    }
+    if (myNotes.length !== before) storeMyNotes(myNotes);
+    renderMyNotes();
+  }
+
+  // The Observer's line under the thank-you card: how long the notes area
+  // and the message box stay usable, counted down; then "now closed".
+  function updateObserverEndWindow() {
+    const el = document.getElementById("obsEndWindow");
+    if (!el || !latestRow || latestRow.status !== "ended") return;
+    const line = observerAfterEndLine(latestRow);
+    if (el.textContent !== line.text) el.textContent = line.text;
+    el.classList.toggle("closed", !line.open);
+  }
+
+  function renderMyNotes() {
+    const box = document.getElementById("myNotes");
+    if (!box || !latestRow) return;
+    const win = notesWindow(latestRow, "observer");
+    const visible = myNotes.filter((n) => !n.withdrawn).slice().reverse();
+    if (!visible.length) {
+      box.innerHTML = `<div class="empty">${escapeHtml(win.open || latestRow.status === "lobby" ? T("room.notes.noneYet") : T("room.notes.closedCleared"))}</div>`;
+      return;
+    }
+    // Grouped under each inject, the latest inject first, "Whole exercise"
+    // last (Ahmed, 18 October 2026), each with Edit and Withdraw.
+    const injects = (latestRow.scenario && latestRow.scenario.injects) || [];
+    const groups = new Map();
+    visible.forEach((n) => {
+      const k = n.injectIndex === null || n.injectIndex === undefined ? "whole" : String(n.injectIndex);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(n);
+    });
+    const keys = Array.from(groups.keys()).sort((a, b) => (a === "whole") - (b === "whole") || Number(b) - Number(a));
+    box.innerHTML = keys.map((k) => {
+      const title = k === "whole"
+        ? T("room.notes.groupWhole")
+        : T("room.notes.groupInject", { number: Number(k) + 1, title: String((injects[Number(k)] || {}).title || "") });
+      return `<div class="mine-group"><h3 class="mine-group-title">${escapeHtml(title)}</h3>` + groupItems(groups.get(k)) + `</div>`;
+    }).join("");
+    function groupItems(list) { return list
+      .map((n) =>
+        noteItemHtml(
+          {
+            id: n.id, run_number: n.runNumber, inject_index: n.injectIndex,
+            topic: n.topic, topic_other: n.topicOther, note_type: n.noteType,
+            department_scope: n.scope, departments: n.departments, external_party: n.externalParty,
+            body: n.body, created_at: n.createdAt, updated_at: n.updatedAt,
+          },
+          {
+            row: latestRow,
+            actionsHtml: win.open
+              ? `<button type="button" data-act="edit" data-id="${escapeHtml(n.id)}">${escapeHtml(T("room.notes.edit"))}</button>` +
+                `<button type="button" class="danger" data-act="withdraw" data-id="${escapeHtml(n.id)}">${escapeHtml(withdrawArmed === n.id ? T("room.notes.withdrawConfirm") : T("room.notes.withdraw"))}</button>`
+              : "",
+          }
+        )
+      )
+      .join(""); }
+  }
+
+  if (observerMode) {
+    document.getElementById("myNotes").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const note = myNotes.find((n) => n.id === btn.dataset.id);
+      if (!note) return;
+      if (btn.dataset.act === "edit") {
+        withdrawArmed = null;
+        noteForm.edit(note);
+        renderMyNotes();
+        return;
+      }
+      // Withdraw: two taps, so a slip of the finger can't remove a note.
+      if (withdrawArmed !== note.id) {
+        withdrawArmed = note.id;
+        renderMyNotes();
+        setTimeout(() => { if (withdrawArmed === note.id) { withdrawArmed = null; renderMyNotes(); } }, 5000);
+        return;
+      }
+      withdrawArmed = null;
+      btn.disabled = true;
+      btn.textContent = T("room.notes.withdrawing");
+      try {
+        await withdrawObserverNote(sessionId, note.id, { attendeeId: observer.attendeeId });
+        note.withdrawn = true;
+        storeMyNotes(myNotes);
+        noteForm.cancelEditIf(note.id);
+      } catch (err) {
+        alertNote(PPLang.dbMessage(err.message));
+      }
+      renderMyNotes();
+    });
+    // The window closes on the clock, not only on an update from the server.
+    setInterval(refreshObserverNotes, 15000);
+    // The thank-you card's "until 15:32 (52 minutes left)" line; when the
+    // hour is up it also closes the notes area and the message box at once.
+    let obsEndWasOpen = null;
+    setInterval(() => {
+      if (!latestRow || latestRow.status !== "ended") { obsEndWasOpen = null; return; }
+      updateObserverEndWindow();
+      const open = observerAfterEndLine(latestRow).open;
+      if (obsEndWasOpen === true && !open) {
+        refreshObserverNotes();
+        updateObserverMessageControls();
+      }
+      obsEndWasOpen = open;
+    }, 5000);
+  }
+
+  // ---- Observer <-> Facilitator messages (roadmap item 7, 11 October 2026) --
+  // Design: design-notes.md → "Observer ↔ Facilitator — design". The thread
+  // is this Observer's room: what the facilitator sent to all Observers or to
+  // this room, and what this room's Observers sent. Messages are room-level —
+  // no name is attached. The phone stays silent (the room's display has the
+  // sound): a reply shows as a banner that stays until "Got it", with a count
+  // and a short vibration where the phone supports it. Besides the doorbell,
+  // the thread is checked every 15 seconds, so a lost ring can't hide a reply.
+  // The channel stays open after End until the Observers' notes hour closes.
+  const obsBannerEl = document.getElementById("obsBanner");
+  const obsBannerTextEl = document.getElementById("obsBannerText");
+  const obsBannerTimeEl = document.getElementById("obsBannerTime");
+  const obsThreadEl = document.getElementById("obsThread");
+  const obsBadgeEl = document.getElementById("obsBadge");
+  const obsMsgPresetsEl = document.getElementById("obsMsgPresets");
+  let obsPresetKey = "";
+  const obsMsgTextEl = document.getElementById("obsMsgText");
+  const obsMsgCountEl = document.getElementById("obsMsgCount");
+  const obsMsgSendBtn = document.getElementById("obsMsgSendBtn");
+  const obsMsgFeedbackEl = document.getElementById("obsMsgFeedback");
+  const obsBaseTitle = document.title;
+  const obsReadKey = observer ? `pp_obsmsgread_${sessionId}_${observer.attendeeId}` : null;
+  const obsDraftKey = observer ? `pp_obsmsgdraft_${sessionId}_${observer.attendeeId}` : null;
+  let obsMessages = [];
+  let obsLoadedOnce = false;
+  let obsLoading = false;
+  let obsAgain = null;
+  let obsSending = false;
+  let obsLastReadAt = null; // created_at (ms) of the newest facilitator message acknowledged
+  let obsDraft = { id: null, text: "", presetKey: "" };
+  if (observer) {
+    try {
+      const stored = localStorage.getItem(obsReadKey);
+      obsLastReadAt = stored ? Number(stored) : null;
+    } catch { obsLastReadAt = null; }
+    try {
+      const d = JSON.parse(localStorage.getItem(obsDraftKey) || "null");
+      if (d && typeof d.text === "string") obsDraft = { id: d.id || null, text: d.text, presetKey: d.presetKey || "" };
+    } catch { /* no draft */ }
+  }
+  const obsMsgTime = (m) => new Date(m.created_at).getTime();
+  const obsFromFacilitator = (m) => m.direction === "to_observers" || m.direction === "to_participants";
+  // What the facilitator sent to all participants, shown to the Observer
+  // for information (18 October 2026: it used to flash by as the room
+  // screen's 30-second banner, with no way to read it again or reply).
+  let obsInfo = [];
+  const obsAll = () => obsMessages.concat(obsInfo).sort((a, b) => obsMsgTime(a) - obsMsgTime(b));
+  async function loadObserverInfo() {
+    try {
+      const msgs = (await fetchMessages(sessionId)).filter((m) => !m.department);
+      obsInfo = msgs.map((m) => Object.assign({}, m, { direction: "to_participants" }));
+      renderObserverMessages();
+    } catch (err) { console.warn("Couldn't load messages:", err.message); }
+  }
+  function obsIsUnread(m) {
+    return obsFromFacilitator(m) && (obsLastReadAt === null || obsMsgTime(m) > obsLastReadAt);
+  }
+  function storeObsDraft() {
+    try {
+      if (obsDraft.text) localStorage.setItem(obsDraftKey, JSON.stringify(obsDraft));
+      else localStorage.removeItem(obsDraftKey);
+    } catch { /* storage blocked — the text just won't survive a reload */ }
+  }
+
+  async function loadObserverMessages(fromRing) {
+    if (!observerMode) return;
+    if (obsLoading) {
+      // A ring that arrives mid-fetch is never dropped: fetch once more after.
+      obsAgain = obsAgain || !!fromRing;
+      return;
+    }
+    obsLoading = true;
+    try {
+      const fresh = await fetchObserverMessages(sessionId, observer.attendeeId);
+      const known = new Set(obsMessages.map((m) => m.id));
+      const gotNew = fresh.some((m) => obsFromFacilitator(m) && !known.has(m.id));
+      obsMessages = fresh;
+      renderObserverMessages();
+      if (gotNew && obsLoadedOnce) {
+        try { if (navigator.vibrate) navigator.vibrate(200); } catch { /* the banner is enough */ }
+      }
+      obsLoadedOnce = true;
+    } catch (err) {
+      console.warn("Couldn't load Observer messages:", err.message);
+    } finally {
+      obsLoading = false;
+      if (obsAgain !== null) {
+        const again = obsAgain;
+        obsAgain = null;
+        loadObserverMessages(again);
+      }
+    }
+  }
+
+  function markObserverMessagesRead() {
+    const fromFac = obsAll().filter(obsFromFacilitator);
+    if (fromFac.length) {
+      obsLastReadAt = Math.max(...fromFac.map(obsMsgTime));
+      try { localStorage.setItem(obsReadKey, String(obsLastReadAt)); } catch { /* still read for this page */ }
+    }
+    renderObserverMessages();
+  }
+
+  function renderObserverMessages() {
+    const obsMessages = obsAll();
+    const unread = obsMessages.filter(obsIsUnread);
+    const badge = T("room.msg.newCount", { count: unread.length });
+    obsBadgeEl.hidden = unread.length === 0;
+    obsBadgeEl.textContent = badge;
+    if (tabsApi) tabsApi.badge("messages", unread.length, "");
+    document.title = unread.length ? `(${unread.length}) ${obsBaseTitle}` : obsBaseTitle;
+
+    obsThreadEl.innerHTML = obsMessages.length
+      ? obsMessages
+          .slice()
+          .reverse()
+          .map((m) => {
+            const fromFac = obsFromFacilitator(m);
+            const info = m.direction === "to_participants";
+            const who = info
+              ? T("room.msg.fromFacilitatorParticipants")
+              : fromFac
+                ? m.room ? T("room.msg.fromFacilitatorRoom", { room: m.room }) : T("room.msg.fromFacilitatorAll")
+                : observer.room ? T("room.msg.sentFromRoom", { room: observer.room }) : T("room.msg.sentToFacilitator");
+            const canReply = fromFac && !info && observerChannel(latestRow).open;
+            return `<li class="${fromFac ? "from-fac" : "mine-sent"}${obsIsUnread(m) ? " unread" : ""}"><span class="meta"><span class="m-time">${escapeHtml(formatMessageTime(m.created_at))}</span> · <span class="m-who">${escapeHtml(who)}</span></span>${escapeHtml(m.body)}${canReply ? `<div><button type="button" class="msg-reply-btn">${escapeHtml(T("room.msg.reply"))}</button></div>` : ""}</li>`;
+          })
+          .join("")
+      : `<li class="empty">${escapeHtml(T("room.msg.none"))}</li>`;
+
+    // The banner: the newest reply not yet acknowledged. It stays until
+    // "Got it" — it does not hide by itself.
+    const newest = unread[unread.length - 1];
+    if (newest) {
+      obsBannerTextEl.textContent = newest.body;
+      obsBannerTimeEl.textContent = `· ${formatMessageTime(newest.created_at)}${unread.length > 1 ? ` · ${T("room.msg.newCount", { count: unread.length })}` : ""}`;
+      obsBannerEl.hidden = false;
+    } else {
+      obsBannerEl.hidden = true;
+    }
+  }
+
+  function updateObserverMessageControls() {
+    if (!observerMode) return;
+    const chan = observerChannel(latestRow);
+    const closed = !!latestRow && !chan.open;
+    const len = obsMsgTextEl.value.trim().length;
+    obsMsgCountEl.textContent = `${obsMsgTextEl.value.length} / ${MESSAGE_MAX_LENGTH}`;
+    obsMsgPresetsEl.querySelectorAll("button").forEach((b) => { b.disabled = closed; b.setAttribute("aria-pressed", String(b.dataset.preset === obsPresetKey)); });
+    obsMsgTextEl.disabled = closed;
+    obsMsgSendBtn.disabled = obsSending || len === 0 || closed || !latestRow;
+    if (closed) {
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+      obsMsgFeedbackEl.textContent = chan.reason;
+      obsMsgFeedbackEl.dataset.closed = "1";
+      // Nothing unsent is kept on the phone once the channel has closed.
+      if (obsDraft.text) { obsDraft = { id: null, text: "", presetKey: "" }; storeObsDraft(); obsMsgTextEl.value = ""; }
+    } else if (obsMsgFeedbackEl.dataset.closed) {
+      // Open again (a new run after Reset).
+      delete obsMsgFeedbackEl.dataset.closed;
+      obsMsgFeedbackEl.textContent = "";
+    }
+  }
+
+  if (observerMode) {
+    // Ready-made messages as tap chips (17 October 2026), worded as the room
+    // ("Our room needs more time"): one tap fills the box, which stays editable.
+    obsMsgPresetsEl.innerHTML = OBSERVER_TO_FACILITATOR_PRESETS.map((p) =>
+      `<button type="button" class="pp-chip" data-preset="${p.key}" aria-pressed="false">${escapeHtml(p.text)}</button>`).join("");
+    // An unsent message comes back after a reload.
+    if (obsDraft.text) {
+      obsMsgTextEl.value = obsDraft.text;
+      obsPresetKey = obsDraft.presetKey || "";
+    }
+    const clearFeedback = () => {
+      if (obsMsgFeedbackEl.dataset.closed) return;
+      obsMsgFeedbackEl.textContent = "";
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+    };
+    function keepDraft() {
+      const text = obsMsgTextEl.value;
+      // A changed text is a new message: it gets a new id. The same text
+      // sent again (a retry) keeps its id, so it is saved once.
+      if (text !== obsDraft.text || !obsDraft.id) obsDraft.id = crypto.randomUUID();
+      obsDraft.text = text;
+      obsDraft.presetKey = obsPresetKey;
+      storeObsDraft();
+    }
+    obsMsgPresetsEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-preset]");
+      if (!b || b.disabled) return;
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === b.dataset.preset);
+      if (!preset) return;
+      obsPresetKey = preset.key;
+      obsMsgTextEl.value = preset.text;
+      clearFeedback();
+      keepDraft();
+      updateObserverMessageControls();
+      obsMsgTextEl.focus();
+    });
+    obsMsgTextEl.addEventListener("input", () => {
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsPresetKey);
+      if (preset && preset.text !== obsMsgTextEl.value) obsPresetKey = "";
+      clearFeedback();
+      keepDraft();
+      updateObserverMessageControls();
+    });
+    // Reply (17 October 2026): on the banner and under a message — opens
+    // the Messages tab with the box ready.
+    const replyNow = () => { markObserverMessagesRead(); if (tabsApi) tabsApi.show("messages", { user: true }); if (!obsMsgTextEl.disabled) obsMsgTextEl.focus(); };
+    document.getElementById("obsBannerReply").addEventListener("click", replyNow);
+    obsThreadEl.addEventListener("click", (e) => { if (e.target.closest(".msg-reply-btn")) replyNow(); });
+    // No mic on the message box (Ahmed, 17 October 2026): the mic is for
+    // notes only, on the Notes tab, so a voice note is never sent as a message.
+    const obsMsgMic = null;
+    obsMsgSendBtn.addEventListener("click", async () => {
+      const body = obsMsgTextEl.value.trim();
+      if (!body || obsSending) return;
+      if (obsMsgMic) obsMsgMic.stop();
+      if (!obsDraft.id || obsDraft.text !== obsMsgTextEl.value) keepDraft();
+      const preset = OBSERVER_TO_FACILITATOR_PRESETS.find((p) => p.key === obsPresetKey);
+      const presetKey = preset && preset.text === body ? preset.key : null;
+      obsSending = true;
+      updateObserverMessageControls();
+      obsMsgFeedbackEl.className = "obs-msg-feedback";
+      obsMsgFeedbackEl.textContent = T("room.msg.sending");
+      try {
+        await sendObserverMessage(sessionId, { id: obsDraft.id, body, presetKey, attendeeId: observer.attendeeId });
+        obsDraft = { id: null, text: "", presetKey: "" };
+        storeObsDraft();
+        obsMsgTextEl.value = "";
+        obsPresetKey = "";
+        obsMsgFeedbackEl.className = "obs-msg-feedback ok";
+        obsMsgFeedbackEl.textContent = T("room.msg.sentAt", { time: formatMessageTime(new Date().toISOString()) });
+        loadObserverMessages(false);
+      } catch (err) {
+        // Whatever went wrong, the text stays in the box and on the phone.
+        obsMsgFeedbackEl.className = "obs-msg-feedback err";
+        obsMsgFeedbackEl.textContent = err.network
+          ? T("room.msg.notSentNetwork")
+          : T("room.msg.notSent", { message: PPLang.dbMessage(err.message) });
+      } finally {
+        obsSending = false;
+        updateObserverMessageControls();
+      }
+    });
+    document.getElementById("obsBannerOk").addEventListener("click", markObserverMessagesRead);
+    loadObserverMessages(false);
+    // The safety net for a lost ring, and the clock closing the channel.
+    setInterval(() => loadObserverMessages(false), 15000);
+    setInterval(updateObserverMessageControls, 5000);
+  }
+
+  function alertNote(msg) {
+    const box = document.getElementById("myNotes");
+    box.insertAdjacentHTML("afterbegin", `<div class="empty" style="color:var(--red-soft);opacity:1;">${escapeHtml(msg)}</div>`);
+  }
+</script>
+</body>
+</html>

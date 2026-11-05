@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /play/
 
 Sitemap: https://plan-proof.com/sitemap.xml

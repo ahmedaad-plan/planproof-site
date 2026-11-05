@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="join.title">PlanProof — Join the exercise</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./theme.css" />
+<style>
+  /* PlanProof look (player polish, 11 October 2026) — tokens in theme.css. */
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 16px 40px;
+  }
+  .join-brand { margin: 4px 0 22px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 26px 24px 28px; max-width: 460px; width: 100%;
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+  h1 { font-size: 1.45rem; margin: 0 0 6px; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
+  .sub { font-size: 0.95rem; color: var(--text-muted); margin: 0 0 18px; text-align: center; text-wrap: balance; }
+  .card label { display: block; font-weight: 600; font-size: 0.9rem; margin: 16px 0 6px; }
+  .name-row { display: flex; gap: 10px; }
+  .name-row > div { flex: 1; min-width: 0; }
+  .invalid { border-color: var(--red) !important; background: transparent !important; }
+  .consent-row { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 12px; font-size: 0.92rem; line-height: 1.45; cursor: pointer; border: 1px solid transparent; border-radius: 8px; padding: 6px; }
+  .consent-row input { width: auto; margin: 3px 0 0; flex: 0 0 auto; accent-color: var(--accent); }
+  .consent-row a { color: var(--accent); text-decoration: underline; font-weight: 600; }
+  .role-options { display: flex; gap: 10px; }
+  .role-options label {
+    flex: 1; margin: 0; font-weight: 600; text-align: center; padding: 11px 10px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px; cursor: pointer; display: block;
+    background: var(--field); color: var(--text);
+  }
+  .role-options input { position: absolute; opacity: 0; pointer-events: none; }
+  .role-options label.checked { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .role-options label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.full { width: 100%; margin-top: 24px; }
+  .error { text-align: start; }
+  /* The two briefing boxes (Ahmed, 11 October 2026): centred, with lines of
+     even length on a phone — "balance" stops one short word being left on a
+     line of its own. Same shape for both so they read as a pair. */
+  .brief {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--panel-raised);
+    padding: 12px 16px; margin: 0 0 10px; font-size: 0.9rem; color: var(--text-muted);
+    text-align: center; text-wrap: balance;
+  }
+  .brief strong { display: block; color: var(--text); font-weight: 600; text-wrap: balance; margin-bottom: 2px; }
+  .brief.nofault { border-top: 3px solid var(--teal); }
+  .brief.phone { border-top: 3px solid var(--accent); }
+  /* Joining alone, remotely (item 9, 16 October 2026): the two "where" options
+     stack on a phone (the labels are longer than the role buttons). */
+  .where-options { display: flex; flex-direction: column; gap: 8px; }
+  .where-options label { text-align: start; padding: 11px 14px; }
+  .brief.remote { border-top: 3px solid var(--blue); margin-top: 10px; }
+  /* Department list: fixed, never typed. With more than 10 departments a
+     search box narrows the list; the list itself stays the only way to pick. */
+  .dept-search { margin-bottom: 8px; }
+  .dept-count { font-size: 0.8rem; color: var(--text-muted); margin: -2px 0 8px; min-height: 1.2em; }
+  .dept-missing { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
+  /* Confirmation step (Ahmed, 4 October 2026): restate name and department
+     before anything is registered, with Proceed / Cancel. */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(8,11,15,0.82);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: 14px;
+    padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .confirm-box h2 { font-size: 1.2rem; margin: 0 0 14px; }
+  .confirm-box dl { margin: 0 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.95rem; }
+  .confirm-box dt { color: var(--text-muted); }
+  .confirm-box dd { margin: 0; overflow-wrap: anywhere; }
+  .confirm-box .question { font-weight: 600; margin-bottom: 16px; }
+  .confirm-buttons { display: flex; gap: 10px; }
+  .confirm-buttons button { flex: 1; }
+
+  /* W4 redesign (30 October 2026): the same frame as the other pages — one
+     card, the no-fault line as a quiet green-edged note, two-part switches. */
+  .card { box-shadow: none; border-radius: 12px; padding: 24px; }
+  h1 { text-align: start; }
+  .sub { text-align: start; }
+  .brief { text-align: start; background: transparent; border: 0; border-inline-start: 3px solid var(--border-strong); border-radius: 0; padding: 4px 0 4px 14px; margin: 0 0 16px; }
+  .brief.nofault, .brief.phone, .brief.remote { border-top: 0; }
+  .brief.nofault { border-inline-start-color: var(--teal); }
+  .brief.remote { border-inline-start-color: var(--attn); }
+  .role-options:not(.where-options) { gap: 0; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .role-options:not(.where-options) label { border: 0; border-radius: 0; background: transparent; }
+  .role-options:not(.where-options) label + label { border-inline-start: 1px solid var(--border-strong); }
+  .role-options:not(.where-options) label.checked { background: var(--accent); color: var(--accent-ink); }
+  .where-options label { background: transparent; }
+  /* Item 10: welcome back, and "Is this you?". */
+  .back-who { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0 0 8px; }
+  .back-who strong { display: block; font-family: var(--font-display); font-size: 1.1rem; }
+  .back-who span { color: var(--text-muted); font-size: 0.95rem; }
+  .back-notme { margin-top: 10px !important; }
+  button.full + button.full { margin-top: 10px; }
+  .is-me { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; font-size: 0.95rem; }
+  .is-me p { margin: 0 0 10px; }
+  .is-me .t { font-weight: 700; }
+  .is-me .confirm-buttons button { flex: 1; }
+</style>
+</head>
+<body>
+  <div class="join-brand"><span class="pp-brand large" data-i18n-skip><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M26 4 L45 11 V24 C45 36 37 44 26 48 C15 44 7 36 7 24 V11 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 24 Q20 24 22 30 Q24 36 30 30 L38 20" fill="none" stroke="#d84a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Plan<span class="proof">Proof</span></span></span></div>
+  <div class="card pp-form" id="card" data-i18n-nodes="join.loading">Loading…</div>
+
+  <div class="overlay" id="confirmOverlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-box pp-form">
+      <h2 id="confirmTitle" data-i18n="join.confirm.title">Please confirm your details</h2>
+      <dl id="confirmDetails"></dl>
+      <div class="question" id="confirmQuestion"></div>
+      <div class="is-me" id="isMeBox" hidden></div>
+      <div class="confirm-buttons">
+        <button class="pp-btn ghost" id="cancelBtn" data-i18n="join.confirm.cancel">Cancel</button>
+        <button class="pp-btn" id="proceedBtn" data-i18n="join.confirm.proceed">Proceed</button>
+      </div>
+      <div class="pp-error error" id="confirmError"></div>
+    </div>
+  </div>
+
+<script src="./lang.js"></script>
+<script src="./shared.js"></script>
+<script>
+  const sessionId = getSessionId();
+  const cardEl = document.getElementById("card");
+  const overlayEl = document.getElementById("confirmOverlay");
+  const confirmDetailsEl = document.getElementById("confirmDetails");
+  const confirmQuestionEl = document.getElementById("confirmQuestion");
+  const confirmErrorEl = document.getElementById("confirmError");
+  const proceedBtn = document.getElementById("proceedBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+
+  if (!sessionId) {
+    cardEl.innerHTML = `<p>${escapeHtml(T("join.error.noSession"))}</p>`;
+  } else {
+    init();
+  }
+
+  async function init() {
+    let session;
+    try {
+      session = await fetchSession(sessionId);
+    } catch (err) {
+      cardEl.innerHTML = `<p>${escapeHtml(T("join.error.loadFailed", { detail: String(PPLang.dbMessage(err.message)) }))}</p>`;
+      return;
+    }
+    if (!session) {
+      cardEl.innerHTML = `<p>${escapeHtml(T("join.error.notFound"))}</p>`;
+      return;
+    }
+    // A returning person (item 10, W4): this device already holds a
+    // registration for this exercise → "Welcome back", one tap to go on.
+    if (await offerWelcomeBack(session)) return;
+    if (session.status === "ended") {
+      cardEl.innerHTML =
+        `<p>${escapeHtml(T("join.error.ended"))}</p>`;
+      return;
+    }
+    renderForm(session);
+  }
+
+  // ---- Item 10: recognise a returning person (W4, 30 October 2026) ------
+  // The registration kept on this device is checked with the database first
+  // (it may have been removed by the facilitator, or taken to another
+  // device). If the check cannot be made (no connection), the person still
+  // gets "Continue": their own page decides, so no second registration is
+  // ever created by a failed check.
+  function storedIdentity() {
+    try { return JSON.parse(localStorage.getItem(`pp_identity_${sessionId}`) || "null"); } catch { return null; }
+  }
+  function forgetIdentity() {
+    try { localStorage.removeItem(`pp_identity_${sessionId}`); } catch { /* storage blocked */ }
+  }
+  async function offerWelcomeBack(session) {
+    const me = storedIdentity();
+    if (!me || !me.attendeeId) return false;
+    let r = null, checked = true;
+    try { r = await lookupAttendee(sessionId, me.attendeeId); } catch { checked = false; }
+    if (checked && !(r && r.found)) { forgetIdentity(); return false; }
+    const a = checked ? r : { first_name: me.firstName, family_name: me.familyName, department: me.department, role: me.role, room: me.room, remote: me.remote, job_title: me.title };
+    const moved = !!(checked && r.moved);
+    const where = a.role === "observer"
+      ? (a.room ? T("join.back.observerRoom", { room: a.room }) : T("join.back.observer"))
+      : a.remote ? T("join.back.remote") : a.room ? T("join.back.room", { room: a.room }) : "";
+    cardEl.innerHTML = `
+      <h1>${escapeHtml(T("join.back.title", { name: String(a.first_name || me.firstName || "") }))}</h1>
+      <p class="sub">${escapeHtml(session.label || "")}</p>
+      <div class="back-who" id="backWho"><strong>${escapeHtml(`${a.first_name || ""} ${a.family_name || ""}`.trim())}</strong>
+        <span>${escapeHtml(String(a.department || ""))}${where ? ` · ${escapeHtml(where)}` : ""}</span></div>
+      ${moved ? `<div class="brief nofault back-moved">${escapeHtml(T("join.back.moved"))}</div>` : ""}
+      <button class="pp-btn full" id="backContinueBtn">${escapeHtml(moved ? T("join.back.useHere") : T("join.back.continue"))}</button>
+      <button class="pp-btn ghost full back-notme" id="backNotMeBtn">${escapeHtml(T("join.back.notMe"))}</button>
+      <div class="pp-error error" id="backError"></div>`;
+    document.getElementById("backNotMeBtn").onclick = () => { forgetIdentity(); init(); };
+    document.getElementById("backContinueBtn").onclick = async () => {
+      const btn = document.getElementById("backContinueBtn");
+      const errEl = document.getElementById("backError");
+      if (!moved) { location.href = personPageUrl(sessionId, a.role || me.role); return; }
+      btn.disabled = true;
+      try {
+        const rec = await reclaimAttendee(sessionId, { firstName: a.first_name, familyName: a.family_name, department: a.department, role: a.role });
+        localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identityFromAttendee(rec.attendee_id, rec)));
+        location.href = personPageUrl(sessionId, rec.role);
+      } catch (err) {
+        errEl.textContent = PPLang.dbMessage(err.message);
+        errEl.style.display = "block";
+        btn.disabled = false;
+      }
+    };
+    return true;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
+  }
+
+  // The department search box appears only above this many departments.
+  const DEPT_SEARCH_ABOVE = 10;
+
+  function renderForm(session) {
+    // Departments come only from a fixed list — the scenario's own, plus any
+    // the Facilitator added before starting — never free text, so every
+    // department is spelled the same way across registrations, submissions
+    // and the report. De-duplicated case-insensitively.
+    const baseDepartments = scenarioDepartments(session);
+    const extraDepartments = session.extra_departments || [];
+    const seen = new Set();
+    const departments = [...baseDepartments, ...extraDepartments].filter((d) => {
+      const key = String(d).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const roomCount = session.room_count || 1;
+
+    if (departments.length === 0) {
+      cardEl.innerHTML = `
+        <h1>${escapeHtml(session.label || T("join.form.fallbackTitle"))}</h1>
+        <p>${escapeHtml(T("join.form.noDepartments"))}</p>`;
+      return;
+    }
+
+    const roomField = roomCount > 1
+      ? `<label for="room">${escapeHtml(T("join.room.label"))}</label>
+         <select id="room">
+           <option value="" disabled selected>${escapeHtml(T("join.room.choose"))}</option>
+           ${Array.from({ length: roomCount }, (_, i) => i + 1)
+             .map((n) => `<option value="${n}">${escapeHtml(n === 1 ? T("join.room.optionFacilitator", { n }) : T("join.room.option", { n }))}</option>`)
+             .join("")}
+         </select>`
+      : "";
+
+    cardEl.innerHTML = `
+      <h1>${escapeHtml(session.label || T("join.form.fallbackTitle"))}</h1>
+      <p class="sub">${escapeHtml(T("join.form.sub"))}</p>
+      <div class="brief nofault">
+        <strong>${escapeHtml(T("join.brief.noFaultTitle"))}</strong>
+        ${escapeHtml(T("join.brief.noFaultText"))}
+      </div>
+      <div class="name-row">
+        <div>
+          <label for="firstName">${escapeHtml(T("join.form.firstName"))}</label>
+          <input type="text" id="firstName" placeholder="${escapeHtml(T("join.form.firstNamePlaceholder"))}" autocomplete="given-name" />
+        </div>
+        <div>
+          <label for="familyName">${escapeHtml(T("join.form.familyName"))}</label>
+          <input type="text" id="familyName" placeholder="${escapeHtml(T("join.form.familyNamePlaceholder"))}" autocomplete="family-name" />
+        </div>
+      </div>
+      <label for="jobTitle">${escapeHtml(T("join.form.jobTitle"))}</label>
+      <input type="text" id="jobTitle" placeholder="${escapeHtml(T("join.form.jobTitlePlaceholder"))}" autocomplete="organization-title" />
+      <label for="department">${escapeHtml(T("join.form.department"))}</label>
+      ${departments.length > DEPT_SEARCH_ABOVE
+        ? `<input type="text" id="deptSearch" class="dept-search" placeholder="${escapeHtml(T("join.dept.searchPlaceholder"))}" autocomplete="off" aria-label="${escapeHtml(T("join.dept.searchAria"))}" />
+           <div class="dept-count" id="deptCount" aria-live="polite"></div>`
+        : ""}
+      <select id="department">
+        <option value="" disabled selected>${escapeHtml(T("join.dept.choose"))}</option>
+        ${departments.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("")}
+      </select>
+      <div class="dept-missing">${escapeHtml(T("join.dept.missing"))}</div>
+      <label>${escapeHtml(T("join.form.role"))}</label>
+      <div class="role-options">
+        <label id="roleParticipantLabel" class="checked">
+          <input type="radio" name="role" value="participant" checked /> ${escapeHtml(T("join.role.participant"))}
+        </label>
+        <label id="roleObserverLabel">
+          <input type="radio" name="role" value="observer" /> ${escapeHtml(T("join.role.observer"))}
+        </label>
+      </div>
+      <div id="whereBlock">
+        <label>${escapeHtml(T("join.where.label"))}</label>
+        <div class="role-options where-options">
+          <label id="whereInRoomLabel" class="checked">
+            <input type="radio" name="where" value="inroom" checked /> ${escapeHtml(T("join.where.inRoom"))}
+          </label>
+          <label id="whereRemoteLabel">
+            <input type="radio" name="where" value="remote" /> ${escapeHtml(T("join.where.remote"))}
+          </label>
+        </div>
+        <div class="brief remote" id="remoteNote" hidden>
+          <strong>${escapeHtml(T("join.where.remoteTitle"))}</strong>
+          ${escapeHtml(T("join.where.remoteText"))}
+        </div>
+      </div>
+      <div id="roomBlock">${roomField}</div>
+      <label class="consent-row" for="privacyAck"><input type="checkbox" id="privacyAck" /><span>${escapeHtml(T("join.privacy.before"))}<a href="/privacy-policy.html#exercise-player" target="_blank" rel="noopener">${escapeHtml(T("join.privacy.link"))}</a>${escapeHtml(T("join.privacy.after"))}</span></label>
+      <button class="pp-btn full" id="registerBtn">${escapeHtml(T("join.form.register"))}</button>
+      <div class="pp-error error" id="errorBox"></div>
+    `;
+
+    const roleRadios = cardEl.querySelectorAll('input[name="role"]');
+    const roleLabels = {
+      participant: document.getElementById("roleParticipantLabel"),
+      observer: document.getElementById("roleObserverLabel"),
+    };
+    roleRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        Object.values(roleLabels).forEach((l) => l.classList.remove("checked"));
+        roleLabels[radio.value].classList.add("checked");
+        updateWhere();
+      });
+    });
+
+    // Joining alone, remotely (item 9, 16 October 2026) — participants only:
+    // an Observer is always in a room, observing a group. Default: in a room.
+    // A remote participant is in no room, so the room question goes.
+    const whereBlockEl = document.getElementById("whereBlock");
+    const whereRadios = cardEl.querySelectorAll('input[name="where"]');
+    const whereLabels = {
+      inroom: document.getElementById("whereInRoomLabel"),
+      remote: document.getElementById("whereRemoteLabel"),
+    };
+    const remoteNoteEl = document.getElementById("remoteNote");
+    const roomBlockEl = document.getElementById("roomBlock");
+    function isRemote() {
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      const where = cardEl.querySelector('input[name="where"]:checked');
+      return role === "participant" && !!where && where.value === "remote";
+    }
+    function updateWhere() {
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      if (role !== "participant") {
+        // back to the default, so a switch to Observer never carries "remote"
+        whereRadios.forEach((r) => { r.checked = r.value === "inroom"; });
+        Object.values(whereLabels).forEach((l) => l.classList.remove("checked"));
+        whereLabels.inroom.classList.add("checked");
+      }
+      whereBlockEl.hidden = role !== "participant";
+      remoteNoteEl.hidden = !isRemote();
+      roomBlockEl.hidden = isRemote();
+    }
+    whereRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        Object.values(whereLabels).forEach((l) => l.classList.remove("checked"));
+        whereLabels[radio.value].classList.add("checked");
+        updateWhere();
+      });
+    });
+    updateWhere();
+
+    const firstNameEl = document.getElementById("firstName");
+    const familyNameEl = document.getElementById("familyName");
+    const jobTitleEl = document.getElementById("jobTitle");
+    const departmentEl = document.getElementById("department");
+    const roomEl = document.getElementById("room");
+    const registerBtn = document.getElementById("registerBtn");
+    const errorBoxEl = document.getElementById("errorBox");
+
+    // Department search (Ahmed, 11 October 2026): only with more than 10
+    // departments. It narrows the fixed list — it never adds to it, and the
+    // department is still chosen from the list, so spelling stays the same
+    // everywhere. One match left = chosen for them.
+    const deptSearchEl = document.getElementById("deptSearch");
+    const deptCountEl = document.getElementById("deptCount");
+    if (deptSearchEl) {
+      deptSearchEl.addEventListener("input", () => {
+        const q = deptSearchEl.value.trim().toLowerCase();
+        const chosen = departmentEl.value;
+        const matches = departments.filter((d) => String(d).toLowerCase().includes(q));
+        const keep = matches.includes(chosen) ? chosen : matches.length === 1 && q ? matches[0] : "";
+        departmentEl.innerHTML =
+          `<option value="" disabled ${keep ? "" : "selected"}>${escapeHtml(matches.length ? T("join.dept.choose") : T("join.dept.noMatchOption"))}</option>` +
+          matches.map((d) => `<option value="${escapeHtml(d)}" ${d === keep ? "selected" : ""}>${escapeHtml(d)}</option>`).join("");
+        if (keep) departmentEl.classList.remove("invalid");
+        deptCountEl.textContent = !q
+          ? ""
+          : matches.length === 0
+            ? T("join.dept.noMatches")
+            : matches.length === 1
+              ? T("join.dept.oneMatch", { department: String(matches[0]) })
+              : T("join.dept.someShown", { shown: matches.length, count: departments.length });
+      });
+    }
+
+    // Clear a field's red outline as soon as the person starts fixing it.
+    [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => {
+      if (!el) return;
+      el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => el.classList.remove("invalid"));
+    });
+
+    let pending = null; // the details shown in the confirmation step
+
+    registerBtn.addEventListener("click", () => {
+      const firstName = firstNameEl.value.trim();
+      const familyName = familyNameEl.value.trim();
+      const title = jobTitleEl.value.trim();
+      const department = departmentEl.value;
+      const role = cardEl.querySelector('input[name="role"]:checked').value;
+      const remote = isRemote();
+      const room = roomEl && !remote ? Number(roomEl.value) : null;
+
+      // Nobody is registered until first name, family name, job title and
+      // department are all filled in (Ahmed, 4 October 2026).
+      const problems = [];
+      [firstNameEl, familyNameEl, jobTitleEl, departmentEl, roomEl].forEach((el) => el && el.classList.remove("invalid"));
+      if (!firstName || !familyName) {
+        problems.push(T("join.validate.name"));
+        if (!firstName) firstNameEl.classList.add("invalid");
+        if (!familyName) familyNameEl.classList.add("invalid");
+      }
+      if (!title) {
+        problems.push(T("join.validate.jobTitle"));
+        jobTitleEl.classList.add("invalid");
+      }
+      if (!department) {
+        problems.push(T("join.validate.department"));
+        departmentEl.classList.add("invalid");
+      }
+      if (roomEl && !remote && !roomEl.value) {
+        problems.push(T("join.validate.room"));
+        roomEl.classList.add("invalid");
+      }
+      // The privacy tick (Ahmed, 18 October 2026: opt-in everywhere) —
+      // never ticked for the person; nobody is registered without it.
+      const privacyEl = document.getElementById("privacyAck");
+      privacyEl.closest(".consent-row").classList.remove("invalid");
+      if (!privacyEl.checked) {
+        problems.push(T("join.validate.privacy"));
+        privacyEl.closest(".consent-row").classList.add("invalid");
+      }
+      if (problems.length) {
+        errorBoxEl.innerHTML = problems.map(escapeHtml).join("<br/>");
+        errorBoxEl.style.display = "block";
+        return;
+      }
+      errorBoxEl.style.display = "none";
+
+      pending = { firstName, familyName, title, department, role, room, remote, privacyAck: true };
+      confirmDetailsEl.innerHTML = `
+        <dt>${escapeHtml(T("join.confirm.name"))}</dt><dd>${escapeHtml(firstName)} ${escapeHtml(familyName)}</dd>
+        <dt>${escapeHtml(T("join.confirm.jobTitle"))}</dt><dd>${escapeHtml(title)}</dd>
+        <dt>${escapeHtml(T("join.confirm.department"))}</dt><dd><strong>${escapeHtml(department)}</strong></dd>
+        <dt>${escapeHtml(T("join.confirm.role"))}</dt><dd>${escapeHtml(role === "participant" ? T("join.role.participant") : T("join.role.observer"))}</dd>
+        ${role === "participant" ? `<dt>${escapeHtml(T("join.confirm.where"))}</dt><dd>${escapeHtml(remote ? T("join.confirm.whereRemote") : T("join.confirm.whereInRoom"))}</dd>` : ""}
+        ${room ? `<dt>${escapeHtml(T("join.confirm.room"))}</dt><dd>${escapeHtml(T("join.confirm.roomValue", { n: room }))}</dd>` : ""}`;
+      confirmQuestionEl.textContent =
+        T("join.confirm.question", { department });
+      confirmErrorEl.style.display = "none";
+      proceedBtn.disabled = false;
+      proceedBtn.textContent = T("join.confirm.proceed");
+      proceedBtn.classList.remove("ghost");
+      matchAsked = false; hideIsMe();
+      overlayEl.classList.add("open");
+      proceedBtn.focus();
+    });
+
+    // Cancel: nothing has been registered — back to the form to correct it.
+    cancelBtn.onclick = () => {
+      overlayEl.classList.remove("open");
+      pending = null;
+      departmentEl.focus();
+    };
+
+    // Item 10 (W4): before a new registration is made, the same first name,
+    // family name, department and role already registered in this exercise
+    // means this is probably the same person on another device. Ask.
+    let matchAsked = false;
+    const isMeBox = document.getElementById("isMeBox");
+    function hideIsMe() { isMeBox.hidden = true; isMeBox.innerHTML = ""; }
+    cancelBtn.addEventListener("click", () => { matchAsked = false; hideIsMe(); });
+    async function askIsMe() {
+      let m = null;
+      try { m = await matchAttendee(sessionId, pending); } catch { return false; } // no answer: register as before
+      if (!m || !m.found) return false;
+      matchAsked = true;
+      const joined = m.joined_at ? formatMessageTime(m.joined_at) : "";
+      isMeBox.innerHTML = m.several
+        ? `<p>${escapeHtml(T("join.isMe.several"))}</p>`
+        : `<p class="t">${escapeHtml(T("join.isMe.title"))}</p>
+           <p>${escapeHtml(T("join.isMe.body", { name: `${m.first_name} ${m.family_name}`, department: String(m.department), time: joined }))}</p>
+           <div class="confirm-buttons"><button class="pp-btn" id="isMeYesBtn">${escapeHtml(T("join.isMe.yes"))}</button></div>`;
+      isMeBox.hidden = false;
+      proceedBtn.textContent = T("join.isMe.no");
+      proceedBtn.classList.add("ghost");
+      proceedBtn.disabled = false;
+      cancelBtn.disabled = false;
+      const yes = document.getElementById("isMeYesBtn");
+      if (yes) yes.onclick = async () => {
+        yes.disabled = true; proceedBtn.disabled = true; cancelBtn.disabled = true;
+        confirmErrorEl.style.display = "none";
+        try {
+          const rec = await reclaimAttendee(sessionId, pending);
+          try { localStorage.setItem(`pp_identity_${sessionId}`, JSON.stringify(identityFromAttendee(rec.attendee_id, rec))); } catch { /* the page will ask again */ }
+          location.href = personPageUrl(sessionId, rec.role);
+        } catch (err) {
+          confirmErrorEl.textContent = PPLang.dbMessage(err.message);
+          confirmErrorEl.style.display = "block";
+          yes.disabled = false; proceedBtn.disabled = false; cancelBtn.disabled = false;
+        }
+      };
+      return true;
+    }
+
+    proceedBtn.onclick = async () => {
+      if (!pending) return;
+      proceedBtn.disabled = true;
+      cancelBtn.disabled = true;
+      confirmErrorEl.style.display = "none";
+      if (!matchAsked && await askIsMe()) return;
+      proceedBtn.textContent = T("join.confirm.registering");
+      const attendeeId = crypto.randomUUID();
+      try {
+        await joinSession(sessionId, { id: attendeeId, ...pending });
+        // W6c: registered after Start? The participant page then offers
+        // "Watch the briefing" on this device (the room screen is never
+        // interrupted). The status is read again at this moment.
+        // W6d (4 November 2026): also late when the room video has already
+        // been played (the facilitator pressed Play), even before Start.
+        const isLate = (r) => !!r && (r.status !== "lobby" || !!(r.briefing && r.briefing.played_at));
+        let lateJoin = isLate(session);
+        try { const now = await fetchSession(sessionId); if (now) lateJoin = isLate(now); } catch { /* keep the status seen on load */ }
+        // No login exists, so this is how the next page knows who just
+        // joined — including the attendee id that individual answers are
+        // filed under. A same-browser handoff, not the reload-proof
+        // "recognize me" identity persistence that's roadmap item 9.
+        try {
+          localStorage.setItem(
+            `pp_identity_${sessionId}`,
+            JSON.stringify({
+              attendeeId,
+              firstName: pending.firstName,
+              familyName: pending.familyName,
+              name: `${pending.firstName} ${pending.familyName}`,
+              title: pending.title,
+              department: pending.department,
+              role: pending.role,
+              room: pending.room,
+              remote: !!pending.remote,
+              deviceId: personDeviceId(),
+              lateJoin: !!lateJoin,
+            })
+          );
+        } catch {
+          /* localStorage unavailable (private mode, etc.) — the participant
+             page will ask them to join again. */
+        }
+        // Observers go to the room view in Observer mode (&observer=1): the
+        // live view plus their notes area (roadmap item 5). A plain
+        // room-display link stays the shared room screen.
+        // Outside English the next page is told the exercise's language in
+        // its link, so it opens in it at once (in English nothing is added).
+        const andLang = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
+        const dest = pending.role === "participant"
+          ? `./participant.html?session=${encodeURIComponent(sessionId)}${andLang}`
+          : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1${andLang}`;
+        location.href = dest;
+      } catch (err) {
+        confirmErrorEl.textContent = PPLang.dbMessage(err.message);
+        confirmErrorEl.style.display = "block";
+        proceedBtn.disabled = false;
+        cancelBtn.disabled = false;
+        proceedBtn.textContent = matchAsked ? T("join.isMe.no") : T("join.confirm.proceed");
+      }
+    };
+  }
+</script>
+</body>
+</html>

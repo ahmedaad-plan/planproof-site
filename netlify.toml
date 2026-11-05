@@ -13,6 +13,14 @@
   included_files = ["netlify/media/*.jpg"]
   external_node_modules = ["@ffmpeg-installer/ffmpeg", "@ffmpeg-installer/linux-x64"]
 
+# Wording guard for the exercise player (language foundation, 13 October 2026).
+# Every word a person sees on play/* lives in play/lang.js. This check stops
+# the deploy if wording has been typed into a page instead (it needs nothing
+# installed — plain Node). Netlify never publishes a failed build, so the
+# live site stays as it was. Run it by hand with: node tools/check-lang.js
+[build]
+  command = "node tools/check-lang.js"
+
 # The Supabase publishable (anon) key is public by design: browser pages need it,
 # and Row Level Security — not the key — protects every table (insert-only for
 # visitors; MFA-signed-in admin for client records). Netlify's secret scanner
@@ -32,6 +40,25 @@
     X-Content-Type-Options = "nosniff"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://qryfayienxrngavhwfgw.supabase.co wss://qryfayienxrngavhwfgw.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+# The exercise player (moved onto plan-proof.com 5 November 2026).
+# - Never cached: a browser must never run an old copy of a page or shared.js
+#   after a fix (indistinguishable from a real bug).
+# - Never indexed or framed; the Facilitator link carries its private token in
+#   the address, so it is never passed on to another site (no-referrer).
+# - The pages load only from plan-proof.com and the PlanProof database
+#   (data, live updates, briefing videos, narration, clips, attachments).
+#   The microphone stays allowed for Observers' voice notes.
+[[headers]]
+  for = "/play/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(), geolocation=(), microphone=(self)"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://qryfayienxrngavhwfgw.supabase.co; media-src 'self' blob: https://qryfayienxrngavhwfgw.supabase.co; connect-src 'self' https://qryfayienxrngavhwfgw.supabase.co wss://qryfayienxrngavhwfgw.supabase.co; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
 # Third-party libraries served from plan-proof.com itself (pinned versions,
 # integrity-checked by the pages), so a CDN outage or a silent library update

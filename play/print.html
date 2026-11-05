@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="print.page.title">PlanProof — Printable backup pack</title>
+<meta name="robots" content="noindex" />
+<!--
+  Printable backup pack (added 9 October 2026, system review item 7).
+  Built from the same scenario as the live session, so the exercise can carry
+  on on paper if the network or the screens fail: the facilitator reads each
+  inject aloud, times it on a phone, and teams write on the answer sheets.
+  Opened from the facilitator page (private link). Print it, or save as PDF,
+  before the exercise day.
+-->
+<style>
+  :root { --navy:#0b1f3a; --amber:#1b2430; --ink:#1b2430; --muted:#5d6874; --line:#c9ced6; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); background:#e9ecef; font:11pt/1.45 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  .qr-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:18px; }
+  .qr-cell { text-align:center; }
+  .qr-cell .qr { width:60mm; height:60mm; margin:0 auto 10px; }
+  .qr-cell .qr svg { width:100%; height:100%; }
+  .qr-cell .url { font-family:ui-monospace, Consolas, monospace; font-size:8.5pt; overflow-wrap:anywhere; direction:ltr; }
+  .toolbar { position:sticky; top:0; background:#10151b; color:#e7eaee; padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; z-index:2; }
+  .toolbar button { font:inherit; font-weight:700; border:0; border-radius:6px; padding:8px 14px; background:#0b0f14; color:#ffffff; cursor:pointer; }
+  .page { background:#fff; width:210mm; min-height:297mm; margin:12px auto; padding:18mm 16mm; box-shadow:0 1px 6px rgba(0,0,0,.15); page-break-after:always; break-after:page; }
+  .page:last-child { page-break-after:auto; break-after:auto; }
+  h1 { font-size:22pt; margin:0 0 4px; color:var(--navy); }
+  h2 { font-size:15pt; margin:0 0 8px; color:var(--navy); }
+  .eyebrow { color:var(--amber); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:9pt; }
+  .meta { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:14px 0; font-size:10.5pt; }
+  .meta dt { color:var(--muted); }
+  .meta dd { margin:0; font-weight:600; }
+  .box { border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:10px 0; }
+  .task { border-inline-start:4px solid var(--amber); background:#f4f5f7; }
+  ol.steps li { margin-bottom:4px; }
+  .lines { margin-top:8px; }
+  .lines div { border-bottom:1px solid var(--line); height:9mm; }
+  table { width:100%; border-collapse:collapse; font-size:10pt; }
+  th, td { border:1px solid var(--line); padding:5px 7px; text-align:start; vertical-align:top; }
+  th { background:#f2f4f6; }
+  .foot { margin-top:14px; color:var(--muted); font-size:8.5pt; }
+  .err { max-width:640px; margin:40px auto; background:#fff; padding:20px; border-radius:8px; }
+  @page { size:A4; margin:0; }
+  @media print {
+    body { background:#fff; }
+    .toolbar { display:none; }
+    .page { margin:0; box-shadow:none; width:auto; min-height:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar"><strong data-i18n="print.toolbar.heading">Printable backup pack</strong><span id="tbInfo"></span><button id="printBtn" data-i18n="print.toolbar.printButton">Print / Save as PDF</button></div>
+<div id="out"><p class="err" data-i18n="print.loading">Loading…</p></div>
+
+<script src="/vendor/qrcode-generator-1.4.4.js"></script>
+<script src="./lang.js"></script>
+<script src="./shared.js"></script>
+<script src="./layout.js"></script>
+<script>
+  const out = document.getElementById("out");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const lines = (n) => `<div class="lines">${"<div></div>".repeat(n)}</div>`;
+  document.getElementById("printBtn").onclick = () => window.print();
+
+  (async () => {
+    const sessionId = getSessionId();
+    if (!sessionId || !getFacilitatorToken()) {
+      out.innerHTML = `<p class="err">${esc(T("print.err.openFromFacilitator"))}</p>`;
+      return;
+    }
+    let row;
+    try { row = await fetchSession(sessionId); } catch (err) { out.innerHTML = `<p class="err">${esc(T("print.err.loadFailed", { message: String(err.message == null ? "" : err.message) }))}</p>`; return; }
+    if (!row) { out.innerHTML = `<p class="err">${esc(T("print.err.notFound"))}</p>`; return; }
+    const sc = row.scenario || {};
+    const injects = sc.injects || [];
+    const depts = [...new Set([...scenarioDepartments(row), ...(row.extra_departments || [])])];
+    const title = sc.title || row.label || T("print.defaultTitle");
+    const totalMin = injects.reduce((t, i) => t + (Number(i.durationMinutes) || 0), 0);
+    document.getElementById("tbInfo").textContent = `${T("print.toolbar.injects", { count: injects.length })} · ${T("print.toolbar.departments", { count: depts.length })}`;
+    document.title = T("print.docTitle", { title: String(title) });
+
+    const pages = [];
+    pages.push(`<section class="page">
+      <div class="eyebrow">${esc(T("print.cover.eyebrow"))}</div>
+      <h1>${esc(title)}</h1>
+      <dl class="meta">
+        <dt>${esc(T("print.cover.organisation"))}</dt><dd>${esc(row.label || "")}</dd>
+        <dt>${esc(T("print.cover.injects"))}</dt><dd>${totalMin ? esc(T("print.cover.injectsWithTime", { injects: injects.length, count: totalMin })) : injects.length}</dd>
+        <dt>${esc(T("print.cover.departments"))}</dt><dd>${esc(depts.join(", ") || "—")}</dd>
+        <dt>${esc(T("print.cover.printed"))}</dt><dd>${esc(new Date().toLocaleString((PPLang.lang() === "en" ? "en-GB" : PPLang.lang()), { dateStyle: "medium", timeStyle: "short" }))}</dd>
+      </dl>
+      <div class="box">
+        <h2>${esc(T("print.cover.failHeading"))}</h2>
+        <ol class="steps">
+          <li>${esc(T("print.cover.failStep1"))}</li>
+          <li>${esc(T("print.cover.failStep2"))}</li>
+          <li>${esc(T("print.cover.failStep3"))}</li>
+          <li>${esc(T("print.cover.failStep4"))}</li>
+          <li>${esc(T("print.cover.failStep5"))}</li>
+          <li>${esc(T("print.cover.failStep6"))}</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h2>${esc(T("print.cover.sayHeading"))}</h2>
+        <ol class="steps">
+          <li>${esc(T("print.cover.sayStep1"))}</li>
+          <li>${esc(T("print.cover.sayStep2"))}</li>
+          <li>${esc(T("print.cover.sayStep3"))}</li>
+          <li>${esc(T("print.cover.sayStep4"))}</li>
+        </ol>
+      </div>
+      <h2>${esc(T("print.list.heading"))}</h2>
+      <table><thead><tr><th>#</th><th>${esc(T("print.list.inject"))}</th><th>${esc(T("print.list.responsible"))}</th><th>${esc(T("print.list.answer"))}</th><th>${esc(T("print.list.time"))}</th></tr></thead><tbody>
+      ${injects.map((inj, i) => `<tr><td>${i + 1}</td><td>${esc(inj.title || "")}</td><td>${esc(injectResponsible(inj).join(", "))}</td><td>${injectOutput(inj) === "individual" ? esc(T("print.list.individual")) : esc(T("print.list.group"))}</td><td>${inj.durationMinutes ? esc(T("print.list.minutes", { count: inj.durationMinutes })) : "—"}</td></tr>`).join("")}
+      </tbody></table>
+      <p class="foot">${esc(T("print.cover.foot"))}</p>
+    </section>`);
+
+    injects.forEach((inj, i) => {
+      const task = injectTaskText(inj);
+      pages.push(`<section class="page">
+        <div class="eyebrow">${esc(T("print.inject.eyebrow", { number: i + 1, total: injects.length }))}${inj.time ? ` · ${esc(inj.time)}` : ""}</div>
+        <h1>${esc(inj.title || T("print.inject.fallbackTitle", { number: i + 1 }))}</h1>
+        <dl class="meta">
+          <dt>${esc(T("print.inject.responsible"))}</dt><dd>${esc(injectResponsible(inj).join(", "))}</dd>
+          <dt>${esc(T("print.inject.answer"))}</dt><dd>${injectOutput(inj) === "individual" ? esc(T("print.inject.answerIndividual")) : esc(T("print.inject.answerGroup"))}</dd>
+          <dt>${esc(T("print.inject.timeAllowed"))}</dt><dd>${inj.durationMinutes ? esc(T("print.inject.minutes", { count: inj.durationMinutes })) : esc(T("print.inject.noTimeLimit"))}</dd>
+        </dl>
+        <div class="box"><div style="white-space:pre-wrap">${esc(inj.desc || inj.description || inj.body || "")}</div></div>
+        ${task ? `<div class="box task">${T("print.inject.task_html", { task: esc(task) })}</div>` : ""}
+        ${inj.sfx ? `<p class="foot">${esc(T("print.inject.sound", { sounds: Array.isArray(inj.sfx) ? inj.sfx.join(" + ") : inj.sfx }))}</p>` : ""}
+        <h2 style="margin-top:14px">${esc(T("print.inject.notesHeading"))}</h2>
+        ${lines(8)}
+      </section>`);
+    });
+
+    // The two public QR codes (roadmap item 11, 17 October 2026): one sheet
+    // to pin up in each room, or to hold up to the camera.
+    const langHint = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
+    const joinUrl = `${location.origin}/play/join.html?session=${sessionId}${langHint}`;
+    const displayUrl = `${location.origin}/play/room-display.html?session=${sessionId}${langHint}`;
+    pages.push(`<section class="page qr-page">
+      <div class="eyebrow">${esc(T("print.qr.eyebrow"))}</div>
+      <h1>${esc(title)}</h1>
+      <div class="qr-grid">
+        <div class="qr-cell"><div class="qr" id="printJoinQr"></div><h2>${esc(T("print.qr.joinHeading"))}</h2><p>${esc(T("print.qr.joinText"))}</p><p class="url">${esc(joinUrl)}</p></div>
+        <div class="qr-cell"><div class="qr" id="printDisplayQr"></div><h2>${esc(T("print.qr.displayHeading"))}</h2><p>${esc(T("print.qr.displayText"))}</p><p class="url">${esc(displayUrl)}</p></div>
+      </div>
+      <p class="foot">${esc(T("print.qr.foot"))}</p>
+    </section>`);
+
+    pages.push(`<section class="page">
+      <div class="eyebrow">${esc(T("print.sheet.eyebrow"))}</div>
+      <h1>${esc(T("print.sheet.heading"))}</h1>
+      <dl class="meta">
+        <dt>${esc(T("print.sheet.department"))}</dt><dd>__________________________________________</dd>
+        <dt>${esc(T("print.sheet.injectNumber"))}</dt><dd>________</dd>
+        <dt>${esc(T("print.sheet.timeFinished"))}</dt><dd>________</dd>
+        <dt>${esc(T("print.sheet.answerType"))}</dt><dd>${esc(T("print.sheet.groupAnswer"))} &nbsp;&nbsp; ${esc(T("print.sheet.individualAnswer"))}</dd>
+      </dl>
+      <h2>${esc(T("print.sheet.yourAnswer"))}</h2>
+      ${lines(18)}
+      <p class="foot">${esc(T("print.sheet.foot"))}</p>
+    </section>`);
+    out.innerHTML = pages.join("");
+    PPLayout.qr(document.getElementById("printJoinQr"), joinUrl, { cellSize: 6 });
+    PPLayout.qr(document.getElementById("printDisplayQr"), displayUrl, { cellSize: 6 });
+  })();
+</script>
+</body>
+</html>

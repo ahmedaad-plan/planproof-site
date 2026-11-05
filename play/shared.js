@@ -1,0 +1,2189 @@
+// Shared helpers for the exercise-player prototype (room-display.html and
+// facilitator-test.html). This is a PROTOTYPE: it proves the real-time
+// mechanism (facilitator action -> Supabase row update -> room display
+// updates instantly) and the audio/video-per-inject mechanism, using
+// synthesized placeholder sound effects and placeholder video cards instead
+// of a real licensed sound/video library. Swap PLACEHOLDER_SFX for real
+// audio files later without changing how injects reference them.
+
+const SUPABASE_URL = "https://qryfayienxrngavhwfgw.supabase.co";
+// Using the legacy anon JWT key here, not the newer sb_publishable_... key —
+// this project's REST/Realtime gateway returned HTTP 400 for the new format,
+// but the legacy key is the one already proven working (it's what the
+// Netlify form function uses for inserts).
+const SUPABASE_PUBLISHABLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeWZheWllbnhybmdhdmh3Zmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTQ3MTcsImV4cCI6MjEwNjUzMDcxN30.AeLL04BiZwqwjNqEvV9dwCKK07Wf7HUN149L0k0fXGQ";
+
+function getSessionId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("session");
+}
+
+// The facilitator secret (see "Role enforcement" in design-notes.md / roadmap
+// item 1). Only a link built from the Facilitator QR carries this; the room
+// display and the future Participant/Observer join links never do, and never
+// need to — they only ever read. Reading it here, rather than hardcoding it
+// into facilitator-test.html, keeps the token out of anything that gets
+// cached or shared as a plain session link by mistake.
+// The facilitator link's token. Remembered on this device for this
+// exercise (18 October 2026: a refresh, or the preview's sign-in step,
+// could drop it from the address and the page said "missing token"), and
+// put back into the address so the link stays complete.
+function getFacilitatorToken() {
+  const params = new URLSearchParams(window.location.search);
+  const session = params.get("session") || "";
+  const key = `pp_fac_token_${session}`;
+  let token = params.get("token");
+  try {
+    // Only the Facilitator's own pages use the remembered token — never a
+    // participant, Observer or room screen opened in the same browser.
+    const facPage = /\/(facilitator-test|print)(\.html)?$/.test(location.pathname);
+    if (!facPage) return token;
+    if (token) localStorage.setItem(key, token);
+    else if (session) {
+      token = localStorage.getItem(key);
+      if (token) {
+        params.set("token", token);
+        history.replaceState(null, "", `${location.pathname}?${params.toString()}${location.hash}`);
+      }
+    }
+  } catch { /* storage blocked: the address is the only source */ }
+  return token;
+}
+
+// UUIDs are always 36 characters (32 hex digits + 4 hyphens) in this exact
+// shape. A session ID that doesn't match this is almost always a link that
+// got cut off while being copied or typed, not a real server-side problem —
+// catching it here turns a cryptic "HTTP 400" into a message that actually
+// tells you what's wrong.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertValidSessionId(sessionId) {
+  if (!sessionId || !UUID_RE.test(sessionId)) {
+    throw new Error(T("shared.error.sessionIdMalformed", { id: String(sessionId) }));
+  }
+}
+
+// Headers for a call to one of the database's checked functions. The
+// facilitator token is added only when this page's link carries a
+// well-formed one.
+function rpcHeaders(facilitatorToken) {
+  const headers = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (facilitatorToken && UUID_RE.test(facilitatorToken)) headers["x-facilitator-token"] = facilitatorToken;
+  return headers;
+}
+
+// The session, by its exact id (item 6, 11 October 2026). The public key can
+// no longer read the exercise_sessions table — listing sessions is closed —
+// so every page asks the database function player_session for this one
+// session. Without the facilitator token the answer is cut down to what a
+// player's screen needs: only injects already played, and only their display
+// fields. With the token (the Facilitator page, the backup pack) it is the
+// full scenario.
+// `cache: "no-store"` stays: a stale cached copy was once mistaken for a real
+// bug ("No inject at index 2" on a session that had 17).
+async function fetchSession(sessionId) {
+  assertValidSessionId(sessionId);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/player_session`, {
+    method: "POST",
+    cache: "no-store",
+    headers: rpcHeaders(getFacilitatorToken()),
+    body: JSON.stringify({ p_session_id: sessionId }),
+  });
+  if (!res.ok) throw new Error(T("shared.error.fetchSessionFailed", { status: res.status }));
+  const text = await res.text();
+  const row = text ? JSON.parse(text) : null;
+  // The exercise's own language (lang.js). English: nothing happens.
+  if (row) await PPLang.useSessionLanguage(row.language);
+  // W5 (26 October 2026): after the report is delivered PlanProof removes the
+  // exercise's player data; the exercise then answers "purged" and every page
+  // shows a calm "closed" screen instead of a load error. The caller never
+  // gets a row back, so nothing tries to draw an exercise that is gone.
+  if (row && row.purged) { showClosedPage(sessionId); return new Promise(() => {}); }
+  return row || null;
+}
+
+// The "this exercise is closed" screen (W5). Forgets everything this device
+// kept for the exercise (registration with the person's name, answers,
+// survey taps, language, facilitator link) and stops every timer, so the
+// page stays quiet.
+let ppClosedShown = false;
+function showClosedPage(sessionId) {
+  for (const store of [() => window.localStorage, () => window.sessionStorage]) {
+    try {
+      const s = store(), drop = [];
+      for (let i = 0; i < s.length; i++) { const k = s.key(i); if (k && k.includes(sessionId)) drop.push(k); }
+      drop.forEach((k) => s.removeItem(k));
+    } catch { /* storage blocked: nothing kept to forget */ }
+  }
+  if (ppClosedShown) return;
+  ppClosedShown = true;
+  try { stopSfx(); } catch { /* no sound playing */ }
+  const last = Number(setTimeout(() => {}, 0));
+  if (Number.isFinite(last)) for (let id = Math.max(1, last - 200000); id <= last; id++) { clearTimeout(id); clearInterval(id); }
+  document.title = T("shared.closed.title");
+  document.body.innerHTML = `
+    <main class="pp-closed">
+      <section class="pp-thanks" role="status">
+        <h1 class="pp-thanks-title">${ppEscape(T("shared.closed.title"))}</h1>
+        <p class="pp-thanks-lead">${ppEscape(T("shared.closed.lead"))}</p>
+        <p class="pp-thanks-close">${ppEscape(T("shared.closed.body"))}</p>
+      </section>
+    </main>`;
+}
+
+// Retries a failed write a few times (with increasing delay) before giving
+// up, so a single dropped packet during a WiFi blip doesn't silently lose a
+// facilitator action — or, once observer/participant writes exist, someone's
+// typed note or submission. Still throws after exhausting attempts, so a
+// caller's existing error handling (e.g. facilitator-test.html's error box)
+// keeps working — this only absorbs *transient* failures, not real ones.
+async function withRetry(fn, { attempts = 3, baseDelayMs = 500 } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** i));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+async function patchSession(sessionId, fields) {
+  assertValidSessionId(sessionId);
+  // Writes now require the session's facilitator token (see
+  // getFacilitatorToken above) — the database rejects any update that
+  // doesn't present it, per the RLS policy added for roadmap item 1
+  // ("Row Level Security on exercise_sessions"). Fail with a clear message
+  // rather than letting the request go out and come back as an opaque
+  // "HTTP 403" — a missing token is almost always a plain room-display link
+  // being used where the Facilitator link (with &token=...) was needed.
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  // Only readable columns are asked for in the reply (17 October 2026): the
+  // public key has column-level SELECT on this table, so a bare
+  // return=representation ("*") fails with "permission denied" the moment
+  // the row has a column it may not read (counts_for_stats, since the
+  // survey) — which refused every Facilitator action on the live system.
+  await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/exercise_sessions?id=eq.${sessionId}&select=id,status,current_inject_index,updated_at`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        // return=minimal would make a wrong/stale token fail *silently*:
+        // PostgREST still answers 204 even when the RLS policy filters the
+        // row out of the update entirely (zero rows actually touched), so
+        // return=representation is needed to tell "updated" apart from
+        // "token didn't match, nothing happened" — the response body is
+        // the updated row(s), empty when the token was rejected.
+        Prefer: "return=representation",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
+    })
+  ).then(async (res) => {
+    // withRetry wraps only fetch() itself — a dropped packet or connection
+    // reset is worth retrying, but a rejection below (bad token) will fail
+    // the exact same way every time, so it's checked outside withRetry and
+    // reported once immediately, the same pattern joinSession and
+    // fetchSubmissionStatus already use. (Previously this whole check lived
+    // inside withRetry, so a rejected action silently retried 3 times with
+    // backoff — up to ~1.5s — before finally showing the error; fixed
+    // 5 October 2026.)
+    if (!res.ok) {
+      // W6a: the database's own refusal of Start while the briefings are not
+      // done is shown in its words (every other failure as before).
+      const detail = res.status === 400 ? await readErrorDetail(res).catch(() => "") : "";
+      const gateRefusal = PPLang.dbMessage("The briefings have not finished on every screen — see the Before Start panel."); // i18n-ok: the database's English text, looked up in the catalogue
+      if (detail && detail === gateRefusal) throw new Error(detail);
+      throw new Error(T("shared.error.updateSessionFailed", { status: res.status }));
+    }
+    const rows = await res.json();
+    if (rows.length === 0) {
+      throw new Error(T("shared.error.updateRejected"));
+    }
+    ringDoorbell(writerDoorbell, "session");
+  });
+}
+
+// Registers one person's attendance (roadmap item 2 — identity/join flow).
+// Unlike patchSession, this needs no facilitator token: joining is the one
+// write the public Participant/Observer QR is meant to allow. The database
+// enforces the real rules (room must fit the session's room_count, session
+// must not have ended) via a trigger — this just reports whichever rejection
+// came back in plain language instead of a raw HTTP/Postgres error.
+//
+// The attendee id is generated here in the browser and sent with the insert,
+// rather than read back afterwards — the attendee list is readable only by
+// the facilitator, so a participant's browser can't look its own row up.
+// That id is what ties an individual answer to this person (see
+// saveSubmission). Random UUIDs aren't guessable, and nothing public lists
+// them.
+// remote (item 9, 16 October 2026): the participant is joining alone, with no
+// shared room screen — their own device plays the sounds. Participants only;
+// a remote registration never carries a room (the database enforces both).
+async function joinSession(sessionId, { id, firstName, familyName, title, department, role, room, remote, privacyAck }) {
+  assertValidSessionId(sessionId);
+  // withRetry wraps only the network call, not the outcome check below —
+  // a dropped packet is worth retrying, but a rejected join (wrong room,
+  // session already ended) will fail the exact same way every time, so
+  // retrying it 3 times with backoff would just be a 3.5-second wait to
+  // show the same error.
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/attendees`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        id,
+        session_id: sessionId,
+        // name is recomposed server-side from the two parts; sent only
+        // because the column is NOT NULL.
+        name: `${firstName} ${familyName}`,
+        first_name: firstName,
+        family_name: familyName,
+        job_title: title,
+        department,
+        role,
+        room: remote ? null : room ?? null,
+        remote: !!remote,
+        privacy_ack: !!privacyAck, // the person ticked "I have read the privacy notice" (required by the database)
+      }),
+    })
+  );
+  if (!res.ok) {
+    // PostgREST passes the trigger's RAISE EXCEPTION message straight
+    // through as the response body's "message" field — surface that rather
+    // than just the HTTP status, since it's already written in plain
+    // language ("room must be between 1 and 3 for this session.", "This
+    // exercise has already ended — joining is no longer possible.").
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body && body.message) detail = PPLang.dbMessage(body.message);
+    } catch {
+      /* response wasn't JSON — keep the plain HTTP status above */
+    }
+    throw new Error(T("shared.error.couldntJoin", { detail }));
+  }
+}
+
+// Saves an answer to one inject through the database's checked function
+// save_submission (item 6, 11 October 2026 — the public key can no longer
+// read, insert or update the answers table directly). The writer must be a
+// registered participant of this session; the department always comes from
+// that registration, never from the browser, and nothing about the writer is
+// stored on a group answer.
+//
+// Group vs individual (Ahmed, 4 October 2026): a "group" inject has one
+// answer per department (anyone registered in it can write it); an
+// "individual" inject has one answer per person. submitted_at/on_time are
+// stamped by the database at the moment of Submit. A draft or an automatic
+// save can never turn an already-submitted answer back into an unsubmitted
+// one — the database refuses it, in plain words.
+async function saveSubmission(sessionId, { injectIndex, writerId, individual, answerText, attachments, status }) {
+  assertValidSessionId(sessionId);
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_submission`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(null),
+      body: JSON.stringify({
+        p_session_id: sessionId,
+        p_writer_id: writerId,
+        p_inject_index: injectIndex,
+        p_individual: !!individual,
+        p_answer_text: answerText,
+        p_attachments: attachments || [],
+        p_status: status,
+      }),
+    });
+  } catch {
+    throw new Error(T("shared.error.saveAnswerNoConnection"));
+  }
+  if (!res.ok) {
+    throw new Error(T("shared.error.couldntSaveAnswer", { detail: await readErrorDetail(res) }));
+  }
+}
+
+// Plain-language reason from a failed PostgREST response — the database's
+// own message when there is one (e.g. "This exercise has already ended"),
+// otherwise just the HTTP status.
+async function readErrorDetail(res) {
+  try {
+    const body = await res.json();
+    if (body && body.message) return PPLang.dbMessage(body.message);
+  } catch {
+    /* not JSON */
+  }
+  return `HTTP ${res.status}`;
+}
+
+// Facilitator dashboard: who has submitted what, and whether it was on time.
+// Metadata only — the database function behind this never returns answer
+// text or attachments, and refuses anyone without this session's
+// facilitator token.
+async function fetchSubmissionStatus(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_submission_status`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(T("shared.error.fetchSubmissionStatusFailed", { detail: await readErrorDetail(res) }));
+  return res.json();
+}
+
+// The inject's output type and responsible departments, with the defaults
+// for a scenario written before these fields existed: a group task that
+// every department is responsible for.
+function injectOutput(inject) {
+  return inject && inject.output === "individual" ? "individual" : "group";
+}
+// Accepts both spellings: "responsible" (a list, used by the player's own
+// demo scenario) and "team" (exactly one department or "All" — what the
+// planproof-scenario skill's Stage 3 JSON produces).
+function injectResponsible(inject) {
+  const r = inject && (inject.responsible != null ? inject.responsible : inject.team);
+  if (!r || (Array.isArray(r) && r.length === 0)) return ["All"]; // i18n-ok: the scenario's own code for "every department" (compared in isDepartmentResponsible), not wording
+  return Array.isArray(r) ? r : [r];
+}
+// The inject's task line for participants. The planproof-scenario skill's
+// Stage 3 JSON gives it as an object ({ type: "PRODUCE|LOCATE|DECIDE",
+// text, label }); the player's demo uses a plain string. Accept both.
+function injectTaskText(inject) {
+  const t = inject && inject.task;
+  if (!t) return "";
+  if (typeof t === "string") return t;
+  const text = t.text || t.label || "";
+  return t.type ? `${t.type} — ${text}` : text;
+}
+
+// ---- The inject as the real message (W4 redesign, 30 October 2026) ------
+// Since scenario v7 every inject's "desc" opens with a header line such as
+// "Email · From: Duty Manager, Jebel Ali hub · To: Operations · 07:12",
+// then the message itself. injectMessageParts() splits that first line off
+// when it looks like such a header (it has " · " and more text follows);
+// anything else — an older scenario, the demo — is all body, exactly as
+// before. The header is the scenario's own text: nothing here is wording.
+const MSG_ICONS = {
+  mail: '<path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  alert: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  social: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>',
+  news: '<path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>',
+  update: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+};
+function injectMessageParts(inject) {
+  const desc = String((inject && inject.desc) || "");
+  const nl = desc.indexOf("\n");
+  const first = (nl >= 0 ? desc.slice(0, nl) : desc).trim();
+  const rest = nl >= 0 ? desc.slice(nl + 1).replace(/^\s+/, "") : "";
+  if (nl < 0 || !rest || first.length > 220 || first.indexOf(" \u00b7 ") < 0) return { header: null, channel: "", body: desc };
+  const segs = first.split(" \u00b7 ").map((x) => x.trim()).filter(Boolean);
+  return { header: segs, channel: segs[0] || "", body: rest };
+}
+function injectMessageIcon(channel, deliveredAs) {
+  const c = `${String(channel || "")} ${String(deliveredAs || "")}`.toLowerCase();
+  const key = /mail/.test(c) ? "mail" : /call|phone/.test(c) ? "phone" : /alert|alarm|system/.test(c) ? "alert"
+    : /letter|notice|regulator/.test(c) ? "doc" : /news/.test(c) ? "news" : /social|post|tweet|x\b|facebook|instagram/.test(c) ? "social"
+    : /report|whatsapp|radio|chat/.test(c) ? "chat" : "update";
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${MSG_ICONS[key]}</svg>`;
+}
+// The message card's HTML. opts: titleClass / descClass (the page's own
+// class names, kept so earlier checks still find them), footer (HTML),
+// top (HTML placed above the title, e.g. tags), titleTag.
+function injectMessageHTML(inject, opts) {
+  opts = opts || {};
+  const m = injectMessageParts(inject);
+  // A subject line ("EXERCISE – …", the scenario's own words) reads as the
+  // subject of the email or alert: in bold, on its own line.
+  let bodyText = String(m.body);
+  let subj = "";
+  const sm = m.header ? bodyText.match(/^(EXERCISE\s*[\u2013\u2014-][^\n]*)\n+/) : null;
+  if (sm) { subj = sm[1]; bodyText = bodyText.slice(sm[0].length); }
+  const paras = (subj ? `<p class="pp-msg-subj">${ppEscape(subj)}</p>` : "") +
+    bodyText.split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${ppEscape(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const head = m.header
+    ? `<div class="pp-msg-hd"><span class="pp-msg-ch">${injectMessageIcon(m.channel, inject && inject.deliveredAs)}</span>` +
+      `<div class="pp-msg-meta" dir="auto"><b>${ppEscape(m.header[0])}</b>${m.header.slice(1).map((h) => ` <span>\u00b7 ${ppEscape(h)}</span>`).join("")}</div></div>`
+    : "";
+  return `<div class="pp-msg${m.header ? " has-header" : ""}">${head}<div class="pp-msg-bd">${opts.top || ""}` +
+    `<div class="${opts.titleClass || "inject-title"}" dir="auto">${ppEscape((inject && inject.title) || "")}</div>` +
+    `<div class="${opts.descClass || "inject-desc"} pp-msg-body" dir="auto">${paras}</div>${opts.after || ""}</div>` +
+    `${opts.footer ? `<div class="pp-msg-ft">${opts.footer}</div>` : ""}</div>`;
+}
+
+// The scenario's department list, under either name: "departments" (the
+// player's demo) or "requiredDepartments" (the planproof-scenario skill's
+// Stage 3 JSON). Facilitator-added extra departments are merged in by the
+// caller.
+function scenarioDepartments(session) {
+  const sc = (session && session.scenario) || {};
+  return sc.departments || sc.requiredDepartments || [];
+}
+
+// Is this department expected to answer this inject? Since item 5 (11 October
+// 2026) the Facilitator can add a department at any time. Rule (Ahmed,
+// 11 October 2026): a department added during the exercise is not
+// responsible for the injects it MISSED — any inject that started before it
+// was added, including the one running at that moment. Injects that start
+// after it was added count it exactly like every other department, whether
+// they're addressed to all departments or name it. (Going back to an earlier
+// inject with Previous restarts it, so it then counts too.) The database
+// records when each such department was added (departments_added_late).
+function isDepartmentResponsible(inject, department, row, injectIndex) {
+  if (departmentMissedInject(row, department, injectIndex)) return false;
+  const list = injectResponsible(inject).map((d) => String(d).trim().toLowerCase());
+  const key = String(department || "").trim().toLowerCase();
+  return list.includes("all") || list.includes(key);
+}
+
+// When this department was added during the exercise (ms), or null.
+function departmentAddedLateAt(row, department) {
+  const late = (row && row.departments_added_late) || {};
+  const key = String(department || "").trim().toLowerCase();
+  const found = Object.keys(late).find((d) => d.trim().toLowerCase() === key);
+  return found ? Date.parse(late[found]) : null;
+}
+
+// True when the department was added during the exercise after this inject
+// had already started (it missed the inject). An inject that hasn't started
+// can't have been missed.
+function departmentMissedInject(row, department, injectIndex) {
+  const addedAt = departmentAddedLateAt(row, department);
+  if (addedAt === null || injectIndex === null || injectIndex === undefined) return false;
+  const log = (row && row.inject_started_log) || {};
+  const started = log[String(injectIndex)] ? Date.parse(log[String(injectIndex)]) : null;
+  return started !== null && started <= addedAt;
+}
+
+// The session's own department list: the scenario's plus any the Facilitator
+// added, each once (case-insensitive), in that order. This is the only list
+// department dropdowns offer — departments are never typed freely.
+function sessionDepartments(row) {
+  const seen = new Set();
+  return [...scenarioDepartments(row), ...((row && row.extra_departments) || [])].filter((d) => {
+    const key = String(d || "").trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// The moment the current inject's time runs out, as a millisecond timestamp
+// — from the server's own start time, so every device (and a device that
+// reloads mid-inject) agrees with the database's on-time check. null = no
+// deadline (no duration set). Falls back to "now" only for a session row
+// from before start times were recorded.
+//
+// While the facilitator has paused the exercise (18 October 2026) the
+// deadline moves forward with the clock, so "deadline - now" stays at the
+// time that was left when Pause was pressed, on every device, without each
+// countdown having to know about pauses. On Resume the database moves the
+// inject's start forward by the paused time, and the countdown carries on.
+function injectDeadlineMs(row, inject) {
+  const minutes = ((inject && inject.durationMinutes) || 0) + ((row && row.inject_extra_minutes) || 0);
+  if (!inject || !inject.durationMinutes) return null;
+  const start = row && row.inject_started_at ? Date.parse(row.inject_started_at) : Date.now();
+  const pausedFor = isPaused(row) ? Date.now() - Date.parse(row.paused_at) : 0; // no clamp: a phone clock that is off then cancels out
+  return start + minutes * 60 * 1000 + pausedFor;
+}
+
+// True while the facilitator has paused the running exercise.
+function isPaused(row) {
+  return !!(row && row.status === "running" && row.paused_at && !isNaN(Date.parse(row.paused_at)));
+}
+
+// Uploads one attachment to Supabase Storage ahead of saveSubmission — the
+// returned {path, filename, size, contentType} is meant to go straight into
+// that submission's `attachments` array. The bucket itself enforces the
+// real limits (10MB/file, a fixed set of document/image types) server-side
+// regardless of what the browser claims, so a tampered client can't bypass
+// them.
+async function uploadAttachment(sessionId, injectIndex, department, file) {
+  assertValidSessionId(sessionId);
+  const safeDept = department.replace(/[^a-zA-Z0-9_-]/g, "_") || "unknown";
+  const path = `${sessionId}/${injectIndex}/${safeDept}/${Date.now()}-${file.name}`;
+  const res = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/submission-attachments/${path
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    }
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body && body.message) detail = PPLang.dbMessage(body.message);
+    } catch {
+      /* not JSON — keep the plain status */
+    }
+    throw new Error(T("shared.error.couldntUpload", { name: String(file.name), detail }));
+  }
+  return { path, filename: file.name, size: file.size, contentType: file.type };
+}
+
+// Reads the attendee roster for the Facilitator dashboard (roadmap: letting
+// the facilitator reconcile registrations against the real headcount and
+// fix a mis-registered department). Gated by the same facilitator-token RLS
+// pattern as patchSession — a plain room-display/participant link can't
+// read this, and the database checks the token via a function that reads
+// the real facilitator_token column with its own elevated privilege, so
+// anon never needs (and never gets) SELECT on that column directly.
+async function fetchAttendees(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const res = await withRetry(() =>
+    fetch(
+      `${SUPABASE_URL}/rest/v1/attendees?session_id=eq.${sessionId}` +
+        `&select=id,name,first_name,family_name,job_title,department,role,room,remote,joined_at,rejoined_at&order=joined_at.asc`,
+      {
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          "x-facilitator-token": facilitatorToken,
+        },
+      }
+    )
+  );
+  if (!res.ok) throw new Error(T("shared.error.fetchAttendeesFailed", { status: res.status }));
+  return res.json();
+}
+
+// Removes one mis-registered attendee (e.g. joined under the wrong
+// department) so they can rejoin correctly. This is deliberately "delete
+// and ask them to rejoin" rather than editing their department in place —
+// simpler to build, and the roster is only ever corrected before the
+// exercise starts (per Ahmed), so there's no mid-exercise disruption to
+// worry about. Same facilitator-token gating as everything else here.
+async function deleteAttendee(attendeeId, facilitatorToken) {
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const res = await withRetry(() =>
+    // select=id: only the id comes back (18 October 2026 — asking for the
+    // whole row failed once a column the page may not read was added).
+    fetch(`${SUPABASE_URL}/rest/v1/attendees?id=eq.${attendeeId}&select=id`, {
+      method: "DELETE",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        Prefer: "return=representation",
+        "x-facilitator-token": facilitatorToken,
+      },
+    })
+  );
+  if (!res.ok) throw new Error(T("shared.error.removeAttendeeFailed", { status: res.status }));
+  const rows = await res.json();
+  if (rows.length === 0) {
+    throw new Error(T("shared.error.removeRejected"));
+  }
+}
+
+// The Facilitator's correction of "in a room / joining remotely" (item 9,
+// 16 October 2026), in either direction, through the checked database
+// function facilitator_set_remote (token). Marking someone "in a room" in a
+// multi-room exercise needs the room they are in. The person's device learns
+// the change in the reply to its next check-in (within about 20 seconds).
+async function setAttendeeRemote(sessionId, attendeeId, remote, room, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_set_remote`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId, p_attendee_id: attendeeId, p_remote: !!remote, p_room: room ?? null }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// W6c (3 November 2026): "Show rejoin code on room screens" — the checked
+// database function stamps the time; room screens show the join code for 30 s.
+async function showRejoinCode(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  if (!facilitatorToken) throw new Error(T("shared.error.noFacilitatorToken"));
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_show_rejoin_code`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// Fires `callback` whenever this device looks like it just came back —
+// either the browser's own "online" event, or the tab becoming visible
+// again (mobile browsers suspend/throttle background tabs, which can drop
+// the realtime socket without ever firing an "offline" event). A page
+// should treat this as "don't trust whatever you were showing — go fetch
+// the real current state," because a realtime subscription can silently
+// miss updates that happened while it was disconnected; the push stream is
+// a notification to refresh, not a guaranteed log of everything that
+// happened.
+function onReconnect(callback) {
+  window.addEventListener("online", callback);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) callback();
+  });
+}
+
+// ---- The doorbell (item 6, 11 October 2026) --------------------------------
+// Live updates no longer carry any data. The database rings a content-free
+// "ring" on this session's own channel whenever the session changes or a
+// message is added; each page then fetches the latest through the checked
+// functions. A false ring (the channel is open to anyone who knows the
+// session id) can only cause a re-fetch. onRing(kind): "session", "message"
+// (to participants), "inbox" (to the facilitator — from a department or,
+// since item 7, from an Observer) or "observer" (to Observers, item 7).
+function subscribeToDoorbell(supabaseClient, sessionId, onRing, onStatus) {
+  return supabaseClient
+    .channel(`pp-${sessionId}`, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "ring" }, (msg) => {
+      const kind = msg && msg.payload && msg.payload.kind;
+      onRing(kind === "message" || kind === "inbox" || kind === "observer" || kind === "writer" || kind === "briefing" ? kind : "session");
+    })
+    .subscribe((status) => onStatus && onStatus(status));
+}
+
+// The Facilitator page also rings after each of its own actions — belt and
+// braces with the database's ring, so screens react at once either way.
+// It registers its channel here; patchSession and sendBroadcast then ring it.
+let writerDoorbell = null;
+function setWriterDoorbell(channel) {
+  writerDoorbell = channel;
+}
+function ringDoorbell(channel, kind) {
+  try {
+    if (channel) channel.send({ type: "broadcast", event: "ring", payload: { kind: kind || "session" } });
+  } catch {
+    /* the database's own ring and the 15-second check still cover it */
+  }
+}
+
+// ---- Facilitator broadcast messages (added 5 October 2026) ----------------
+// One table (session_messages) carries all exercise messaging. Today only
+// the Facilitator -> everyone broadcast exists (department null); roadmap
+// item 4 adds department-targeted messages and replies on the same table.
+// The database checks the facilitator token on every send and stamps the
+// time and the inject showing when it was sent; the browser can't set
+// either. Messages are operational only and stay out of the report.
+//
+// Ready-made messages for the facilitator's dropdown. Choosing one only
+// fills the text box — the facilitator can edit it or type anything else.
+// preset_key is recorded only when a preset is sent unedited.
+const BROADCAST_PRESETS = [
+  { key: "five_min", text: T("shared.presetBroadcast.fiveMin") },
+  { key: "two_min", text: T("shared.presetBroadcast.twoMin") },
+  { key: "submit_now", text: T("shared.presetBroadcast.submitNow") },
+  { key: "next_soon", text: T("shared.presetBroadcast.nextSoon") },
+  { key: "short_break", text: T("shared.presetBroadcast.shortBreak") },
+];
+const MESSAGE_MAX_LENGTH = 280;
+
+// ---- Facilitator <-> Department messaging (roadmap item 4, 5 Oct 2026) ----
+// Ready-made messages for each direction's dropdown. Choosing one only fills
+// the text box — either side can edit it or type anything else, same as the
+// broadcast presets above. preset_key is recorded only when a preset is sent
+// unedited.
+const FACILITATOR_TO_DEPARTMENT_PRESETS = [
+  { key: "need_more_time", text: T("shared.presetToDepartment.needMoreTime") },
+  { key: "submit_when_ready", text: T("shared.presetToDepartment.submitWhenReady") },
+  { key: "finalise_soon", text: T("shared.presetToDepartment.finaliseSoon") },
+];
+const DEPARTMENT_TO_FACILITATOR_PRESETS = [
+  { key: "few_more_minutes", text: T("shared.presetFromDepartment.fewMoreMinutes") },
+  { key: "submitting_now", text: T("shared.presetFromDepartment.submittingNow") },
+  { key: "technical_issue", text: T("shared.presetFromDepartment.technicalIssue") },
+];
+
+// Facilitator -> participants: everyone (department omitted/null) or one
+// department. Same endpoint and rejection handling either way — the
+// database checks the facilitator token and, since item 4, allows either
+// target for direction=to_participants.
+async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
+  assertValidSessionId(sessionId);
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  // Same pattern as joinSession: retry only the network call; a rejection
+  // (wrong token, exercise ended, empty/too-long text) fails once, at once.
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/session_messages`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+        "x-facilitator-token": facilitatorToken,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        direction: "to_participants",
+        department: department || null,
+        body,
+        preset_key: presetKey || null,
+      }),
+    })
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    let rawDetail = detail; // the database's own words, for the two checks below
+    try {
+      const err = await res.json();
+      if (err && err.message) {
+        rawDetail = err.message;
+        detail = PPLang.dbMessage(err.message);
+      }
+    } catch {
+      /* not JSON — keep the HTTP status */
+    }
+    if (/row-level security/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentToken"));
+    } else if (/check constraint/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentLength", { max: MESSAGE_MAX_LENGTH }));
+    }
+    throw new Error(T("shared.error.messageNotSent", { detail }));
+  }
+  ringDoorbell(writerDoorbell, "message");
+}
+
+// Department -> facilitator. No facilitator token exists for a participant,
+// so — like a group answer — anyone who joined under this department can
+// send on its behalf; only the facilitator sees who sent it (18 October 2026). The
+// database refuses this direction without a department (see migration
+// item4_on_time_rule_department_messaging).
+// From 18 October 2026 (Ahmed): the sender's registration goes with it, so
+// the FACILITATOR sees the person's name; departments and Observers never do.
+async function sendDepartmentRequest(sessionId, { body, presetKey, department, attendeeId }) {
+  assertValidSessionId(sessionId);
+  if (!department) {
+    throw new Error(T("shared.error.noDepartment"));
+  }
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/session_messages`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        direction: "to_facilitator",
+        department,
+        body,
+        preset_key: presetKey || null,
+        ...(attendeeId ? { sender_attendee_id: attendeeId } : {}),
+      }),
+    })
+  );
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    let rawDetail = detail; // the database's own words, for the check below
+    try {
+      const err = await res.json();
+      if (err && err.message) {
+        rawDetail = err.message;
+        detail = PPLang.dbMessage(err.message);
+      }
+    } catch {
+      /* not JSON — keep the HTTP status */
+    }
+    if (/check constraint/i.test(rawDetail)) {
+      throw new Error(T("shared.error.messageNotSentLength", { max: MESSAGE_MAX_LENGTH }));
+    }
+    throw new Error(T("shared.error.messageNotSent", { detail }));
+  }
+}
+
+// Messages addressed to participants, oldest first, through the checked
+// function player_messages (item 6 — the public key can no longer read the
+// messages table): messages for everyone, plus those for `department` when
+// one is given (a participant's own department).
+async function fetchMessages(sessionId, department) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/player_messages`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(null),
+      body: JSON.stringify({ p_session_id: sessionId, p_department: department || null }),
+    })
+  );
+  if (!res.ok) throw new Error(T("shared.error.fetchMessagesFailed", { detail: await readErrorDetail(res) }));
+  return res.json();
+}
+
+// Every message of the session, every direction — facilitator token only
+// (item 6: department requests are no longer readable without it). Since
+// item 7 this is the function facilitator_message_log, which also gives each
+// message's room and run (Observer messages are room-level).
+async function fetchAllMessages(sessionId) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_message_log`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(getFacilitatorToken()),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    })
+  );
+  if (!res.ok) throw new Error(T("shared.error.fetchMessagesFailed", { detail: await readErrorDetail(res) }));
+  return res.json();
+}
+
+// The names of the participants who sent department messages (18 October
+// 2026) — for the facilitator only; { messageId: name }. Older databases
+// without the function simply give no names.
+async function fetchMessageSenders(sessionId) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_message_senders`, {
+      method: "POST", cache: "no-store", headers: rpcHeaders(getFacilitatorToken()),
+      body: JSON.stringify({ p_session_id: sessionId }),
+    });
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const map = {};
+    (rows || []).forEach((r) => { map[r.id] = r.sender_name; });
+    return map;
+  } catch { return {}; }
+}
+
+// Messages addressed to the facilitator — from departments and (item 7) from
+// Observers — oldest first.
+async function fetchFacilitatorMessages(sessionId) {
+  return (await fetchAllMessages(sessionId)).filter(
+    (m) => m.direction === "to_facilitator" || m.direction === "from_observer"
+  );
+}
+
+// What the facilitator has sent to Observers (item 7), oldest first.
+async function fetchSentObserverMessages(sessionId) {
+  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_observers");
+}
+
+// What the facilitator has sent (to everyone and to departments), oldest first.
+async function fetchSentMessages(sessionId) {
+  return (await fetchAllMessages(sessionId)).filter((m) => m.direction === "to_participants");
+}
+
+// ---- Observer <-> Facilitator messaging (roadmap item 7, 11 October 2026) --
+// Full design: design-notes.md → "Observer ↔ Facilitator — design". Two rules
+// (Ahmed, 11 October 2026):
+//   1. Room-level, never a person: an Observer's message is recorded as
+//      "the Observer(s) in Room 2". The writer's attendee id is sent only so
+//      the database can check the Observer registration; it is not stored on
+//      the message.
+//   2. This channel stays open after End until the Observers' notes window
+//      closes (five hours after End, or "Notes complete"). Every other message
+//      channel still stops at End.
+// The public key cannot read or write these messages in the table: every
+// call goes through a checked database function. Operational traffic only —
+// it stays out of the report; anything evaluative belongs in a note.
+const OBSERVER_TO_FACILITATOR_PRESETS = [
+  { key: "obs_need_more_time", text: T("shared.presetFromObserver.needMoreTime") },
+  { key: "obs_ready", text: T("shared.presetFromObserver.ready") },
+  { key: "obs_technical_issue", text: T("shared.presetFromObserver.technicalIssue") },
+  { key: "obs_question", text: T("shared.presetFromObserver.question") },
+];
+const FACILITATOR_TO_OBSERVER_PRESETS = [
+  { key: "obs_advancing_1min", text: T("shared.presetToObserver.advancingOneMin") },
+  { key: "obs_noted_hold", text: T("shared.presetToObserver.notedHold") },
+  { key: "obs_please_proceed", text: T("shared.presetToObserver.pleaseProceed") },
+];
+
+// Mirrors the database's own rule (private.observer_channel_closed_reason),
+// so a screen can say when the channel closes. The database still decides.
+function observerChannel(row, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  if (!row) return { open: false, reason: T("shared.status.loading"), closesAt: null };
+  if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
+  if (row.notes_closed_at) {
+    return { open: false, reason: T("shared.observerChannel.closedNotesComplete"), closesAt: null };
+  }
+  const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
+  const closesAt = ended + OBSERVER_NOTES_WINDOW_MS;
+  if (now > closesAt) {
+    return {
+      open: false,
+      reason: T("shared.observerChannel.closedAfterHour"),
+      closesAt,
+    };
+  }
+  return { open: true, reason: null, closesAt };
+}
+
+// "Room 2 Observer" — or just "Observer" in a one-room exercise. Never a name.
+function observerRoomLabel(room) {
+  return room ? T("shared.observer.roomLabel", { room }) : T("shared.observer.label");
+}
+// Who a facilitator's message to Observers was for.
+function observerTargetLabel(room) {
+  return room ? T("shared.observer.roomTarget", { room }) : T("shared.observer.allTarget");
+}
+
+// Observer -> facilitator. message.id is created on the phone when the
+// message is started, so sending it twice (Send pressed twice, or a retry
+// after a dropped connection) saves it once.
+function sendObserverMessage(sessionId, { id, body, presetKey, attendeeId }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("send_observer_message", {
+    p_id: id,
+    p_session_id: sessionId,
+    p_attendee_id: attendeeId,
+    p_body: body,
+    p_preset_key: presetKey || null,
+  });
+}
+
+// Facilitator -> Observers: all of them (room null) or one room's.
+async function sendToObservers(sessionId, { id, body, presetKey, room }) {
+  assertValidSessionId(sessionId);
+  const facilitatorToken = getFacilitatorToken();
+  if (!facilitatorToken) {
+    throw new Error(T("shared.error.noFacilitatorToken"));
+  }
+  const result = await callNotesRpc(
+    "facilitator_message_observers",
+    { p_id: id, p_session_id: sessionId, p_room: room || null, p_body: body, p_preset_key: presetKey || null },
+    facilitatorToken
+  );
+  ringDoorbell(writerDoorbell, "observer");
+  return result;
+}
+
+// What this Observer may read: this run's messages to all Observers or to
+// their room, and what their own room's Observers sent. Oldest first.
+async function fetchObserverMessages(sessionId, attendeeId) {
+  assertValidSessionId(sessionId);
+  return (await callNotesRpc("observer_messages", { p_session_id: sessionId, p_attendee_id: attendeeId })) || [];
+}
+
+function formatMessageTime(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleTimeString(PPLang.locales(), { hour: "2-digit", minute: "2-digit" });
+}
+
+// A short two-note chime for a new broadcast on the room display. Made with
+// the Web Audio API rather than a sound file, and kept separate from
+// playSfx so it never stops an inject's own sound effect. Needs
+// unlockChime() to have run inside a user gesture ("Tap to begin").
+let chimeCtx = null;
+function unlockChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    chimeCtx = chimeCtx || new Ctx();
+    if (chimeCtx.state === "suspended") chimeCtx.resume();
+  } catch {
+    chimeCtx = null;
+  }
+}
+function playChime() {
+  if (!chimeCtx) return false;
+  try {
+    const now = chimeCtx.currentTime;
+    [
+      [880, 0],
+      [1318.5, 0.18],
+    ].forEach(([freq, offset]) => {
+      const osc = chimeCtx.createOscillator();
+      const gain = chimeCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.6);
+      osc.connect(gain).connect(chimeCtx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.65);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---- Observer notes (roadmap item 5, built 11 October 2026) ---------------
+// Full design: design-notes.md → "Observer notes". The public key has no
+// access to the observer_notes table at all — every write and read goes
+// through a database function that checks who is asking (a registered
+// Observer's attendee id, or the facilitator token), the time window, the
+// inject and the department list. These helpers just call those functions.
+
+// Topic is optional since 17 October 2026: a note not classified by the
+// Observer is "General" (the report classifies it afterwards).
+const NOTE_TOPICS = [
+  { key: "general", label: T("shared.noteTopic.general") },
+  { key: "decision", label: T("shared.noteTopic.decision") },
+  { key: "communication", label: T("shared.noteTopic.communication") },
+  { key: "plan", label: T("shared.noteTopic.plan") },
+  { key: "roles", label: T("shared.noteTopic.roles") },
+  { key: "coordination", label: T("shared.noteTopic.coordination") },
+  { key: "other", label: T("shared.noteTopic.other") },
+];
+// Three levels, not five (Ahmed, 11 October 2026).
+const NOTE_TYPES = [
+  { key: "positive", label: T("shared.noteType.positive") },
+  { key: "improvement", label: T("shared.noteType.improvement") },
+  { key: "critical", label: T("shared.noteType.critical") },
+];
+const NOTE_MAX_LENGTH = 500;
+const NOTE_TOPIC_OTHER_MAX = 60;
+const NOTE_EXTERNAL_MAX = 80;
+// Observers: five hours after End (Ahmed, 18 October 2026; was one hour). Facilitator: 48 hours after End,
+// or until "Notes complete", whichever comes first.
+const OBSERVER_NOTES_WINDOW_MS = 5 * 60 * 60 * 1000; // five hours (Ahmed, 18 October 2026; was one)
+const FACILITATOR_NOTES_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function noteTopicLabel(note) {
+  if (note.topic === "other") return note.topic_other ? T("shared.noteTopic.otherWith", { text: note.topic_other }) : T("shared.noteTopic.other");
+  const t = NOTE_TOPICS.find((x) => x.key === note.topic);
+  return t ? t.label : note.topic;
+}
+function noteTypeLabel(key) {
+  const t = NOTE_TYPES.find((x) => x.key === key);
+  return t ? t.label : key;
+}
+function noteAboutLabel(note) {
+  if (note.department_scope === "external") return T("shared.noteAbout.external", { name: String(note.external_party) });
+  return (note.departments || []).join(", ");
+}
+
+// Mirrors the database's own rule (private.notes_closed_reason) so a screen
+// can say when notes open and close. The database still decides: a note
+// sent a moment too late is refused there with the same reason.
+function notesWindow(row, role, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  if (!row) return { open: false, reason: T("shared.status.loading"), closesAt: null };
+  if (row.notes_closed_at) return { open: false, reason: T("shared.notesWindow.closed"), closesAt: null };
+  if (row.status === "lobby") return { open: false, reason: T("shared.notesWindow.opensAtStart"), closesAt: null };
+  if (row.status !== "ended") return { open: true, reason: null, closesAt: null };
+  const ended = row.ended_at ? Date.parse(row.ended_at) : -Infinity;
+  const span = role === "facilitator" ? FACILITATOR_NOTES_WINDOW_MS : OBSERVER_NOTES_WINDOW_MS;
+  const closesAt = ended + span;
+  if (now > closesAt) {
+    return {
+      open: false,
+      reason: role === "facilitator"
+        ? T("shared.notesWindow.closedFacilitator")
+        : T("shared.notesWindow.closedObserver"),
+      closesAt,
+    };
+  }
+  return { open: true, reason: null, closesAt };
+}
+
+// The injects actually played in this run (keys of inject_started_log), in
+// order — the only injects a note can be about.
+function playedInjects(row) {
+  const injects = (row && row.scenario && row.scenario.injects) || [];
+  return Object.keys((row && row.inject_started_log) || {})
+    .map(Number)
+    .filter((i) => Number.isInteger(i) && injects[i])
+    .sort((a, b) => a - b);
+}
+
+// One RPC call: the network part is retried (a dropped packet), a refusal
+// from the database is reported once, at once, in its own words.
+async function callNotesRpc(name, body, facilitatorToken) {
+  const headers = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (facilitatorToken) headers["x-facilitator-token"] = facilitatorToken;
+  let res;
+  try {
+    res = await withRetry(() =>
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+        method: "POST",
+        cache: "no-store",
+        headers,
+        body: JSON.stringify(body),
+      })
+    );
+  } catch {
+    const err = new Error(T("shared.error.serverUnreachable"));
+    err.network = true;
+    throw err;
+  }
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ---- A returning person (roadmap item 10, W4, 30 October 2026) ----------
+// Design: design-notes.md → "Item 10 — recognising a returning person".
+// Each browser keeps one random device id (not tied to any exercise). The
+// join page asks the database whether the registration kept on this device
+// still exists (attendee_lookup); a person on a new device can take their
+// own registration back by name + department (attendee_match, then
+// attendee_reclaim), refused while the old device was seen in the last two
+// minutes. The newest device wins: the old one learns it was "moved" and
+// stops. Nothing here ever lists who else is registered.
+function personDeviceId() {
+  const key = "pp_person_device";
+  let id = null;
+  try { id = localStorage.getItem(key); } catch { id = null; }
+  if (!UUID_RE.test(id || "")) {
+    id = crypto.randomUUID();
+    try { localStorage.setItem(key, id); } catch { /* storage blocked: a new id each visit */ }
+  }
+  return id;
+}
+function lookupAttendee(sessionId, attendeeId) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_lookup", { p_session_id: sessionId, p_attendee_id: attendeeId, p_device_id: personDeviceId() });
+}
+function matchAttendee(sessionId, { firstName, familyName, department, role }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_match", { p_session_id: sessionId, p_first: firstName, p_family: familyName, p_department: department, p_role: role });
+}
+function reclaimAttendee(sessionId, { firstName, familyName, department, role }) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("attendee_reclaim", { p_session_id: sessionId, p_first: firstName, p_family: familyName, p_department: department, p_role: role, p_device_id: personDeviceId() });
+}
+// The identity a page keeps on the device, from a database reply.
+function identityFromAttendee(id, a) {
+  return {
+    attendeeId: id,
+    firstName: a.first_name,
+    familyName: a.family_name,
+    name: `${a.first_name} ${a.family_name}`,
+    title: a.job_title,
+    department: a.department,
+    role: a.role,
+    room: a.room == null ? null : a.room,
+    remote: !!a.remote,
+    deviceId: personDeviceId(),
+  };
+}
+// Where a registered person's page is.
+function personPageUrl(sessionId, role) {
+  const andLang = PPLang.lang() === "en" ? "" : `&lang=${PPLang.lang()}`;
+  return role === "participant"
+    ? `./participant.html?session=${encodeURIComponent(sessionId)}${andLang}`
+    : `./room-display.html?session=${encodeURIComponent(sessionId)}&observer=1${andLang}`;
+}
+// On a participant's or Observer's page: every 30 seconds, ask whether this
+// registration has moved to another device; if so, this page stops (the same
+// way as a removed registration) and offers to take it back here.
+function watchDeviceMoved(sessionId, identity) {
+  if (!identity || !identity.attendeeId) return;
+  let stopped = false;
+  async function check() {
+    if (stopped || document.hidden) return;
+    try {
+      const r = await lookupAttendee(sessionId, identity.attendeeId);
+      if (r && r.found && r.moved) { stopped = true; showMovedScreen(sessionId); }
+    } catch { /* offline or refused: try again next time */ }
+  }
+  setInterval(check, 30000);
+  setTimeout(check, 4000);
+}
+function showMovedScreen(sessionId) {
+  if (window.__ppRemoved) return;
+  window.__ppRemoved = true;
+  try { stopSfx(); } catch { /* nothing playing */ }
+  const join = `join.html?session=${encodeURIComponent(sessionId)}`;
+  document.body.className = "pp-removed-page";
+  document.body.innerHTML =
+    `<main class="pp-removed" role="alert" style="max-width:440px;margin:18vh auto 0;padding:0 16px;text-align:center;">` +
+      `<h1 style="font-size:1.4rem;margin:0 0 10px;">${ppEscape(T("shared.moved.title"))}</h1>` +
+      `<p style="margin:0 0 20px;opacity:.85;">${ppEscape(T("shared.moved.body"))}</p>` +
+      `<a class="pp-btn" href="${ppEscape(join)}" id="useHereBtn">${ppEscape(T("shared.moved.useHere"))}</a>` +
+    `</main>`;
+}
+
+// Log a new note or save changes to one's own. note.id is created on the
+// device when the note is started, so sending it twice (Log pressed twice,
+// or a retry after a dropped connection) saves it once.
+// attendeeId null + facilitatorToken = a Facilitator note.
+function saveObserverNote(sessionId, note, { attendeeId, facilitatorToken } = {}) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc(
+    "save_observer_note",
+    {
+      p_id: note.id,
+      p_session_id: sessionId,
+      p_attendee_id: attendeeId || null,
+      p_inject_index: note.injectIndex === null || note.injectIndex === undefined ? null : note.injectIndex,
+      p_topic: note.topic,
+      p_topic_other: note.topic === "other" ? note.topicOther || null : null,
+      p_note_type: note.noteType,
+      p_department_scope: note.scope,
+      p_departments: note.scope === "external" ? [] : note.departments || [],
+      p_external_party: note.scope === "external" ? note.externalParty || null : null,
+      p_body: note.body,
+    },
+    attendeeId ? null : facilitatorToken
+  );
+}
+
+function withdrawObserverNote(sessionId, noteId, { attendeeId, facilitatorToken } = {}) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc(
+    "withdraw_observer_note",
+    { p_id: noteId, p_session_id: sessionId, p_attendee_id: attendeeId || null },
+    attendeeId ? null : facilitatorToken
+  );
+}
+
+// Every note in the session, for the Facilitator's panel (token only).
+async function fetchObserverNotes(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  return (await callNotesRpc("facilitator_observer_notes", { p_session_id: sessionId }, facilitatorToken)) || [];
+}
+
+// "Notes complete": closes notes for everyone, for good (after End only).
+function closeObserverNotes(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  return callNotesRpc("facilitator_close_notes", { p_session_id: sessionId }, facilitatorToken);
+}
+
+// --- Real sound effects (licensed clips Ahmed sourced from Zapsplat /
+// Smartsound), replacing the earlier synthesized placeholders. Every inject
+// references its effect by this same short name ("sfx"), so adding a new
+// sound later is just: drop the file in play/sfx/ and add one line here.
+// A short silent clip used only to unlock sound inside a tap (17 October
+// 2026). It used to be a real siren at volume 0 — but an iPhone ignores the
+// volume setting, so the siren was heard for a moment on every "turn sound
+// on" tap and after a reload, even with no inject sound due.
+const SFX_SILENT = "sfx/silence.wav";
+
+const SFX_FILES = {
+  "siren-firetruck": "sfx/siren-firetruck.mp3",
+  "siren-ambulance": "sfx/siren-ambulance.mp3",
+  "siren-police": "sfx/siren-police.mp3",
+  fire: "sfx/fire.mp3",
+  earthquake: "sfx/earthquake.mp3",
+  storm: "sfx/storm.mp3",
+  flood: "sfx/flood.mp3",
+  "news-bed": "sfx/news-bed.mp3",
+  explosion: "sfx/explosion.mp3",
+  thunder: "sfx/thunder.mp3",
+  thunderstorm: "sfx/thunderstorm.mp3",
+  "phone-ring": "sfx/phone-ring.mp3",
+  "phone-busy": "sfx/phone-busy.mp3",
+  "alarm-computer": "sfx/alarm-computer.mp3",
+  "roller-coaster": "sfx/roller-coaster.mp3",
+  stampede: "sfx/stampede.mp3",
+  "crowd-panic": "sfx/crowd-panic.mp3",
+  // Happy park-ambience crowd noise — not an incident sound. Meant as a
+  // "calm before the incident" opening ambience for a Miral-venue scenario
+  // (Ferrari World, Yas Waterworld, etc.), playing under an early inject
+  // before anything goes wrong.
+  "crowd-cheer": "sfx/crowd-cheer.mp3",
+  // Built by overlaying two separate clips: a continuous alarm siren with a
+  // "Warning, evacuate" voice announcement cutting in partway through (the
+  // siren ducks briefly so the voice is clearly audible, then continues
+  // alone) — for a building fire-alarm/evacuation-trigger inject, distinct
+  // from the "fire" ambience (crackling flames) already in the library.
+  "fire-alarm-evacuate": "sfx/fire-alarm-evacuate.mp3",
+  // A short bell-style fire/burglar alarm with its own natural ending —
+  // a different alarm character from the siren-based "fire-alarm-evacuate"
+  // above, for variety across scenarios.
+  "fire-alarm-bell": "sfx/fire-alarm-bell.mp3",
+  // Strong desert wind — a UAE/GCC-specific hazard (sandstorm) distinct
+  // from the general "storm" ambience (rain/wind), which doesn't read as
+  // regionally specific.
+  sandstorm: "sfx/sandstorm.mp3",
+  // A backup generator starting up — for a power-outage scenario.
+  generator: "sfx/generator.mp3",
+  // Realistic automatic-gunfire burst, for an armed-threat/lockdown inject.
+  // IMPORTANT: unlike every other sound here, this one should never be
+  // triggered on a live room-display without first telling the room it's
+  // coming — a sudden realistic gunshot can be mistaken for a real threat
+  // and can alarm people outside the exercise room too. When designing a
+  // scenario that uses it, call this out explicitly to the facilitator.
+  gunfire: "sfx/gunfire.mp3",
+
+  // --- Sound batch of 30 October 2026 (item 0e): 27 ZapSplat clips (Gold
+  // account), trimmed and levelled to match the set above. Background
+  // sounds are exactly 18 s with a fade-out, so the 18-second stop below
+  // never cuts mid-sound. Masters in OneDrive "06 Sounds\Player sound
+  // effects (final)"; originals in "Source clips\2026-10-29 additions" and
+  // "2026-10-30 additions".
+  // Rain, water and the coast (rain-season pack, W3b):
+  "rain-heavy": "sfx/rain-heavy.mp3",           // heavy rain on a roof and windows
+  "rain-driving": "sfx/rain-driving.mp3",       // inside a car on a wet road, heavy rain
+  "rain-thunder": "sfx/rain-thunder.mp3",       // wipers, light rain, distant thunder
+  "water-leak": "sfx/water-leak.mp3",           // water spraying from a burst connection
+  "waves-seawall": "sfx/waves-seawall.mp3",     // waves hitting a jetty / sea wall
+  "debris-fall": "sfx/debris-fall.mp3",         // rubble falling — ceiling or wall collapse
+  // Buildings and facilities:
+  lift: "sfx/lift.mp3",                         // lift doors, ride and stop
+  "power-surge": "sfx/power-surge.mp3",         // electrical surge / switchgear fault
+  "construction-site": "sfx/construction-site.mp3",
+  "system-warning": "sfx/system-warning.mp3",   // control-room / building-system warning tone
+  // Alarms and sirens — like gunfire, warn the room before playing these:
+  // a realistic siren can be mistaken for a real one by people nearby.
+  "civil-defence-siren": "sfx/civil-defence-siren.mp3",
+  "fire-alarm-ring": "sfx/fire-alarm-ring.mp3", // third fire-alarm character
+  "emergency-siren-short": "sfx/emergency-siren-short.mp3",
+  // Public places, transport and events:
+  "pa-chime": "sfx/pa-chime.mp3",               // "ding-dong" before an announcement
+  "pa-announcement": "sfx/pa-announcement.mp3", // terminal security announcement (English)
+  "airport-terminal": "sfx/airport-terminal.mp3",
+  "aircraft-cabin": "sfx/aircraft-cabin.mp3",   // cabin while taxiing
+  "ship-horn": "sfx/ship-horn.mp3",
+  "hotel-lobby": "sfx/hotel-lobby.mp3",         // lobby with reception and air conditioning
+  "hall-leaving": "sfx/hall-leaving.mp3",       // a hall emptying — calm evacuation of an event
+  applause: "sfx/applause.mp3",
+  "attraction-indoor": "sfx/attraction-indoor.mp3",   // families indoors — "calm before" ambience
+  "attraction-outdoor": "sfx/attraction-outdoor.mp3", // families outdoors — "calm before" ambience
+  "train-whistle": "sfx/train-whistle.mp3",
+  // Office and health:
+  typing: "sfx/typing.mp3",                     // office / newsroom keyboard
+  "heart-monitor": "sfx/heart-monitor.mp3",     // fast heart-rate monitor (healthcare)
+  // Exercise structure:
+  "break-chime": "sfx/break-chime.mp3",         // calm chime at the end of a break (re-entry)
+};
+
+// Some injects are really two clips playing at once rather than one file —
+// e.g. a stampede reads as one immersive moment of footsteps *and* people
+// shouting for help together, not two sounds back to back. Referencing
+// "stampede" plays every clip listed here simultaneously.
+const SFX_OVERLAY = {
+  stampede: ["stampede", "crowd-panic"],
+};
+
+// Ambience tracks (long, meant to loop under an inject) vs. one-shot signature
+// sounds (sirens, the earthquake rumble, explosion, a single thunder crack)
+// that should just play through once per inject and not restart on a loop.
+const SFX_LOOP = new Set([
+  "fire", "storm", "flood", "news-bed", "thunderstorm", "roller-coaster", "crowd-cheer", "sandstorm",
+  // 30 October 2026 batch:
+  "rain-heavy", "rain-driving", "rain-thunder", "water-leak", "waves-seawall", "construction-site",
+  "airport-terminal", "aircraft-cabin", "hotel-lobby", "hall-leaving", "attraction-indoor",
+  "attraction-outdoor", "typing", "heart-monitor",
+]);
+// How long an ambience track plays before fading out, in seconds — long
+// enough to register, short enough not to drone under the whole inject.
+const AMBIENCE_PLAY_SECONDS = 18;
+
+const sfxAudioCache = {};
+let currentSfxAudios = [];
+
+// Lets a page (room-display.html) show what's happening with sound
+// on-screen, without needing the browser's dev tools open — useful for
+// diagnosing playback issues on a real exercise room's laptop, not just in
+// development. No-op until a page calls setSfxStatusHandler.
+let onSfxStatus = () => {};
+function setSfxStatusHandler(fn) {
+  onSfxStatus = fn;
+}
+
+function playSfx(name) {
+  if (!name || name === "none") return;
+
+  // Stop whatever's currently playing so sounds don't stack on a fast
+  // facilitator advance.
+  currentSfxAudios.forEach((audio) => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+  currentSfxAudios = [];
+
+  const layerNames = SFX_OVERLAY[name] || [name];
+  layerNames.forEach((layerName) => playSfxLayer(layerName));
+}
+
+// Stops whatever inject sound is playing (the end of the exercise: a looping
+// siren must not carry on over the thank-you screen).
+function stopSfx() {
+  currentSfxAudios.forEach((audio) => {
+    try { audio.pause(); audio.currentTime = 0; } catch { /* nothing to stop */ }
+  });
+  currentSfxAudios = [];
+}
+
+// W6a (2 November 2026): the narration lowers the inject's sound and then
+// lets it fade out (media.js narrate). Volumes are relative to the normal 0.8.
+function sfxFade(volume, ms) {
+  const from = currentSfxAudios.map((a) => a.volume);
+  const steps = Math.max(1, Math.round(ms / 50));
+  let i = 0;
+  const id = setInterval(() => {
+    i += 1;
+    currentSfxAudios.forEach((a, k) => { try { a.volume = Math.max(0, Math.min(1, from[k] + (volume - from[k]) * (i / steps))); } catch { /* gone */ } });
+    if (i >= steps) clearInterval(id);
+  }, 50);
+}
+function sfxFadeOut(ms) {
+  sfxFade(0, ms);
+  setTimeout(() => stopSfx(), ms + 60);
+}
+
+function playSfxLayer(name) {
+  const path = SFX_FILES[name];
+  if (!path) {
+    console.warn(`No sound file mapped for sfx "${name}"`);
+    onSfxStatus(T("shared.sfx.noFile", { name }));
+    return;
+  }
+
+  if (!sfxAudioCache[name]) {
+    sfxAudioCache[name] = new Audio(path);
+  }
+  const audio = sfxAudioCache[name];
+  audio.loop = false;
+  audio.volume = 0.8;
+  audio.currentTime = 0;
+  currentSfxAudios.push(audio);
+
+  onSfxStatus(T("shared.sfx.attempting", { name }));
+  audio
+    .play()
+    .then(() => onSfxStatus(T("shared.sfx.playing", { name })))
+    .catch((err) => {
+      // Most common cause: no user gesture has unlocked audio yet (the
+      // "Tap to begin" screen handles this on room-display.html).
+      console.warn(`Playback blocked for "${name}":`, err.message);
+      onSfxStatus(T("shared.sfx.blocked", { name, reason: String(err.message) }));
+    });
+
+  if (SFX_LOOP.has(name)) {
+    audio.loop = true;
+    setTimeout(() => {
+      if (currentSfxAudios.includes(audio)) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    }, AMBIENCE_PLAY_SECONDS * 1000);
+  }
+}
+
+
+// ---- Live-connection safety net (added 9 October 2026) --------------------
+// System review item 5: a live (Realtime) connection can drop silently —
+// a corporate proxy, an idle timeout, a server hiccup — while the browser
+// still says "online" and the tab stays visible, so onReconnect() never
+// fires and a room screen would sit on an old inject with no error. Three
+// layers now prevent that:
+//   1. every live channel reports its status; an error, timeout or close
+//      triggers an immediate refetch, and so does the channel coming back;
+//   2. a light refetch every 15 seconds regardless (only re-renders when
+//      the session row actually changed, so typing is never disturbed);
+//   3. a small status pill in the corner: green "Live", amber
+//      "Reconnecting…", red "Offline" — so a problem is visible at once.
+
+function rowSignature(row) {
+  if (!row) return "";
+  return [row.status, row.current_inject_index, row.updated_at, row.inject_started_at,
+    row.inject_extra_minutes, row.inject_force_unlocked, row.room_count,
+    JSON.stringify(row.extra_departments || []), row.ended_at, row.notes_closed_at,
+    row.run_number, row.paused_at, row.inject_replay_count, row.is_trial,
+    row.survey_open, row.survey_closed_how,
+    // W6a: the lobby settings, the briefing and the media of played injects.
+    row.briefing_language, row.narration_enabled, row.captions_on_screens, row.rejoin_code_at,
+    JSON.stringify(row.briefing || null), JSON.stringify(row.media || null), row.media_status].join("|");
+}
+
+function createLiveStatus() {
+  const el = document.createElement("div");
+  el.id = "liveStatus";
+  el.setAttribute("role", "status");
+  el.setAttribute("aria-live", "polite");
+  el.style.cssText = "position:fixed;inset-inline-end:10px;bottom:10px;z-index:9999;padding:4px 10px;" +
+    "border-radius:999px;font:600 12px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
+    "pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:background .2s";
+  document.body.appendChild(el);
+  const channels = new Map(); // name -> last status
+  let fetchFailures = 0;
+  const DOWN = new Set(["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"]);
+  function state() {
+    if (!navigator.onLine) return "offline";
+    if (fetchFailures >= 2) return "offline";
+    for (const st of channels.values()) if (DOWN.has(st)) return "reconnecting";
+    if (fetchFailures === 1) return "reconnecting";
+    for (const st of channels.values()) if (st !== "SUBSCRIBED") return "connecting";
+    return "live";
+  }
+  function draw() {
+    const st = state();
+    el.dataset.state = st;
+    if (st === "live") { el.textContent = T("shared.live.live"); el.style.background = "rgba(34,139,84,.85)"; }
+    else if (st === "connecting") { el.textContent = T("shared.live.connecting"); el.style.background = "rgba(120,120,120,.85)"; }
+    else if (st === "reconnecting") { el.textContent = T("shared.live.reconnecting"); el.style.background = "rgba(232,129,47,.95)"; }
+    else { el.textContent = T("shared.live.offline"); el.style.background = "rgba(200,50,40,.95)"; }
+  }
+  window.addEventListener("online", draw);
+  window.addEventListener("offline", draw);
+  draw();
+  return {
+    el,
+    isDown: (name) => DOWN.has(channels.get(name)),
+    // Register a channel before it reports, so the pill never says "Live"
+    // until every expected channel has actually joined.
+    expect(name) { if (!channels.has(name)) { channels.set(name, "JOINING"); draw(); } },
+    channel(name, status) { channels.set(name, status); draw(); },
+    fetchResult(ok) { fetchFailures = ok ? 0 : fetchFailures + 1; draw(); },
+  };
+}
+
+// opts: { sessionId, supabaseClient?, onRow(row), onRecovered(row)?, onRing(kind)?, intervalMs? }
+// Returns { deliver, channelStatus(name), resync(reason, {force}), softRefresh(), live, doorbell(), liveState() }.
+// With supabaseClient it joins the session's doorbell channel itself: a
+// "session" ring fetches the session (at most once a second); every ring is
+// also passed to opts.onRing so the page can reload its messages.
+// Trial run (20 October 2026): a red strip across the top of every page
+// while the facilitator's practice run is on.
+function applyTrialStrip(row) {
+  const on = !!(row && row.is_trial && row.status === "running");
+  let el = document.getElementById("ppTrialStrip");
+  if (!on) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ppTrialStrip";
+    el.className = "pp-trial-strip";
+    el.setAttribute("role", "status");
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+  const text = T("shared.trial.strip");
+  if (el.textContent !== text) el.textContent = text;
+}
+
+function keepSessionInSync(opts) {
+  const live = createLiveStatus();
+  let lastSig = null;
+  function deliver(row, force) {
+    if (!row) return;
+    applyTrialStrip(row);
+    const sig = rowSignature(row);
+    if (sig === lastSig && !force) return;
+    lastSig = sig;
+    opts.onRow(row);
+  }
+  let inFlight = false;
+  let again = null;
+  async function resync(reason, o) {
+    const force = !!(o && o.force);
+    if (inFlight) {
+      // Never drop a request made while a fetch is running: run once more after it.
+      again = { reason, force: force || !!(again && again.force) };
+      return;
+    }
+    inFlight = true;
+    try {
+      const row = await fetchSession(opts.sessionId);
+      live.fetchResult(true);
+      deliver(row, force);
+      if (reason !== "poll" && reason !== "ring" && opts.onRecovered) opts.onRecovered(row);
+    } catch (err) {
+      live.fetchResult(false);
+      console.warn(`Resync (${reason}) failed:`, err.message);
+    } finally {
+      inFlight = false;
+      if (again) {
+        const next = again;
+        again = null;
+        resync(next.reason, { force: next.force });
+      }
+    }
+  }
+  function channelStatus(name) {
+    live.expect(name);
+    return (status) => {
+      const wasDown = live.isDown(name);
+      live.channel(name, status);
+      if (status === "SUBSCRIBED" && wasDown) resync("recovered");
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") resync(`channel ${status}`);
+    };
+  }
+
+  // The doorbell: at most one session fetch a second, however often it rings.
+  let lastRingFetch = 0;
+  let ringTimer = null;
+  function onRing(kind) {
+    if (kind === "session") {
+      const wait = 1000 - (Date.now() - lastRingFetch);
+      if (wait <= 0) {
+        lastRingFetch = Date.now();
+        resync("ring");
+      } else if (!ringTimer) {
+        ringTimer = setTimeout(() => {
+          ringTimer = null;
+          lastRingFetch = Date.now();
+          resync("ring");
+        }, wait);
+      }
+    }
+    if (opts.onRing) opts.onRing(kind);
+  }
+  let channel = null;
+  function joinDoorbell() {
+    if (!opts.supabaseClient) return;
+    channel = subscribeToDoorbell(opts.supabaseClient, opts.sessionId, onRing, channelStatus("doorbell"));
+  }
+  joinDoorbell();
+
+  // "Refresh this screen" from the control tower: throw away what is shown,
+  // rejoin the live channel, fetch everything and redraw — without reloading
+  // the page, so sound that was switched on stays on.
+  async function softRefresh() {
+    try {
+      if (channel && opts.supabaseClient) {
+        const old = channel;
+        channel = null;
+        await opts.supabaseClient.removeChannel(old);
+        live.channel("doorbell", "JOINING");
+        joinDoorbell();
+      }
+    } catch (err) {
+      console.warn("Rejoining the live channel failed:", err.message);
+    }
+    await resync("soft", { force: true });
+  }
+
+  // The safety net: a fetch every 15 seconds — every 4 seconds while the
+  // exercise runs, so a Pause, Resume or Next reaches a phone whose live
+  // channel has quietly dropped within a few seconds (Ahmed, 19 October
+  // 2026: a phone took a long time to show the pause).
+  let lastPollAt = 0;
+  setInterval(() => {
+    const running = lastSig && lastSig.startsWith("running|");
+    const every = opts.intervalMs || (running ? 4000 : 15000);
+    if (Date.now() - lastPollAt < every - 500) return;
+    lastPollAt = Date.now();
+    resync("poll");
+  }, 1000);
+  onReconnect(() => resync("reconnect"));
+  return {
+    deliver, channelStatus, resync, softRefresh, live,
+    doorbell: () => channel,
+    liveState: () => (live.el.dataset.state === "live" ? "live" : "poll"),
+  };
+}
+
+// ---- Check-ins (item 6, 11 October 2026) -----------------------------------
+// Every 20 seconds each device tells the database it is still here — over
+// plain HTTP, so it works on networks that block live connections — and
+// reports what it is showing. Only the Facilitator's link can read them (the
+// control tower). The reply carries the exercise's real position, so a screen
+// that is behind corrects itself, and any command the Facilitator queued for
+// this screen ("soft" refresh or full "reload").
+// opts: { sessionId, kind: "person"|"room_screen", attendeeId?, deviceId?,
+//         getState() -> { room, page, shownStatus, shownInject, sound, awake, live },
+//         onReply(reply)?, onRefused(message)?, intervalMs? }
+const CHECKIN_INTERVAL_MS = 20000;
+function startCheckins(opts) {
+  let inFlight = false;
+  async function beat() {
+    // A page that is not in front is not "here": it stops checking in, and
+    // checks in again the moment it is back.
+    if (inFlight || document.hidden) return;
+    inFlight = true;
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 10000) : null;
+    try {
+      const st = (opts.getState && opts.getState()) || {};
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/player_checkin`, {
+        method: "POST",
+        cache: "no-store",
+        headers: rpcHeaders(null),
+        signal: ctl ? ctl.signal : undefined,
+        body: JSON.stringify({
+          p_session_id: opts.sessionId,
+          p_kind: opts.kind,
+          p_attendee_id: opts.attendeeId || null,
+          p_device_id: opts.deviceId || null,
+          p_room: st.room === undefined ? null : st.room,
+          p_page: st.page || null,
+          p_shown_status: st.shownStatus || null,
+          p_shown_inject: Number.isInteger(st.shownInject) ? st.shownInject : null,
+          p_sound: st.sound || null,
+          p_awake: st.awake || null,
+          p_live: st.live || null,
+          // W6a: the briefing's state on this screen (only sent when the page has one).
+          ...(st.briefing ? { p_briefing: st.briefing } : {}),
+        }),
+      });
+      if (res.ok) {
+        const reply = await res.json();
+        if (opts.onReply) opts.onReply(reply || {});
+      } else if (res.status === 401 || res.status === 403) {
+        if (opts.onRefused) opts.onRefused(await readErrorDetail(res));
+      }
+    } catch {
+      /* offline or timed out — the next beat tries again */
+    } finally {
+      if (timer) clearTimeout(timer);
+      inFlight = false;
+    }
+  }
+  // After the screen changes what it shows, report it shortly (not on every
+  // redraw), so the control tower is never 20 seconds behind the screen.
+  let soonTimer = null;
+  function beatSoon() {
+    if (soonTimer) return;
+    soonTimer = setTimeout(() => {
+      soonTimer = null;
+      beat();
+    }, 1500);
+  }
+  beat();
+  setInterval(beat, opts.intervalMs || CHECKIN_INTERVAL_MS);
+  onReconnect(beat);
+  return { beat, beatSoon };
+}
+
+// ---- Briefings before Start (W6a, 2 November 2026) -------------------------
+async function briefingRpc(name, args, facilitatorToken) {
+  const res = await withRetry(() => fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST", cache: "no-store", headers: rpcHeaders(facilitatorToken || null), body: JSON.stringify(args),
+  }));
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+const playBriefing = (sessionId, replay, token) => briefingRpc("facilitator_play_briefing", { p_session_id: sessionId, p_replay: !!replay }, token);
+const replayObserverBriefing = (sessionId, room, token) => briefingRpc("facilitator_replay_observer_briefing", { p_session_id: sessionId, p_room: room || null }, token);
+const briefingOverride = (sessionId, token) => briefingRpc("facilitator_briefing_override", { p_session_id: sessionId }, token);
+const fetchBriefingStatus = (sessionId, token) => briefingRpc("facilitator_briefing_status", { p_session_id: sessionId }, token);
+const reportBriefingWatched = (sessionId, attendeeId, deviceId) => briefingRpc("briefing_watched", { p_session_id: sessionId, p_attendee_id: attendeeId, p_device_id: deviceId || null });
+// The media of a played inject in one language (null when there is none).
+function injectMedia(row, idx, lang) {
+  const it = row && row.media && row.media[String(idx)];
+  if (!it) return { narration: null, clip: null };
+  const clipFor = (l) => (it.clip && it.clip[l] && it.clip[l].path ? it.clip[l] : null);
+  return {
+    narration: (it.narration && (it.narration[lang] || null)) || null,
+    clip: clipFor(lang),
+  };
+}
+
+// ---- The control tower's own calls (facilitator token only) ----------------
+async function fetchPresence(sessionId, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_presence`, {
+    method: "POST",
+    cache: "no-store",
+    headers: rpcHeaders(facilitatorToken),
+    body: JSON.stringify({ p_session_id: sessionId }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// command: "soft" (refresh without reloading — sound stays on) or "reload".
+async function sendScreenCommand(sessionId, deviceKey, command, facilitatorToken) {
+  assertValidSessionId(sessionId);
+  const res = await withRetry(() =>
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/facilitator_screen_command`, {
+      method: "POST",
+      cache: "no-store",
+      headers: rpcHeaders(facilitatorToken),
+      body: JSON.stringify({ p_session_id: sessionId, p_device_key: deviceKey, p_command: command }),
+    })
+  );
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// How fresh a check-in is, against the server's own clock.
+const PRESENCE_GREEN_MS = 45000;
+const PRESENCE_AMBER_MS = 120000;
+function presenceState(lastSeenIso, serverNowMs) {
+  if (!lastSeenIso) return "never";
+  const age = serverNowMs - Date.parse(lastSeenIso);
+  if (age <= PRESENCE_GREEN_MS) return "green";
+  if (age <= PRESENCE_AMBER_MS) return "amber";
+  return "grey";
+}
+
+// The usual reaction to a check-in reply: obey a queued command, and if the
+// reply shows the exercise is somewhere else than this screen, fetch it now.
+function handleCheckinReply(reply, { sync, getRow, onSoft }) {
+  if (reply.command === "reload") {
+    try { sessionStorage.setItem("pp_reloaded_by_facilitator", "1"); } catch { /* ignore */ }
+    location.reload();
+    return;
+  }
+  if (reply.command === "soft") {
+    sync.softRefresh().then(() => { if (onSoft) onSoft(); });
+    return;
+  }
+  const row = getRow();
+  const sameTime = row && Date.parse(row.updated_at) === Date.parse(reply.updated_at);
+  if (!row || row.status !== reply.status || row.current_inject_index !== reply.current_inject_index || !sameTime) {
+    sync.resync("checkin");
+  }
+}
+
+// A stable id for a shared room screen (it has no registration), kept in
+// this browser. { deviceId, room }.
+function loadScreenIdentity(sessionId) {
+  const key = `pp_screen_${sessionId}`;
+  let me = null;
+  try { me = JSON.parse(localStorage.getItem(key) || "null"); } catch { me = null; }
+  if (!me || !UUID_RE.test(me.deviceId || "")) me = { deviceId: crypto.randomUUID(), room: null, started: false };
+  const store = () => { try { localStorage.setItem(key, JSON.stringify(me)); } catch { /* kept in memory only */ } };
+  store();
+  return { me, store };
+}
+
+// ---- Keep the device awake (item 6, 11 October 2026) -----------------------
+// Asks the browser to keep the screen on while this page is in front (the
+// way a video player does), whenever wanted() is true. state(): "on", "off"
+// (wanted but the device refused or can't — battery saver, old browser) or
+// "na" (not wanted now). The browser drops the request whenever the page
+// leaves the front; it is asked again the moment the page is back.
+function keepAwake({ wanted, onChange }) {
+  const supported = !!(navigator.wakeLock && navigator.wakeLock.request);
+  let lock = null;
+  let state = "na";
+  let requesting = false;
+  let letGo = false; // true while this code is releasing it on purpose
+  function set(next) {
+    if (next === state) return;
+    state = next;
+    if (onChange) onChange(state);
+  }
+  async function update() {
+    let want = false;
+    try { want = !!wanted(); } catch { want = false; }
+    if (!want) {
+      if (lock) {
+        const held = lock;
+        lock = null;
+        letGo = true;
+        try { await held.release(); } catch { /* already gone */ }
+        letGo = false;
+      }
+      stopBackup();
+      set("na");
+      return;
+    }
+    if (!supported) { backupVideo(); set("off"); return; }
+    if (lock) { set("on"); stopBackup(); return; }
+    if (document.hidden || requesting) return;
+    requesting = true;
+    try {
+      const got = await navigator.wakeLock.request("screen");
+      lock = got;
+      got.addEventListener("release", () => {
+        if (lock === got) lock = null;
+        if (letGo) return;
+        // Dropped while in front (for example battery saver switching on):
+        // say so, and try again shortly.
+        if (!document.hidden) { set("off"); setTimeout(update, 3000); }
+      });
+      set("on");
+      stopBackup();
+    } catch {
+      lock = null;
+      // Refused (battery saver, some Android phones): the backup — a tiny
+      // silent video playing in a loop, which phones treat like watching a
+      // video and so keep the screen on (18 October 2026, Ahmed's Android
+      // phone locked mid-test).
+      // The state stays "off" (the control tower and the notice stay
+      // truthful: the backup cannot be confirmed).
+      backupVideo();
+      set("off");
+    } finally {
+      requesting = false;
+    }
+  }
+  let video = null;
+  function backupVideo() {
+    try {
+      if (!video) {
+        video = document.createElement("video");
+        video.setAttribute("playsinline", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("aria-hidden", "true");
+        video.muted = true; video.loop = true;
+        video.src = new URL("media/keepawake.mp4", document.baseURI).href;
+        video.style.cssText = "position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;inset-inline-start:0;bottom:0;";
+        document.body.appendChild(video);
+      }
+      const p = video.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch { /* no backup on this device */ }
+  }
+  function stopBackup() {
+    if (video) { try { video.pause(); } catch {} }
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) update(); });
+  // Some browsers only grant it after the person has touched the page.
+  ["click", "touchend", "keydown"].forEach((ev) =>
+    document.addEventListener(ev, () => { if (state === "off" || !lock) update(); }, { passive: true })
+  );
+  setInterval(update, 30000);
+  update();
+  return { state: () => state, update };
+}
+
+// A person whose registration was removed by the Facilitator (18 October
+// 2026: the phone said "no longer registered" yet kept playing the injects'
+// sounds). The page stops for good: no sound, no inject, no survey — one
+// screen with "Join again". The registration kept on this device is
+// forgotten so the join page starts fresh.
+function showRemovedScreen(sessionId) {
+  if (window.__ppRemoved) return;
+  window.__ppRemoved = true;
+  try { stopSfx(); } catch { /* nothing playing */ }
+  try { localStorage.removeItem(`pp_identity_${sessionId}`); } catch { /* storage blocked */ }
+  const join = `join.html?session=${encodeURIComponent(sessionId)}`;
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  document.body.className = "pp-removed-page";
+  document.body.innerHTML =
+    `<main class="pp-removed" role="alert" style="max-width:440px;margin:18vh auto 0;padding:0 16px;text-align:center;">` +
+      `<h1 style="font-size:1.4rem;margin:0 0 10px;">${esc(T("shared.removed.title"))}</h1>` +
+      `<p style="margin:0 0 20px;opacity:.85;">${esc(T("shared.removed.body"))}</p>` +
+      `<a class="pp-btn" href="${esc(join)}" id="joinAgainBtn">${esc(T("shared.removed.join"))}</a>` +
+    `</main>`;
+}
+
+// A small fixed notice (one per id). text null/"" hides it.
+function setNotice(id, text, { tone } = {}) {
+  let el = document.getElementById(id);
+  if (!text) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = id;
+    el.className = "pp-notice-fixed";
+    el.setAttribute("role", "status");
+    el.style.cssText = "position:fixed;inset-inline-start:10px;bottom:36px;z-index:9998;max-width:min(420px,calc(100vw - 150px));" +
+      "padding:6px 10px;border-radius:8px;font:500 12px/1.35 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#fff;" +
+      "box-shadow:0 1px 4px rgba(0,0,0,.25)";
+    document.body.appendChild(el);
+  }
+  el.style.background = tone === "info" ? "rgba(33,43,54,.96)" : "rgba(150,95,10,.95)";
+  el.textContent = text;
+}
+const AWAKE_NOTICE = T("shared.notice.awake");
+
+// A message across the top that the person dismisses (or that goes after
+// `ms`). Used for "welcome back" and "refreshed by the facilitator".
+function showToast(text, ms) {
+  let el = document.getElementById("ppToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ppToast";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.style.cssText = "position:fixed;left:10px;right:10px;top:10px;margin:0 auto;width:fit-content;z-index:10000;" +
+      "max-width:min(560px,calc(100vw - 20px));padding:10px 14px;border-radius:10px;cursor:pointer;" +
+      "font:600 14px/1.4 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#0b0f14;background:#f2f4f7;" +
+      "box-shadow:0 2px 10px rgba(0,0,0,.35)";
+    el.title = T("shared.toast.dismissTitle");
+    el.addEventListener("click", () => el.remove());
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { if (el.parentNode) el.remove(); }, ms || 15000);
+}
+
+// ---- Coming back after being away (item 6, 11 October 2026) ----------------
+// A phone call, a locked screen or another app pauses the page. onBack(ms)
+// fires when it has been away for at least minMs — either the page was not
+// in front, or its clock stopped (the device slept).
+function watchAway({ minMs, onBack }) {
+  const min = minMs || 60000;
+  let hiddenAt = document.hidden ? Date.now() : null;
+  let lastTick = Date.now();
+  let lastFired = 0;
+  function fire(ms) {
+    if (Date.now() - lastFired < 10000) return;
+    lastFired = Date.now();
+    onBack(ms);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    const away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = null;
+    lastTick = Date.now();
+    if (away >= min) fire(away);
+  });
+  setInterval(() => {
+    const now = Date.now();
+    const gap = now - lastTick;
+    lastTick = now;
+    if (!document.hidden && gap >= min + 5000) fire(gap);
+  }, 5000);
+}
+
+function awayText(ms, row) {
+  const mins = Math.max(1, Math.round(ms / 60000));
+  if (!row) return T("shared.away.only", { count: mins });
+  if (row.status === "ended") return T("shared.away.ended", { count: mins });
+  if (row.status === "lobby") return T("shared.away.lobby", { count: mins });
+  const total = ((row.scenario && row.scenario.injects) || []).length;
+  const inject = row.current_inject_index + 1;
+  return total
+    ? T("shared.away.onInjectOf", { count: mins, inject, total })
+    : T("shared.away.onInject", { count: mins, inject });
+}
+
+
+// ---- Welcome and thank-you screens (roadmap item 8, 11 October 2026) ------
+// Before the exercise the wording is in the present ("tests the plan"); at
+// the end it is in the past ("tested the plan") — Ahmed, 11 October 2026.
+// The first name comes from the registration kept on the person's own
+// device (join.html). It is never fetched, and never shown on a shared
+// room screen. One layout for phones and laptops.
+const ANSWERS_KEEP_AFTER_END_MS = 60 * 60 * 1000; // a phone keeps its copy of the answers this long after End
+
+function ppEscape(text) {
+  return String(text === null || text === undefined ? "" : text)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// The first name to greet someone by, or "" when the device has none (then
+// the screens simply say "Thank you"). An older registration that only has
+// the full name gives its first word. Kept to a sensible length.
+function greetingName(identity) {
+  if (!identity) return "";
+  let n = typeof identity.firstName === "string" ? identity.firstName : "";
+  if (!n.trim() && typeof identity.name === "string") n = identity.name.trim().split(/\s+/)[0] || "";
+  n = n.replace(/\s+/g, " ").trim();
+  if (n.length > 40) n = n.slice(0, 40).trim() + "…";
+  return n;
+}
+
+// "Thank you, Ahmed" — the name in its own direction-isolated span, so an
+// Arabic name sits correctly inside the English line.
+function thanksLine(name) {
+  return name ? T("shared.thanks.named_html", { name: ppEscape(name) }) : ppEscape(T("shared.thanks.plain"));
+}
+
+// After registering, while waiting for the start.
+//   observer: true  -> "registered as an Observer"
+function welcomeScreenHtml({ name, observer } = {}) {
+  return `
+    <section class="pp-thanks pp-thanks-welcome" aria-live="polite">
+      <h1 class="pp-thanks-title">${thanksLine(name)}</h1>
+      <p class="pp-thanks-lead">${ppEscape(observer ? T("shared.welcome.registeredObserver") : T("shared.welcome.registered"))}</p>
+      <p class="pp-thanks-nofault">${ppEscape(T("shared.welcome.noFault"))}</p>
+      <p class="pp-thanks-phone">${ppEscape(T("shared.welcome.phone"))}</p>
+      <p class="pp-thanks-wait">${ppEscape(T("shared.welcome.waiting"))}</p>
+    </section>`;
+}
+
+// At the end.
+//   everyone: true -> the shared room screen ("Thank you, everyone"), never a name
+//   compact: true  -> a card that leaves room for what stays usable under it (Observers)
+//   label          -> the exercise's name (room screen)
+//   extraHtml      -> an extra block inside the card (the Observer's time line)
+//   close: false   -> leave out "You can now close this page."
+function endScreenHtml({ name, everyone, compact, label, extraHtml, close } = {}) {
+  const title = everyone ? ppEscape(T("shared.thanks.everyone")) : thanksLine(name);
+  return `
+    <section class="pp-thanks pp-thanks-end${compact ? " compact" : ""}${everyone ? " everyone" : ""}" aria-live="polite">
+      <h1 class="pp-thanks-title">${title}</h1>
+      <p class="pp-thanks-lead">${ppEscape(T("shared.end.ended"))}</p>
+      ${label ? `<p class="pp-thanks-label">${ppEscape(label)}</p>` : ""}
+      ${extraHtml || ""}
+      ${close === false ? "" : `<p class="pp-thanks-close">${ppEscape(T("shared.end.closePage"))}</p>`}
+    </section>`;
+}
+
+// True when the inject on screen came back through "Resume at inject N"
+// (the exercise was ended and carried on): the database then moves the
+// inject's clock forward, so it no longer matches the inject's first start
+// in the log. A resumed inject returns silently — its sound belongs to the
+// moment it first appeared (Ahmed, 12 October 2026). A fresh inject, and one
+// restarted with "Previous inject", have the two times equal.
+function injectWasResumed(row, idx) {
+  if (!row || !row.inject_started_at) return false;
+  const first = (row.inject_started_log || {})[String(idx)];
+  if (!first) return false;
+  return Math.abs(Date.parse(row.inject_started_at) - Date.parse(first)) > 1500;
+}
+
+// "52 minutes left" / "1 minute left" / "less than a minute left".
+function minutesLeftText(ms) {
+  if (ms < 60000) return T("shared.time.lessThanMinuteLeft");
+  const m = Math.floor(ms / 60000);
+  return T("shared.time.minutesLeft", { count: m });
+}
+function clockTimeText(ms) {
+  return new Date(ms).toLocaleTimeString(PPLang.locales(), { hour: "2-digit", minute: "2-digit" });
+}
+
+// The Observer's line under the thank-you: how long the notes area and the
+// message box stay usable. Follows the same two rules as the pages
+// themselves (notesWindow, observerChannel); the database still decides.
+function observerAfterEndLine(row, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  const notes = notesWindow(row, "observer", now);
+  const chan = observerChannel(row, now);
+  if (notes.open && notes.closesAt) {
+    // One whole sentence per case (with or without messages; under a minute
+    // or a count of minutes) — the same split as minutesLeftText.
+    const time = clockTimeText(notes.closesAt);
+    const left = notes.closesAt - now;
+    const count = Math.floor(left / 60000);
+    let text;
+    if (chan.open) {
+      text = left < 60000
+        ? T("shared.observerEnd.notesAndMessagesUntilSoon", { time })
+        : T("shared.observerEnd.notesAndMessagesUntil", { time, count });
+    } else {
+      text = left < 60000
+        ? T("shared.observerEnd.notesUntilSoon", { time })
+        : T("shared.observerEnd.notesUntil", { time, count });
+    }
+    return { open: true, text };
+  }
+  return { open: false, text: T("shared.observerEnd.closed") };
+}
+

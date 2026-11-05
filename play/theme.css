@@ -1,0 +1,663 @@
+/* PlanProof exercise player — shared theme (player polish, 11 October 2026).
+   One look for the join, participant, Observer, room display, Facilitator and
+   connection-check pages, taken from plan-proof.com (index.html on main):
+   the same colours, the same three typefaces, the same shield mark.
+
+   The fonts are served from plan-proof.com itself (play/fonts), not from a
+   font service: a meeting-room network that blocks outside sites can then
+   never hold a page up or change how it looks. If a font file fails, the
+   device's own font is used and nothing else changes. */
+
+@font-face {
+  font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("./fonts/space-grotesk-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600 700; font-display: swap;
+  src: url("./fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url("./fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+}
+
+:root {
+  /* The website's own palette. */
+  /* 18 October 2026 (Ahmed): one black for the page and every box; boxes are
+     told apart by a thin border, never by a tinted or metallic fill. */
+  --bg: #0b0f14;
+  --panel: #0b0f14;
+  --panel-raised: #0e1319;
+  --border: #2b3642;
+  --border-strong: #46566a;
+  --text: #e7eaee;
+  --text-muted: #9aa5b1;
+  /* Four colours (Ahmed, 19 October 2026): black, white, red, green. The
+     accent is white; a deep amber is kept only for "attention" (last
+     minute, paused, someone not seen lately). No yellow anywhere. */
+  --accent: #f2f4f7;
+  --accent-ink: #0b0f14;
+  --attn: #e8812f;
+  --amber: var(--attn); /* old name, kept for safety */
+  --red: #d84a3a;
+  --red-soft: #f0907f;
+  --red-dim: transparent;
+  --teal: #4f9c82;
+  --teal-soft: #8fd0b8;
+  --teal-dim: transparent;
+  /* no blue: what was blue is now plain grey and white (18 October 2026) */
+  --blue: #46566a;
+  --blue-soft: #c9d1d9;
+  --blue-dim: transparent;
+  --field: #070a0e;
+  --shadow: rgba(0,0,0,0.35);
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+/* Marked-hidden elements stay hidden even when a class sets display. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+a { color: var(--accent); }
+
+/* ---- Brand: the shield and the two-colour name, as on the website ------ */
+.pp-brand {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1;
+  color: #f2f3f5; text-decoration: none; white-space: nowrap;
+}
+.pp-brand svg { width: 30px; height: 30px; flex: 0 0 auto; color: #f2f3f5; }
+.pp-brand .proof { color: var(--red); }
+.pp-brand.small { font-size: 16px; gap: 7px; }
+.pp-brand.small svg { width: 24px; height: 24px; }
+.pp-brand.large { font-size: 30px; gap: 12px; }
+.pp-brand.large svg { width: 46px; height: 46px; }
+
+/* The top bar every page shares: brand on the left, context on the right. */
+.pp-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap;
+  padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--bg);
+}
+.pp-top .pp-context { min-width: 0; text-align: end; font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.pp-top .pp-context strong { color: var(--text); font-weight: 600; }
+@media (max-width: 520px) { .pp-top { padding: 12px 16px; } }
+
+/* ---- Form controls ----------------------------------------------------- */
+/* A typing box always looks like one: a darker well, a clear edge, and an
+   amber edge when it is the one being typed in. */
+.pp-field, .pp-form input[type="text"], .pp-form select, .pp-form textarea {
+  width: 100%; padding: 11px 12px; border-radius: 8px;
+  border: 1.5px solid var(--border-strong); background: var(--field); color: var(--text);
+  font-family: inherit; font-size: 16px; line-height: 1.4;
+}
+.pp-field::placeholder, .pp-form input::placeholder, .pp-form textarea::placeholder { color: #77828f; opacity: 1; }
+.pp-field:focus, .pp-form input[type="text"]:focus, .pp-form select:focus, .pp-form textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px transparent;
+}
+.pp-field:disabled, .pp-form input:disabled, .pp-form select:disabled, .pp-form textarea:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+.pp-form select, select.pp-field { appearance: auto; }
+.pp-form label, .pp-label { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+.pp-hint { font-size: 13px; color: var(--text-muted); }
+
+/* ---- Buttons ------------------------------------------------------------ */
+.pp-btn {
+  font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.2;
+  padding: 12px 18px; border-radius: 8px; border: 1.5px solid transparent; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+}
+.pp-btn.ghost { background: transparent; color: var(--text); border-color: var(--border-strong); }
+.pp-btn.ghost:hover:not(:disabled) { border-color: var(--accent); }
+.pp-btn.danger { background: transparent; color: var(--red-soft); border-color: var(--red); }
+.pp-btn:disabled { background: var(--panel-raised); color: var(--text-muted); border-color: transparent; cursor: not-allowed; }
+.pp-btn.ghost:disabled, .pp-btn.danger:disabled { background: transparent; border-color: var(--border); opacity: 0.6; }
+.pp-btn:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* ---- Panels and notes --------------------------------------------------- */
+.pp-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.pp-note {
+  border: 1px solid var(--border); border-inline-start: 3px solid var(--blue); border-radius: 8px;
+  background: var(--blue-dim); padding: 12px 14px; font-size: 14px;
+}
+.pp-note.amber { border-inline-start-color: var(--attn); background: transparent; }
+.pp-error {
+  display: none; margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: var(--red-dim); border: 1px solid var(--red); color: #ffd3cb; font-size: 14px;
+}
+
+/* ---- The countdown ------------------------------------------------------ */
+/* The one thing on a participant's phone that must be impossible to miss.
+   Large figures, a bar that empties, amber in the last minute, red at zero. */
+.pp-clock {
+  background: var(--panel-raised); border: 1px solid var(--border-strong); border-radius: 12px;
+  padding: 10px 16px 12px; text-align: center; position: relative; overflow: hidden;
+}
+.pp-clock-label { font-size: 13px; color: var(--text-muted); }
+.pp-clock-value {
+  font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: clamp(2.6rem, 13vw, 3.6rem); line-height: 1.05; letter-spacing: 0.01em; color: var(--text);
+  /* Digits (mm:ss) never reverse in a right-to-left language. */
+  direction: ltr; unicode-bidi: isolate;
+}
+.pp-clock-note { font-size: 13px; color: var(--text-muted); min-height: 1.3em; }
+.pp-clock-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--border); }
+.pp-clock-bar i { display: block; height: 100%; width: 100%; background: var(--teal); transform-origin: left center; }
+.pp-clock[data-state="warn"] { border-color: var(--attn); background: transparent; }
+.pp-clock[data-state="warn"] .pp-clock-value { color: var(--attn); }
+.pp-clock[data-state="warn"] .pp-clock-bar i { background: var(--attn); }
+/* Paused by the facilitator (18 October 2026): amber outline, no fill. */
+.pp-clock[data-state="paused"] { border-color: var(--attn); border-style: dashed; background: transparent; }
+.pp-clock[data-state="paused"] .pp-clock-value, .pp-clock[data-state="paused"] .pp-clock-note { color: var(--attn); }
+.pp-clock[data-state="up"] { border-color: var(--red); background: transparent; }
+.pp-clock[data-state="up"] .pp-clock-value { color: var(--red-soft); font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 10vw, 2.8rem); line-height: 1.3; direction: inherit; unicode-bidi: normal; }
+.pp-clock[data-state="up"] .pp-clock-bar i { background: var(--red); }
+.pp-clock[data-state="none"] .pp-clock-value { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; line-height: 1.6; color: var(--text-muted); direction: inherit; unicode-bidi: normal; }
+.pp-clock[data-state="none"] .pp-clock-bar { display: none; }
+
+/* ---- Status dots (Facilitator page, connection check) ------------------- */
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; display: inline-block; border: 1px solid rgba(255,255,255,0.18); }
+.dot.grey { background: #5a6673; }
+.dot.amber { background: var(--attn); }
+.dot.green { background: #3fae6c; }
+.dot.red { background: var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* Welcome and thank-you screens (roadmap item 8, 11 October 2026). One
+   flexible layout: a phone gets a full-width card, a laptop a centred one.
+   Nothing here is fixed-width, so it never scrolls sideways. */
+.pp-thanks {
+  width: 100%; max-width: 620px; margin: 40px auto 24px; padding: 34px 28px 30px;
+  background: var(--panel); border: 1px solid var(--border); border-top: 4px solid var(--accent);
+  border-radius: 14px; text-align: center; box-shadow: 0 12px 40px var(--shadow);
+  overflow-wrap: anywhere;
+}
+.pp-thanks-title {
+  font-family: var(--font-display); font-weight: 700; line-height: 1.15; margin: 0 0 10px;
+  font-size: clamp(1.7rem, 6vw, 2.5rem); color: var(--text); text-wrap: balance;
+}
+.pp-thanks-name { color: var(--accent); }
+.pp-thanks-lead { font-size: clamp(1.05rem, 3.4vw, 1.25rem); font-weight: 500; margin: 0 0 14px; color: var(--text); }
+.pp-thanks-label { font-size: 0.95rem; color: var(--text-muted); margin: -6px 0 14px; }
+.pp-thanks-nofault {
+  margin: 0 auto 14px; max-width: 30em; padding: 12px 14px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border-strong);
+  font-size: 1rem; color: var(--text); text-wrap: balance;
+}
+.pp-thanks-phone { margin: 0 auto 14px; max-width: 32em; font-size: 0.95rem; color: var(--text-muted); text-wrap: balance; }
+.pp-thanks-wait, .pp-thanks-close { margin: 0; color: var(--text-muted); font-size: 0.98rem; text-wrap: balance; }
+.pp-thanks-window {
+  margin: 0 auto; max-width: 32em; padding: 12px 14px; border-radius: 10px; text-align: start;
+  background: var(--field); border: 2px solid var(--accent); color: var(--text);
+  font-size: 1rem; font-weight: 500; text-wrap: pretty;
+}
+.pp-thanks-window.closed { border-color: var(--border-strong); color: var(--text-muted); font-weight: 400; text-align: center; }
+/* Compact: the Observer's card, which leaves the notes area in view under it. */
+.pp-thanks.compact { margin: 6px auto 4px; padding: 20px 18px 18px; max-width: 720px; }
+.pp-thanks.compact .pp-thanks-title { font-size: clamp(1.35rem, 4.6vw, 1.8rem); margin-bottom: 6px; }
+.pp-thanks.compact .pp-thanks-lead { font-size: 1.02rem; margin-bottom: 10px; }
+.pp-thanks.compact .pp-thanks-nofault { font-size: 0.95rem; padding: 9px 12px; margin-bottom: 10px; }
+/* The shared room screen: read from across a room. */
+.pp-thanks.everyone { max-width: 1000px; padding: 56px 40px 50px; }
+.pp-thanks.everyone .pp-thanks-title { font-size: clamp(2.2rem, 6vw, 4.4rem); }
+.pp-thanks.everyone .pp-thanks-lead { font-size: clamp(1.3rem, 2.8vw, 2.1rem); }
+.pp-thanks.everyone .pp-thanks-label { font-size: clamp(1rem, 1.8vw, 1.4rem); }
+.pp-thanks.everyone .pp-thanks-nofault { font-size: clamp(1.05rem, 2vw, 1.5rem); max-width: 34em; padding: 16px 20px; }
+/* The room screen's invitation to the feedback survey (16 October 2026). */
+.pp-thanks-survey { margin: 18px auto 0; max-width: 32em; color: var(--accent); font-weight: 600; font-size: clamp(1.05rem, 2vw, 1.6rem); text-wrap: balance; }
+@media (max-width: 520px) {
+  .pp-thanks { margin-top: 20px; padding: 26px 18px 24px; }
+  .pp-thanks.everyone { padding: 30px 18px 28px; }
+}
+
+
+/* ---- Screen layout and usability (17 October 2026) ------------------------
+   Tabs, badges, the command bar, the alert strip, the slim header, the
+   two-column laptop layout, tap chips, the mic button and QR codes. One
+   flexible layout: under 900px the page is a phone (bottom tab bar, one
+   column), from 900px a laptop (tabs on top, columns). Start/end, never
+   left/right. */
+
+/* Tabs: a bar of buttons. On a phone it is fixed to the bottom of the screen;
+   on a laptop it sits in the page flow under the command bar. */
+.pp-tabs {
+  display: flex; background: var(--bg); border-top: 1px solid var(--border);
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pp-tab {
+  flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 4px; min-height: 52px; border: 0; border-top: 3px solid transparent; background: transparent;
+  color: var(--text-muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.pp-tab[aria-selected="true"] { color: var(--accent); border-top-color: var(--red); background: transparent; }
+.pp-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-tab-badge {
+  display: inline-block; min-width: 20px; height: 20px; line-height: 20px; padding: 0 6px; border-radius: 10px;
+  background: var(--red); color: #fff; font-size: 12px; font-weight: 700; text-align: center;
+  direction: ltr; unicode-bidi: isolate;
+}
+.pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; }
+/* While a typing box has the keyboard on a phone, the bar steps aside. */
+body.pp-kbd .pp-tabs { display: none; }
+.pp-tabs.pp-tabs-none { display: none; }
+/* Room for the bar under the page's content on a phone. */
+body.pp-has-tabs { padding-bottom: 72px; }
+@media (min-width: 900px) {
+  /* Centred, boxed tabs (Ahmed, 18 October 2026). */
+  .pp-tabs { position: static; border-top: 0; border-bottom: 1px solid var(--border); padding: 12px 16px; justify-content: center; gap: 10px; }
+  /* Red-edged tabs (Ahmed, 21 October 2026): every tab has a red edge; the
+     open one is filled red. */
+  .pp-tab { flex: 0 0 auto; padding: 9px 22px; min-height: 0; border: 1px solid var(--red); border-radius: 8px; font-size: 15px; color: var(--text); }
+  .pp-tab:hover { background: rgba(216,74,58,0.12); color: var(--text); }
+  .pp-tab[aria-selected="true"] { border-color: var(--red); color: #fff; background: var(--red); font-weight: 700; }
+  .pp-tab[aria-selected="true"] .pp-tab-badge { background: #fff; color: var(--red); }
+  body.pp-has-tabs { padding-bottom: 24px; }
+}
+
+/* The Facilitator's command bar: never moves. Redesigned 19 October 2026
+   (Ahmed): a status line, then one toolbar of three groups — injects,
+   clock, End — built as joined button groups of one height. White is the
+   accent (Next / Start), amber only while paused, red only for End. */
+.pp-cmd {
+  position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--border-strong);
+  padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px;
+}
+.pp-cmd-info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; min-width: 0; flex: 1 1 320px; }
+.pp-cmd-pos { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+.pp-cmd-clock {
+  font-family: var(--font-mono); font-weight: 600; font-size: 1.6rem; color: var(--accent); font-variant-numeric: tabular-nums;
+  direction: ltr; unicode-bidi: isolate; line-height: 1;
+}
+.pp-cmd-clock[data-state="warn"] { color: var(--attn); }
+.pp-cmd-clock[data-state="paused"] { color: var(--attn); font-size: 1.1rem; font-family: var(--font-display); direction: inherit; unicode-bidi: normal; }
+.pp-cmd-clock[data-state="up"] { color: var(--red-soft); font-family: var(--font-display); font-size: 1.05rem; direction: inherit; unicode-bidi: normal; }
+.pp-cmd-clock[data-state="none"] { color: var(--text-muted); font-family: var(--font-display); font-size: 1rem; direction: inherit; unicode-bidi: normal; }
+.pp-cmd-who { font-size: 0.86rem; color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
+.pp-cmd-status { display: none; }
+
+.pp-cmd-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pp-grp {
+  display: inline-flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: 10px;
+  overflow: hidden; background: var(--bg);
+}
+.pp-grp > button {
+  border: 0; border-radius: 0; margin: 0; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.92rem; font-weight: 600; padding: 0 16px; min-height: 42px; white-space: nowrap; cursor: pointer;
+}
+.pp-grp > button + button { border-inline-start: 1px solid var(--border-strong); }
+.pp-grp > button[hidden] + button { border-inline-start: 0; }
+.pp-grp > button:hover:not(:disabled) { background: rgba(242,244,247,0.06); border-color: var(--border-strong); }
+.pp-grp > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.pp-grp > button:disabled { color: var(--text-muted); opacity: 0.45; cursor: not-allowed; }
+.pp-grp > button.primary { background: var(--accent); color: var(--accent-ink); padding: 0 22px; font-weight: 700; }
+.pp-grp > button.primary:hover:not(:disabled) { background: #ffffff; }
+.pp-grp > button.primary:disabled { opacity: 0.35; color: var(--accent-ink); }
+.pp-grp > #pauseBtn { min-width: 104px; }
+.pp-grp > #pauseBtn[aria-pressed="true"] { color: var(--attn); box-shadow: inset 0 0 0 2px var(--attn); }
+.pp-grp-end { border-color: var(--red); }
+.pp-grp-end > button.danger { color: var(--red-soft); background: transparent; }
+.pp-grp-end > button.danger:hover:not(:disabled) { background: rgba(216,74,58,0.12); }
+@media (min-width: 900px) {
+  .pp-grp-end { margin-inline-start: 12px; }
+}
+@media (max-width: 899px) {
+  .pp-cmd { padding: 8px 10px; gap: 8px; }
+  .pp-cmd-info { flex-basis: 100%; }
+  .pp-cmd-who { flex-basis: 100%; font-size: 0.8rem; }
+  .pp-cmd-tools { flex-basis: 100%; gap: 8px; }
+  .pp-grp { flex: 1 1 100%; }
+  .pp-grp > button { flex: 1 1 0; padding: 0 8px; min-height: 44px; font-size: 0.88rem; white-space: normal; line-height: 1.2; }
+  .pp-grp > button.primary { flex: 1.6 1 0; padding: 0 10px; }
+}
+
+/* Trial run (20 October 2026). */
+.pp-trial-strip {
+  background: var(--red); color: #fff; text-align: center; font-weight: 700; font-size: 0.85rem;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px;
+}
+.pp-trial-tag {
+  display: inline-block; background: var(--red); color: #fff; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; align-self: center;
+}
+.pp-trial-tag[hidden] { display: none; }
+
+/* The alert strip under the command bar: visible on every tab. */
+.pp-alerts {
+  background: var(--bg); border-bottom: 1px solid var(--border); padding: 6px 12px;
+  display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.88rem; align-items: center;
+}
+.pp-alert { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pp-alert::before { content: "⚠"; color: var(--attn); }
+.pp-alert.red::before { content: "●"; color: var(--red-soft); }
+.pp-alert.red .pp-alert-text { color: #ffd3cb; font-weight: 600; }
+.pp-alert-btn {
+  font: inherit; font-size: 0.8rem; font-weight: 600; padding: 2px 9px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border-strong); background: transparent; color: var(--accent);
+}
+.pp-alert-btn.more { border-color: var(--border-strong); color: var(--text-muted); }
+
+/* The slim header on a participant's or Observer's device: who, where, the clock. */
+.pp-slim {
+  position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--border-strong);
+  padding: 7px 12px; display: flex; align-items: center; gap: 10px; font-size: 0.86rem;
+}
+.pp-slim .who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-slim .pos { white-space: nowrap; color: var(--text-muted); }
+.pp-slim .pp-cmd-clock { font-size: 1.15rem; }
+
+/* Two columns on a laptop. */
+.pp-cols { display: grid; gap: 14px; align-items: start; }
+@media (min-width: 900px) {
+  .pp-cols { grid-template-columns: 1fr 1fr; }
+  .pp-cols.wide { grid-template-columns: 3fr 2fr; }
+  .pp-cols > .pp-col { min-width: 0; }
+  .pp-cols > .pp-col.sticky { position: sticky; top: 64px; }
+}
+.pp-card { background: var(--panel); border: 1px solid var(--border); border-top: 2px solid var(--red); border-radius: 12px; padding: 14px 16px; }
+/* Box titles (20 October 2026, Ahmed): red small capitals, so a page can be
+   scanned by its boxes. The red top edge separates one box from the next. */
+.pp-card > h2, .pp-card > summary > h2 {
+  color: var(--red-soft); font-family: var(--font-body); font-size: 0.8rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+/* Shared colour words: who and when on a message; good / waiting / problem. */
+.m-who { color: var(--red-soft); font-weight: 700; }
+.m-time { color: var(--attn); font-family: var(--font-mono); }
+.tone-ok { color: var(--teal-soft); }
+.tone-wait { color: var(--attn); }
+.tone-bad { color: var(--red-soft); font-weight: 600; }
+.pp-card + .pp-card { margin-top: 14px; }
+.pp-card h2, .pp-card h3 { margin: 0 0 8px; font-size: 1rem; }
+
+/* Tap chips: ready-made messages and "To". */
+.pp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-chip {
+  font: inherit; font-size: 0.86rem; padding: 6px 12px; border-radius: 16px; cursor: pointer;
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text); max-width: 100%; text-align: start;
+}
+.pp-chip[aria-pressed="true"], .pp-chip[aria-checked="true"], .pp-chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.pp-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* The mic button sits in the corner of a typing box. */
+.pp-micwrap { position: relative; }
+.pp-micwrap textarea { padding-inline-end: 48px; }
+.pp-mic {
+  position: absolute; inset-inline-end: 8px; bottom: 8px; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--panel-raised); color: var(--accent); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.pp-mic svg { width: 18px; height: 18px; }
+.pp-mic.on { background: var(--red); border-color: var(--red); color: #fff; animation: pp-pulse 1.2s ease-in-out infinite; }
+.pp-mic.busy { color: var(--text-muted); }
+@keyframes pp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(216,74,58,0.5); } 50% { box-shadow: 0 0 0 8px rgba(216,74,58,0); } }
+.pp-mic-line { font-size: 0.82rem; color: var(--text-muted); min-height: 1.2em; margin-top: 4px; }
+.pp-mic-line.err { color: var(--red-soft); }
+
+/* QR codes: a small one beside each public link, a large one over the page. */
+.pp-qr { width: 112px; height: 112px; background: #fff; padding: 6px; border-radius: 8px; flex: 0 0 auto; }
+.pp-qr svg { width: 100%; height: 100%; display: block; }
+.pp-qr-large {
+  position: fixed; inset: 0; z-index: 60; background: #fff; color: #111; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center;
+}
+.pp-qr-large .pp-qr { width: min(70vmin, 560px); height: min(70vmin, 560px); padding: 0; }
+.pp-qr-large .t { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.4rem, 4vw, 2.4rem); color: #111; }
+.pp-qr-large .u { font-family: var(--font-mono); font-size: clamp(0.8rem, 2vw, 1.1rem); overflow-wrap: anywhere; color: #333; direction: ltr; unicode-bidi: isolate; }
+.pp-qr-large button { font: inherit; font-size: 1rem; padding: 10px 20px; border-radius: 8px; border: 1px solid #999; background: #f2f2f2; color: #111; cursor: pointer; }
+.pp-linkrow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
+.pp-linkrow:first-child { border-top: 0; }
+.pp-linkrow .body { flex: 1 1 auto; min-width: 0; }
+.pp-linkrow .lbl { font-weight: 600; font-size: 0.92rem; margin-bottom: 4px; }
+.pp-linkrow input { width: 100%; font-family: var(--font-mono); font-size: 0.78rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--field); color: var(--text); direction: ltr; }
+.pp-linkrow .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pp-linkrow .acts button { font-size: 0.82rem; padding: 5px 10px; }
+.pp-ok { color: var(--teal-soft); font-size: 0.82rem; }
+/* On a phone the bottom tab bar owns the bottom edge: the live pill and
+   notices sit above it, and the top bar is compact. */
+@media (max-width: 899px) {
+  body.pp-has-tabs #liveStatus { bottom: 64px !important; }
+  body.pp-has-tabs .pp-notice-fixed { bottom: 90px !important; }
+  body.pp-has-tabs .pp-top { padding: 8px 12px; }
+  body.pp-has-tabs .pp-top .pp-brand { font-size: 16px; gap: 7px; }
+  body.pp-has-tabs .pp-top .pp-brand svg { width: 24px; height: 24px; }
+  body.pp-has-tabs .pp-top .pp-context { font-size: 12px; }
+  body.pp-has-tabs .pp-top .pp-context > div { display: none; }
+}
+
+/* ===========================================================================
+   W4 redesign (30 October 2026, Ahmed: "Yes to all 5"). One frame on every
+   page: one compact top bar, the time, then centred boxed tabs AT THE TOP on
+   every size (decision B), the open tab white (decision C), red only for
+   something urgent, amber only for attention, green for done. Boxes have one
+   thin grey edge; headings are plain white sentence case. Only looks and
+   placement change here — no behaviour. Mock-ups: 07 Backups\2026-10-30 W4
+   redesign\mockups. Design: design-notes.md → "W4 redesign".
+   Spacing scale 4 / 8 / 12 / 16 / 24 / 32; boxes 12px corners; controls 8px.
+   ======================================================================== */
+.pp-top { padding: 10px 16px; min-height: 52px; gap: 8px 16px; }
+.pp-top .pp-context { font-size: 13px; line-height: 1.35; }
+@media (min-width: 900px) { .pp-top { padding: 10px 24px; min-height: 56px; } }
+
+/* Tabs: one centred boxed row at the top, the open tab filled white. */
+.pp-tabs {
+  position: static; inset: auto; bottom: auto; z-index: auto; display: flex; justify-content: center; gap: 0;
+  background: var(--bg); border-top: 0; border-bottom: 1px solid var(--border); padding: 12px 16px;
+}
+body.pp-kbd .pp-tabs { display: flex; }
+.pp-tabs.pp-tabs-none, body.pp-kbd .pp-tabs.pp-tabs-none { display: none; }
+.pp-tab, .pp-tabs .pp-tab {
+  flex: 1 1 0; max-width: 168px; min-width: 0; min-height: 0; padding: 9px 16px; gap: 8px;
+  border: 1px solid var(--border-strong); border-inline-start-width: 0; border-radius: 0;
+  background: transparent; color: var(--text); font-size: 15px; font-weight: 500;
+}
+.pp-tab:first-child { border-inline-start-width: 1px; border-start-start-radius: 8px; border-end-start-radius: 8px; }
+.pp-tab:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
+.pp-tab:hover { background: rgba(242,244,247,0.06); color: var(--text); }
+.pp-tab[aria-selected="true"], .pp-tabs .pp-tab[aria-selected="true"] {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600;
+}
+.pp-tab[aria-selected="true"] + .pp-tab { border-inline-start-width: 0; }
+.pp-tab-badge { background: var(--attn); color: #0b0f14; }
+.pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab[aria-selected="true"] .pp-tab-badge { background: var(--attn); color: #0b0f14; }
+.pp-tab[aria-selected="true"] .pp-tab-badge.red { background: var(--red); color: #fff; }
+.pp-tab-dot { background: var(--attn); }
+body.pp-has-tabs { padding-bottom: 24px; }
+@media (max-width: 899px) {
+  .pp-tabs { padding: 10px 12px; }
+  .pp-tab, .pp-tabs .pp-tab { padding: 9px 6px; font-size: 14px; }
+  /* Five tabs on a phone (Facilitator): the count sits in the corner. */
+  .pp-tabs.many .pp-tab { font-size: 13px; padding: 9px 2px; position: relative; }
+  .pp-tabs.many .pp-tab-badge { position: absolute; top: -7px; inset-inline-end: -4px; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; z-index: 1; }
+  body.pp-has-tabs #liveStatus { bottom: 10px !important; }
+  body.pp-has-tabs .pp-notice-fixed { bottom: 24px !important; }
+}
+
+/* The connection pill: a small green dot while all is well; it grows into
+   words only when something needs attention (reconnecting, offline). */
+#liveStatus[data-state="live"] {
+  font-size: 0 !important; width: 12px; height: 12px; min-width: 0; padding: 0 !important;
+  border-radius: 50% !important; background: var(--teal) !important; box-shadow: 0 0 0 3px rgba(11,15,20,0.9);
+}
+
+/* Boxes: one thin grey edge, a plain white heading. */
+.pp-card { border: 1px solid var(--border); border-top: 1px solid var(--border); padding: 16px; }
+.pp-card > h2, .pp-card > summary > h2 {
+  color: var(--text); font-family: var(--font-display); font-size: 1rem; font-weight: 600;
+  text-transform: none; letter-spacing: 0;
+}
+.pp-card + .pp-card { margin-top: 16px; }
+.pp-cols { gap: 16px; }
+@media (min-width: 900px) { .pp-cols { gap: 24px; } }
+.m-who { color: var(--text); font-weight: 600; }
+.m-time { color: var(--text-muted); }
+
+/* The time: a band with the label and its note on one side and the large
+   clock on the other, and a thin line underneath that runs down — green,
+   amber in the last minute, red at time-up. */
+.pp-clock {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label value" "note value";
+  align-items: center; column-gap: 12px; text-align: start;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px 14px;
+}
+.pp-clock-label { grid-area: label; align-self: end; }
+.pp-clock-note { grid-area: note; align-self: start; min-height: 0; }
+.pp-clock-value { grid-area: value; text-align: end; font-size: clamp(2.6rem, 12vw, 3.4rem); }
+.pp-clock[data-state="warn"], .pp-clock[data-state="paused"], .pp-clock[data-state="up"] { background: var(--bg); }
+.pp-clock[data-state="none"] .pp-clock-value { font-size: 1.1rem; }
+
+/* The slim line under the top bar: where the exercise is. */
+.pp-slim { padding: 8px 16px; font-size: 14px; gap: 12px; border-bottom: 1px solid var(--border); }
+.pp-slim .pos { color: var(--text); font-weight: 600; }
+.pp-slim .pp-cmd-clock { margin-inline-start: auto; font-size: 1.25rem; }
+
+/* The inject shown as the real incoming message (email, call log, alert…):
+   who it is from and when, then the message. Built by injectMessageHTML()
+   in shared.js; an inject without a header line shows as before. */
+.pp-msg { border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; background: var(--bg); }
+.pp-msg-hd { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel-raised); }
+.pp-msg-ch { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--accent); }
+.pp-msg-ch svg { width: 18px; height: 18px; }
+.pp-msg-meta { font-size: 13px; line-height: 1.45; color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
+.pp-msg-meta b { color: var(--text); font-weight: 600; }
+.pp-msg-bd { padding: 16px; }
+.pp-msg-bd .inject-title, .pp-msg-bd .ci-title { margin: 0 0 8px; }
+.pp-msg-body p { margin: 0 0 12px; }
+.pp-msg-body p:last-child { margin-bottom: 0; }
+.pp-msg-ft { border-top: 1px solid var(--border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+
+/* Note kinds (Observers and the facilitator): the four-colour meanings. */
+.pp-kind-positive { border-color: var(--teal) !important; color: var(--teal-soft) !important; }
+.pp-kind-improve { border-color: var(--attn) !important; color: var(--attn) !important; }
+.pp-kind-critical { border-color: var(--red) !important; color: var(--red-soft) !important; }
+
+/* Chips and buttons: one height family. */
+.pp-chip { padding: 6px 12px; border-radius: 999px; font-size: 14px; }
+/* W4: the person's name stays in the top bar on a phone too (it is no longer
+   repeated in a second header). */
+@media (max-width: 899px) {
+  body.pp-has-tabs .pp-top .pp-context > div { display: block; }
+  body.pp-has-tabs .pp-top .pp-context { font-size: 12px; }
+}
+@media (max-width: 380px) {
+  .pp-tabs.many { padding-inline: 8px; }
+  .pp-tabs.many .pp-tab { font-size: 12px; padding-inline: 0; }
+}
+.pp-msg-subj { font-weight: 600; color: var(--text); }
+#liveStatus[data-state="live"] { color: #0b0f14 !important; }
+.pp-slim { min-height: 38px; box-sizing: border-box; }
+
+/* ------------------------------------------------------------------
+   After Ahmed's W4 real-device test (31 October 2026): the thank-you
+   title ("Thank you, Ali", "Thank you, everyone") and the feedback
+   survey's invitation are red, so nobody misses the survey at the end.
+   The survey's own "Thank you for your feedback" stays white.
+   ------------------------------------------------------------------ */
+.pp-thanks-title,
+.pp-thanks-title .pp-thanks-name { color: var(--red); }
+.pp-thanks-survey { color: var(--red); }
+.ppsv-title { color: var(--red); }
+.ppsv-done .ppsv-title { color: var(--text); }
+
+/* ===== W6a (2 November 2026): briefings, narration, news clips (media.js) ===== */
+@font-face { font-family: "Noto Sans Arabic"; src: url("fonts/noto-sans-arabic-arabic-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Noto Sans Arabic"; src: url("fonts/noto-sans-arabic-arabic-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+/* The briefing player: no scrub bar — Play/Pause, the time, captions, language. */
+.pp-brief-card { margin: 0 0 14px; }
+.pp-brief { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #0f151c; }
+.pp-brief-title { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin: 0 0 8px; }
+.pp-brief-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; overflow: hidden; }
+.pp-brief-video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+.pp-brief-video::cue { font-family: "IBM Plex Sans", "Noto Sans Arabic", system-ui, sans-serif; font-size: 1.05em; background: rgba(0,0,0,.72); }
+.pp-brief-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.pp-brief-bar button { font: inherit; font-size: 0.92rem; font-weight: 600; min-height: 40px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-strong, #3d4a57); background: transparent; color: var(--text); cursor: pointer; }
+.pp-brief-bar .pp-brief-play { background: var(--text); color: var(--bg); border-color: var(--text); min-width: 92px; }
+.pp-brief[data-state="watched"] .pp-brief-play { background: transparent; color: var(--text); }
+.pp-brief-bar .pp-brief-lang.sel { border-color: var(--text); }
+.pp-brief-bar .pp-brief-lang:lang(ar) { font-family: "Noto Sans Arabic", system-ui, sans-serif; }
+.pp-brief-time { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.9rem; color: var(--text-muted); margin-inline-end: auto; }
+.pp-brief-langs { display: inline-flex; gap: 6px; }
+.pp-brief-msg { margin-top: 8px; font-size: 0.95rem; }
+.pp-brief-msg:empty { display: none; }
+.pp-brief[data-state="watched"] .pp-brief-msg { color: var(--green-soft, #7cc4ab); }
+.pp-brief[data-state="failed"] .pp-brief-msg { color: var(--red-soft, #f08a7c); }
+/* On a room screen: full screen above the page, under the start gate. */
+.pp-brief-layer { position: fixed; inset: 0; z-index: 900; background: #000; display: flex; align-items: center; justify-content: center; }
+.pp-brief-layer[hidden] { display: none; }
+.pp-brief.full { border: 0; border-radius: 0; padding: 0; background: #000; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+.pp-brief.full .pp-brief-title { display: none; }
+.pp-brief.full .pp-brief-frame { flex: 1 1 auto; aspect-ratio: auto; border-radius: 0; }
+.pp-brief.full .pp-brief-bar { position: absolute; inset-inline-end: 18px; bottom: 14px; margin: 0; opacity: .0; transition: opacity .25s; }
+.pp-brief.full:hover .pp-brief-bar { opacity: .9; }
+.pp-brief.full .pp-brief-msg { position: absolute; inset-inline: 0; top: 50%; text-align: center; font-family: var(--font-display); font-size: clamp(1.4rem, 3vw, 2.4rem); }
+.pp-brief.full.no-captions .pp-brief-video::cue { visibility: hidden; }
+
+/* The newsroom clip — "Marsa News": its own look (teal and white, broadcast red
+   only for BREAKING), drawn over the presenter video by the page. */
+.pp-news { position: fixed; inset: 0; z-index: 950; background: #000; overflow: hidden; color: #fff; font-family: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif; container-type: inline-size; }
+.pp-news.ar { font-family: "Noto Sans Arabic", system-ui, sans-serif; }
+.pp-news video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #06161c; }
+.pp-news-gfx { position: absolute; inset: 0; pointer-events: none; }
+.pp-news-bug { position: absolute; top: 3.2cqw; inset-inline-start: 3cqw; display: flex; align-items: center; gap: 1cqw; background: rgba(15,76,92,.92); padding: .7cqw 1.4cqw; border-radius: .4cqw; font-weight: 700; letter-spacing: .14em; font-size: max(13px, 1.9cqw); }
+.pp-news.ar .pp-news-bug { letter-spacing: 0; }
+.pp-news-mark { width: 2.4cqw; height: 2.4cqw; min-width: 18px; min-height: 18px; flex: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23fff'/%3E%3Cpath d='M12 34V14l12 13 12-13v20' fill='none' stroke='%230f4c5c' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'/%3E%3Crect x='12' y='39' width='24' height='3.2' rx='1.6' fill='%23e8a24a'/%3E%3C/svg%3E") center / contain no-repeat; }
+.pp-news-label { position: absolute; top: 3.2cqw; inset-inline-end: 3cqw; background: rgba(0,0,0,.7); padding: .6cqw 1.2cqw; border-radius: .3cqw; font-weight: 700; font-size: max(11px, 1.35cqw); letter-spacing: .06em; font-family: "IBM Plex Sans", "Noto Sans Arabic", system-ui, sans-serif; }
+.pp-news-clock { position: absolute; bottom: 12.4cqw; inset-inline-end: 3cqw; background: rgba(6,22,28,.9); padding: .4cqw 1cqw; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: max(11px, 1.5cqw); }
+.pp-news-clock:empty { display: none; }
+.pp-news-band { position: absolute; inset-inline: 3cqw; bottom: 6.2cqw; display: flex; align-items: stretch; min-height: 5.2cqw; background: #fff; color: #0b1b20; box-shadow: 0 .6cqw 2cqw rgba(0,0,0,.35); transform-origin: left; animation: ppNewsBand .4s ease-out both; }
+.pp-news.ar .pp-news-band { transform-origin: right; }
+.pp-news-variant { display: flex; align-items: center; padding: 0 1.6cqw; background: #0f4c5c; color: #fff; font-weight: 700; letter-spacing: .1em; font-size: max(12px, 1.7cqw); white-space: nowrap; }
+.pp-news.ar .pp-news-variant { letter-spacing: 0; }
+.pp-news[data-variant="breaking"] .pp-news-variant { background: #c81e1e; }
+.pp-news[data-variant="update"] .pp-news-variant { background: linear-gradient(90deg, #0f4c5c, #b8742a); }
+.pp-news-head { display: flex; align-items: center; padding: .6cqw 1.8cqw; font-weight: 700; font-size: max(14px, 2.4cqw); line-height: 1.15; }
+.pp-news-band.swap .pp-news-head { animation: ppNewsSwap .4s ease-out both; }
+.pp-news-ticker { position: absolute; inset-inline: 0; bottom: 2cqw; height: 3.4cqw; min-height: 22px; background: rgba(6,22,28,.92); overflow: hidden; display: flex; align-items: center; font-size: max(11px, 1.4cqw); font-family: "IBM Plex Sans", "Noto Sans Arabic", system-ui, sans-serif; }
+.pp-news-tickin { white-space: nowrap; padding-inline-start: 100%; animation: ppNewsTick 38s linear infinite; }
+.pp-news.ar .pp-news-tickin { animation-name: ppNewsTickRtl; }
+.pp-news-end { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8cqw; background: #000; font-weight: 700; font-size: max(15px, 2.6cqw); line-height: 1.5; opacity: 0; transition: opacity .25s; font-family: "Space Grotesk", "Noto Sans Arabic", system-ui, sans-serif; }
+.pp-news.ending .pp-news-end { opacity: 1; }
+.pp-news-end { flex-direction: column; gap: 1.2cqw; } /* W6b: English line, then the Arabic line */
+.pp-news.opening .pp-news-head, .pp-news.opening .pp-news-ticker { opacity: 0; }
+.pp-news.leaving { opacity: 0; transition: opacity .25s; }
+.pp-news-close { position: absolute; bottom: 7cqw; inset-inline-end: 3cqw; transform: translateY(-120%); font: inherit; font-size: 0.9rem; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.6); background: rgba(0,0,0,.55); color: #fff; cursor: pointer; pointer-events: auto; }
+@keyframes ppNewsBand { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes ppNewsSwap { from { opacity: 0; transform: translateY(.6cqw); } to { opacity: 1; transform: none; } }
+@keyframes ppNewsTick { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes ppNewsTickRtl { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .pp-news-band, .pp-news-band.swap .pp-news-head { animation: none; } .pp-news-tickin { animation-duration: 120s; } }
+
+/* "Take over" asked in the page's own dialog (W6a). */
+.pp-confirm-back { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.6); display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
+.pp-confirm-back[hidden] { display: none; }
+.pp-confirm { max-width: 460px; width: 100%; background: var(--bg); border: 2px solid var(--attn); border-radius: 12px; padding: 16px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.pp-confirm p { margin: 0 0 14px; font-size: 1rem; line-height: 1.45; }
+.pp-confirm-b { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.pp-confirm-b .pp-btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong, #3d4a57); }
