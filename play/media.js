@@ -52,6 +52,11 @@
     const title = el("div", "pp-brief-title", T(opts.role === "observer" ? "media.brief.titleObserver" : "media.brief.titleParticipant"));
     const frame = el("div", "pp-brief-frame");
     const video = document.createElement("video");
+    // The captions file lives on the PlanProof database's storage (another
+    // address). A browser loads a captions track from another address only
+    // when the video asks for it this way; without it the captions never
+    // appeared in a real browser (found 5 November 2026, player move).
+    video.crossOrigin = "anonymous";
     video.setAttribute("playsinline", "");
     video.preload = "auto";
     video.className = "pp-brief-video";
