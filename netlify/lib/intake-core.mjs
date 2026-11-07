@@ -144,9 +144,17 @@ export function buildRecord(body, nowMs = Date.now()) {
 // x-intake-secret: the database then accepts new requests ONLY from this
 // function, not from anyone holding the public key (see the
 // intake_hardening migration and private.intake_insert_allowed()).
+export function isJwt(key) {
+  return typeof key === "string" && key.startsWith("eyJ") && key.split(".").length === 3;
+}
+
 export function supabaseHeaders(env, extra = {}) {
   const key = env.SUPABASE_PUBLISHABLE_KEY;
-  const h = { apikey: key, Authorization: `Bearer ${key}`, ...extra };
+  // The publishable key (sb_publishable_…) goes in apikey ONLY; the gateway
+  // refuses it as "Authorization: Bearer" (it is not a JWT). The legacy anon
+  // JWT is still accepted in both, so this works with either key — the
+  // Netlify variable can be switched, or switched back, without a code change.
+  const h = { apikey: key, ...(isJwt(key) ? { Authorization: `Bearer ${key}` } : {}), ...extra };
   if (env.INTAKE_DB_SECRET) h["x-intake-secret"] = env.INTAKE_DB_SECRET;
   return h;
 }

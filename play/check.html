@@ -152,7 +152,7 @@
       const t0 = Date.now();
       const res = await timed(fetch(`${SUPABASE_URL}/rest/v1/rpc/player_session`, {
         method: "POST",
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, "Content-Type": "application/json" },
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
         cache: "no-store",
         body: JSON.stringify({ p_session_id: crypto.randomUUID() }),
       }), 8000);

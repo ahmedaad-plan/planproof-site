@@ -7,12 +7,13 @@
 // audio files later without changing how injects reference them.
 
 const SUPABASE_URL = "https://qryfayienxrngavhwfgw.supabase.co";
-// Using the legacy anon JWT key here, not the newer sb_publishable_... key —
-// this project's REST/Realtime gateway returned HTTP 400 for the new format,
-// but the legacy key is the one already proven working (it's what the
-// Netlify form function uses for inserts).
-const SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeWZheWllbnhybmdhdmh3Zmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTQ3MTcsImV4cCI6MjEwNjUzMDcxN30.AeLL04BiZwqwjNqEvV9dwCKK07Wf7HUN149L0k0fXGQ";
+// The Supabase publishable key (sb_publishable_…), public by design: Row
+// Level Security and the checked functions protect the data, not the key.
+// 7 November 2026: replaces the legacy anon JWT, which stops working at the
+// end of 2026. The new key is NOT a JWT, so it is sent as the apikey header
+// ONLY — never as "Authorization: Bearer" (the gateway answers "Invalid JWT";
+// that is why the first try in October 2026 failed with HTTP 400).
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_7jiMcaR_m87y9Avu5bZs9g_KdLij01H";
 
 function getSessionId() {
   const params = new URLSearchParams(window.location.search);
@@ -70,7 +71,6 @@ function assertValidSessionId(sessionId) {
 function rpcHeaders(facilitatorToken) {
   const headers = {
     apikey: SUPABASE_PUBLISHABLE_KEY,
-    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
     "Content-Type": "application/json",
   };
   if (facilitatorToken && UUID_RE.test(facilitatorToken)) headers["x-facilitator-token"] = facilitatorToken;
@@ -180,7 +180,6 @@ async function patchSession(sessionId, fields) {
       method: "PATCH",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": "application/json",
         // return=minimal would make a wrong/stale token fail *silently*:
         // PostgREST still answers 204 even when the RLS policy filters the
@@ -246,7 +245,6 @@ async function joinSession(sessionId, { id, firstName, familyName, title, depart
       method: "POST",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
@@ -351,7 +349,6 @@ async function fetchSubmissionStatus(sessionId, facilitatorToken) {
       cache: "no-store",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": "application/json",
         "x-facilitator-token": facilitatorToken,
       },
@@ -544,7 +541,6 @@ async function uploadAttachment(sessionId, injectIndex, department, file) {
       method: "POST",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": file.type || "application/octet-stream",
       },
       body: file,
@@ -582,7 +578,6 @@ async function fetchAttendees(sessionId, facilitatorToken) {
       {
         headers: {
           apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
           "x-facilitator-token": facilitatorToken,
         },
       }
@@ -609,7 +604,6 @@ async function deleteAttendee(attendeeId, facilitatorToken) {
       method: "DELETE",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         Prefer: "return=representation",
         "x-facilitator-token": facilitatorToken,
       },
@@ -763,7 +757,6 @@ async function sendBroadcast(sessionId, { body, presetKey, department } = {}) {
       method: "POST",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": "application/json",
         Prefer: "return=minimal",
         "x-facilitator-token": facilitatorToken,
@@ -816,7 +809,6 @@ async function sendDepartmentRequest(sessionId, { body, presetKey, department, a
       method: "POST",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
@@ -1142,7 +1134,6 @@ function playedInjects(row) {
 async function callNotesRpc(name, body, facilitatorToken) {
   const headers = {
     apikey: SUPABASE_PUBLISHABLE_KEY,
-    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
     "Content-Type": "application/json",
   };
   if (facilitatorToken) headers["x-facilitator-token"] = facilitatorToken;
