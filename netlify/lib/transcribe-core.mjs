@@ -45,7 +45,7 @@ export async function allowed({ env, fetchFn, sessionId, attendeeId, facilitator
   if (attendeeId && !UUID_RE.test(attendeeId)) return false;
   const headers = {
     apikey: env.SUPABASE_PUBLISHABLE_KEY,
-    Authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
+    // Publishable key: apikey only (not a JWT); the legacy JWT also works this way.
     "Content-Type": "application/json",
   };
   if (facilitatorToken) headers["x-facilitator-token"] = facilitatorToken;
