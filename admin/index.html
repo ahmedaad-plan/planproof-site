@@ -306,7 +306,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6.2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v6.3</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -772,6 +772,24 @@ function requestRow(s) {
 // ================= One request — the checklist =================
 let keepScroll = null;
 const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
+// W7 (8 November 2026): when the database will delete this client's record by itself
+// (privacy policy: 1 year after the last contact if no exercise went ahead; 3 years
+// after the latest exercise). The daily email then asks to delete the report copy.
+// Read on its own, so the page still opens if this one read fails.
+async function loadRetention(clientId) {
+  if (!clientId) return null;
+  const r = await q(sb.from("clients").select("retention:client_retention").eq("id", clientId).maybeSingle()).catch(() => null);
+  return r ? r.retention : null;
+}
+function keptLine(ret) {
+  if (!ret || !ret.delete_on) return null;
+  const when = dd(ret.delete_on);
+  const text = ret.held
+    ? "Record kept while its exercise still holds participants' data; after that it is deleted automatically (due " + when + ")."
+    : "This client's record is deleted automatically on " + when + " — " + String(ret.reason || "").replace(/^./, (x) => x.toLowerCase()) + ". Any new request or contact moves the date on.";
+  return h("p", { class: "small muted keep-until", style: "margin:6px 0 0" }, text);
+}
+
 async function renderRequest(id) {
   // The tabs are gone; their memory key is read nowhere any more.
   sessionStorage.removeItem("pp_admin_tab_request");
@@ -822,6 +840,8 @@ async function renderRequest(id) {
       (contactName && contactName.name ? "Contact: " + contactName.name + (contactName.role ? ", " + contactName.role : "") : c.contact_name ? "Contact: " + c.contact_name : null), c.email,
     ].filter(Boolean).join(" · ")));
 
+  const keep = linked ? keptLine(await loadRetention(c.id)) : null;
+  if (keep) add(head, keep);
   const steps = h("div", { class: "steps" });
   for (let n = 1; n <= 6; n++) add(steps, stepCard(n, ctx));
   app.replaceChildren(head, steps, moreFold(ctx));
@@ -1845,7 +1865,7 @@ async function renderClient(id) {
     if (ok) await q(sb.rpc("admin_set_history_opt_out", { p_client: id, p_opt_out: turningOff, p_note: "Recorded on the admin page" })).then(reload).catch(fail);
   } }, client.history_opt_out ? "Keep history again" : "Record opt-out");
   const historyChoice = h("div", { class: "card" }, h("h2", {}, "Exercise history choice"),
-    h("div", { class: "spread" }, h("p", { class: "small muted", style: "margin:0" }, client.history_opt_out ? "The client opted out: no exercise history is kept." : "History is kept for 5 years from the latest exercise (" + (client.retain_until ? "until " + dd(client.retain_until) : "no exercise yet") + ")."), optBtn));
+    h("div", { class: "spread" }, h("p", { class: "small muted", style: "margin:0" }, client.history_opt_out ? "The client opted out: no exercise history is kept." : "History is kept for 3 years from the latest exercise (" + (client.retain_until ? "until " + dd(client.retain_until) : "no exercise yet") + ")."), optBtn), keptLine(await loadRetention(id)));
   const eventsCard = h("div", { class: "card plain" }, h("details", {}, h("summary", {}, "Activity log (" + events.length + ")"),
     events.length ? h("ul", { class: "small", style: "margin:0; padding-left:18px" }, ...events.map((ev) => h("li", {}, dt(ev.at) + " — " + ev.event.replace(/_/g, " ") + (ev.detail ? ": " + ev.detail : "")))) : h("p", { class: "empty" }, "Nothing recorded yet.")));
   const word = client.company_name.split(/\s+/)[0];

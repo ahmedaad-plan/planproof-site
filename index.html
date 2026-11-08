@@ -2467,7 +2467,7 @@ function returningHTML(p){ return `
         </div>
         <p class="returning-note" id="${p}_returningUnsure" hidden>Thank you — we'll check our records and let you know if your organization has exercised with us before.</p>
         <label class="optout"><input type="checkbox" name="history_opt_in" value="yes"> Yes, keep our exercise history <span class="opt">(optional)</span></label>
-        <p class="empty-note optout-note">If you tick this, we keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 5 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Leave it unticked and we keep none of it after delivery. You can change your mind or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
+        <p class="empty-note optout-note">If you tick this, we keep a short summary of each exercise — scores, findings and actions, <strong class="not-kept">not your plan document, your files, or participants' names and answers</strong> — for 3 years from your latest exercise, so your next exercise can show your progress. It is kept confidential and never shared. Leave it unticked and we keep only a copy of your delivered report, without participants' names. You can change your mind or ask us to delete it at any time. <a href="privacy-policy.html#exercise-history" target="_blank" rel="noopener">Privacy policy</a></p>
       </div>`; }
 
 // Puts the two reference boxes together as PP-YYYY-NNNN (the number padded to
@@ -2579,7 +2579,7 @@ function returningPairs(p){
       ["Re-test or new risk for this exercise", { retest: "Re-test the same risk as last time", new: "Test a new risk (see the risk concerns above)", unsure: "Not decided yet \u2014 to agree with the client" }[retest] || ""],
       ["What has changed", val("_changed")], ["Actions done since", val("_actions_done")], ["Plan changed", val("_plan_updated")]);
   }
-  pairs.push(["Exercise history", optIn ? "Keep for 5 years (client opted in)" : "Don't keep (not opted in)"]);
+  pairs.push(["Exercise history", optIn ? "Keep for 3 years (client opted in)" : "Don't keep (not opted in)"]);
   return pairs;
 }
 

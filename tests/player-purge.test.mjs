@@ -16,6 +16,9 @@ function world(opts = {}) {
     if (u.pathname === "/rest/v1/rpc/service_purge_due") return ok(w.due ?? [{ session_id: SID, label: "Test", request_no: "R-2026-0001", delivered_at: "2026-10-10T08:00:00Z" }]);
     if (u.pathname === "/rest/v1/rpc/service_reminders_due") return ok(w.remind ?? []);
     if (u.pathname === "/rest/v1/rpc/service_mark_reminded") { w.reminded.push(body.p_session); return ok(null); }
+    // W7: the client records the database deleted overnight
+    if (u.pathname === "/rest/v1/rpc/service_retention_unreported") return ok(w.gone ?? []);
+    if (u.pathname === "/rest/v1/rpc/service_mark_retention_reported") { w.markedGone = body.p_ids; return ok(body.p_ids.length); }
     if (u.pathname === "/rest/v1/rpc/service_purge_session") {
       if ([...w.files].some((p) => p.startsWith(body.p_session + "/"))) return ok({ message: "files still stored" }, 400);
       if ([...w.media].some((p) => p.includes(body.p_session))) return ok({ message: "media still stored" }, 400);
@@ -103,4 +106,34 @@ test("W6a: media that will not go keeps the rows and asks for help", async () =>
   const r = await runPlayerPurge({ fetchFn: w.fetchFn, env: w.env });
   assert.equal(w.purged.length, 0);
   assert.match(r.failed[0].error, /voice or video file/);
+});
+
+// W7 (8 November 2026): retention deletions are reported the same morning
+test("W7: deleted client records with a delivered report — one email asking to delete the report copy, then marked", async () => {
+  const w = world({ due: [], gone: [
+    { id: 4, company_name: "Old Co", request_nos: ["R-2026-0020"], had_delivery: true, reason: "3 years since the latest exercise" },
+    { id: 5, company_name: "Quiet Co", request_nos: ["R-2026-0031"], had_delivery: false, reason: "No exercise went ahead; 1 year since the last contact" }] });
+  const r = await runPlayerPurge(w);
+  assert.equal(w.emails.length, 1);
+  assert.match(w.emails[0].subject, /delete the report copy/);
+  assert.match(w.emails[0].text, /Old Co — R-2026-0020: 3 years/);
+  assert.match(w.emails[0].text, /ACTION — please delete our copy of the delivered report for:\n- Old Co \(R-2026-0020\)/);
+  assert.doesNotMatch(w.emails[0].text.split("ACTION")[1], /Quiet Co/);
+  assert.match(w.emails[0].text, /03 Delivered reports/);
+  assert.deepEqual(w.markedGone, [4, 5]);
+  assert.equal(r.retention.length, 2);
+});
+test("W7: only old enquiries — a plain email, nothing to delete on the drive", async () => {
+  const w = world({ due: [], gone: [{ id: 9, company_name: "Quiet Co", request_nos: [], had_delivery: false, reason: "No exercise went ahead; 1 year since the last contact" }] });
+  await runPlayerPurge(w);
+  assert.equal(w.emails.length, 1);
+  assert.equal(w.emails[0].subject, "PlanProof: old enquiries deleted");
+  assert.match(w.emails[0].text, /nothing to delete on the drive/);
+  assert.doesNotMatch(w.emails[0].text, /ACTION/);
+});
+test("W7: nothing deleted overnight — no retention email and nothing marked", async () => {
+  const w = world({ due: [] });
+  await runPlayerPurge(w);
+  assert.equal(w.emails.length, 0);
+  assert.equal(w.markedGone, undefined);
 });

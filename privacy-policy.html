@@ -66,6 +66,16 @@
     color: var(--text-muted);
     margin-bottom: 40px;
   }
+  .brief{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 22px 8px;
+    margin-bottom: 18px;
+  }
+  .brief h2{ margin-top: 0; }
+  .brief li{ color: var(--text); }
+  .brief .more{ font-size: 13.5px; margin-top: 4px; }
   h2{ font-family: "Space Grotesk", sans-serif; font-size: 19px; margin: 34px 0 12px; }
   p, li{ font-size: 15px; color: var(--text-muted); }
   ul{ padding-left: 20px; }
@@ -94,11 +104,24 @@
 <div class="wrap">
   <div class="eyebrow">Legal</div>
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 18 October 2026</p>
+  <p class="updated">Last updated: 8 November 2026</p>
 
   <div class="notice">
     This policy explains how PlanProof handles personal information shared through this website and through the PlanProof exercise player. It is a general policy and is not a substitute for legal advice. If you have specific compliance questions, we recommend speaking with a qualified lawyer.
   </div>
+
+  <section class="brief" id="in-brief" aria-labelledby="in-brief-title">
+    <h2 id="in-brief-title">Privacy in brief</h2>
+    <ul>
+      <li>We use your information only to design, run and report your exercise. We never sell it or share it for marketing.</li>
+      <li>Findings describe teams and plans, never named individuals.</li>
+      <li>Everything participants enter during an exercise is deleted within 7 days of delivering your report.</li>
+      <li>We keep a copy of your report, without participants' names, for 3 years after your most recent exercise, so we can send it again and show your progress next time. A fuller exercise history is kept only if you tick the box for it.</li>
+      <li>Enquiries that don't go ahead are deleted after one year.</li>
+      <li>Every permission is opt-in, and you can ask us to delete your information at any time.</li>
+    </ul>
+    <p class="more">The full details follow below.</p>
+  </section>
 
   <h2>Who we are</h2>
   <p>PlanProof designs and facilitates business continuity tabletop exercises for organizations in the UAE and wider GCC. This policy covers the website at plan-proof.com, the request forms on it, and the PlanProof exercise player — the join page and the screens used by participants, Observers, facilitators and room screens during an exercise. It does not cover third-party sites we link to.</p>
@@ -134,11 +157,13 @@
     <li><strong>Messages</strong> between departments, Observers and the facilitator; a department's messages are sent in the department's name, not yours</li>
     <li><strong>Observer and facilitator notes</strong> about how teams and plans performed; notes describe teams and plans, never named individuals</li>
     <li><strong>Technical information</strong> needed to run the exercise, such as whether your device is connected, its sound and keep-awake state, and the inject it is showing</li>
-    <li><strong>The feedback survey</strong> at the end, which is anonymous: your answers are stored without your name or registration (a separate list records only that you have answered, so the survey is not shown to you twice)</li>
+    <li><strong>The feedback survey</strong> at the end, which is anonymous: your answers are stored without your name or registration (a separate list records only that you have answered, so the survey is not shown to you twice). It stays open until everyone has answered, and at most 48 hours after the exercise ends</li>
   </ul>
+  <p><strong>Joining from another device.</strong> If you change phone or laptop during an exercise, the player recognises you by your name and department, so you continue as the same person instead of registering twice.</p>
   <p><strong>Voice notes.</strong> If you tap the microphone to dictate a note, the recording is sent to a speech-to-text service (Microsoft Azure Speech, or, if that is unavailable, your own browser's speech service, for example Google's or Apple's) only to turn it into text. The recording is not kept by us; only the text you check and log is saved.</p>
-  <p><strong>On your device.</strong> The exercise player keeps your registration, any unsent drafts and a copy of your answers in your own browser's storage, so a reload or a dropped connection does not lose your work. This is not a cookie and is not used for tracking. The copy of your answers is removed from your device an hour after the exercise ends; your registration details stay in your browser until you clear its data.</p>
-  <p>We use exercise information only to run the exercise and to write its report. Findings in the report are presented at team level and describe roles and plans, never named individuals. Exercise information is held in the secure data storage service described below and is deleted after the exercise report is delivered, except the short exercise history if your organization opted in.</p>
+  <p><strong>On your device.</strong> The exercise player keeps your registration, any unsent drafts and a copy of your answers in your own browser's storage, so a reload or a dropped connection does not lose your work. This is not a cookie and is not used for tracking. The copy of your answers is removed from your device an hour after the exercise ends, and everything the player kept on your device for that exercise is forgotten once the exercise is closed.</p>
+  <p>We use exercise information only to run the exercise and to write its report. Findings in the report are presented at team level and describe roles and plans, never named individuals; participants' names and job titles appear only in the report's attendance list, which goes to your organization. To write the report we take a working copy of the exercise information, which we delete once the report is final.</p>
+  <p><strong>When it is deleted.</strong> Registrations, answers, attached files, notes and messages are deleted automatically 7 days after the report is delivered (the short wait lets us send the report again if something goes wrong in delivery). Survey answers stay, without names, and are used only as anonymous totals — for example, in the figures we publish about how participants rated our exercises — never naming your organization. A survey comment is kept and may be quoted, without a name, only if its writer ticked the box allowing it; other comments are deleted with the rest.</p>
 
   <h2>How your information reaches us</h2>
   <p>When you submit a form on this website, your submission, including any plan document you attach, is received by our website hosting provider and held there only until a copy has reached our business inbox through an email delivery service; any plan document you attach is then deleted from the hosting provider. Your contact details, form answers and the choices you ticked are also kept in a secure data storage service so we can keep track of inquiries and respond to them; any plan document you attach is not copied there. Submissions are held in private accounts accessible only to us; they are never published or made publicly accessible.</p>
@@ -155,7 +180,7 @@
   <p>We do not use your information for advertising, and we do not sell or rent personal data to third parties.</p>
 
   <h2>Confidentiality of shared plans</h2>
-  <p>Business continuity plans or organizational details you share with us are reviewed directly, one-to-one, and are never published or made publicly accessible. Materials are deleted after your exercise package is delivered unless you ask us to retain them. What we keep afterwards is limited to anonymised insights that cannot identify you and, only if you opted in, the short exercise history described under “Your exercise history” below. A mutual non-disclosure agreement is available on request before you share sensitive material.</p>
+  <p>Business continuity plans or organizational details you share with us are reviewed directly, one-to-one, and are never published or made publicly accessible. Materials are deleted after your exercise package is delivered unless you ask us to retain them. What we keep afterwards is limited to our copy of your delivered report (see “How long we keep it”), anonymised insights that cannot identify you and, only if you opted in, the short exercise history described under “Your exercise history” below. A mutual non-disclosure agreement is available on request before you share sensitive material.</p>
 
   <h2>Who else sees it</h2>
   <p>We use a small number of service providers to run this business, who may process information on our behalf:</p>
@@ -165,14 +190,22 @@
     <li><strong>Secure data storage</strong> — a hosted database service that keeps a private record of your contact details, form answers and choices so we can follow up on your inquiry, and the exercise information described above while an exercise is run and reported; attached plan documents are not stored there. Only if you opted in, it also holds the exercise history described below</li>
     <li><strong>Speech-to-text</strong> — Microsoft Azure Speech, used only when someone dictates a note in the exercise player; recordings are converted to text and not kept</li>
     <li><strong>Email hosting</strong> — to receive and store messages sent to our inbox</li>
+    <li><strong>Document storage</strong> — a cloud file-storage service where we keep our copy of each delivered report</li>
     <li><strong>Web fonts</strong> — the fonts on this website are loaded from a third-party font service, which receives your IP address when the page loads (the exercise player uses its own fonts)</li>
   </ul>
   <p>Some of these providers may process or store data on servers located outside the UAE. Each provider applies its own security measures to the data it handles for us.</p>
   <p>You can ask us which providers we currently use by contacting us at the address below. Apart from these service providers, we do not share your information with third parties except where required by law.</p>
 
-  <h2>How long we keep it</h2>
-  <p>Contact and inquiry information is kept for as long as needed to respond to you and, if you become a client, to deliver and support your engagement. If you opted in to marketing emails, we keep your email address for that purpose until you withdraw.</p>
-  <p>After your exercise package is delivered, we delete the materials you shared and the exercise information described above. Only if your organization opted in do we keep the short exercise history described below. We may retain anonymised, aggregated insights (for example, common gaps by sector) that cannot identify your organization or any individual, to improve future exercises.</p>
+  <h2 id="how-long">How long we keep it</h2>
+  <p>We keep information only while it is useful to you, and our systems delete it automatically on a set date:</p>
+  <ul>
+    <li><strong>Enquiries that don't go ahead</strong> — your request and contact details are deleted one year after our last contact with you.</li>
+    <li><strong>Exercise information</strong> — deleted 7 days after your report is delivered, as described above.</li>
+    <li><strong>Our copy of your report and your request</strong> — we keep a copy of the delivered report, without the participants' attendance list, together with your request and contact details, for 3 years after your most recent exercise with us, so we can send it again if needed and so your next exercise can show your progress. It is kept confidential and never shared. Then it is deleted.</li>
+    <li><strong>Marketing emails</strong> — only if you ticked the box: we keep your email address and the date you ticked it, until you withdraw.</li>
+  </ul>
+  <p>After your exercise package is delivered, we delete the materials you shared. We may keep anonymised, aggregated insights (for example, common gaps by sector) that cannot identify your organization or any individual, to improve future exercises.</p>
+  <p>Our data storage service keeps short-term backups so information can be recovered after a technical fault; deleted information can remain in these backups for up to 7 days before it is gone for good.</p>
 
   <h2 id="exercise-history">Your exercise history (only if you opt in)</h2>
   <p>So that your next exercise can build on the last one and show your progress, we can keep a short record of each exercise we deliver for your organization — but only if you tick “Yes, keep our exercise history” on the request form, or ask us to in writing. The record contains:</p>
@@ -183,7 +216,7 @@
     <li>A summary of your departments, key operations and dependencies, and the version of the plan tested</li>
   </ul>
   <p>We do not keep your plan document, any files you attach, or the names and answers of exercise participants. These are deleted after delivery.</p>
-  <p>If you opt in, we keep this record for 5 years from your most recent exercise, then delete it. If you do not opt in, we keep none of it after delivery. You can ask us at any time to stop keeping it or to delete it.</p>
+  <p>If you opt in, we keep this record for 3 years from your most recent exercise, then delete it. If you do not opt in, we keep no history record after delivery — only our copy of the delivered report described under “How long we keep it”. You can ask us at any time to stop keeping it or to delete it.</p>
   <p>The record is held in the secure data storage service described above, can be opened only by us with two-step sign-in, and is never shared. When someone contacts us about a previous exercise, we discuss it only with a known contact at your organization or someone writing from your organization's own email domain.</p>
 
   <h2>Your rights</h2>

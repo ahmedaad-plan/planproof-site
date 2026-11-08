@@ -32,7 +32,7 @@ const BOOKING_URL = "";
 // Pages outside /insights/ that belong in the sitemap.
 const STATIC_PAGES = [
   { loc: "/", lastmod: "2026-10-25" },
-  { loc: "/privacy-policy.html", lastmod: "2026-10-18" },
+  { loc: "/privacy-policy.html", lastmod: "2026-11-08" },
 ];
 
 // ---------- reading the article files ----------

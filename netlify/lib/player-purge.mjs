@@ -66,7 +66,7 @@ const name = (x) => `${x.request_no || "(no request)"} — ${x.label || "exercis
 
 export async function runPlayerPurge(deps) {
   const { env } = deps;
-  const report = { removed: [], failed: [], reminded: [], skipped: null };
+  const report = { removed: [], failed: [], reminded: [], retention: [], skipped: null };
   if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) { report.skipped = "SUPABASE_SECRET_KEY not set"; return report; }
 
   const due = await rpc(deps, "service_purge_due");
@@ -98,7 +98,7 @@ export async function runPlayerPurge(deps) {
       lines.push("", "NOT removed — please press \"Remove player data now\" on the request's Exercise tab:");
       report.failed.forEach((x) => lines.push(`- ${name(x)}: ${x.error}`));
     }
-    lines.push("", "The anonymous survey answers stay (role only). Nothing else is kept from these exercises except the delivered reports and, if the client opted in, the history record.");
+    lines.push("", "The anonymous survey answers stay (role only), and comments only where the person ticked that we may quote them. Nothing else is kept from these exercises except our copy of each delivered report (without participants' names) and, if the client opted in, the history record.");
     await sendViaResend({ to, subject: report.failed.length ? "PlanProof: player data removal needs you" : "PlanProof: exercise player data removed", text: lines.join("\n") }, deps);
   }
   if ((remind || []).length) {
@@ -108,6 +108,26 @@ export async function runPlayerPurge(deps) {
     lines.push("", "If the report was delivered: open the request on plan-proof.com/admin and set the stage to Delivered.");
     await sendViaResend({ to, subject: "PlanProof: exercise records waiting to be marked Delivered", text: lines.join("\n") }, deps);
     for (const x of remind) { await rpc(deps, "service_mark_reminded", { p_session: x.session_id }); report.reminded.push(x); }
+  }
+  // W7 (8 November 2026): the database deletes client records on its own each night
+  // (1 year after the last contact if no exercise went ahead; 3 years after the latest
+  // exercise). Tell PlanProof the same morning, so the report copy on the drive goes too.
+  const gone = await rpc(deps, "service_retention_unreported");
+  if ((gone || []).length) {
+    const lines = ["As the privacy policy promises, the database deleted these client records last night:", ""];
+    gone.forEach((x) => lines.push(`- ${x.company_name || "(no client name)"}${x.request_nos && x.request_nos.length ? " — " + x.request_nos.join(", ") : ""}: ${x.reason}.`));
+    const delivered = gone.filter((x) => x.had_delivery);
+    if (delivered.length) {
+      lines.push("", "ACTION — please delete our copy of the delivered report for:");
+      delivered.forEach((x) => lines.push(`- ${x.company_name || "(no client name)"}${x.request_nos && x.request_nos.length ? " (" + x.request_nos.join(", ") + ")" : ""}`));
+      lines.push("", "Delete the client's folder in OneDrive \\ PlanProof New \\ 03 Delivered reports, and any emails with their files in the exercises@plan-proof.com mailbox.");
+    } else {
+      lines.push("", "None of them had a delivered report, so there is nothing to delete on the drive. If the mailbox still holds their emails with attachments, delete those.");
+    }
+    lines.push("", "If someone had ticked \"marketing emails\", only their email address and the date they ticked are kept, until they withdraw.");
+    await sendViaResend({ to, subject: delivered.length ? "PlanProof: client records deleted — delete the report copy" : "PlanProof: old enquiries deleted", text: lines.join("\n") }, deps);
+    await rpc(deps, "service_mark_retention_reported", { p_ids: gone.map((x) => x.id) });
+    report.retention.push(...gone);
   }
   return report;
 }
