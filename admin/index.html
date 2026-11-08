@@ -306,7 +306,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6.3</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v6.4</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -680,9 +680,9 @@ function stepOf(request, versions, comments, record) {
   // Step 4: scenario approved or exercise scheduled (or an approved version
   // while the stage was left behind).
   if (!rec.linked) return base(4, { sentence: "Link the player exercise to this request when you set it up.", buttons: ["link"], due: "link the exercise" });
-  if (rec.purged) return base(4, { sentence: "The participants' data has been removed. When the report has gone to the client, press Mark as delivered.", buttons: rec.downloaded ? ["delivered"] : [], due: "mark delivered" });
+  if (rec.purged) return base(4, { sentence: "The participants' data has been removed. Once the client has accepted the final report, press Mark as delivered.", buttons: rec.downloaded ? ["delivered"] : [], due: "mark delivered" });
   if (!rec.ended) return base(4, { sentence: "The exercise has not ended yet. Run it; after End, the notes and the survey stay open for a while.", buttons: [], due: "run the exercise" });
-  if (rec.downloaded) return base(4, { report: true, sentence: `Run ${rec.run} is downloaded. Write the report from it; when the report has gone to the client, press Mark as delivered.`, buttons: ["delivered", "download"], due: "deliver the report, then mark delivered" });
+  if (rec.downloaded) return base(4, { report: true, sentence: `Run ${rec.run} is downloaded. Write the report from it; once the client has accepted the final report, press Mark as delivered.`, buttons: ["delivered", "download"], due: "deliver the report, then mark delivered" });
   if (rec.waiting) return base(4, { sentence: "Wait for the notes and the survey to close" + (rec.survey_open ? " — or close the survey now — then" : ", then") + " download the record.", buttons: (rec.survey_open ? ["close_survey"] : []).concat(["download"]), due: "notes or survey still open" });
   return base(4, { sentence: `Download run ${rec.run} and give it to the report chat.`, buttons: ["download"], due: "download the record" });
 }
@@ -923,7 +923,7 @@ function stepBody(n, ctx, readOnly, btns, forms) {
   if (n === 5) {
     const at = ctx.s.delivered_at;
     return h("p", { class: "muted small" }, at ? "Marked as delivered on " + dt(at) + "." + (ctx.rec.linked && !ctx.rec.purged ? " The participants' data is removed on or after " + dDay(plusDays(at, 7)) + "." : "")
-      : "When the report has gone to the client, press \"Mark as delivered\" in step 4. That starts the 7-day clock for removing the participants' data.");
+      : "Once the client has accepted the final report, press \"Mark as delivered\" in step 4. That starts the 7-day clock for removing the participants' data.");
   }
   const r = ctx.rec;
   return h("p", { class: "muted small" }, !r.linked ? "No exercise is linked, so there is nothing to remove." : r.purged ? "Removed on " + dt(r.purged_at) + ": registrations, answers, notes, messages and files of every run. The anonymous survey taps stay."
@@ -1449,7 +1449,7 @@ function step4Body(ctx, readOnly, btns, forms) {
       if (!recordFacts(x, x.chosenRun).downloaded) return toast(`Download run ${runNo} first — the report is written from it.`, true);
       const when = dDay(plusDays(new Date().toISOString(), 7));
       const ok = await confirmBox({ title: "Mark " + (s.request_no || "this request") + " as delivered?",
-        text: `Do this once the report has gone to the client. It starts the 7-day clock: the participants' data of this exercise (names, answers, notes, files) is removed automatically on or after ${when}. The record you downloaded and the client's history are kept.`,
+        text: `Do this once the client has accepted the final report. It starts the 7-day clock: the participants' data of this exercise (names, answers, notes, files) is removed automatically on or after ${when}. The record you downloaded and the client's history are kept.`,
         ok: "Mark as delivered" });
       if (!ok) return;
       deliver.disabled = true;
@@ -1457,7 +1457,7 @@ function step4Body(ctx, readOnly, btns, forms) {
         .then(() => { toast("Delivered — participants' data removed on or after " + when); reloadKeepingPlace(); })
         .catch((err) => { deliver.disabled = false; fail(err); });
     } }, "Mark as delivered");
-    add(out, h("div", { class: "deliver-row" }, h("span", { class: "small muted" }, "When the report has gone to the client:"), deliver,
+    add(out, h("div", { class: "deliver-row" }, h("span", { class: "small muted" }, "Once the client has accepted the final report:"), deliver,
       deliverOk ? null : h("span", { class: "small muted" }, `(after run ${runNo} is downloaded)`)));
   }
   add(out, h("p", { class: "muted small", style: "margin:10px 0 0" }, "The zip holds participants' names and answers: give it to the report chat, then delete it. Never save it in OneDrive."));
