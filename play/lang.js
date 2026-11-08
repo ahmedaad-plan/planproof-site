@@ -233,7 +233,7 @@
       "join.where.remoteText": "Use a headset or turn your sound on, and find a quiet place. After registering, tap once to turn sound on.",
       "join.privacy.before": "I have read the ",
       "join.privacy.link": "privacy notice",
-      "join.privacy.after": " and agree that PlanProof uses my name, job title, department and answers to run this exercise and write its report. Findings are reported at team level, never about individuals. (required)",
+      "join.privacy.after": " and agree that PlanProof uses my name, job title, department and answers to run this exercise and write its report. Findings are reported at team level, never about individuals; my name and job title appear only in the attendance list of the report my organization receives. (required)",
       "join.validate.privacy": "Please tick the box to confirm you have read the privacy notice.",
       "join.form.register": "Register",
       "join.validate.name": "Please complete both your first name and family name.",

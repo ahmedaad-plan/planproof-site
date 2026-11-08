@@ -1,6 +1,7 @@
 // Daily at 02:17 UTC (06:17 UAE): removes the player data of exercises whose
 // request was marked Delivered 7 or more days ago (after an export), and
-// emails a reminder for exports never marked Delivered after 30 days.
+// emails a reminder for exports never marked Delivered after 30 days, and
+// (W7) reports the client records the database deleted overnight.
 // Logic in ../lib/player-purge.mjs.
 import { runPlayerPurge } from "../lib/player-purge.mjs";
 
@@ -13,7 +14,7 @@ export default async () => {
     ALERT_EMAIL: Netlify.env.get("ALERT_EMAIL"),
   };
   const done = await runPlayerPurge({ fetchFn: fetch, env });
-  console.log("player-purge:", JSON.stringify({ removed: done.removed.map((x) => x.request_no), failed: done.failed.map((x) => [x.request_no, x.error]), reminded: done.reminded.length, skipped: done.skipped }));
+  console.log("player-purge:", JSON.stringify({ removed: done.removed.map((x) => x.request_no), failed: done.failed.map((x) => [x.request_no, x.error]), reminded: done.reminded.length, retention: done.retention.length, skipped: done.skipped }));
 };
 
 export const config = { schedule: "17 2 * * *" };
