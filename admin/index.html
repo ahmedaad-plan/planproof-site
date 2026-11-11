@@ -222,6 +222,45 @@
   .band{ font-family:var(--font-mono); font-weight:600; }
   .band.green{ color:var(--green-soft); } .band.amber{ color:var(--attn); } .band.red{ color:var(--red-soft); }
 
+  /* v7.0 (W8 build 1): one request, one page — the status strip, then the
+     blocks Client · Scenario · Exercise · Report · Clean-up. One red button
+     on the page: the strip's NEXT. A block not reached yet is grey. */
+  .v7-strip{ border:1px solid var(--border-strong); border-top:3px solid var(--red); border-radius:12px; background:var(--panel); padding:12px 16px; margin:0 0 12px;
+    display:grid; grid-template-columns:1fr; gap:10px; }
+  .v7-strip.overdue{ border-top-color:var(--red); box-shadow:0 0 0 1px var(--red) inset; }
+  .v7-dots{ list-style:none; display:flex; gap:4px 14px; margin:0; padding:0; flex-wrap:wrap; font-size:12px; color:var(--text-muted); }
+  .v7-dots li{ display:inline-flex; align-items:center; gap:6px; }
+  .v7-dots .dot{ width:16px; height:16px; border-radius:50%; border:1px solid var(--border-strong); display:inline-flex; align-items:center; justify-content:center; font-size:10px; }
+  .v7-dots li.done .dot{ background:var(--green); border-color:var(--green); color:#fff; }
+  .v7-dots li.now{ color:var(--text); font-weight:600; } .v7-dots li.now .dot{ border-color:var(--red); background:var(--red); }
+  .v7-where, .v7-next{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; min-width:0; }
+  .v7-where .cap, .v7-next .cap{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); min-width:84px; }
+  #whereText{ overflow-wrap:anywhere; min-width:0; flex:1 1 200px; }
+  .due-bad{ color:var(--red-soft) !important; font-weight:600; }
+  .v7-live{ border:1px solid var(--attn); border-radius:10px; padding:8px 12px; margin:0 0 12px; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .v7-blocks{ display:flex; flex-direction:column; gap:12px; }
+  .v7-block{ border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:14px 16px; min-width:0; }
+  .v7-block.grey{ border-style:dashed; background:transparent; padding:10px 16px; }
+  .v7-block.grey h2{ color:var(--text-muted); }
+  .v7-bhead{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .v7-bhead h2{ font-size:16px; margin:0; flex:1 1 auto; }
+  .v7-block.grey .v7-bhead{ margin-bottom:2px; }
+  .v7-greyline{ margin:0; }
+  .v7-clientline{ display:flex; flex-direction:column; gap:2px; font-size:14px; margin-bottom:8px; }
+  .v7-fold{ margin-top:8px; }
+  .v7-version .vno{ font-family:var(--font-mono); }
+  .v7-summary{ border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:8px; }
+  .add-box textarea{ font-family:var(--font-mono); font-size:12px; }
+  .add-box textarea.drop{ outline:2px dashed var(--attn); }
+  .tag.src-page{ border-color:var(--green); color:var(--green-soft); }
+  .lrow.overdue .r .pill{ font-weight:700; }
+  .kpi-strip.five{ grid-template-columns:repeat(5,minmax(0,1fr)); }
+  #copyDlg{ width:min(920px, 96vw); max-height:92vh; padding:0; border:0; border-radius:12px; background:#eef1f5; }
+  #copyDlg .copy-bar{ position:sticky; top:0; display:flex; gap:8px; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--panel); color:var(--text); flex-wrap:wrap; }
+  #copyDlg .copy-bar h2{ font-size:14px; margin:0; }
+  #copyDlg .cc{ margin:14px auto; }
+  @media (max-width:520px){ #copyDlg .cc{ padding:18px 16px; } .v7-where .cap, .v7-next .cap{ min-width:0; width:100%; } }
+
   /* The checklist page (v6, 1 November 2026): a request is six steps, top to
      bottom. The open step has a red edge and its buttons at the top; a done
      step is one line with a green tick; a future step is one grey dashed line.
@@ -297,6 +336,7 @@
   dialog::backdrop{ background:rgba(0,0,0,.65); }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 </style>
+<link rel="stylesheet" href="/c/copy.css">
 </head>
 <body>
 
@@ -306,7 +346,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6.4</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v7.0</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -333,12 +373,19 @@
     </div>
   </form>
 </dialog>
+<dialog id="copyDlg" aria-labelledby="copyTitle">
+  <div class="copy-bar"><h2 id="copyTitle">Client copy</h2>
+    <div class="row"><button class="btn sm" type="button" id="copyPrint">Print or save as PDF</button>
+      <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div></div>
+  <article class="cc" id="copyArticle"></article>
+</dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="/vendor/fflate-0.8.2.js"
         integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT"
         crossorigin="anonymous"></script>
 <script src="/admin/exercise-record.js"></script>
+<script src="/c/copy.js"></script>
 <script src="/vendor/supabase-js-2.117.2.js"
         integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
         crossorigin="anonymous"></script>
@@ -364,7 +411,7 @@ function h(tag, attrs, ...kids) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
-    else if (k === "value") el.value = v;
+    else if (k === "value") { if (tag === "input" || tag === "textarea") el.defaultValue = v; el.value = v; } // v7: the filled-in value is the default, so editing() sees real typing only
     else el.setAttribute(k, v === true ? "" : v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false && kid !== "") el.append(kid instanceof Node ? kid : String(kid));
@@ -694,34 +741,119 @@ async function loadSessions(submissionId) {
   return Array.isArray(rows) ? rows : [];
 }
 
-// ================= Requests — the list =================
-// Six tiles, one per step (Ahmed, 1 November 2026): 1–2 red when a request
-// there has waited 7 days or more without a scenario sent, otherwise amber;
-// 3 amber; 4–5 white; 6 green; a zero is dim; a pressed tile filters.
-// Tile 5 ("Report") counts the requests whose exercise record is downloaded
-// and whose report is still to be delivered.
-const TILES = [[1, "Client to confirm"], [2, "To contact"], [3, "Scenario"], [4, "Exercise"], [5, "Report"], [6, "Delivered"]];
-const TILE_TONE = { 1: "wait", 2: "wait", 3: "wait", 4: "white", 5: "white", 6: "ok" };
-let requestTile = Number(sessionStorage.getItem("pp_admin_reqtile")) || 0;
+// ================= v7.0 (W8 build 1, 11 November 2026): one request, one page =================
+// Design: planproof-reference/w8-design.md Part C. Five tiles (Client · Scenario ·
+// Exercise · Report · Done); on a request: the STATUS STRIP (where it is + the one
+// red button), the Client header, then four blocks in the order things happen —
+// Scenario · Exercise · Report · Clean-up. ONE function, stateOf(), decides the
+// strip, the tile and the list pill; it is unit-tested (t_admin2, section V7).
+const V7_TILES = [[1, "Client"], [2, "Scenario"], [3, "Exercise"], [4, "Report"], [5, "Done"]];
+const V7_TILE_TONE = { 1: "wait", 2: "wait", 3: "white", 4: "white", 5: "ok" };
+const V7_BLOCKS = [["client", "Client"], ["scenario", "Scenario"], ["exercise", "Exercise"], ["report", "Report"], ["cleanup", "Clean-up"]];
+const VERSION_WORD = { draft: "Not sent", sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
+const VERSION_TONE_V7 = { draft: "wait", sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
+const EMAIL_WORD = { sending: "sending…", sent: "sent, not yet delivered", delivered: "delivered", delayed: "delayed", bounced: "BOUNCED", complained: "marked as spam", failed: "NOT SENT", unknown: "status unknown" };
+const EMAIL_BAD = new Set(["bounced", "complained", "failed", "unknown"]);
+let requestTile = Number(sessionStorage.getItem("pp_admin_reqtile7")) || 0;
 let showDelivered = sessionStorage.getItem("pp_admin_showdelivered") === "1";
 let requestSearch = "";
+let keepScroll = null;
+const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
+
+// Dates: Day-5 due date = Contacted + 5 working days (Monday–Friday, UAE time).
+const dubaiYmd = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+function workingDaysAfter(iso, n) {
+  const d = new Date(dubaiYmd(iso) + "T12:00:00Z");
+  let left = n;
+  while (left > 0) { d.setUTCDate(d.getUTCDate() + 1); const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) left--; }
+  return d.toISOString().slice(0, 10);
+}
+const dayName = (ymd) => ymd ? new Date(ymd + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) : "";
+const pastDue = (ymd, nowMs = Date.now()) => !!ymd && dubaiYmd(new Date(nowMs).toISOString()) > ymd;
+const contactedAt = (remarks) => ((remarks || []).filter((r) => /^Contact note:/i.test(r.body) && !r.withdrawn_at)
+  .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0] || {}).created_at || null;
+const hm = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+
+// stateOf: where the request is and the ONE next action.
+//   x: { contactedAt, links, emails, opens, nowMs } (links/emails/opens may be empty on the list)
+//   returns { block, tile, where, next:{key,label}|null, waiting, due, overdue, pill:{text,tone} }
+function stateOf(s, versions, comments, rec, x = {}) {
+  const nowMs = x.nowMs ?? Date.now();
+  const vs = liveVersions(versions);
+  const cs = (comments || []).filter((c) => !c.withdrawn_at);
+  const newest = newestVersion(vs);
+  const approved = vs.filter((v) => v.status === "approved").sort((a, b) => b.version_no - a.version_no)[0] || null;
+  const lastNo = Math.max(s._lastVersionNo || 0, 0, ...vs.map((v) => v.version_no));
+  const due = x.contactedAt ? workingDaysAfter(x.contactedAt, 5) : null;
+  const firstSent = vs.some((v) => v.status !== "draft");
+  const overdue = !!due && !firstSent && pastDue(due, nowMs) && s.status !== "delivered";
+  const R = (o) => {
+    const pillText = o.next ? o.next.label + (o.showDue && due ? " — due " + dayName(due) : "") : o.waitText || "Waiting";
+    // red: the Day-5 date passed with no version sent, or the data removal is overdue
+    const ov = o.overdue != null ? !!o.overdue : (o.block === "scenario" || o.block === "client") ? overdue : false;
+    return { due, waiting: !o.next, ...o, overdue: ov,
+      pill: { text: pillText, tone: ov ? "bad" : o.tile === 5 ? "ok" : o.tile >= 3 ? "white" : "wait" } };
+  };
+  if (s.match_status === "pending") return R({ block: "client", tile: 1, where: "New request" + (s.source === "website" ? " from the website" : ""), next: { key: "confirm_client", label: "Confirm the client" } });
+  if (s.status === "new") return R({ block: "client", tile: 1, where: "Client confirmed", next: { key: "contacted", label: "Contacted" } });
+  if (s.status === "delivered") {
+    const o = stepOf(s, versions, comments, rec);
+    return R({ block: "cleanup", tile: 5, where: o.step >= 7 ? "Done — " + o.sentence.replace(/^Nothing left to do — /, "") : "Delivered · " + o.sentence, next: null, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue });
+  }
+  // A version newer than the approved one (e.g. v3 after v2 was approved) is the live question.
+  const open = newest && newest.status !== "approved" && newest.version_no > (approved ? approved.version_no : 0) ? newest : null;
+  if (!open && approved) {
+    if (!rec || !rec.linked) return R({ block: "exercise", tile: 3, where: `v${approved.version_no} approved${approved.status_changed_on ? " on " + dShort(approved.status_changed_on) : ""}`, next: { key: "setup", label: `Approve v${approved.version_no} → set up the exercise` } });
+    const o = stepOf(s, versions, comments, rec);
+    const b = (o.buttons || [])[0];
+    const label = b === "download" ? `Download run ${rec.run}` : b === "delivered" ? "Mark as delivered" : b === "close_survey" ? "Close survey now" : b === "link" ? "Link the exercise" : null;
+    const tile = o.report || (rec.downloaded && !rec.purged) ? 4 : 3;
+    return R({ block: tile === 4 ? "report" : "exercise", tile, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
+  }
+  // Scenario
+  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "add", label: `Add v${lastNo + 1}` }, showDue: true });
+  const v = open || newest;
+  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true });
+  if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` } });
+  if (v.status === "client_commented") {
+    const n = cs.filter((c) => c.version_id === v.id).length;
+    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "add", label: `Add v${lastNo + 1}` } });
+  }
+  // sent — waiting, unless the email failed or the sponsor met an expired link
+  const myEmails = (x.emails || []).filter((e) => e.version_id === v.id).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const lastEmail = myEmails[0] || null;
+  const myLinks = (x.links || []).filter((l) => l.version_id === v.id).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const link = myLinks[0] || null;
+  const linkLive = link && !link.revoked_at && Date.parse(link.expires_at) > nowMs;
+  const lateTry = !linkLive && (x.opens || []).some((o) => link && o.link_id === link.id && o.outcome !== "ok");
+  if (lastEmail && EMAIL_BAD.has(lastEmail.status)) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the email to ${lastEmail.to_address} was not delivered (${EMAIL_WORD[lastEmail.status]})`, next: { key: "resend", label: `Resend v${v.version_no}` } });
+  if (lateTry) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the sponsor tried the link after it ${link.revoked_at ? "was revoked" : "expired on " + dShort(dubaiYmd(link.expires_at))}`, next: { key: "resend", label: `Resend v${v.version_no}` } });
+  const opened = link && link.open_count ? ` · opened by the sponsor ${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : link ? " · not opened yet" : "";
+  return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${link ? "" : " (recorded by hand)"}${opened} — waiting for the sponsor`, next: null, waitText: "Waiting for the sponsor" });
+}
+window.PPAdmin = { stepOf, recordFacts, stateOf, workingDaysAfter };
+
+// ================= Requests — the list =================
 async function renderRequests() {
   const app = $("app");
-  const [rows, versions, sessions] = await Promise.all([
+  const [rows, versions, sessions, contactRemarks] = await Promise.all([
     q(sb.from("submissions")
       .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
-    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
+    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
+    q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at").ilike("body", "Contact note:%")).catch(() => []),
   ]);
   rows.forEach((r) => {
-    r._step = stepOf(r, (versions || []).filter((v) => v.submission_id === r.id), [], recordFacts(sessions.find((x) => x.submission_id === r.id), null));
-    r._tile = r.status === "delivered" ? 6 : r._step.report ? 5 : Math.min(r._step.step, 6);
+    const vs = (versions || []).filter((v) => v.submission_id === r.id);
+    r._lastVersionNo = vs.reduce((m, v) => Math.max(m, v.version_no), 0);
+    r._state = stateOf(r, vs, [], recordFacts(sessions.find((x) => x.submission_id === r.id), null),
+      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)) });
+    r._tile = r._state.tile;
   });
   const inTile = (n) => rows.filter((r) => r._tile === n);
-  const tone = (n) => ((n === 1 || n === 2) && inTile(n).some(isOverdue) ? "bad" : TILE_TONE[n]);
-
-  const strip = h("div", { class: "kpi-strip six", role: "list", "aria-label": "Requests by step" });
+  const tone = (n) => (inTile(n).some((r) => r._state.overdue) ? "bad" : V7_TILE_TONE[n]);
+  const strip = h("div", { class: "kpi-strip five", role: "list", "aria-label": "Requests by stage" });
   const sq = h("input", { type: "search", value: requestSearch, placeholder: "Search: request number, organisation, contact, email, risk…", "aria-label": "Search requests",
     oninput: () => { requestSearch = sq.value; drawList(); } });
   const searchHint = h("div", { class: "small muted", style: "margin-top:4px" });
@@ -733,49 +865,40 @@ async function renderRequests() {
     if (needle) shown = rows.filter((r) => [r.request_no, r.client && r.client.company_name, r.client && r.client.contact_name, r.client && r.client.email, r.risk_concern_1, r.org_unit, r.service_type]
       .filter(Boolean).some((v) => String(v).toLowerCase().includes(needle)));
     list.replaceChildren(shown.length ? h("div", { class: "list" }, ...shown.map(requestRow)) :
-      h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestTile ? "No requests at this step." : "No open requests.")));
+      h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestTile ? "No requests here." : "No open requests.")));
     searchHint.textContent = needle ? plural(shown.length, "request") + " match \"" + requestSearch.trim() + "\" across all " + rows.length + " requests" : "";
     searchHint.hidden = !needle;
   }
   function draw() {
-    strip.replaceChildren(...TILES.map(([n, label]) => h("button", { type: "button", class: "kpi stage" + (inTile(n).length ? "" : " zero"), role: "listitem", "data-tone": tone(n), "data-step": String(n), "aria-pressed": requestTile === n ? "true" : "false",
-      onclick: () => { requestTile = requestTile === n ? 0 : n; sessionStorage.setItem("pp_admin_reqtile", String(requestTile || "")); draw(); } },
-      h("span", { class: "kpi-v" }, String(inTile(n).length)), h("span", { class: "kpi-l" }, n + " · " + label))));
+    strip.replaceChildren(...V7_TILES.map(([n, label]) => h("button", { type: "button", class: "kpi stage" + (inTile(n).length ? "" : " zero"), role: "listitem", "data-tone": tone(n), "data-tile": String(n), "aria-pressed": requestTile === n ? "true" : "false",
+      onclick: () => { requestTile = requestTile === n ? 0 : n; sessionStorage.setItem("pp_admin_reqtile7", String(requestTile || "")); draw(); } },
+      h("span", { class: "kpi-v" }, String(inTile(n).length)), h("span", { class: "kpi-l" }, label))));
     drawList();
   }
   app.replaceChildren(
     h("div", { class: "spread", style: "margin-bottom:10px; align-items:center" },
       h("div", {}, h("h1", {}, "Requests"),
-        h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a step to see its requests · ", h("span", { style: "color:var(--red-soft)" }, "red"), " = waited " + OVERDUE_DAYS + " days or more without a scenario sent")),
+        h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a tile to see its requests · each row says the next action · ", h("span", { style: "color:var(--red-soft)" }, "red"), " = the scenario's Day-5 due date has passed")),
       h("a", { class: "btn red", href: "#new-client", id: "newRequestBtn" }, "+ New request (call, email, referral)")),
     strip,
     h("div", { class: "spread", style: "margin-bottom:10px; align-items:center" },
-      h("label", { class: "row small", style: "gap:8px; color:var(--text-muted)" }, deliveredBox, "Show delivered requests too"),
+      h("label", { class: "row small", style: "gap:8px; color:var(--text-muted)" }, deliveredBox, "Show done requests too"),
       h("div", { style: "flex:1 1 300px; max-width:520px" }, sq, searchHint)),
     list);
   draw();
 }
 function requestRow(s) {
   const c = s.client || {};
+  const st = s._state || {};
   const age = daysSince(s.created_at);
-  const overdue = isOverdue(s);
-  const st = s._step || {};
-  const tone = overdue ? "bad" : st.step >= 6 ? "ok" : st.step >= 4 ? "white" : "wait";
-  const text = st.step >= 7 ? "Done" : "Step " + Math.min(st.step, 6) + " · " + st.due + (overdue ? " · " + plural(age, "day") : "");
-  return h("a", { class: "lrow" + (overdue ? " overdue" : ""), href: "#request/" + s.id },
+  return h("a", { class: "lrow" + (st.overdue ? " overdue" : ""), href: "#request/" + s.id, "data-rid": s.request_no || "" },
     h("div", {}, h("div", { class: "t" }, h("span", { class: "rno" }, s.request_no || "—"), " ", h("bdi", {}, c.company_name || "(no organisation name)")),
       h("div", { class: "s" }, [dDay(s.created_at) + (age ? " · " + plural(age, "day") + " ago" : " · today"), s.source === "website" ? "website" : "by " + s.source, s.org_unit].filter(Boolean).join(" · "))),
     h("div", { class: "s" }, [s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1].filter(Boolean).join(" · ")),
-    h("div", { class: "r" }, pill(text, tone)));
+    h("div", { class: "r" }, pill(st.pill ? st.pill.text : "", st.pill ? st.pill.tone : "none")));
 }
 
-// ================= One request — the checklist =================
-let keepScroll = null;
-const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
-// W7 (8 November 2026): when the database will delete this client's record by itself
-// (privacy policy: 1 year after the last contact if no exercise went ahead; 3 years
-// after the latest exercise). The daily email then asks to delete the report copy.
-// Read on its own, so the page still opens if this one read fails.
+// ================= One request — the page =================
 async function loadRetention(clientId) {
   if (!clientId) return null;
   const r = await q(sb.from("clients").select("retention:client_retention").eq("id", clientId).maybeSingle()).catch(() => null);
@@ -790,8 +913,79 @@ function keptLine(ret) {
   return h("p", { class: "small muted keep-until", style: "margin:6px 0 0" }, text);
 }
 
+// Live updates: a version added by Claude, a comment or an approval from the
+// client page, a link opened, an email delivered — the page follows by itself
+// (Supabase live changes, the same mechanism as the player) and, in case that
+// channel is down, a light check every 20 seconds.
+let live = { channel: null, timer: null, sig: null, id: null, note: null };
+function stopLive() {
+  if (live.channel) { try { sb.removeChannel(live.channel); } catch { /* gone */ } }
+  clearInterval(live.timer); live = { channel: null, timer: null, sig: null, id: null, note: null };
+}
+// Someone is typing: a box has the focus, or a box in an open form was changed
+// from what the page filled in. Then a live change shows a Refresh banner
+// instead of redrawing the page under their fingers.
+const editing = () => [...document.querySelectorAll("#app textarea, #app input[type=text], #app input[type=email], #app input[type=search]")]
+  .some((el) => el === document.activeElement || (el.value !== el.defaultValue && el.closest(".inline-form:not([hidden]), .add-box:not([hidden])")));
+function onActivity(why) {
+  if (live.note == null) live.note = why || "";
+  else if (why) live.note = why;
+  if (editing()) {
+    const b = $("liveBanner");
+    if (b) { put(b, h("span", {}, (live.note || "New activity on this request") + " — "), h("button", { class: "btn sm", type: "button", onclick: () => reloadKeepingPlace() }, "Refresh")); b.hidden = false; }
+    return;
+  }
+  clearTimeout(onActivity._t);
+  onActivity._t = setTimeout(() => { sessionStorage.setItem("pp_admin_livenote", live.note || ""); reloadKeepingPlace(); }, 400);
+}
+async function liveSig(id) {
+  const [v, c, l, e] = await Promise.all([
+    q(sb.from("submission_scenario_versions").select("id, updated_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("submission_client_comments").select("id, updated_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("client_links").select("id, open_count, revoked_at, expires_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("sent_emails").select("id, status").eq("submission_id", id)).catch(() => []),
+  ]);
+  return JSON.stringify([v, c, l, e]);
+}
+function startLive(id, knownVersionIds) {
+  stopLive();
+  live.id = id;
+  const filt = "submission_id=eq." + id;
+  try {
+    live.channel = sb.channel("req-" + id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "submission_scenario_versions", filter: filt }, (p) => {
+        const n = p.new || {};
+        const fresh = n.id && !knownVersionIds.has(n.id);
+        onActivity(fresh ? `v${n.version_no} arrived${n.added_how === "claude" ? " from Claude" : ""}${n.summary && n.summary.line ? " — " + n.summary.line : ""}`
+          : n.sponsor_approved_at ? `v${n.version_no} approved by the sponsor on the client page` : "");
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submission_client_comments", filter: filt }, (p) => onActivity((p.new && p.new.source === "client_page") ? "A comment arrived from the client page" : "A comment was added"))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "client_link_opens", filter: filt }, (p) => onActivity(p.new && p.new.outcome !== "ok" ? "The sponsor tried an expired or revoked link" : ""))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sent_emails", filter: filt }, () => onActivity(""))
+      .subscribe();
+  } catch (err) { console.warn("live channel", err); }
+  liveSig(id).then((s) => { if (live.id === id) live.sig = s; });
+  live.timer = setInterval(async () => {
+    if (document.hidden || live.id !== id) return;
+    const s = await liveSig(id).catch(() => null);
+    if (s && live.sig && s !== live.sig) { live.sig = s; onActivity(""); }
+    else if (s) live.sig = s;
+  }, 20000);
+}
+window.addEventListener("hashchange", () => { if (!location.hash.startsWith("#request/" + live.id)) stopLive(); });
+
+// Delivery status of this request's emails: asked once when the page opens.
+async function pollEmailsFor(id) {
+  const { data } = await sb.auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) return;
+  const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ action: "poll", submission_id: id }) }).catch(() => null);
+  if (!res || !res.ok) return;
+  const out = await res.json().catch(() => null);
+  return out;
+}
+
 async function renderRequest(id) {
-  // The tabs are gone; their memory key is read nowhere any more.
   sessionStorage.removeItem("pp_admin_tab_request");
   const app = $("app");
   const s = await q(sb.from("submissions")
@@ -800,7 +994,7 @@ async function renderRequest(id) {
   if (!s) { app.replaceChildren(h("p", {}, "This request doesn't exist (it may have been erased). "), h("a", { href: "#" }, "Back to requests")); return; }
   const c = s.client || {};
   const linked = s.match_status !== "pending" && c.id;
-  const [remarks, versions, comments, contacts, exercises, actions, sessions] = await Promise.all([
+  const [remarks, versions, comments, contacts, exercises, actions, sessions, links, emails, opens] = await Promise.all([
     q(sb.from("submission_team_remarks").select("*").eq("submission_id", id).is("withdrawn_at", null).order("created_at")).catch(() => []),
     q(sb.from("submission_scenario_versions").select("*").eq("submission_id", id).order("version_no")).catch(() => []),
     q(sb.from("submission_client_comments").select("*").eq("submission_id", id).is("withdrawn_at", null).order("received_on").order("created_at")).catch(() => []),
@@ -808,6 +1002,9 @@ async function renderRequest(id) {
     linked ? q(sb.from("exercises").select("id, exercise_date, main_risk, overall_score, band").eq("client_id", c.id).order("exercise_date", { ascending: false }).limit(5)).catch(() => []) : [],
     linked ? q(sb.from("corrective_actions").select("id, action, owner_department, status, due_date").eq("client_id", c.id).order("due_date", { nullsFirst: false })).catch(() => []) : [],
     loadSessions(id).catch((err) => { fail(err); return null; }),
+    q(sb.from("client_links").select("*").eq("submission_id", id).order("created_at")).catch(() => []),
+    q(sb.from("sent_emails").select("*").eq("submission_id", id).order("created_at")).catch(() => []),
+    q(sb.from("client_link_opens").select("link_id, at, what, outcome").eq("submission_id", id).order("at")).catch(() => []),
   ]);
   s._remarks = remarks || [];
   s._versions = (versions || []).filter((v) => !v.withdrawn_at);
@@ -815,7 +1012,6 @@ async function renderRequest(id) {
   s._comments = comments || [];
   const mine = (sessions || []).filter((x) => x.submission_id === s.id);
   const free = (sessions || []).filter((x) => !x.submission_id);
-  // The runs of the linked exercise, for the run choice (W4b).
   await Promise.all(mine.map(async (x) => { x.runs = await q(sb.rpc("admin_exercise_runs", { p_session: x.id })).catch(() => null); }));
   const ses = mine[0] || null;
   if (ses) {
@@ -826,26 +1022,347 @@ async function renderRequest(id) {
     ses.chosenRun = runs && runs.some((u) => u.run_number === stored && u.exportable) ? stored : firstChoice ? firstChoice.run_number : null;
   }
   const rec = recordFacts(ses, ses ? ses.chosenRun : null);
-  const now = stepOf(s, s._versions, s._comments, rec);
-  const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now };
+  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [] };
+  const state = stateOf(s, s._versions, s._comments, rec, extra);
+  const now = stepOf(s, s._versions, s._comments, rec); // today's step logic, used inside the Exercise block
+  const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now, state, extra };
 
-  // --- header: number, name and the request in one line ---
+  // --- the head: number, name, what they asked for in one line ---
   const contactName = (contacts || []).find((p) => p.is_active && p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) || null;
   const head = h("div", { class: "rhead" },
     h("div", { class: "row", style: "gap:6px 18px; align-items:baseline" }, h("a", { class: "back", href: "#" }, "← Requests"),
       h("h1", {}, h("span", { class: "rno", style: "font-size:15px" }, s.request_no || ""), " ", h("bdi", {}, c.company_name || "(no organisation name)"))),
     h("div", { class: "s" }, [
-      "Arrived " + dDay(s.created_at) + (daysSince(s.created_at) ? " (" + plural(daysSince(s.created_at), "day") + " ago)" : " (today)") + " " + (s.source === "website" ? "from the website" : "by " + s.source),
+      "Arrived " + dDay(s.created_at) + " " + (s.source === "website" ? "from the website" : "by " + s.source),
       s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1,
       (contactName && contactName.name ? "Contact: " + contactName.name + (contactName.role ? ", " + contactName.role : "") : c.contact_name ? "Contact: " + c.contact_name : null), c.email,
     ].filter(Boolean).join(" · ")));
 
+  // --- the status strip ---
+  const order = V7_BLOCKS.map(([k]) => k);
+  const at = order.indexOf(state.block === "done" ? "cleanup" : state.block);
+  const dots = h("ol", { class: "v7-dots", "aria-label": "Where the request is" }, ...V7_BLOCKS.map(([k, label], i) =>
+    h("li", { class: i < at || state.tile === 5 ? "done" : i === at ? "now" : "", "aria-current": i === at ? "step" : null }, h("span", { class: "dot" }, i < at || state.tile === 5 ? "✓" : ""), label)));
+  const nextBtn = state.next ? h("button", { class: "btn red", type: "button", id: "nextBtn", "data-next": state.next.key, onclick: () => doNext(state.next.key) }, state.next.label) : null;
+  const strip = h("section", { class: "v7-strip" + (state.overdue ? " overdue" : ""), "aria-label": "Status" }, dots,
+    h("div", { class: "v7-where" }, h("span", { class: "cap" }, "Where it is"), h("span", { id: "whereText" }, state.where)),
+    h("div", { class: "v7-next" }, h("span", { class: "cap" }, "Next"),
+      nextBtn || h("span", { class: "muted", id: "nextWait" }, state.waitText || "Nothing for you to do now"),
+      state.due && (state.block === "scenario" || state.block === "client") && !(s._versions || []).some((v) => v.status !== "draft")
+        ? h("span", { class: "small " + (state.overdue ? "due-bad" : "muted"), id: "dueLine" }, (state.overdue ? "Overdue — " : "") + `v1 due by ${dayName(state.due)}`) : null));
+  const liveNote = sessionStorage.getItem("pp_admin_livenote"); sessionStorage.removeItem("pp_admin_livenote");
+  const banner = h("div", { class: "v7-live", id: "liveBanner", role: "status", hidden: !liveNote }, liveNote || "");
+
   const keep = linked ? keptLine(await loadRetention(c.id)) : null;
-  if (keep) add(head, keep);
-  const steps = h("div", { class: "steps" });
-  for (let n = 1; n <= 6; n++) add(steps, stepCard(n, ctx));
-  app.replaceChildren(head, steps, moreFold(ctx));
+  const blocks = h("div", { class: "v7-blocks" },
+    clientHeader(ctx),
+    scenarioBlock(ctx),
+    exerciseBlock(ctx),
+    reportBlock(ctx),
+    cleanupBlock(ctx, keep));
+  // One red button on the page: the strip's. Inside the blocks the buttons are plain.
+  blocks.querySelectorAll(".btn.red").forEach((b) => b.classList.remove("red"));
+  app.replaceChildren(head, strip, banner, blocks, moreFold(ctx));
   if (keepScroll != null) { const y = keepScroll; keepScroll = null; requestAnimationFrame(() => window.scrollTo({ top: y })); }
+  startLive(id, new Set((versions || []).map((v) => v.id)));
+  if ((emails || []).some((e) => ["sending", "sent", "delayed"].includes(e.status))) {
+    pollEmailsFor(id).then((out) => {
+      if (out && out.rows && out.rows.some((r) => (emails.find((e) => e.id === r.id) || {}).status !== r.status)) onActivity("Email delivery status updated");
+    }).catch(() => null);
+  }
+}
+
+// The strip's red button does what the block's own button does.
+function doNext(key) {
+  const target = document.querySelector(`.v7-blocks [data-next="${key}"]`);
+  if (!target) return;
+  const block = target.closest(".v7-block");
+  if (block && block.tagName === "DETAILS") block.open = true;
+  const fold = target.closest("details"); if (fold) fold.open = true;
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (target.tagName === "SELECT" || target.tagName === "INPUT" || target.tagName === "TEXTAREA") target.focus();
+  else target.click();
+}
+
+function block(kind, title, opts, ...body) {
+  const sec = h("section", { class: "v7-block " + kind + (opts.grey ? " grey" : ""), "data-block": kind, "aria-label": title },
+    h("div", { class: "v7-bhead" }, h("h2", {}, title), opts.right || null),
+    opts.grey ? h("p", { class: "muted small v7-greyline" }, opts.grey) : null, ...body);
+  return sec;
+}
+
+// ---- Client header (steps 1–2 of v6, folded once done) ----
+function clientHeader(ctx) {
+  const { s, c, linked, contacts, state, extra } = ctx;
+  const done = linked && s.status !== "new";
+  if (!done) {
+    const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
+    const body = s.match_status === "pending" || !linked ? step1Body(ctx, false, btns, forms) : step2Body(ctx, false, btns, forms);
+    const main = btns.querySelector("button");
+    if (main) main.setAttribute("data-next", s.match_status === "pending" ? "confirm_client" : "contacted");
+    const sentence = s.match_status === "pending"
+      ? stepOf(s, s._versions, s._comments, ctx.rec).sentence
+      : "Call or email the sponsor (the discovery call before the scenario), then press Contacted. The scenario v1 is then due 5 working days later.";
+    const loose = (el) => el.childNodes.length && !el.parentNode ? el : null;
+    const who = linked ? h("div", { class: "v7-clientline" }, h("span", {}, [h("bdi", {}, c.company_name || ""), (ctx.exercises || []).length ? "returning client" : "new client"].flatMap((p, i) => i ? [" · ", p] : [p]))) : null;
+    return block("client", "Client", {}, who, h("p", { class: "sentence" }, sentence), body, loose(btns), loose(forms));
+  }
+  const ca = extra.contactedAt;
+  const sponsor = (contacts || []).find((p) => p.is_active && p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) || (contacts || []).find((p) => p.is_active) || null;
+  const firstSent = (s._versions || []).some((v) => v.status !== "draft");
+  const line = h("div", { class: "v7-clientline" },
+    h("span", {}, [s.confirmed_at ? "Confirmed " + dShort(dubaiYmd(s.confirmed_at)) : "Confirmed", (ctx.exercises || []).length ? "returning client" : "new client",
+      sponsor && sponsor.name ? "Sponsor: " + sponsor.name + (sponsor.role ? ", " + sponsor.role : "") : c.contact_name ? "Sponsor: " + c.contact_name : null].filter(Boolean).join(" · ")),
+    h("span", { class: state.overdue ? "due-bad" : "" }, ca ? `Contacted ${hm(ca)}` + (state.due ? ` → Scenario v1 due by ${dayName(state.due)}` + (firstSent ? " ✓ sent" : state.overdue ? " — OVERDUE" : "") : "") : "Contacted"));
+  const det = h("details", { class: "v7-fold" }, h("summary", {}, "Client details, contacts and what they asked for"),
+    step1Body(ctx, true), h("div", { class: "sub" }, h("h3", { class: "cap" }, "Contacts"), contactsCard(c.id, contacts, reloadKeepingPlace, true)));
+  return block("client", "Client", { right: h("a", { class: "btn quiet sm", href: "#client/" + c.id }, "Client record") }, line, det);
+}
+
+// ---- 1 · Scenario ----
+const sponsorOf = (ctx) => {
+  const { c, contacts } = ctx;
+  const p = (contacts || []).find((k) => k.is_active && k.email && c.email && k.email.toLowerCase() === c.email.toLowerCase())
+    || (contacts || []).find((k) => k.is_active && k.email) || null;
+  return { name: (p && p.name) || c.contact_name || "", email: (p && p.email) || c.email || "", role: p && p.role };
+};
+function reviewEmail(ctx, v) {
+  const sp = sponsorOf(ctx);
+  const first = (sp.name || "").trim().split(/\s+/)[0] || "";
+  const label = (v.scenario && v.scenario.label) || "the scenario";
+  const prev = v.version_no > 1 ? v.version_no - 1 : null;
+  const note = (v.scenario && v.scenario.versionNote) || v.note || "";
+  return {
+    to: sp.email,
+    subject: `PlanProof — exercise scenario v${v.version_no} for your review (${ctx.s.request_no || ""})`.replace(" ()", ""),
+    message: [`Dear ${first || "colleague"},`,
+      `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review at the private link below. The link is for you and the people you choose; please do not share it with the participants — the exercise only tests the teams if the injects are unseen.`,
+      `Open the scenario: ${SEND_LINK_MARKER}`,
+      prev && note ? `What changed from v${prev}: ${note}` : null,
+      "On the page you can send us your comments, or approve the version when you are happy with it. You can also print it or save it as a PDF.",
+      "Kind regards,\nAhmed — PlanProof · exercises@plan-proof.com"].filter(Boolean).join("\n\n"),
+  };
+}
+const SEND_LINK_MARKER = "[the private link]";
+async function accessToken() {
+  const { data } = await sb.auth.getSession();
+  const t = data && data.session && data.session.access_token;
+  if (!t) throw new Error("Sign in again first.");
+  return t;
+}
+function sendForm(ctx, v, isResend) {
+  const e = reviewEmail(ctx, v);
+  const to = h("input", { type: "email", value: e.to, "aria-label": "To", autocomplete: "off" });
+  const subj = h("input", { type: "text", value: e.subject, maxlength: 300, "aria-label": "Subject" });
+  const msg = h("textarea", { rows: 12, "aria-label": "Message" }); msg.defaultValue = e.message;
+  const out = h("div", { class: "progress", role: "status" });
+  const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id && !l.revoked_at && Date.parse(l.expires_at) > Date.now()).slice(-1)[0];
+  const expires = link ? link.expires_at : new Date(Date.now() + 14 * 86400000).toISOString();
+  const send = h("button", { class: "btn primary", type: "button", "data-act": "send_go", onclick: async () => {
+    const addr = to.value.trim();
+    if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
+    const clientDom = (ctx.c.email || "").split("@")[1];
+    if (clientDom && addr.split("@")[1].toLowerCase() !== clientDom.toLowerCase()) {
+      const ok = await confirmBox({ title: "Send to a different domain than the client's?", text: `${addr} is not on ${clientDom}. Send anyway?`, ok: "Send anyway" });
+      if (!ok) return;
+    }
+    const recent = (ctx.extra.emails || []).filter((m) => m.version_id === v.id && Date.now() - Date.parse(m.created_at) < 3 * 60000).slice(-1)[0];
+    if (recent) {
+      const ok = await confirmBox({ title: `Send v${v.version_no} again?`, text: `It was already sent ${Math.max(1, Math.round((Date.now() - Date.parse(recent.created_at)) / 60000))} minute(s) ago to ${recent.to_address}.`, ok: "Send again" });
+      if (!ok) return;
+    }
+    send.disabled = true; out.textContent = "Sending…";
+    try {
+      const token = await accessToken();
+      const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: msg.value }) });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok || !r.ok) throw new Error(r.error || "The email could not be sent (HTTP " + res.status + ").");
+      toast(`v${v.version_no} sent to ${addr}` + (r.from && /notify\./.test(r.from) ? " (from exercises@notify.plan-proof.com, replies to exercises@plan-proof.com)" : ""));
+      if (!r.recorded) toast("Sent — but the page could not record it yet; it will repair itself within the hour.", true);
+      reloadKeepingPlace();
+    } catch (err) { send.disabled = false; out.textContent = ""; fail(err); }
+  } }, isResend ? `Resend v${v.version_no}` : `Send v${v.version_no}`);
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "send" },
+    h("label", { class: "f" }, "To (the sponsor)", to),
+    h("label", { class: "f" }, "Subject", subj),
+    h("label", { class: "f" }, "Message — edit freely; the private link goes where it says " + SEND_LINK_MARKER, msg),
+    h("p", { class: "small muted", style: "margin:0" }, (link ? "The same private link is used again" : "A private link is made when you press Send") + ` — valid until ${dd(dubaiYmd(expires))}. From exercises@plan-proof.com; replies come to exercises@plan-proof.com.`),
+    h("div", { class: "row" }, send, link ? copyLinkBtn(link) : null, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; } }, "Cancel")), out);
+  return form;
+}
+function copyLinkBtn(link) {
+  return h("button", { class: "btn quiet sm", type: "button", "data-act": "copy_link", onclick: async () => {
+    const url = location.origin + "/c/" + link.token;
+    try { await navigator.clipboard.writeText(url); toast("Link copied — valid until " + dd(dubaiYmd(link.expires_at))); }
+    catch { window.prompt("Copy the link:", url); }
+  } }, "Copy the link");
+}
+async function showClientCopy(v) {
+  const data = await q(sb.rpc("admin_client_copy", { p_version: v.id })).catch(fail);
+  if (!data) return;
+  const html = window.PPCopy.renderHtml(data);
+  const dlg = $("copyDlg");
+  const art = $("copyArticle"); art.innerHTML = html;
+  $("copyTitle").textContent = `Client copy of v${v.version_no} — exactly what the sponsor sees`;
+  $("copyPrint").onclick = () => {
+    const w = window.open("", "_blank");
+    if (!w) return toast("Allow pop-ups to print", true);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>v${v.version_no} client copy</title><link rel="stylesheet" href="${location.origin}/c/copy.css"></head><body><article class="cc">${html}</article></body></html>`);
+    w.document.close(); setTimeout(() => w.print(), 400);
+  };
+  dlg.showModal();
+}
+function addBox(ctx, nextNo) {
+  const { s } = ctx;
+  const ta = h("textarea", { rows: 6, placeholder: "Paste the scenario file (the JSON the scenario chat gives you) here — or drop the .json file on this box.", "aria-label": "Scenario file (JSON)" });
+  const file = h("input", { type: "file", accept: ".json,application/json", "aria-label": "Choose the scenario file" });
+  const result = h("div", { class: "add-result", role: "status" });
+  let how = "paste";
+  const readFile = (f) => { if (!f) return; if (f.size > 1500000) return toast("That file is too big for a scenario (over 1.5 MB)", true);
+    f.text().then((t) => { ta.value = t; how = "upload"; check(); }); };
+  file.onchange = () => readFile(file.files[0]);
+  ta.addEventListener("input", () => { how = "paste"; result.replaceChildren(); });
+  ta.addEventListener("dragover", (e) => { e.preventDefault(); ta.classList.add("drop"); });
+  ta.addEventListener("dragleave", () => ta.classList.remove("drop"));
+  ta.addEventListener("drop", (e) => { e.preventDefault(); ta.classList.remove("drop"); readFile(e.dataTransfer.files[0]); });
+  let parsed = null;
+  async function check() {
+    result.replaceChildren(); parsed = null;
+    try { parsed = JSON.parse(ta.value); } catch { put(result, h("p", { class: "alert small" }, "This is not a scenario file: it does not read as JSON. Paste the whole file, from the first { to the last }.")); return; }
+    const r = await q(sb.rpc("admin_add_version", { p_submission: s.id, p_scenario: parsed, p_how: how, p_check_only: true })).catch((err) => { put(result, h("p", { class: "alert small" }, err.message)); return null; });
+    if (!r) return;
+    const save = h("button", { class: "btn primary", type: "button", "data-act": "add_save", onclick: async () => {
+      save.disabled = true;
+      const done = await q(sb.rpc("admin_add_version", { p_submission: s.id, p_scenario: parsed, p_how: how })).catch((err) => { save.disabled = false; fail(err); return null; });
+      if (done) { toast(`v${done.version_no} saved — ${done.summary.line}`); reloadKeepingPlace(); }
+    } }, (r.replaces_draft ? "Replace" : "Save as") + " v" + r.version_no);
+    put(result, h("div", { class: "v7-summary" }, h("strong", {}, r.summary.line), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
+  }
+  const box = h("div", { class: "add-box inline-form stack", hidden: true, "data-form": "add" },
+    h("h3", { class: "cap" }, `Add v${nextNo}`),
+    h("p", { class: "small muted", style: "margin:0" }, "Normally Claude adds the version directly from the scenario chat and it appears here by itself. Use this box only if that did not happen."),
+    ta, h("div", { class: "row" }, h("button", { class: "btn", type: "button", "data-act": "add_check", onclick: check }, "Check the file"), file,
+      h("button", { class: "btn quiet", type: "button", onclick: () => { box.hidden = true; } }, "Cancel")), result);
+  return box;
+}
+function pasteCommentForm(ctx) {
+  const { s } = ctx;
+  const vs = liveVersions(s._versions).filter((v) => v.status !== "draft");
+  const latest = vs.slice().sort((a, b) => b.version_no - a.version_no)[0];
+  const cs = s._comments || [];
+  const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
+  const cFrom = h("input", { type: "text", maxlength: 200, placeholder: "e.g. Sara Ali, BCM Manager (sponsor)", value: cs.length ? cs[cs.length - 1].sender : sponsorOf(ctx).name });
+  const cVersion = h("select", { "aria-label": "Which version the comment is about" }, h("option", { value: "" }, "Not about a specific version"),
+    ...vs.slice().reverse().map((v) => h("option", { value: v.id, selected: latest && v.id === latest.id }, "v" + v.version_no)));
+  const cBody = h("textarea", { rows: 4, maxlength: 8000, placeholder: "Paste the comments received by email or phone.", "aria-label": "Client comment" });
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "comment" },
+    h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "From (name and role)", cFrom), vs.length ? h("label", { class: "f" }, "About", cVersion) : null),
+    h("label", { class: "f" }, "Comment", cBody),
+    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async (e) => {
+      const body = cBody.value.trim(), sender = cFrom.value.trim();
+      if (!sender) { toast("Enter who sent the comment", true); cFrom.focus(); return; }
+      if (!body) { toast("Enter the comment", true); cBody.focus(); return; }
+      e.target.disabled = true;
+      const row = await q(sb.from("submission_client_comments").insert({ submission_id: s.id, received_on: cDate.value || todayDubai(), sender, body, version_id: cVersion.value || null }).select().single()).catch(fail);
+      e.target.disabled = false;
+      if (row) { toast("Comment added"); reloadKeepingPlace(); }
+    } }, "Add the comment"), h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; } }, "Cancel")));
+  return form;
+}
+function versionRow(ctx, v, isNewest) {
+  const { extra } = ctx;
+  const links = (extra.links || []).filter((l) => l.version_id === v.id).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  const link = links[links.length - 1] || null;
+  const liveLink = link && !link.revoked_at && Date.parse(link.expires_at) > Date.now() ? link : null;
+  const mails = (extra.emails || []).filter((m) => m.version_id === v.id);
+  const mail = mails[mails.length - 1] || null;
+  const late = link ? (extra.opens || []).filter((o) => o.link_id === link.id && o.outcome !== "ok") : [];
+  const cmts = (ctx.s._comments || []).filter((k) => k.version_id === v.id);
+  const lines = [];
+  lines.push(h("div", { class: "row", style: "gap:8px; align-items:center" }, h("strong", { class: "vno" }, "v" + v.version_no), pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]),
+    h("span", { class: "meta" }, [v.added_how === "claude" ? "added by Claude " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "added on the page " + hm(v.created_at) : "recorded by hand",
+      v.sent_on && v.status !== "draft" ? "sent " + dd(v.sent_on) : null, cmts.length ? plural(cmts.length, "comment") : null].filter(Boolean).join(" · "))));
+  if (v.summary && v.summary.line) lines.push(h("div", { class: "small", style: "margin-top:4px" }, v.summary.line));
+  if (mail) lines.push(h("div", { class: "small " + (EMAIL_BAD.has(mail.status) ? "due-bad" : "muted") }, `Email ${hm(mail.created_at)} to ${mail.to_address}: ${EMAIL_WORD[mail.status] || mail.status}` + (mail.from_address && /notify\./.test(mail.from_address) ? " (sent from exercises@notify.plan-proof.com)" : "") + (mail.error && EMAIL_BAD.has(mail.status) ? " — " + mail.error.slice(0, 160) : "")));
+  if (link) lines.push(h("div", { class: "small muted" }, (link.open_count ? `Opened by the sponsor ${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : "Not opened yet") + " · " +
+    (link.revoked_at ? "link revoked " + hm(link.revoked_at) : Date.parse(link.expires_at) > Date.now() ? "link valid until " + dd(dubaiYmd(link.expires_at)) : "link expired " + dd(dubaiYmd(link.expires_at))) +
+    (late.length ? ` · tried after it ${link.revoked_at ? "was revoked" : "expired"}: ${hm(late[late.length - 1].at)}` : "")));
+  if (v.sponsor_approved_at) lines.push(h("div", { class: "small", style: "color:var(--green-soft)" }, `✓ Approved by the sponsor on the client page: ${v.sponsor_approved_by}, ${hm(v.sponsor_approved_at)}`));
+  if (v.note) lines.push(h("div", { class: "body small" }, h("span", { class: "muted" }, "What changed: "), v.note));
+  const btns = h("div", { class: "row", style: "margin-top:6px; gap:8px" });
+  if (v.scenario) add(btns, h("button", { class: "btn sm", type: "button", "data-act": "view_copy", onclick: () => showClientCopy(v) }, "View client copy"));
+  let form = null;
+  if (isNewest && v.scenario && v.status !== "approved") {
+    const resend = v.status !== "draft";
+    form = sendForm(ctx, v, resend);
+    add(btns, h("button", { class: "btn sm", type: "button", "data-act": resend ? "resend" : "send", "data-next": resend ? "resend" : "send", onclick: () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector("input").focus(); } },
+      resend ? `Resend v${v.version_no}` : `Send v${v.version_no} to the sponsor`));
+  }
+  if (liveLink) add(btns, copyLinkBtn(liveLink), h("button", { class: "btn quiet sm", type: "button", "data-act": "extend", onclick: async () => {
+    const r = await q(sb.rpc("admin_link_action", { p_link: liveLink.id, p_action: "extend" })).catch(fail);
+    if (r) { toast("Link valid until " + dd(dubaiYmd(r.expires_at))); reloadKeepingPlace(); }
+  } }, "Extend 14 days"));
+  if (isNewest && v.status !== "draft" && v.status !== "approved") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
+    const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on the client page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
+    if (!ok) return;
+    const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", v.id).select("id")).catch(fail);
+    if (upd) { toast("v" + v.version_no + " approved"); reloadKeepingPlace(); }
+  } }, "Approve v" + v.version_no));
+  return h("div", { class: "item v7-version", "data-version": String(v.version_no) }, ...lines, btns.childNodes.length ? btns : null, form);
+}
+function scenarioBlock(ctx) {
+  const { s, linked } = ctx;
+  if (!linked || s.status === "new" || s.match_status === "pending") return block("scenario", "1 · Scenario", { grey: "After Contacted: add v1 here (Claude adds it from the scenario chat), send it to the sponsor, take their comments, get it approved." });
+  const vs = liveVersions(s._versions).slice().sort((a, b) => a.version_no - b.version_no);
+  const newest = vs[vs.length - 1] || null;
+  const nextNo = newest && newest.status === "draft" ? newest.version_no : (s._lastVersionNo || 0) + 1;
+  const box = addBox(ctx, nextNo);
+  const cform = pasteCommentForm(ctx);
+  const cs = s._comments || [];
+  const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
+  const comList = h("div", {}, ...(cs.length ? cs.map((k) => h("div", { class: "item" },
+    h("div", { class: "meta" }, dd(k.received_on) + " · ", h("b", {}, h("bdi", {}, k.sender)), " · " + (k.version_id ? "about " + vLabel(k.version_id) : "not about a specific version") + " · ",
+      h("span", { class: "tag" + (k.source === "client_page" ? " src-page" : "") }, k.source === "client_page" ? "from the client page " + hm(k.created_at) : "pasted")),
+    h("div", { class: "body" }, k.body))) : [h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from the client page appear here by themselves.")]));
+  const delivered = s.status === "delivered";
+  const tools = h("div", { class: "row", style: "gap:8px; margin:10px 0 4px" },
+    delivered ? null : h("button", { class: "btn sm", type: "button", "data-act": "add", "data-next": "add", onclick: () => { box.hidden = !box.hidden; if (!box.hidden) box.querySelector("textarea").focus(); } }, `Add v${nextNo} ▸`),
+    h("button", { class: "btn quiet sm", type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = !cform.hidden; if (!cform.hidden) cform.querySelector("textarea").focus(); } }, "+ Paste a comment"));
+  return block("scenario", "1 · Scenario", { right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants.") },
+    h("div", { class: "v7-versions" }, ...(vs.length ? vs.map((v) => versionRow(ctx, v, v === newest)) : [h("p", { class: "empty" }, "No version yet.")])),
+    tools, box, cform,
+    h("details", { class: "v7-fold", open: cs.length > 0 && cs.length <= 6 }, h("summary", {}, `What the client said (${cs.length})`), comList),
+    remarksBox(s, false));
+}
+function exerciseBlock(ctx) {
+  const { s, state } = ctx;
+  const approved = liveVersions(s._versions).some((v) => v.status === "approved");
+  if (!approved && !ctx.ses) return block("exercise", "2 · Exercise", { grey: "Opens when the scenario is approved." });
+  const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
+  const body = step4Body(ctx, false, btns, forms);
+  const sel = body.querySelector("select[aria-label='Exercise to link']");
+  if (sel) sel.setAttribute("data-next", "setup");
+  const map = { download: "ex_download", delivered: "ex_delivered", close_survey: "ex_close_survey" };
+  body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
+  return block("exercise", "2 · Exercise", {},
+    !ctx.ses ? h("p", { class: "small muted", style: "margin:0 0 10px" }, "For now (build 1), link the exercise Claude set up, as today. The next build replaces this with \"Approve → set up the exercise\": the links, QR codes, confirmation and invitation.") : null,
+    body);
+}
+function reportBlock(ctx) {
+  const { s, rec } = ctx;
+  return block("report", "3 · Report", { grey: rec.downloaded || s.status === "delivered"
+    ? "Report files, Send the report and \"Client accepted the report\" come with build 3. For now: write the report from the downloaded record; when the client has accepted it, press Mark as delivered in the Exercise block."
+    : "After the exercise and the record download. (Report files, Send the report and \"Client accepted the report\" come with build 3.)" });
+}
+function cleanupBlock(ctx, keep) {
+  const { s, rec } = ctx;
+  const lines = [];
+  if (s.delivered_at) lines.push(h("p", { class: "small", style: "margin:0 0 4px" }, "Report delivered " + dt(s.delivered_at) + "."));
+  lines.push(h("p", { class: "small muted", style: "margin:0 0 4px" }, !rec.linked ? "Participants' data: no exercise linked, so nothing to remove."
+    : rec.purged ? "Participants' data removed " + dt(rec.purged_at) + "." : rec.purge_due_at ? (rec.overdue ? "Participants' data: OVERDUE — was due " : "Participants' data: removed automatically on or after ") + dt(rec.purge_due_at) + "."
+    : "Participants' data: removed automatically 7 days after the report is accepted."));
+  return block("cleanup", "4 · Clean-up", { right: h("span", { class: "small muted" }, "automatic — nothing to press") }, ...lines, keep);
 }
 
 // The folded line of a done step: one line on a phone (ellipsis); a tap opens
@@ -1484,7 +2001,7 @@ function moreFold(ctx) {
     h("div", { class: "row" }, h("div", { style: "flex:0 1 280px" }, stageSel), stageSave)));
   // Remove a version, a comment or a remark recorded by mistake.
   const removable = [
-    ...liveVersions(s._versions).map((v) => ["version", "v" + v.version_no + " (sent " + dd(v.sent_on) + ")", "submission_scenario_versions", v.id, "Its number is not reused."]),
+    ...liveVersions(s._versions).map((v) => ["version", "v" + v.version_no + (v.status === "draft" ? " (not sent)" : " (sent " + dd(v.sent_on) + ")"), "submission_scenario_versions", v.id, "Its number is not reused; its client link stops working."]),
     ...(s._comments || []).map((k) => ["comment", "Comment from " + k.sender + " (" + dd(k.received_on) + ")", "submission_client_comments", k.id, "It will no longer be used to revise the scenario."]),
     ...(s._remarks || []).map((r) => ["remark", "Remark: " + r.body.slice(0, 60) + (r.body.length > 60 ? "…" : ""), "submission_team_remarks", r.id, "It will no longer be used for the scenario."]),
   ];
@@ -1498,6 +2015,23 @@ function moreFold(ctx) {
           if (!ok) return;
           await q(sb.from(table).update({ withdrawn_at: new Date().toISOString() }).eq("id", rid).select("id")).then(() => { toast("Removed"); reloadKeepingPlace(); }).catch(fail);
         } }, "Remove")))));
+  }
+  // W8: revoke a client link (the sponsor then sees "this link was withdrawn").
+  const liveLinks = (ctx.extra && ctx.extra.links || []).filter((l) => !l.revoked_at && Date.parse(l.expires_at) > Date.now());
+  if (liveLinks.length) {
+    what.push("revoke a client link");
+    parts.push(h("div", { class: "more-part" }, h("h3", {}, "Revoke a client link"),
+      h("p", { class: "muted small" }, "The page at that link stops working at once. Use it if the link reached the wrong person."),
+      ...liveLinks.map((l) => {
+        const v = liveVersions(s._versions).find((k) => k.id === l.version_id);
+        return h("div", { class: "spread", style: "align-items:center; padding:6px 0; border-top:1px solid var(--border)" },
+          h("span", { class: "small" }, (l.kind === "report" ? "Report link" : "Link to " + (v ? "v" + v.version_no : "a version")) + " · valid until " + dd(dubaiYmd(l.expires_at)) + " · opened " + plural(l.open_count || 0, "time")),
+          h("button", { class: "btn danger sm", type: "button", "data-act": "revoke", onclick: async () => {
+            const ok = await confirmBox({ title: "Revoke this link?", text: "Whoever opens it from now on sees that it was withdrawn. You can send a fresh link with Resend.", ok: "Revoke link" });
+            if (!ok) return;
+            await q(sb.rpc("admin_link_action", { p_link: l.id, p_action: "revoke", p_reason: "Revoked on the admin page" })).then(() => { toast("Link revoked"); reloadKeepingPlace(); }).catch(fail);
+          } }, "Revoke"));
+      })));
   }
   // Unlink this exercise (before a download) and remove the participants' data now.
   if (x) {
