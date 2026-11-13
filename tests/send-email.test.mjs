@@ -145,3 +145,19 @@ test("the hourly system check emails ONE alert per undelivered client email", as
   const second = await runSystemCheck({ ...d, nowMs: now + 3600000 });
   assert.ok(!second.sent.includes("client-email"), "not repeated");
 });
+
+// v7.1 (13 Nov 2026): "Send a test to myself" — no private link, marked TEST, logged as kind 'test'.
+test("test send: kind 'test' goes out marked TEST, with the link place marked, and no private link", async () => {
+  const w = world();
+  w.fetchFn = ((orig) => async (url, init) => {
+    if (url.endsWith("/admin_record_email")) { const a = JSON.parse(init.body); w.recorded = a; return Response.json({ email_id: "e9", request_no: "R-2026-0099", version_no: 3, token: null, link_id: null, expires_at: null }); }
+    return orig(url, init);
+  })(w.fetchFn);
+  const out = await sendClientEmail(deps(w), "user-token", body({ kind: "test", to: "exercises@plan-proof.com" }));
+  assert.equal(out.ok, true);
+  assert.equal(w.recorded.p_kind, "test"); assert.equal(w.recorded.p_version, VER);
+  assert.match(w.emails[0].subject, /^TEST — PlanProof/);
+  assert.ok(w.emails[0].text.includes("[TEST COPY — the sponsor's private link appears here]"));
+  assert.ok(!w.emails[0].text.includes("/c/"), "no private link in a test copy");
+  assert.equal(out.link, null);
+});

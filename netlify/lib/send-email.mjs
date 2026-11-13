@@ -25,7 +25,9 @@ export const LINK_MARKER = "[the private link]";
 export const UNKNOWN_AFTER_MS = 10 * 60 * 1000;   // "sending" with no answer after 10 minutes → unknown
 export const NOT_DELIVERED_AFTER_MS = 60 * 60 * 1000; // design D.3: alert after 1 hour
 
-const KINDS = new Set(["review", "confirmation", "invitation", "report"]);
+const KINDS = new Set(["review", "confirmation", "invitation", "report", "test"]);
+// A test copy to PlanProof itself (v7.1): no private link; the place where it would go is marked.
+export const TEST_LINK_TEXT = "[TEST COPY — the sponsor's private link appears here]";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class SendError extends Error {
@@ -132,13 +134,15 @@ export async function sendClientEmail(deps, token, body) {
 
   const rpc = userRpc(deps, token);
   // 1. log first (and make or reuse the private link); the database checks admin, address, version
-  const rec = await rpc("admin_record_email", { p_submission: body.submission_id, p_kind: kind, p_to: to, p_subject: subject, p_version: kind === "review" ? body.version_id : null });
+  const rec = await rpc("admin_record_email", { p_submission: body.submission_id, p_kind: kind, p_to: to, p_subject: subject, p_version: (kind === "review" || kind === "test") && UUID.test(String(body.version_id || "")) ? body.version_id : null });
   const link = rec && rec.token ? linkFor(deps.origin, rec.token) : null;
   if ((kind === "review" || kind === "report") && !link) throw new SendError(500, "The private link was not made — nothing was sent.");
-  const { text, html } = buildBody(message, link, rec.expires_at);
+  const { text, html } = kind === "test"
+    ? buildBody(message.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
+    : buildBody(message, link, rec.expires_at);
 
   // 2. send
-  const sent = await resendSend(deps, { to, subject, text, html });
+  const sent = await resendSend(deps, { to, subject: kind === "test" && !/^TEST\b/.test(subject) ? "TEST — " + subject : subject, text, html });
 
   // 3. record the answer (three tries; the poll repairs a lost write)
   const status = sent.ok ? "sent" : "failed";
@@ -207,7 +211,7 @@ export async function pollForSystemCheck(deps) {
   if (!deps.env.SUPABASE_SECRET_KEY || !deps.env.RESEND_API_KEY) return { skipped: true, problems: [] };
   const nowMs = deps.nowMs ?? Date.now();
   const rows = await pollEmails(deps, serviceRpc(deps), "service_emails_to_poll", "service_email_status");
-  const problems = rows.filter((r) => ["bounced", "complained", "failed", "unknown"].includes(r.status)
+  const problems = rows.filter((r) => r.kind !== "test").filter((r) => ["bounced", "complained", "failed", "unknown"].includes(r.status)
     || (r.status !== "delivered" && nowMs - Date.parse(r.created_at) > NOT_DELIVERED_AFTER_MS));
   return { skipped: false, checked: rows.length, problems };
 }
