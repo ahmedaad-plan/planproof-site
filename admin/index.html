@@ -264,6 +264,14 @@
   /* v7.1 (13 Nov 2026): focus mode, tables, the tappable progress line */
   .v7-dots .v7-goto{ all:unset; display:inline-flex; align-items:center; gap:6px; cursor:pointer; padding:4px 2px; border-radius:6px; }
   .v7-dots .v7-goto:hover{ color:var(--text); } .v7-dots .v7-goto:focus-visible{ outline:2px solid var(--attn); }
+  .rhead .v7-dots{ margin-top:12px; }
+  .v7-goto[disabled]{ cursor:not-allowed; opacity:.55; }
+  .v7-dots li.later{ opacity:.7; }
+  .v7-now{ border-left:3px solid var(--red); padding:4px 0 4px 12px; display:flex; flex-direction:column; gap:4px; }
+  .v7-now.overdue{ border-left-color:var(--red); }
+  .v7-now .v7-where{ margin:0; font-size:16px; font-weight:600; display:block; flex:none; }
+  .v7-now #whereText{ flex:none; }
+  .v7-now p{ margin:0; }
   .v7-hint{ margin:0; font-size:14px; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:8px; }
   .v7-summary-line{ margin:4px 0 0; font-size:14px; color:var(--text-muted); }
   details.v7-block{ padding:0; }
@@ -406,7 +414,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v7.1</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v7.2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -500,7 +508,7 @@ const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", uns
 const STATUS = ["new", "contacted", "scenario_sent", "client_reviewing", "scenario_approved", "exercise_scheduled", "delivered"];
 const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", client_reviewing: "Client reviewing", scenario_approved: "Scenario approved", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
 const STATUS_TONE = { new: "bad", contacted: "wait", scenario_sent: "wait", client_reviewing: "wait", scenario_approved: "ok", exercise_scheduled: "ok", delivered: "ok" };
-const VERSION_STATUS = { sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
+const VERSION_STATUS = { sent: "Sent", client_commented: "Sponsor commented", approved: "Approved", superseded: "Superseded" };
 const VERSION_TONE = { sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
 const ACTION_STATUS = { open: "Open", done: "Done (not yet exercised)", verified: "Verified at a later exercise", not_verified: "Not verified — gap remained" };
 const RATING_TEXT = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
@@ -816,9 +824,9 @@ async function loadSessions(submissionId) {
 // red button), the Client header, then four blocks in the order things happen —
 // Scenario · Exercise · Report · Clean-up. ONE function, stateOf(), decides the
 // strip, the tile and the list pill; it is unit-tested (t_admin2, section V7).
-const V7_TILES = [[1, "Client"], [2, "Scenario"], [3, "Exercise"], [4, "Report"], [5, "Done"]];
+const V7_TILES = [[1, "Contact"], [2, "Scenario"], [3, "Exercise"], [4, "Report"], [5, "Done"]];
 const V7_TILE_TONE = { 1: "wait", 2: "wait", 3: "white", 4: "white", 5: "ok" };
-const V7_BLOCKS = [["client", "Client"], ["scenario", "Scenario"], ["exercise", "Exercise"], ["report", "Report"], ["cleanup", "Done"]];
+const V7_BLOCKS = [["client", "Contact"], ["scenario", "Scenario"], ["exercise", "Exercise"], ["report", "Report"], ["cleanup", "Done"]];
 const VERSION_WORD = { draft: "Not sent", sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
 const VERSION_TONE_V7 = { draft: "wait", sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
 const EMAIL_WORD = { sending: "sending…", sent: "sent, not yet delivered", delivered: "delivered", delayed: "delayed", bounced: "BOUNCED", complained: "marked as spam", failed: "NOT SENT", unknown: "status unknown" };
@@ -1145,28 +1153,37 @@ async function renderRequest(id) {
       (contactName && contactName.name ? "Contact: " + contactName.name : c.contact_name ? "Contact: " + c.contact_name : null),
     ].filter(Boolean).join(" · ")));
 
-  // --- the status strip: tap a stage to open it; WHERE IT IS; NEXT (the one red button) ---
-  const dots = h("ol", { class: "v7-dots", "aria-label": "Stages of this request — tap one to open it" }, ...V7_BLOCKS.map(([k, label], i) => {
-    const st = i < at || state.tile === 5 && k !== "cleanup" ? "done" : i === at ? "now" : "";
-    return h("li", { class: st, "aria-current": i === at ? "step" : null },
-      h("button", { type: "button", class: "v7-goto", "data-goto": k, onclick: () => openBlock(k) }, h("span", { class: "dot" }, st === "done" ? "✓" : ""), label));
+  // --- v7.2: one stage at a time. The top is the progress line only; the stage in hand
+  // is the one open block, and it alone says where things stand and holds the one red
+  // button. Later stages are locked until the one before is complete. ---
+  const progress = h("ol", { class: "v7-dots", "aria-label": "Stages of this request" }, ...V7_BLOCKS.map(([k, label], i) => {
+    const st = state.tile === 5 ? (k === "cleanup" ? "now" : "done") : i < at ? "done" : i === at ? "now" : "later";
+    return h("li", { class: st, "aria-current": st === "now" ? "step" : null },
+      h("button", { type: "button", class: "v7-goto", "data-goto": k, disabled: st === "later", title: st === "later" ? "Opens when the stage before it is complete" : null, onclick: () => openBlock(k) },
+        h("span", { class: "dot" }, st === "done" ? "✓" : ""), label));
   }));
-  const nextBtn = state.next ? h("button", { class: "btn red", type: "button", id: "nextBtn", "data-next": state.next.key, onclick: () => doNext(state.next.key) }, state.next.label) : null;
-  const strip = h("section", { class: "v7-strip" + (state.overdue ? " overdue" : ""), "aria-label": "Status" }, dots,
-    h("div", { class: "v7-where" }, h("span", { class: "cap" }, "Where it is"), h("span", { id: "whereText" }, state.where)),
-    h("div", { class: "v7-next" }, h("span", { class: "cap" }, "Next"),
-      nextBtn || h("span", { class: "muted", id: "nextWait" }, state.waitText || "Nothing for you to do now"),
-      state.due && !state.firstSent && state.tile <= 2
-        ? h("span", { class: "small " + (state.overdue ? "due-bad" : "muted"), id: "dueLine" }, (state.overdue ? "Overdue — " : "") + `v1 due by ${dayName(state.due)}`) : null),
-    state.hint ? h("p", { class: "v7-hint", id: "hintText" }, state.hint) : null);
+  add(head, progress);
   const liveNote = sessionStorage.getItem("pp_admin_livenote"); sessionStorage.removeItem("pp_admin_livenote");
   const banner = h("div", { class: "v7-live", id: "liveBanner", role: "status", hidden: !liveNote }, liveNote || "");
 
   const keep = linked ? keptLine(await loadRetention(c.id)) : null;
   const blocks = h("div", { class: "v7-blocks" },
     clientBlock(ctx), scenarioBlock(ctx), exerciseBlock(ctx), reportBlock(ctx), cleanupBlock(ctx, keep));
+  // Where it is: at the top of the open stage, once.
+  const nowBlock = blocks.querySelector(`.v7-block.now[data-block="${state.tile === 5 ? "cleanup" : state.block}"]`) || blocks.querySelector(".v7-block.now");
+  const nowBox = h("div", { class: "v7-now" + (state.overdue ? " overdue" : ""), role: "status" },
+    h("p", { class: "v7-where", id: "whereText" }, state.where),
+    state.due && !state.firstSent && state.tile <= 2 ? h("p", { class: "small " + (state.overdue ? "due-bad" : "muted"), id: "dueLine" }, (state.overdue ? "Overdue — " : "") + `v1 due by ${dayName(state.due)}`) : null,
+    !state.next ? h("p", { class: "muted small", id: "nextWait" }, state.waitText || "Nothing for you to do now") : null,
+    state.hint && !(nowBlock && nowBlock.querySelector("ol.v7-todo")) ? h("p", { class: "v7-hint", id: "hintText" }, state.hint) : null);
+  if (nowBlock) { const body = nowBlock.querySelector(".v7-bbody") || nowBlock; body.prepend(nowBox); }
+  // The one red button: the stage's own button for the next action — nothing else is red.
   blocks.querySelectorAll(".btn.red").forEach((b) => b.classList.remove("red"));
-  app.replaceChildren(head, strip, banner, blocks, moreFold(ctx));
+  if (state.next) {
+    const primary = (nowBlock && nowBlock.querySelector(`[data-next="${state.next.key}"]`)) || blocks.querySelector(`[data-next="${state.next.key}"]`);
+    if (primary) { primary.classList.add("red"); primary.classList.remove("quiet", "primary", "sm"); primary.id = "nextBtn"; openAround(primary); }
+  }
+  app.replaceChildren(head, banner, blocks, moreFold(ctx));
   if (keepScroll != null) { const y = keepScroll; keepScroll = null; requestAnimationFrame(() => window.scrollTo({ top: y })); }
   startLive(id, new Set((versions || []).map((v) => v.id)));
   if ((emails || []).some((e) => ["sending", "sent", "delayed"].includes(e.status))) {
@@ -1216,18 +1233,19 @@ function clientBlock(ctx) {
     if (main) main.setAttribute("data-next", s.match_status === "pending" ? "confirm_client" : "contacted");
     const loose = (el) => el.childNodes.length && !el.parentNode ? el : null;
     const who = linked ? (ctx.exercises || []).length ? "returning client" : "new client" : "not confirmed yet";
-    return block("client", "Client", { status: "now", line: who }, body, loose(btns), loose(forms));
+    return block("client", "Contact", { status: "now", line: who }, body, loose(btns), loose(forms));
   }
   const ca = extra.contactedAt;
   const sponsor = sponsorOf(ctx);
   const line = [s.confirmed_at ? "confirmed " + dShort(dubaiYmd(s.confirmed_at)) : "confirmed", (ctx.exercises || []).length ? "returning client" : "new client",
     sponsor.name ? "Sponsor: " + sponsor.name : null].filter(Boolean).join(" · ");
   const dueTxt = state.due ? dayName(state.due) + (state.firstSent ? " ✓ sent" : state.overdue ? " — OVERDUE" : "") : null;
-  return block("client", "Client", { status: "done", line, right: h("a", { class: "btn quiet sm", href: "#client/" + c.id, onclick: (e) => e.stopPropagation() }, "Client record") },
+  return block("client", "Contact", { status: "done", line },
     factsTable([["Contacted", ca ? hm(ca) : "—"], ["Scenario v1 due by", dueTxt ? h("span", { class: state.overdue ? "due-bad" : "" }, dueTxt) : null],
       ["Sponsor", sponsor.name ? [sponsor.name, sponsor.role, sponsor.email].filter(Boolean).join(" · ") : null], ["Client reference", c.client_ref]]),
     h("details", { class: "v7-fold" }, h("summary", {}, "What they asked for, and the client's history"), step1Body(ctx, true)),
-    h("details", { class: "v7-fold" }, h("summary", {}, `Contacts (${(contacts || []).filter((p) => p.is_active).length})`), contactsCard(c.id, contacts, reloadKeepingPlace, true)));
+    h("details", { class: "v7-fold" }, h("summary", {}, `Contacts (${(contacts || []).filter((p) => p.is_active).length})`), contactsCard(c.id, contacts, reloadKeepingPlace, true)),
+    h("p", { class: "small", style: "margin:0" }, h("a", { href: "#client/" + c.id }, "Open the client record (all their requests and history)")));
 }
 
 // ---- Scenario ----
@@ -1591,7 +1609,7 @@ function scenarioBlock(ctx) {
   return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
     todo,
     newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
-    section("comments", `What the sponsor said (${cs.length})`, delivered ? null : pasteBtn("quiet sm"), cform, comTable),
+    section("comments", `What the sponsor said (${cs.length})`, delivered || todo ? null : pasteBtn("quiet sm"), cform, comTable),
     section("remarks", `PlanProof remarks — team only (${(s._remarks || []).length})`, addRemarkBtn, remarks),
     older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
       table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
@@ -1613,7 +1631,8 @@ function exerciseBlock(ctx) {
   const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
   const body = step4Body(ctx, false, btns, forms);
   const sel = body.querySelector("select[aria-label='Exercise to link']");
-  if (sel) sel.setAttribute("data-next", "setup");
+  const linkBtn = [...body.querySelectorAll("button")].find((b) => /^Link the exercise$/.test(b.textContent.trim()));
+  if (linkBtn) linkBtn.setAttribute("data-next", "setup"); else if (sel) sel.setAttribute("data-next", "setup");
   const map = { download: "ex_download", delivered: "ex_delivered", close_survey: "ex_close_survey" };
   body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
   const line = ctx.ses ? [ctx.ses.label || "exercise linked", ctx.rec.downloaded ? "record downloaded" : null].filter(Boolean).join(" · ") : "choose the exercise Claude set up";
