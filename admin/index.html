@@ -1082,6 +1082,19 @@ function startLive(id, knownVersionIds) {
   }, 20000);
 }
 window.addEventListener("hashchange", () => { if (!location.hash.startsWith("#request/" + live.id)) stopLive(); });
+// v7.2 (audit item 2): a tab left open for hours goes stale (sign-in expires, the live
+// channel drops). When the tab comes back into view: renew the sign-in, compare with the
+// database, and redraw if anything changed while away.
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !live.id) return;
+  const id = live.id;
+  await sb.auth.getSession().catch(() => null);
+  const sig = await liveSig(id).catch(() => null);
+  if (live.id !== id) return;
+  const dropped = live.channel && live.channel.state && live.channel.state !== "joined";
+  const changed = sig && live.sig && sig !== live.sig;
+  if (changed || dropped) { live.sig = sig || live.sig; onActivity(changed ? "Page updated — there was new activity while you were away" : ""); }
+});
 
 async function pollEmailsFor(id) {
   const { data } = await sb.auth.getSession();
@@ -1472,7 +1485,8 @@ function versionPanel(ctx, v) {
     const r = await q(sb.rpc("admin_link_action", { p_link: liveLink.id, p_action: "extend" })).catch(fail);
     if (r) { toast("Link valid until " + dd(dubaiYmd(r.expires_at))); reloadKeepingPlace(); }
   } }, "Extend 14 days"));
-  if (v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
+  const revising = ctx.state && ctx.state.next && ctx.state.next.key === "revise";
+  if (!revising && v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
     const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on their page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
     if (!ok) return;
     const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", v.id).select("id")).catch(fail);
@@ -2325,6 +2339,20 @@ function moreFold(ctx) {
             await q(sb.rpc("admin_link_action", { p_link: l.id, p_action: "revoke", p_reason: "Revoked on the admin page" })).then(() => { toast("Link revoked"); reloadKeepingPlace(); }).catch(fail);
           } }, "Revoke"));
       })));
+  }
+  // v7.2 (audit item 5): while the revise steps show, Approve lives here — for a sponsor who
+  // accepted the version by phone or email after all.
+  const nv = liveVersions(s._versions).slice().sort((a, b) => b.version_no - a.version_no)[0];
+  if (ctx.state && ctx.state.next && ctx.state.next.key === "revise" && nv && nv.status === "client_commented") {
+    what.push(`approve v${nv.version_no} after all`);
+    parts.push(h("div", { class: "more-part", "data-more": "approve" }, h("h3", {}, `Approve v${nv.version_no} — only if the sponsor accepted it by phone or email`),
+      h("p", { class: "muted small" }, "Normally you send a revised version. Use this only when the sponsor tells you v" + nv.version_no + " is fine as it is."),
+      h("button", { class: "btn sm", type: "button", "data-act": "approve_after_all", onclick: async () => {
+        const ok = await confirmBox({ title: `Approve v${nv.version_no}?`, text: "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: `Approve v${nv.version_no}` });
+        if (!ok) return;
+        const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", nv.id).select("id")).catch(fail);
+        if (upd) { toast(`v${nv.version_no} approved`); reloadKeepingPlace(); }
+      } }, `Approve v${nv.version_no}`)));
   }
   // W8 v7.1: the rare backup — Claude gave a file instead of adding the version itself.
   if (s.status !== "delivered" && s.match_status !== "pending" && s.status !== "new") {
