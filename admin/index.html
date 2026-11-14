@@ -288,6 +288,11 @@
   .v7-actions, .v7-tools{ gap:8px; }
   .check-first{ gap:8px; align-items:center; border:1px dashed var(--border-strong); border-radius:8px; padding:8px 10px; }
   .t7-wrap{ overflow-x:auto; }
+  ol.v7-todo{ list-style:none; counter-reset:todo; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  ol.v7-todo > li{ counter-increment:todo; display:flex; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid var(--attn); border-radius:10px; padding:10px 12px; }
+  ol.v7-todo > li::before{ content:counter(todo); flex:none; width:26px; height:26px; border-radius:50%; background:var(--attn); color:#111; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+  ol.v7-todo > li > div{ flex:1 1 220px; min-width:0; }
+  .small-fold > summary{ font-size:13px; }
   table.t7{ width:100%; border-collapse:collapse; font-size:14px; }
   table.t7 th{ text-align:left; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:6px 10px; border-bottom:1px solid var(--border-strong); white-space:nowrap; }
   table.t7 td{ padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
@@ -870,13 +875,13 @@ function stateOf(s, versions, comments, rec, x = {}) {
     return R({ block: tile === 4 ? "report" : "exercise", tile, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
   }
   // Scenario
-  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "add", label: `Add v${lastNo + 1}` }, showDue: true, hint: `Ask Claude to design the scenario for ${s.request_no || "this request"}. The new version appears here by itself.` });
+  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: `Ask Claude for v${lastNo + 1}` }, showDue: true, hint: `The button copies the instruction for Claude. Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
   const v = open || newest;
   if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Preview v${v.version_no} first (what the sponsor will see), then send it.` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve to make it final; the exercise is then set up from it.` });
   if (v.status === "client_commented") {
     const n = cs.filter((c) => c.version_id === v.id).length;
-    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "add", label: `Add v${lastNo + 1}` }, hint: `Paste any comments that came by email or phone (+ Paste a comment). Then press Copy the revise prompt and paste it into the Claude chat for ${s.request_no || "this request"} — v${lastNo + 1} appears here by itself.` });
+    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: `Ask Claude for v${lastNo + 1}` }, hint: `Two steps — they are at the top of the Scenario block below: ① add any comments that came by email or phone, ② ask Claude for v${lastNo + 1}.` });
   }
   // sent — waiting, unless the email failed or the sponsor met an expired link
   const myEmails = (x.emails || []).filter((e) => e.version_id === v.id && (e.kind || "review") === "review").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
@@ -1402,6 +1407,12 @@ function factsOf(v) {
     produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide,
   };
 }
+function designPrompt(ctx) {
+  const { s, c } = ctx;
+  return [`Design the scenario for ${s.request_no} (${c.company_name || "the client"}).`,
+    `Use the planproof-scenario skill. Read the request, its form answers and every PlanProof team remark for ${s.request_no} from the PlanProof database; ask me for the discovery-call notes if they are not on the request.`,
+    `When v1 has passed the fresh-eyes check, add it to ${s.request_no} on the admin page and tell me in two lines what it tests.`].join("\n");
+}
 function versionPanel(ctx, v) {
   const { extra } = ctx;
   const links = (extra.links || []).filter((l) => l.version_id === v.id).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
@@ -1472,8 +1483,7 @@ function addBox(ctx, nextNo) {
     put(result, h("div", { class: "v7-summary" }, h("strong", {}, r.summary.line), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
   }
   const box = h("div", { class: "add-box inline-form stack", hidden: true, "data-form": "add" },
-    h("h3", { class: "cap" }, `Add v${nextNo} by hand`),
-    h("p", { class: "small muted", style: "margin:0" }, "Normally Claude adds the version from the scenario chat and it appears here by itself. Use this box only if Claude gave you the file instead."),
+    h("p", { class: "small muted", style: "margin:0" }, `Only if Claude gave you the scenario file instead of adding v${nextNo} itself: paste the file or drop it here.`),
     ta, h("div", { class: "row" }, h("button", { class: "btn", type: "button", "data-act": "add_check", onclick: check }, "Check the file"), file,
       h("button", { class: "btn quiet", type: "button", onclick: () => { box.hidden = true; } }, "Cancel")), result);
   return box;
@@ -1554,27 +1564,35 @@ function scenarioBlock(ctx) {
   }), "versions") : h("p", { class: "empty" }, "No version yet. Ask Claude to design the scenario for " + (s.request_no || "this request") + " — v1 appears here by itself.");
   const older = vs.slice(1);
   const commented = state.block === "scenario" && /commented/.test(state.where || "");
-  const reviseBtn = newest && newest.scenario && !delivered ? h("button", { class: "btn quiet sm", type: "button", "data-act": "revise_prompt", onclick: async () => {
-    const text = revisePrompt(ctx, newest);
-    try { await navigator.clipboard.writeText(text); toast("Revise prompt copied — paste it into the Claude chat for " + s.request_no); }
-    catch { window.prompt("Copy the revise prompt:", text); }
-  } }, "Copy the revise prompt") : null;
-  const tools = h("div", { class: "row v7-tools" },
-    reviseBtn,
-    h("button", { class: "btn quiet sm", type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = !cform.hidden; if (!cform.hidden) cform.querySelector("textarea").focus(); } }, "+ Paste a comment"),
-    delivered ? null : h("button", { class: "btn quiet sm", type: "button", "data-act": "add", "data-next": "add", onclick: () => { box.hidden = !box.hidden; if (!box.hidden) box.querySelector("textarea").focus(); } }, `Add v${nextNo} by hand ▸`));
+  const pasteBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = false; cform.scrollIntoView({ block: "center", behavior: "smooth" }); cform.querySelector("textarea").focus(); } }, "+ Paste a comment");
+  const promptBtn = (kind) => h("button", { class: "btn primary", type: "button", "data-act": kind + "_prompt", "data-next": kind, onclick: async () => {
+    const text = kind === "design" ? designPrompt(ctx) : revisePrompt(ctx, newest);
+    try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
+    catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
+  } }, kind === "design" ? `Copy the instruction for Claude (v${nextNo})` : `Copy the revise prompt for Claude (v${nextNo})`);
+  // "What to do now": the steps of this moment, each with its own button (remark 14)
+  let todo = null;
+  if (!delivered && !newest) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+    h("li", {}, h("div", {}, h("strong", {}, "Ask Claude to design the scenario."), h("div", { class: "small muted" }, `Copy the instruction, open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
+    h("li", {}, h("div", {}, h("strong", {}, `v${nextNo} appears here by itself.`), h("div", { class: "small muted" }, "Then preview it and send it to the sponsor."))));
+  else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+    h("li", {}, h("div", {}, h("strong", {}, "Did the sponsor also comment by email or phone?"), h("div", { class: "small muted" }, "Add those here so Claude sees them. Comments sent from the client page are already below.")), pasteBtn("")),
+    h("li", {}, h("div", {}, h("strong", {}, `Ask Claude for v${nextNo}.`), h("div", { class: "small muted" }, `Copy the prompt and paste it into your Claude chat for ${s.request_no}. v${nextNo} then appears here by itself.`)), promptBtn("revise")));
+  const byHand = delivered ? null : h("details", { class: "v7-fold small-fold", "data-fold": "byhand" }, h("summary", {}, "Claude gave you a file instead? Add it by hand ▸"), box);
+  box.hidden = false;
   const comTable = cs.length ? table(["Date", "From", "How it came", "About", "Comment"], cs.slice().reverse().map((k) => [
     k.source === "client_page" ? hm(k.created_at) : dd(k.received_on), h("bdi", {}, k.sender),
     k.source === "client_page" ? h("span", { class: "tag src-page" }, "Client page") : h("span", { class: "tag" }, VIA_WORD[k.received_via] || "Pasted"),
     k.version_id ? vLabel(k.version_id) : "—", h("div", { class: "body" }, k.body)]), "comments") : h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from the client page appear here by themselves.");
   const line = newest ? `v${newest.version_no} · ${VERSION_WORD[newest.status] || newest.status}` + (cs.length ? ` · ${plural(cs.length, "comment")}` : "") : "no version yet";
   return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
+    todo, cform,
     newest ? versionPanel(ctx, newest) : null,
-    tools, box, cform,
-    h("details", { class: "v7-fold", "data-fold": "comments", open: commented && cs.length > 0 }, h("summary", {}, `What the client said (${cs.length})`), comTable),
+    h("details", { class: "v7-fold", "data-fold": "comments", open: commented && cs.length > 0 }, h("summary", {}, `What the client said (${cs.length})`), comTable, h("div", { style: "margin-top:8px" }, pasteBtn("quiet sm"))),
     h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `All versions (${vs.length})`), vtable,
       older.length ? h("div", { class: "row", style: "margin-top:8px; gap:6px" }, ...older.filter((v) => v.scenario).map((v) => h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy(v) }, `Preview v${v.version_no}`))) : null),
-    h("details", { class: "v7-fold remarks-fold", "data-fold": "remarks" }, h("summary", {}, `PlanProof remarks — team only (${(s._remarks || []).length})`), remarksTable(s)));
+    h("details", { class: "v7-fold remarks-fold", "data-fold": "remarks" }, h("summary", {}, `PlanProof remarks — team only (${(s._remarks || []).length})`), remarksTable(s)),
+    byHand);
 }
 function exerciseBlock(ctx) {
   const { s } = ctx;
