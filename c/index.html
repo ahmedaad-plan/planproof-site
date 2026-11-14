@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>PlanProof — exercise scenario for review</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/c/copy.css">
+<style>
+  @font-face{ font-family:"Space Grotesk"; font-weight:300 700; font-display:swap; src:url("/play/fonts/space-grotesk-latin-wght-normal.woff2") format("woff2"); }
+  @font-face{ font-family:"IBM Plex Sans"; font-weight:400; font-display:swap; src:url("/play/fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+  @font-face{ font-family:"IBM Plex Sans"; font-weight:600 700; font-display:swap; src:url("/play/fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#eef1f5; color:#1d2433; font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif; }
+  .bar{ background:#0b0f14; color:#e7eaee; padding:12px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .mark{ font-family:"Space Grotesk",system-ui,sans-serif; font-weight:700; font-size:19px; }
+  .mark span{ color:#d84a3a; }
+  .bar .tag{ font-size:13px; color:#9aa5b1; }
+  main{ max-width:900px; margin:0 auto; padding:18px 14px 60px; }
+  .notice{ background:#fff7e8; border:1px solid #f0c98a; border-radius:10px; padding:12px 16px; margin:0 0 14px; }
+  .notice strong{ display:block; margin-bottom:2px; }
+  .notice.ok{ background:#eaf6f0; border-color:#9fd3b9; }
+  .notice.red{ background:#fdeeee; border-color:#f0b3ab; }
+  .tools{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 14px; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:9px 16px; border-radius:8px; border:1px solid #1d2433; background:#fff; color:#1d2433; font:600 15px/1.2 inherit; cursor:pointer; text-decoration:none; }
+  .btn.dark{ background:#1d2433; color:#fff; }
+  .btn.green{ background:#2f7d62; border-color:#2f7d62; color:#fff; }
+  .btn[disabled]{ opacity:.55; cursor:not-allowed; }
+  .hint{ font-size:13px; color:#5b6575; }
+  .panel{ background:#fff; border-radius:10px; padding:20px 22px; margin:18px auto 0; max-width:860px; border:1px solid #d9dee5; }
+  .panel h2{ font-family:"Space Grotesk",system-ui,sans-serif; font-size:18px; margin:0 0 6px; }
+  label{ display:block; font-weight:600; font-size:14px; margin:12px 0 4px; }
+  input[type=text], textarea{ width:100%; font:inherit; padding:10px 12px; border:1px solid #b8c0cc; border-radius:8px; background:#fff; color:#1d2433; }
+  textarea{ min-height:130px; resize:vertical; }
+  .tick{ display:flex; gap:10px; align-items:flex-start; font-weight:500; margin-top:12px; }
+  .tick input{ width:22px; height:22px; margin-top:1px; flex:0 0 auto; }
+  .msg{ margin-top:10px; font-weight:600; } .msg.err{ color:#b0281c; } .msg.ok{ color:#2f7d62; }
+  .center{ text-align:center; padding:60px 18px; }
+  .center h1{ font-family:"Space Grotesk",system-ui,sans-serif; font-size:24px; margin:0 0 10px; }
+  :focus-visible{ outline:3px solid #1d2433; outline-offset:2px; }
+  @media print{
+    body{ background:#fff; } .bar, .tools, .panel, .notice.screen-only{ display:none !important; }
+    main{ padding:0; max-width:none; }
+    @page{ margin:16mm 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="bar"><div class="mark">Plan<span>Proof</span></div><div class="tag" id="barTag">Exercise scenario — for the sponsor's review</div></div>
+<main id="main" aria-live="polite"><p class="center">Opening…</p></main>
+<script src="/c/copy.js"></script>
+<script>
+(function () {
+  "use strict";
+  // The database (Supabase) — the public key only; the database decides what this page may see.
+  var SB = "https://qryfayienxrngavhwfgw.supabase.co";
+  var KEY = "sb_publishable_7jiMcaR_m87y9Avu5bZs9g_KdLij01H";
+  var main = document.getElementById("main");
+  var token = (location.pathname.match(/\/c\/([A-Za-z0-9_-]{32,64})\/?$/) || [])[1] || "";
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function longDate(iso) { try { return new Date(iso).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "long", year: "numeric" }); } catch (e) { return ""; } }
+  function rpc(name, args) {
+    return fetch(SB + "/rest/v1/rpc/" + name, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(args), cache: "no-store" })
+      .then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {} if (!r.ok) { var err = new Error((j && (j.message || j.hint)) || "The service did not answer (" + r.status + "). Please try again."); throw err; } return j; }); });
+  }
+  function stop(title, text) {
+    document.title = "PlanProof — " + title;
+    main.innerHTML = '<div class="center"><h1>' + esc(title) + '</h1><p>' + text + '</p><p class="hint">PlanProof · <a href="mailto:exercises@plan-proof.com">exercises@plan-proof.com</a></p></div>';
+  }
+  if (!token) { stop("This link is not complete", "Please open the link exactly as it is in the email, or ask PlanProof for a new one."); return; }
+
+  rpc("client_page", { p_token: token }).then(function (d) {
+    d = d || {};
+    if (d.state === "expired") return stop("This link has expired", "Please ask PlanProof for a new one — reply to the email, or write to exercises@plan-proof.com.");
+    if (d.state === "revoked") return stop("This link is no longer active", "PlanProof has withdrawn it. Please ask PlanProof for a new one at exercises@plan-proof.com.");
+    if (d.state !== "ok") return stop("This link is not recognised", "Please open the link exactly as it is in the email, or ask PlanProof for a new one at exercises@plan-proof.com.");
+    if (d.kind !== "scenario") return stop("Nothing to show yet", "This page will show your report. Please contact PlanProof at exercises@plan-proof.com.");
+    if (d.withdrawn || !d.copy) return stop("This version was withdrawn", "PlanProof has withdrawn this version. Please use the newest link you received.");
+    draw(d);
+  }).catch(function (err) { stop("The page could not be opened", esc(err.message) + " If this keeps happening, write to exercises@plan-proof.com."); });
+
+  function draw(d) {
+    var v = d.version_no, org = d.organisation || "your organisation";
+    document.title = "PlanProof — scenario v" + v + " for " + org;
+    document.getElementById("barTag").textContent = "Scenario v" + v + " — for " + org;
+    var top = [];
+    top.push('<div class="notice screen-only"><strong>Prepared for ' + esc(org) + ' — version v' + esc(v) + ' — for the sponsor\'s approval.</strong>' +
+      'Please do not share it with the participants: the exercise only tests the teams if they have not seen the injects. This link works until ' + esc(longDate(d.expires_at)) + '.</div>');
+    if (d.newer_version_no) top.push('<div class="notice red screen-only"><strong>A newer version (v' + esc(d.newer_version_no) + ') has been sent to you.</strong>Please use the link in the newest email to comment on or approve the scenario.</div>');
+    if (d.approved_by_sponsor) top.push('<div class="notice ok screen-only"><strong>Approved by ' + esc(d.approved_by_sponsor.by) + ' on ' + esc(longDate(d.approved_by_sponsor.at)) + '.</strong>Thank you — PlanProof will confirm the exercise details.</div>');
+    top.push('<div class="tools"><button class="btn dark" type="button" id="printBtn">Print or save as PDF</button>' +
+      '<span class="hint">To save a PDF, choose <b>Save as PDF</b> as the printer.</span>' +
+      '<a class="btn" href="#respond">Comment or approve ↓</a></div>');
+    var body = '<article class="cc">' + window.PPCopy.renderHtml(d) + '</article>';
+    var canApprove = !d.newer_version_no && !d.approved_by_sponsor;
+    var panel = '<section class="panel" id="respond" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
+      '<p class="hint">Write anything you would like changed — they reach PlanProof at once. You can send comments more than once.</p>' +
+      '<form id="cForm" novalidate><label for="cName">Your name</label><input type="text" id="cName" maxlength="200" autocomplete="name">' +
+      '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
+      '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>' +
+      '<section class="panel" aria-labelledby="apH"><h2 id="apH">I approve this version</h2>' +
+      (canApprove ? '<p class="hint">When you are happy with v' + esc(v) + ', approve it here. PlanProof then confirms the date, time and room with you.</p>' +
+        '<form id="aForm" novalidate><label for="aName">Your name</label><input type="text" id="aName" maxlength="200" autocomplete="name">' +
+        '<label class="tick"><input type="checkbox" id="aTick"> <span>I confirm this is the version to run.</span></label>' +
+        '<div style="margin-top:12px"><button class="btn green" type="submit" id="aSend">I approve this version</button></div><div class="msg" id="aMsg" role="status"></div></form>'
+        : '<p class="hint">' + (d.approved_by_sponsor ? 'This version is already approved.' : 'Please use the newest version\'s link to approve.') + '</p>') + '</section>';
+    main.innerHTML = top.join("") + body + panel;
+    document.getElementById("printBtn").onclick = function () { window.print(); };
+    var cForm = document.getElementById("cForm"), cMsg = document.getElementById("cMsg"), cSend = document.getElementById("cSend");
+    cForm.onsubmit = function (e) {
+      e.preventDefault();
+      var name = document.getElementById("cName").value.trim(), text = document.getElementById("cBody").value.trim();
+      cMsg.className = "msg err";
+      if (!name) { cMsg.textContent = "Please write your name."; document.getElementById("cName").focus(); return; }
+      if (!text) { cMsg.textContent = "Please write your comments."; document.getElementById("cBody").focus(); return; }
+      cSend.disabled = true; cMsg.className = "msg"; cMsg.textContent = "Sending…";
+      rpc("client_comment", { p_token: token, p_name: name, p_body: text }).then(function (r) {
+        if (r && r.ok) { cMsg.className = "msg ok"; cMsg.textContent = "Received — thank you, " + name + ". PlanProof has your comments."; document.getElementById("cBody").value = ""; }
+        else { cMsg.className = "msg err"; cMsg.textContent = r && r.state === "expired" ? "This link has expired — nothing was sent. Please ask PlanProof for a new one." : "Not sent — this link is no longer active. Please write to exercises@plan-proof.com."; }
+      }).catch(function (err) { cMsg.className = "msg err"; cMsg.textContent = "Not sent — " + err.message; }).then(function () { cSend.disabled = false; });
+    };
+    var aForm = document.getElementById("aForm");
+    if (aForm) aForm.onsubmit = function (e) {
+      e.preventDefault();
+      var aMsg = document.getElementById("aMsg"), aSend = document.getElementById("aSend");
+      var name = document.getElementById("aName").value.trim(), tick = document.getElementById("aTick").checked;
+      aMsg.className = "msg err";
+      if (!name) { aMsg.textContent = "Please write your name."; document.getElementById("aName").focus(); return; }
+      if (!tick) { aMsg.textContent = "Please tick “I confirm this is the version to run”."; return; }
+      aSend.disabled = true; aMsg.className = "msg"; aMsg.textContent = "Sending…";
+      rpc("client_approve", { p_token: token, p_name: name, p_confirm: true }).then(function (r) {
+        if (r && r.ok) { aMsg.className = "msg ok"; aMsg.textContent = "Approved — thank you, " + name + ". PlanProof will confirm the exercise details with you."; aSend.disabled = true; return; }
+        aMsg.className = "msg err";
+        aMsg.textContent = r && r.state === "newer" ? "A newer version (v" + r.newer_version_no + ") exists — please use its link." : r && r.state === "expired" ? "This link has expired — please ask PlanProof for a new one." : "Not recorded — please write to exercises@plan-proof.com.";
+        aSend.disabled = false;
+      }).catch(function (err) { aMsg.className = "msg err"; aMsg.textContent = "Not recorded — " + err.message; aSend.disabled = false; });
+    };
+  }
+})();
+</script>
+</body>
+</html>

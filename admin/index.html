@@ -222,6 +222,113 @@
   .band{ font-family:var(--font-mono); font-weight:600; }
   .band.green{ color:var(--green-soft); } .band.amber{ color:var(--attn); } .band.red{ color:var(--red-soft); }
 
+  /* v7.0 (W8 build 1): one request, one page — the status strip, then the
+     blocks Client · Scenario · Exercise · Report · Clean-up. One red button
+     on the page: the strip's NEXT. A block not reached yet is grey. */
+  .v7-strip{ border:1px solid var(--border-strong); border-top:3px solid var(--red); border-radius:12px; background:var(--panel); padding:12px 16px; margin:0 0 12px;
+    display:grid; grid-template-columns:1fr; gap:10px; }
+  .v7-strip.overdue{ border-top-color:var(--red); box-shadow:0 0 0 1px var(--red) inset; }
+  .v7-dots{ list-style:none; display:flex; gap:4px 14px; margin:0; padding:0; flex-wrap:wrap; font-size:12px; color:var(--text-muted); }
+  .v7-dots li{ display:inline-flex; align-items:center; gap:6px; }
+  .v7-dots .dot{ width:16px; height:16px; border-radius:50%; border:1px solid var(--border-strong); display:inline-flex; align-items:center; justify-content:center; font-size:10px; }
+  .v7-dots li.done .dot{ background:var(--green); border-color:var(--green); color:#fff; }
+  .v7-dots li.now{ color:var(--text); font-weight:600; } .v7-dots li.now .dot{ border-color:var(--red); background:var(--red); }
+  .v7-where, .v7-next{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; min-width:0; }
+  .v7-where .cap, .v7-next .cap{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); min-width:84px; }
+  #whereText{ overflow-wrap:anywhere; min-width:0; flex:1 1 200px; }
+  .due-bad{ color:var(--red-soft) !important; font-weight:600; }
+  .v7-live{ border:1px solid var(--attn); border-radius:10px; padding:8px 12px; margin:0 0 12px; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .v7-blocks{ display:flex; flex-direction:column; gap:12px; }
+  .v7-block{ border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:14px 16px; min-width:0; }
+  .v7-block.grey{ border-style:dashed; background:transparent; padding:10px 16px; }
+  .v7-block.grey h2{ color:var(--text-muted); }
+  .v7-bhead{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .v7-bhead h2{ font-size:16px; margin:0; flex:1 1 auto; }
+  .v7-block.grey .v7-bhead{ margin-bottom:2px; }
+  .v7-greyline{ margin:0; }
+  .v7-clientline{ display:flex; flex-direction:column; gap:2px; font-size:14px; margin-bottom:8px; }
+  .v7-fold{ margin-top:8px; }
+  .v7-version .vno{ font-family:var(--font-mono); }
+  .v7-summary{ border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:8px; }
+  .add-box textarea{ font-family:var(--font-mono); font-size:12px; }
+  .add-box textarea.drop{ outline:2px dashed var(--attn); }
+  .tag.src-page{ border-color:var(--green); color:var(--green-soft); }
+  .lrow.overdue .r .pill{ font-weight:700; }
+  .kpi-strip.five{ grid-template-columns:repeat(5,minmax(0,1fr)); }
+  #copyDlg{ width:min(920px, 96vw); max-height:92vh; padding:0; border:0; border-radius:12px; background:#eef1f5; }
+  #copyDlg .copy-bar, #mailDlg .copy-bar{ position:sticky; top:0; display:flex; gap:8px; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--panel); color:var(--text); flex-wrap:wrap; }
+  #copyDlg .copy-bar h2{ font-size:14px; margin:0; }
+  #copyDlg .cc{ margin:14px auto; }
+  @media (max-width:520px){ #copyDlg .cc{ padding:18px 16px; } .v7-where .cap, .v7-next .cap{ min-width:0; width:100%; } }
+
+  /* v7.1 (13 Nov 2026): focus mode, tables, the tappable progress line */
+  .v7-dots .v7-goto{ all:unset; display:inline-flex; align-items:center; gap:6px; cursor:pointer; padding:4px 2px; border-radius:6px; }
+  .v7-dots .v7-goto:hover{ color:var(--text); } .v7-dots .v7-goto:focus-visible{ outline:2px solid var(--attn); }
+  .rhead .v7-dots{ margin-top:12px; }
+  .v7-goto[disabled]{ cursor:not-allowed; opacity:.55; }
+  .v7-dots li.later{ opacity:.7; }
+  .v7-now{ border-left:3px solid var(--red); padding:4px 0 4px 12px; display:flex; flex-direction:column; gap:4px; }
+  .v7-now.overdue{ border-left-color:var(--red); }
+  .v7-now .v7-where{ margin:0; font-size:16px; font-weight:600; display:block; flex:none; }
+  .v7-now #whereText{ flex:none; }
+  .v7-now p{ margin:0; }
+  .v7-hint{ margin:0; font-size:14px; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:8px; }
+  .v7-summary-line{ margin:4px 0 0; font-size:14px; color:var(--text-muted); }
+  details.v7-block{ padding:0; }
+  details.v7-block > summary{ list-style:none; cursor:pointer; padding:12px 16px; margin:0; }
+  details.v7-block > summary::-webkit-details-marker{ display:none; }
+  details.v7-block > summary::after{ content:"▸"; margin-left:auto; color:var(--text-muted); }
+  details.v7-block[open] > summary::after{ content:"▾"; }
+  details.v7-block[open] > summary{ border-bottom:1px solid var(--border); }
+  .v7-bbody{ padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .v7-bhead{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .v7-bhead h2{ font-size:16px; margin:0; flex:0 0 auto; }
+  .v7-mark{ width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; border:1px solid var(--border-strong); color:var(--text-muted); flex:none; }
+  details.v7-block.done .v7-mark{ background:var(--green); border-color:var(--green); color:#fff; }
+  details.v7-block.now{ border-color:var(--red); }
+  details.v7-block.now .v7-mark{ background:var(--red); border-color:var(--red); color:#fff; }
+  .v7-line{ color:var(--text-muted); font-size:14px; flex:1 1 200px; min-width:0; overflow-wrap:anywhere; }
+  section.v7-block.later{ border-style:dashed; background:transparent; padding:10px 16px; opacity:.85; }
+  section.v7-block.later h2{ color:var(--text-muted); }
+  .v7-fold > summary{ padding:6px 0; }
+  .v7-vtitle{ font-size:15px; margin:0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .v7-version{ display:flex; flex-direction:column; gap:10px; }
+  .v7-actions, .v7-tools{ gap:8px; }
+  .check-first{ gap:8px; align-items:center; border:1px dashed var(--border-strong); border-radius:8px; padding:8px 10px; }
+  .t7-wrap{ overflow-x:auto; }
+  .v7-sec{ border-top:1px solid var(--border); padding-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .v7-sechead{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .v7-sechead h3{ margin:0; font-size:14px; letter-spacing:.02em; }
+  .v7-sec[data-sec="remarks"] .v7-sechead h3{ color:var(--red-soft); }
+  .v7-actions.secondary .btn{ font-size:13px; }
+  ol.v7-todo{ list-style:none; counter-reset:todo; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  ol.v7-todo > li{ counter-increment:todo; display:flex; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid var(--attn); border-radius:10px; padding:10px 12px; }
+  ol.v7-todo > li::before{ content:counter(todo); flex:none; width:26px; height:26px; border-radius:50%; background:var(--attn); color:#111; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+  ol.v7-todo > li > div{ flex:1 1 220px; min-width:0; }
+  .small-fold > summary{ font-size:13px; }
+  table.t7{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.t7 th{ text-align:left; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:6px 10px; border-bottom:1px solid var(--border-strong); white-space:nowrap; }
+  table.t7 td{ padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; overflow-wrap:anywhere; }
+  table.t7.kv th{ text-transform:none; letter-spacing:0; font-size:13px; width:34%; border-bottom:1px solid var(--border); white-space:normal; vertical-align:top; }
+  table.t7 .body{ white-space:pre-wrap; margin:0; }
+  table.t7.requests tr.rrow{ cursor:pointer; } table.t7.requests tr.rrow:hover td{ background:rgba(242,244,247,0.04); }
+  table.t7.requests tr.rrow.overdue td:first-child{ box-shadow:inset 3px 0 0 var(--red); }
+  table.t7.requests .rno{ font-family:var(--font-mono); font-weight:600; text-decoration:none; color:var(--text); }
+  .pp-only{ background:#fde8e6; color:#8a1c12; border:1px solid #e9a99f; border-radius:6px; padding:8px 12px; margin:0 0 14px; font-weight:600; font-size:14px; }
+  .cc .pp-only-box{ background:#fff6e8; border-left:4px solid #c27a12; padding:8px 12px; border-radius:6px; margin-top:8px; }
+  .cc table.t7 th{ color:#5b6575; } .cc table.t7 td{ border-color:#d9dee5; }
+  #mailDlg{ width:min(720px,96vw); max-height:92vh; padding:0; border:0; border-radius:12px; background:#eef1f5; }
+  #mailDlg .mail{ background:#fff; color:#1d2433; margin:14px; border-radius:8px; padding:18px 22px; font:15px/1.5 Arial,Helvetica,sans-serif; }
+  #mailDlg .mail .hdr{ font-size:13px; color:#5b6575; border-bottom:1px solid #d9dee5; padding-bottom:8px; margin-bottom:12px; }
+  #mailDlg .fake-link{ color:#1a56c4; text-decoration:underline; }
+  @media (max-width:640px){
+    table.t7:not(.kv) thead{ display:none; }
+    table.t7:not(.kv) tr{ display:block; border-bottom:1px solid var(--border-strong); padding:6px 0; }
+    table.t7:not(.kv) td{ display:flex; gap:10px; border:0; padding:3px 4px; }
+    table.t7:not(.kv) td::before{ content:attr(data-label); flex:0 0 96px; font-size:12px; color:var(--text-muted); }
+    table.t7.kv th{ width:40%; }
+    details.v7-block > summary{ padding:10px 12px; } .v7-bbody{ padding:10px 12px 14px; }
+  }
   /* The checklist page (v6, 1 November 2026): a request is six steps, top to
      bottom. The open step has a red edge and its buttons at the top; a done
      step is one line with a green tick; a future step is one grey dashed line.
@@ -297,6 +404,7 @@
   dialog::backdrop{ background:rgba(0,0,0,.65); }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 </style>
+<link rel="stylesheet" href="/c/copy.css">
 </head>
 <body>
 
@@ -306,7 +414,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v6.4</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v7.2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -333,12 +441,24 @@
     </div>
   </form>
 </dialog>
+<dialog id="copyDlg" aria-labelledby="copyTitle">
+  <div class="copy-bar"><h2 id="copyTitle">Client copy</h2>
+    <div class="row"><button class="btn sm" type="button" id="copyPrint">Print or save as PDF</button>
+      <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div></div>
+  <article class="cc" id="copyArticle"></article>
+</dialog>
+<dialog id="mailDlg" aria-labelledby="mailTitle">
+  <div class="copy-bar"><h2 id="mailTitle">Preview of the email — nothing is sent</h2>
+    <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div>
+  <div class="mail"><div class="hdr">To: <span id="mailTo"></span><br>From: exercises@plan-proof.com · Reply-To: exercises@plan-proof.com<br>Subject: <strong id="mailSubject"></strong></div><div id="mailBody"></div></div>
+</dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="/vendor/fflate-0.8.2.js"
         integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT"
         crossorigin="anonymous"></script>
 <script src="/admin/exercise-record.js"></script>
+<script src="/c/copy.js"></script>
 <script src="/vendor/supabase-js-2.117.2.js"
         integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
         crossorigin="anonymous"></script>
@@ -364,7 +484,7 @@ function h(tag, attrs, ...kids) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
-    else if (k === "value") el.value = v;
+    else if (k === "value") { if (tag === "input" || tag === "textarea") el.defaultValue = v; el.value = v; } // v7: the filled-in value is the default, so editing() sees real typing only
     else el.setAttribute(k, v === true ? "" : v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false && kid !== "") el.append(kid instanceof Node ? kid : String(kid));
@@ -388,7 +508,7 @@ const RETEST_TEXT = { retest: "Re-test of the same risk", new: "A new risk", uns
 const STATUS = ["new", "contacted", "scenario_sent", "client_reviewing", "scenario_approved", "exercise_scheduled", "delivered"];
 const STATUS_TEXT = { new: "New", contacted: "Contacted", scenario_sent: "Scenario sent", client_reviewing: "Client reviewing", scenario_approved: "Scenario approved", exercise_scheduled: "Exercise scheduled", delivered: "Delivered" };
 const STATUS_TONE = { new: "bad", contacted: "wait", scenario_sent: "wait", client_reviewing: "wait", scenario_approved: "ok", exercise_scheduled: "ok", delivered: "ok" };
-const VERSION_STATUS = { sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
+const VERSION_STATUS = { sent: "Sent", client_commented: "Sponsor commented", approved: "Approved", superseded: "Superseded" };
 const VERSION_TONE = { sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
 const ACTION_STATUS = { open: "Open", done: "Done (not yet exercised)", verified: "Verified at a later exercise", not_verified: "Not verified — gap remained" };
 const RATING_TEXT = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
@@ -694,93 +814,209 @@ async function loadSessions(submissionId) {
   return Array.isArray(rows) ? rows : [];
 }
 
-// ================= Requests — the list =================
-// Six tiles, one per step (Ahmed, 1 November 2026): 1–2 red when a request
-// there has waited 7 days or more without a scenario sent, otherwise amber;
-// 3 amber; 4–5 white; 6 green; a zero is dim; a pressed tile filters.
-// Tile 5 ("Report") counts the requests whose exercise record is downloaded
-// and whose report is still to be delivered.
-const TILES = [[1, "Client to confirm"], [2, "To contact"], [3, "Scenario"], [4, "Exercise"], [5, "Report"], [6, "Delivered"]];
-const TILE_TONE = { 1: "wait", 2: "wait", 3: "wait", 4: "white", 5: "white", 6: "ok" };
-let requestTile = Number(sessionStorage.getItem("pp_admin_reqtile")) || 0;
+// ================= v7.1 (W8 build 1, 13 November 2026): one request, one page — simplified =================
+// v7.1 after Pass check 1 (Ahmed, 12–13 Nov): focus mode (only the block in hand is open), tables instead of
+// comma lines, one name "Done", a tappable progress line, a "what to do now" line, preview before send,
+// a test copy to yourself, the full version for PlanProof, "How it came" on pasted comments, the Requests
+// list as a table sorted by what needs you first.
+// Design: planproof-reference/w8-design.md Part C. Five tiles (Client · Scenario ·
+// Exercise · Report · Done); on a request: the STATUS STRIP (where it is + the one
+// red button), the Client header, then four blocks in the order things happen —
+// Scenario · Exercise · Report · Clean-up. ONE function, stateOf(), decides the
+// strip, the tile and the list pill; it is unit-tested (t_admin2, section V7).
+const V7_TILES = [[1, "Contact"], [2, "Scenario"], [3, "Exercise"], [4, "Report"], [5, "Done"]];
+const V7_TILE_TONE = { 1: "wait", 2: "wait", 3: "white", 4: "white", 5: "ok" };
+const V7_BLOCKS = [["client", "Contact"], ["scenario", "Scenario"], ["exercise", "Exercise"], ["report", "Report"], ["cleanup", "Done"]];
+const VERSION_WORD = { draft: "Not sent", sent: "Sent", client_commented: "Client commented", approved: "Approved", superseded: "Superseded" };
+const VERSION_TONE_V7 = { draft: "wait", sent: "wait", client_commented: "wait", approved: "ok", superseded: "none" };
+const EMAIL_WORD = { sending: "sending…", sent: "sent, not yet delivered", delivered: "delivered", delayed: "delayed", bounced: "BOUNCED", complained: "marked as spam", failed: "NOT SENT", unknown: "status unknown" };
+const EMAIL_BAD = new Set(["bounced", "complained", "failed", "unknown"]);
+let requestTile = Number(sessionStorage.getItem("pp_admin_reqtile7")) || 0;
 let showDelivered = sessionStorage.getItem("pp_admin_showdelivered") === "1";
 let requestSearch = "";
+let keepScroll = null;
+const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
+
+// Dates: Day-5 due date = Contacted + 5 working days (Monday–Friday, UAE time).
+const dubaiYmd = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+function workingDaysAfter(iso, n) {
+  const d = new Date(dubaiYmd(iso) + "T12:00:00Z");
+  let left = n;
+  while (left > 0) { d.setUTCDate(d.getUTCDate() + 1); const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) left--; }
+  return d.toISOString().slice(0, 10);
+}
+const dayName = (ymd) => ymd ? new Date(ymd + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) : "";
+const pastDue = (ymd, nowMs = Date.now()) => !!ymd && dubaiYmd(new Date(nowMs).toISOString()) > ymd;
+const contactedAt = (remarks) => ((remarks || []).filter((r) => /^Contact note:/i.test(r.body) && !r.withdrawn_at)
+  .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0] || {}).created_at || null;
+const hm = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+
+// stateOf: where the request is and the ONE next action.
+//   x: { contactedAt, links, emails, opens, nowMs } (links/emails/opens may be empty on the list)
+//   returns { block, tile, where, next:{key,label}|null, waiting, due, overdue, pill:{text,tone} }
+function stateOf(s, versions, comments, rec, x = {}) {
+  const nowMs = x.nowMs ?? Date.now();
+  const vs = liveVersions(versions);
+  const cs = (comments || []).filter((c) => !c.withdrawn_at);
+  const newest = newestVersion(vs);
+  const approved = vs.filter((v) => v.status === "approved").sort((a, b) => b.version_no - a.version_no)[0] || null;
+  const lastNo = Math.max(s._lastVersionNo || 0, 0, ...vs.map((v) => v.version_no));
+  const due = x.contactedAt ? workingDaysAfter(x.contactedAt, 5) : null;
+  const firstSent = vs.some((v) => v.status !== "draft");
+  const overdue = !!due && !firstSent && pastDue(due, nowMs) && s.status !== "delivered";
+  const R = (o) => {
+    const pillText = o.next ? o.next.label + (o.showDue && due ? " — due " + dayName(due) : "") : o.waitText || "Waiting";
+    // red: the Day-5 date passed with no version sent, or the data removal is overdue
+    const ov = o.overdue != null ? !!o.overdue : (o.block === "scenario" || o.block === "client") ? overdue : false;
+    return { due, firstSent, waiting: !o.next, ...o, overdue: ov,
+      pill: { text: pillText, tone: ov ? "bad" : o.tile === 5 ? "ok" : o.tile >= 3 ? "white" : "wait" } };
+  };
+  if (s.match_status === "pending") return R({ block: "client", tile: 1, where: "New request" + (s.source === "website" ? " from the website" : ""), next: { key: "confirm_client", label: "Confirm the client" }, hint: "Check whether this organisation is already one of your clients, then confirm it." });
+  if (s.status === "new") return R({ block: "client", tile: 1, where: "Client confirmed", next: { key: "contacted", label: "Contacted" }, hint: "Call the sponsor (the discovery call), then press Contacted. Scenario v1 is due 5 working days later." });
+  if (s.status === "delivered") {
+    const o = stepOf(s, versions, comments, rec);
+    return R({ block: "cleanup", tile: 5, where: o.step >= 7 ? "Done — " + o.sentence.replace(/^Nothing left to do — /, "") : "Delivered · " + o.sentence, next: null, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue });
+  }
+  // A version newer than the approved one (e.g. v3 after v2 was approved) is the live question.
+  const open = newest && newest.status !== "approved" && newest.version_no > (approved ? approved.version_no : 0) ? newest : null;
+  if (!open && approved) {
+    if (!rec || !rec.linked) return R({ block: "exercise", tile: 3, where: `v${approved.version_no} approved${approved.status_changed_on ? " on " + dShort(approved.status_changed_on) : ""}`, next: { key: "setup", label: `Approve v${approved.version_no} → set up the exercise` }, hint: `Ask Claude to set up the exercise from v${approved.version_no}, then choose it in the Exercise block. (The next build does this from the page.)` });
+    const o = stepOf(s, versions, comments, rec);
+    const b = (o.buttons || [])[0];
+    const label = b === "download" ? `Download run ${rec.run}` : b === "delivered" ? "Mark as delivered" : b === "close_survey" ? "Close survey now" : b === "link" ? "Link the exercise" : null;
+    const tile = o.report || (rec.downloaded && !rec.purged) ? 4 : 3;
+    return R({ block: tile === 4 ? "report" : "exercise", tile, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
+  }
+  // Scenario
+  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
+  const v = open || newest;
+  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
+  if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve to make it final; the exercise is then set up from it.` });
+  if (v.status === "client_commented") {
+    const n = cs.filter((c) => c.version_id === v.id).length;
+    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `Two steps, at the top of the Scenario block below: ① + Paste a sponsor comment (only for comments that came by email or phone), ② Copy the revised prompt for Claude — v${lastNo + 1} then appears here by itself.` });
+  }
+  // sent — waiting, unless the email failed or the sponsor met an expired link
+  const myEmails = (x.emails || []).filter((e) => e.version_id === v.id && (e.kind || "review") === "review").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const lastEmail = myEmails[0] || null;
+  const myLinks = (x.links || []).filter((l) => l.version_id === v.id).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const link = myLinks[0] || null;
+  const linkLive = link && !link.revoked_at && Date.parse(link.expires_at) > nowMs;
+  const lateTry = !linkLive && (x.opens || []).some((o) => link && o.link_id === link.id && o.outcome !== "ok");
+  if (lastEmail && EMAIL_BAD.has(lastEmail.status)) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the email to ${lastEmail.to_address} was not delivered (${EMAIL_WORD[lastEmail.status]})`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Check the address, then resend. If it fails again, press Copy the link and send it from your own mailbox." });
+  if (lateTry) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the sponsor tried the link after it ${link.revoked_at ? "was revoked" : "expired on " + dShort(dubaiYmd(link.expires_at))}`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Resend gives the sponsor a fresh link valid for 14 days." });
+  const opened = link && link.open_count ? ` · opened by the sponsor ${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : link ? " · not opened yet" : "";
+  return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${link ? "" : " (recorded by hand)"}${opened} — waiting for the sponsor`, next: null, waitText: "Waiting for the sponsor", hint: "Nothing to do. The sponsor's comments or approval appear here by themselves." });
+}
+
+window.PPAdmin = { stepOf, recordFacts, stateOf, workingDaysAfter };
+
+// ---- small building blocks (v7.1): tables that become cards on a phone ----
+// cols: column labels; rows: arrays of cells (text or nodes). Each cell carries
+// its column label, so on a phone each row reads "Label  value" as a card.
+function table(cols, rows, cls = "") {
+  return h("div", { class: "t7-wrap" }, h("table", { class: "t7 " + cls },
+    h("thead", {}, h("tr", {}, ...cols.map((c) => h("th", { scope: "col" }, c)))),
+    h("tbody", {}, ...rows.map((r) => {
+      const tr = h("tr", r.attrs || {}, ...(r.cells || r).map((cell, i) => h("td", { "data-label": cols[i] || "" }, cell == null || cell === "" ? "—" : cell)));
+      return tr;
+    }))));
+}
+// A two-column "Field · Value" table.
+const factsTable = (pairs) => h("div", { class: "t7-wrap" }, h("table", { class: "t7 kv" },
+  h("tbody", {}, ...pairs.filter(([, v]) => v != null && v !== "").map(([k, v]) => h("tr", {}, h("th", { scope: "row" }, k), h("td", {}, v))))));
+const esc7 = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// ================= Requests — the list (a table, what needs you first) =================
+const urgencyOf = (r) => r.status === "delivered" ? 4 : r._state.overdue ? 0 : r._state.next ? 1 : 2;
 async function renderRequests() {
   const app = $("app");
-  const [rows, versions, sessions] = await Promise.all([
+  const [rows, versions, sessions, contactRemarks] = await Promise.all([
     q(sb.from("submissions")
       .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
-    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
+    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
+    q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at").ilike("body", "Contact note:%")).catch(() => []),
   ]);
   rows.forEach((r) => {
-    r._step = stepOf(r, (versions || []).filter((v) => v.submission_id === r.id), [], recordFacts(sessions.find((x) => x.submission_id === r.id), null));
-    r._tile = r.status === "delivered" ? 6 : r._step.report ? 5 : Math.min(r._step.step, 6);
+    const vs = (versions || []).filter((v) => v.submission_id === r.id);
+    r._lastVersionNo = vs.reduce((m, v) => Math.max(m, v.version_no), 0);
+    r._state = stateOf(r, vs, [], recordFacts(sessions.find((x) => x.submission_id === r.id), null),
+      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)) });
+    r._tile = r._state.tile;
   });
+  rows.sort((a, b) => urgencyOf(a) - urgencyOf(b)
+    || String(a._state.due || "9999").localeCompare(String(b._state.due || "9999"))
+    || String(b.created_at).localeCompare(String(a.created_at)));
   const inTile = (n) => rows.filter((r) => r._tile === n);
-  const tone = (n) => ((n === 1 || n === 2) && inTile(n).some(isOverdue) ? "bad" : TILE_TONE[n]);
-
-  const strip = h("div", { class: "kpi-strip six", role: "list", "aria-label": "Requests by step" });
+  const tone = (n) => (inTile(n).some((r) => r._state.overdue) ? "bad" : V7_TILE_TONE[n]);
+  const strip = h("div", { class: "kpi-strip five", role: "list", "aria-label": "Requests by stage" });
   const sq = h("input", { type: "search", value: requestSearch, placeholder: "Search: request number, organisation, contact, email, risk…", "aria-label": "Search requests",
     oninput: () => { requestSearch = sq.value; drawList(); } });
   const searchHint = h("div", { class: "small muted", style: "margin-top:4px" });
   const deliveredBox = h("input", { type: "checkbox", checked: showDelivered, onchange: () => { showDelivered = deliveredBox.checked; sessionStorage.setItem("pp_admin_showdelivered", showDelivered ? "1" : ""); drawList(); } });
+  const open = rows.filter((r) => r.status !== "delivered");
+  const needYou = open.filter((r) => r._state.next).length, overdueN = rows.filter((r) => r._state.overdue).length, waitingN = open.filter((r) => !r._state.next).length;
+  const summary = h("p", { class: "v7-summary-line", id: "listSummary" },
+    needYou ? h("strong", {}, plural(needYou, "request") + " need" + (needYou === 1 ? "s" : "") + " you now") : "Nothing needs you now",
+    overdueN ? [" · ", h("span", { class: "due-bad" }, overdueN + " overdue")] : null,
+    waitingN ? " · " + waitingN + " waiting for a sponsor or the exercise" : null);
   const list = h("div", {});
   function drawList() {
     const needle = requestSearch.trim().toLowerCase();
     let shown = requestTile ? inTile(requestTile) : rows.filter((r) => showDelivered || r.status !== "delivered");
     if (needle) shown = rows.filter((r) => [r.request_no, r.client && r.client.company_name, r.client && r.client.contact_name, r.client && r.client.email, r.risk_concern_1, r.org_unit, r.service_type]
       .filter(Boolean).some((v) => String(v).toLowerCase().includes(needle)));
-    list.replaceChildren(shown.length ? h("div", { class: "list" }, ...shown.map(requestRow)) :
-      h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestTile ? "No requests at this step." : "No open requests.")));
+    list.replaceChildren(shown.length ? requestTable(shown) :
+      h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestTile ? "No requests here." : "No open requests.")));
     searchHint.textContent = needle ? plural(shown.length, "request") + " match \"" + requestSearch.trim() + "\" across all " + rows.length + " requests" : "";
     searchHint.hidden = !needle;
   }
   function draw() {
-    strip.replaceChildren(...TILES.map(([n, label]) => h("button", { type: "button", class: "kpi stage" + (inTile(n).length ? "" : " zero"), role: "listitem", "data-tone": tone(n), "data-step": String(n), "aria-pressed": requestTile === n ? "true" : "false",
-      onclick: () => { requestTile = requestTile === n ? 0 : n; sessionStorage.setItem("pp_admin_reqtile", String(requestTile || "")); draw(); } },
-      h("span", { class: "kpi-v" }, String(inTile(n).length)), h("span", { class: "kpi-l" }, n + " · " + label))));
+    strip.replaceChildren(...V7_TILES.map(([n, label]) => h("button", { type: "button", class: "kpi stage" + (inTile(n).length ? "" : " zero"), role: "listitem", "data-tone": tone(n), "data-tile": String(n), "aria-pressed": requestTile === n ? "true" : "false",
+      onclick: () => { requestTile = requestTile === n ? 0 : n; sessionStorage.setItem("pp_admin_reqtile7", String(requestTile || "")); draw(); } },
+      h("span", { class: "kpi-v" }, String(inTile(n).length)), h("span", { class: "kpi-l" }, label))));
     drawList();
   }
   app.replaceChildren(
     h("div", { class: "spread", style: "margin-bottom:10px; align-items:center" },
-      h("div", {}, h("h1", {}, "Requests"),
-        h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tap a step to see its requests · ", h("span", { style: "color:var(--red-soft)" }, "red"), " = waited " + OVERDUE_DAYS + " days or more without a scenario sent")),
+      h("div", {}, h("h1", {}, "Requests"), summary),
       h("a", { class: "btn red", href: "#new-client", id: "newRequestBtn" }, "+ New request (call, email, referral)")),
     strip,
     h("div", { class: "spread", style: "margin-bottom:10px; align-items:center" },
-      h("label", { class: "row small", style: "gap:8px; color:var(--text-muted)" }, deliveredBox, "Show delivered requests too"),
+      h("label", { class: "row small", style: "gap:8px; color:var(--text-muted)" }, deliveredBox, "Show done requests too"),
       h("div", { style: "flex:1 1 300px; max-width:520px" }, sq, searchHint)),
     list);
   draw();
 }
-function requestRow(s) {
-  const c = s.client || {};
-  const age = daysSince(s.created_at);
-  const overdue = isOverdue(s);
-  const st = s._step || {};
-  const tone = overdue ? "bad" : st.step >= 6 ? "ok" : st.step >= 4 ? "white" : "wait";
-  const text = st.step >= 7 ? "Done" : "Step " + Math.min(st.step, 6) + " · " + st.due + (overdue ? " · " + plural(age, "day") : "");
-  return h("a", { class: "lrow" + (overdue ? " overdue" : ""), href: "#request/" + s.id },
-    h("div", {}, h("div", { class: "t" }, h("span", { class: "rno" }, s.request_no || "—"), " ", h("bdi", {}, c.company_name || "(no organisation name)")),
-      h("div", { class: "s" }, [dDay(s.created_at) + (age ? " · " + plural(age, "day") + " ago" : " · today"), s.source === "website" ? "website" : "by " + s.source, s.org_unit].filter(Boolean).join(" · "))),
-    h("div", { class: "s" }, [s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1].filter(Boolean).join(" · ")),
-    h("div", { class: "r" }, pill(text, tone)));
+function requestTable(shown) {
+  const t = table(["Request", "Organisation", "Arrived", "Stage", "Next action", "Due"], shown.map((s) => {
+    const c = s.client || {}, st = s._state || {};
+    const dueCell = st.due && !st.firstSent && st.tile <= 2 ? h("span", { class: st.overdue ? "due-bad" : "" }, dayName(st.due) + (st.overdue ? " — overdue" : "")) : null;
+    return { attrs: { class: "rrow" + (st.overdue ? " overdue" : ""), "data-rid": s.request_no || "", "data-id": s.id, tabindex: "0" }, cells: [
+      h("a", { class: "rno", href: "#request/" + s.id }, s.request_no || "—"),
+      h("bdi", {}, c.company_name || "(no organisation name)"),
+      dDay(s.created_at),
+      (V7_TILES.find(([n]) => n === st.tile) || [0, ""])[1],
+      pill(st.pill ? st.pill.text : "", st.pill ? st.pill.tone : "none"),
+      dueCell] };
+  }), "requests");
+  t.querySelectorAll("tr.rrow").forEach((tr) => {
+    const goTo = () => { location.hash = "#request/" + tr.dataset.id; };
+    tr.addEventListener("click", (e) => { if (!e.target.closest("a")) goTo(); });
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") goTo(); });
+  });
+  return t;
 }
 
-// ================= One request — the checklist =================
-let keepScroll = null;
-const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
-// W7 (8 November 2026): when the database will delete this client's record by itself
-// (privacy policy: 1 year after the last contact if no exercise went ahead; 3 years
-// after the latest exercise). The daily email then asks to delete the report copy.
-// Read on its own, so the page still opens if this one read fails.
+// ================= One request — the page =================
 async function loadRetention(clientId) {
   if (!clientId) return null;
   const r = await q(sb.from("clients").select("retention:client_retention").eq("id", clientId).maybeSingle()).catch(() => null);
   return r ? r.retention : null;
 }
+
 function keptLine(ret) {
   if (!ret || !ret.delete_on) return null;
   const when = dd(ret.delete_on);
@@ -790,8 +1026,88 @@ function keptLine(ret) {
   return h("p", { class: "small muted keep-until", style: "margin:6px 0 0" }, text);
 }
 
+let live = { channel: null, timer: null, sig: null, id: null, note: null };
+function stopLive() {
+  if (live.channel) { try { sb.removeChannel(live.channel); } catch { /* gone */ } }
+  clearInterval(live.timer); live = { channel: null, timer: null, sig: null, id: null, note: null };
+}
+// Someone is typing: a box has the focus, or a box in an open form was changed
+// from what the page filled in. Then a live change shows a Refresh banner
+// instead of redrawing the page under their fingers.
+const editing = () => [...document.querySelectorAll("#app textarea, #app input[type=text], #app input[type=email], #app input[type=search]")]
+  .some((el) => el === document.activeElement || (el.value !== el.defaultValue && el.closest(".inline-form:not([hidden]), .add-box:not([hidden])")));
+function onActivity(why) {
+  if (live.note == null) live.note = why || "";
+  else if (why) live.note = why;
+  if (editing()) {
+    const b = $("liveBanner");
+    if (b) { put(b, h("span", {}, (live.note || "New activity on this request") + " — "), h("button", { class: "btn sm", type: "button", onclick: () => reloadKeepingPlace() }, "Refresh")); b.hidden = false; }
+    return;
+  }
+  clearTimeout(onActivity._t);
+  onActivity._t = setTimeout(() => { sessionStorage.setItem("pp_admin_livenote", live.note || ""); reloadKeepingPlace(); }, 400);
+}
+async function liveSig(id) {
+  const [v, c, l, e] = await Promise.all([
+    q(sb.from("submission_scenario_versions").select("id, updated_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("submission_client_comments").select("id, updated_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("client_links").select("id, open_count, revoked_at, expires_at").eq("submission_id", id)).catch(() => []),
+    q(sb.from("sent_emails").select("id, status").eq("submission_id", id)).catch(() => []),
+  ]);
+  return JSON.stringify([v, c, l, e]);
+}
+function startLive(id, knownVersionIds) {
+  stopLive();
+  live.id = id;
+  const filt = "submission_id=eq." + id;
+  try {
+    live.channel = sb.channel("req-" + id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "submission_scenario_versions", filter: filt }, (p) => {
+        const n = p.new || {};
+        const fresh = n.id && !knownVersionIds.has(n.id);
+        onActivity(fresh ? `v${n.version_no} arrived${n.added_how === "claude" ? " from Claude" : ""}${n.summary && n.summary.line ? " — " + n.summary.line : ""}`
+          : n.sponsor_approved_at ? `v${n.version_no} approved by the sponsor on their page` : "");
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submission_client_comments", filter: filt }, (p) => onActivity((p.new && p.new.source === "client_page") ? "A comment arrived from the sponsor's page" : "A comment was added"))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "client_link_opens", filter: filt }, (p) => onActivity(p.new && p.new.outcome !== "ok" ? "The sponsor tried an expired or revoked link" : ""))
+      .on("postgres_changes", { event: "*", schema: "public", table: "sent_emails", filter: filt }, () => onActivity(""))
+      .subscribe();
+  } catch (err) { console.warn("live channel", err); }
+  liveSig(id).then((s) => { if (live.id === id) live.sig = s; });
+  live.timer = setInterval(async () => {
+    if (document.hidden || live.id !== id) return;
+    const s = await liveSig(id).catch(() => null);
+    if (s && live.sig && s !== live.sig) { live.sig = s; onActivity(""); }
+    else if (s) live.sig = s;
+  }, 20000);
+}
+window.addEventListener("hashchange", () => { if (!location.hash.startsWith("#request/" + live.id)) stopLive(); });
+// v7.2 (audit item 2): a tab left open for hours goes stale (sign-in expires, the live
+// channel drops). When the tab comes back into view: renew the sign-in, compare with the
+// database, and redraw if anything changed while away.
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !live.id) return;
+  const id = live.id;
+  await sb.auth.getSession().catch(() => null);
+  const sig = await liveSig(id).catch(() => null);
+  if (live.id !== id) return;
+  const dropped = live.channel && live.channel.state && live.channel.state !== "joined";
+  const changed = sig && live.sig && sig !== live.sig;
+  if (changed || dropped) { live.sig = sig || live.sig; onActivity(changed ? "Page updated — there was new activity while you were away" : ""); }
+});
+
+async function pollEmailsFor(id) {
+  const { data } = await sb.auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) return;
+  const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ action: "poll", submission_id: id }) }).catch(() => null);
+  if (!res || !res.ok) return;
+  const out = await res.json().catch(() => null);
+  return out;
+}
+
+
 async function renderRequest(id) {
-  // The tabs are gone; their memory key is read nowhere any more.
   sessionStorage.removeItem("pp_admin_tab_request");
   const app = $("app");
   const s = await q(sb.from("submissions")
@@ -800,7 +1116,7 @@ async function renderRequest(id) {
   if (!s) { app.replaceChildren(h("p", {}, "This request doesn't exist (it may have been erased). "), h("a", { href: "#" }, "Back to requests")); return; }
   const c = s.client || {};
   const linked = s.match_status !== "pending" && c.id;
-  const [remarks, versions, comments, contacts, exercises, actions, sessions] = await Promise.all([
+  const [remarks, versions, comments, contacts, exercises, actions, sessions, links, emails, opens] = await Promise.all([
     q(sb.from("submission_team_remarks").select("*").eq("submission_id", id).is("withdrawn_at", null).order("created_at")).catch(() => []),
     q(sb.from("submission_scenario_versions").select("*").eq("submission_id", id).order("version_no")).catch(() => []),
     q(sb.from("submission_client_comments").select("*").eq("submission_id", id).is("withdrawn_at", null).order("received_on").order("created_at")).catch(() => []),
@@ -808,6 +1124,9 @@ async function renderRequest(id) {
     linked ? q(sb.from("exercises").select("id, exercise_date, main_risk, overall_score, band").eq("client_id", c.id).order("exercise_date", { ascending: false }).limit(5)).catch(() => []) : [],
     linked ? q(sb.from("corrective_actions").select("id, action, owner_department, status, due_date").eq("client_id", c.id).order("due_date", { nullsFirst: false })).catch(() => []) : [],
     loadSessions(id).catch((err) => { fail(err); return null; }),
+    q(sb.from("client_links").select("*").eq("submission_id", id).order("created_at")).catch(() => []),
+    q(sb.from("sent_emails").select("*").eq("submission_id", id).order("created_at")).catch(() => []),
+    q(sb.from("client_link_opens").select("link_id, at, what, outcome").eq("submission_id", id).order("at")).catch(() => []),
   ]);
   s._remarks = remarks || [];
   s._versions = (versions || []).filter((v) => !v.withdrawn_at);
@@ -815,7 +1134,6 @@ async function renderRequest(id) {
   s._comments = comments || [];
   const mine = (sessions || []).filter((x) => x.submission_id === s.id);
   const free = (sessions || []).filter((x) => !x.submission_id);
-  // The runs of the linked exercise, for the run choice (W4b).
   await Promise.all(mine.map(async (x) => { x.runs = await q(sb.rpc("admin_exercise_runs", { p_session: x.id })).catch(() => null); }));
   const ses = mine[0] || null;
   if (ses) {
@@ -826,26 +1144,532 @@ async function renderRequest(id) {
     ses.chosenRun = runs && runs.some((u) => u.run_number === stored && u.exportable) ? stored : firstChoice ? firstChoice.run_number : null;
   }
   const rec = recordFacts(ses, ses ? ses.chosenRun : null);
+  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [] };
+  const state = stateOf(s, s._versions, s._comments, rec, extra);
   const now = stepOf(s, s._versions, s._comments, rec);
-  const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now };
+  const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now, state, extra };
 
-  // --- header: number, name and the request in one line ---
+  // focus mode: the block in hand is open; earlier ones fold to one line; later ones are one grey line
+  const order = V7_BLOCKS.map(([k]) => k);
+  const at = state.tile === 5 ? order.indexOf("cleanup") : order.indexOf(state.block);
+  // Until build 3 brings the Report block its own buttons, "Mark as delivered" lives in the
+  // Exercise block, so at the report stage that block stays open too.
+  ctx.statusOf = (k) => { const i = order.indexOf(k); if (k === "exercise" && state.block === "report" && s.status !== "delivered") return "now"; return i < at ? "done" : i === at ? "now" : "later"; };
+
   const contactName = (contacts || []).find((p) => p.is_active && p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) || null;
   const head = h("div", { class: "rhead" },
     h("div", { class: "row", style: "gap:6px 18px; align-items:baseline" }, h("a", { class: "back", href: "#" }, "← Requests"),
       h("h1", {}, h("span", { class: "rno", style: "font-size:15px" }, s.request_no || ""), " ", h("bdi", {}, c.company_name || "(no organisation name)"))),
     h("div", { class: "s" }, [
-      "Arrived " + dDay(s.created_at) + (daysSince(s.created_at) ? " (" + plural(daysSince(s.created_at), "day") + " ago)" : " (today)") + " " + (s.source === "website" ? "from the website" : "by " + s.source),
+      "Arrived " + dDay(s.created_at) + " " + (s.source === "website" ? "from the website" : "by " + s.source),
       s.service_type, s.risk_concern_1 && "Main risk: " + s.risk_concern_1,
-      (contactName && contactName.name ? "Contact: " + contactName.name + (contactName.role ? ", " + contactName.role : "") : c.contact_name ? "Contact: " + c.contact_name : null), c.email,
+      (contactName && contactName.name ? "Contact: " + contactName.name : c.contact_name ? "Contact: " + c.contact_name : null),
     ].filter(Boolean).join(" · ")));
 
+  // --- v7.2: one stage at a time. The top is the progress line only; the stage in hand
+  // is the one open block, and it alone says where things stand and holds the one red
+  // button. Later stages are locked until the one before is complete. ---
+  const progress = h("ol", { class: "v7-dots", "aria-label": "Stages of this request" }, ...V7_BLOCKS.map(([k, label], i) => {
+    const st = state.tile === 5 ? (k === "cleanup" ? "now" : "done") : i < at ? "done" : i === at ? "now" : "later";
+    return h("li", { class: st, "aria-current": st === "now" ? "step" : null },
+      h("button", { type: "button", class: "v7-goto", "data-goto": k, disabled: st === "later", title: st === "later" ? "Opens when the stage before it is complete" : null, onclick: () => openBlock(k) },
+        h("span", { class: "dot" }, st === "done" ? "✓" : ""), label));
+  }));
+  add(head, progress);
+  const liveNote = sessionStorage.getItem("pp_admin_livenote"); sessionStorage.removeItem("pp_admin_livenote");
+  const banner = h("div", { class: "v7-live", id: "liveBanner", role: "status", hidden: !liveNote }, liveNote || "");
+
   const keep = linked ? keptLine(await loadRetention(c.id)) : null;
-  if (keep) add(head, keep);
-  const steps = h("div", { class: "steps" });
-  for (let n = 1; n <= 6; n++) add(steps, stepCard(n, ctx));
-  app.replaceChildren(head, steps, moreFold(ctx));
+  const blocks = h("div", { class: "v7-blocks" },
+    clientBlock(ctx), scenarioBlock(ctx), exerciseBlock(ctx), reportBlock(ctx), cleanupBlock(ctx, keep));
+  // Where it is: at the top of the open stage, once.
+  const nowBlock = blocks.querySelector(`.v7-block.now[data-block="${state.tile === 5 ? "cleanup" : state.block}"]`) || blocks.querySelector(".v7-block.now");
+  const nowBox = h("div", { class: "v7-now" + (state.overdue ? " overdue" : ""), role: "status" },
+    h("p", { class: "v7-where", id: "whereText" }, state.where),
+    state.due && !state.firstSent && state.tile <= 2 ? h("p", { class: "small " + (state.overdue ? "due-bad" : "muted"), id: "dueLine" }, (state.overdue ? "Overdue — " : "") + `v1 due by ${dayName(state.due)}`) : null,
+    !state.next ? h("p", { class: "muted small", id: "nextWait" }, state.waitText || "Nothing for you to do now") : null,
+    state.hint && !(nowBlock && nowBlock.querySelector("ol.v7-todo")) ? h("p", { class: "v7-hint", id: "hintText" }, state.hint) : null);
+  if (nowBlock) { const body = nowBlock.querySelector(".v7-bbody") || nowBlock; body.prepend(nowBox); }
+  // The one red button: the stage's own button for the next action — nothing else is red.
+  blocks.querySelectorAll(".btn.red").forEach((b) => b.classList.remove("red"));
+  if (state.next) {
+    const primary = (nowBlock && nowBlock.querySelector(`[data-next="${state.next.key}"]`)) || blocks.querySelector(`[data-next="${state.next.key}"]`);
+    if (primary) { primary.classList.add("red"); primary.classList.remove("quiet", "primary", "sm"); primary.id = "nextBtn"; openAround(primary); }
+  }
+  app.replaceChildren(head, banner, blocks, moreFold(ctx));
   if (keepScroll != null) { const y = keepScroll; keepScroll = null; requestAnimationFrame(() => window.scrollTo({ top: y })); }
+  startLive(id, new Set((versions || []).map((v) => v.id)));
+  if ((emails || []).some((e) => ["sending", "sent", "delayed"].includes(e.status))) {
+    pollEmailsFor(id).then((out) => {
+      if (out && out.rows && out.rows.some((r) => (emails.find((e) => e.id === r.id) || {}).status !== r.status)) onActivity("Email delivery status updated");
+    }).catch(() => null);
+  }
+}
+
+// Open a block (and the folds around a target) and bring it into view.
+function openAround(el) { for (let d = el && el.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true; }
+function openBlock(k) {
+  const b = document.querySelector(`.v7-blocks [data-block="${k}"]`);
+  if (!b) return;
+  if (b.tagName === "DETAILS") b.open = true;
+  b.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+// The strip's red button does what the block's own button does.
+function doNext(key) {
+  const target = document.querySelector(`.v7-blocks [data-next="${key}"]`);
+  if (!target) return;
+  openAround(target);
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (target.tagName === "SELECT" || target.tagName === "INPUT" || target.tagName === "TEXTAREA") target.focus();
+  else target.click();
+}
+
+// A block: "now" is open; "done" folds to its one line (tap to open); "later" is one grey line.
+function block(kind, title, opts, ...body) {
+  const mark = h("span", { class: "v7-mark", "aria-hidden": "true" }, opts.status === "done" ? "✓" : opts.status === "now" ? "●" : "○");
+  const line = opts.line ? h("span", { class: "v7-line" }, opts.line) : null;
+  if (opts.status === "later") return h("section", { class: "v7-block later", "data-block": kind, "aria-label": title },
+    h("div", { class: "v7-bhead" }, mark, h("h2", {}, title), line));
+  return h("details", { class: "v7-block " + opts.status, "data-block": kind, open: opts.status === "now" },
+    h("summary", { class: "v7-bhead" }, mark, h("h2", {}, title), line, opts.right || null),
+    h("div", { class: "v7-bbody" }, ...body));
+}
+
+// ---- Client ----
+function clientBlock(ctx) {
+  const { s, c, linked, contacts, state, extra } = ctx;
+  const done = linked && s.status !== "new";
+  if (!done) {
+    const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
+    const body = s.match_status === "pending" || !linked ? step1Body(ctx, false, btns, forms) : step2Body(ctx, false, btns, forms);
+    const main = btns.querySelector("button");
+    if (main) main.setAttribute("data-next", s.match_status === "pending" ? "confirm_client" : "contacted");
+    const loose = (el) => el.childNodes.length && !el.parentNode ? el : null;
+    const who = linked ? (ctx.exercises || []).length ? "returning client" : "new client" : "not confirmed yet";
+    return block("client", "Contact", { status: "now", line: who }, body, loose(btns), loose(forms));
+  }
+  const ca = extra.contactedAt;
+  const sponsor = sponsorOf(ctx);
+  const line = [s.confirmed_at ? "confirmed " + dShort(dubaiYmd(s.confirmed_at)) : "confirmed", (ctx.exercises || []).length ? "returning client" : "new client",
+    sponsor.name ? "Sponsor: " + sponsor.name : null].filter(Boolean).join(" · ");
+  const dueTxt = state.due ? dayName(state.due) + (state.firstSent ? " ✓ sent" : state.overdue ? " — OVERDUE" : "") : null;
+  return block("client", "Contact", { status: "done", line },
+    factsTable([["Contacted", ca ? hm(ca) : "—"], ["Scenario v1 due by", dueTxt ? h("span", { class: state.overdue ? "due-bad" : "" }, dueTxt) : null],
+      ["Sponsor", sponsor.name ? [sponsor.name, sponsor.role, sponsor.email].filter(Boolean).join(" · ") : null], ["Client reference", c.client_ref]]),
+    h("details", { class: "v7-fold" }, h("summary", {}, "What they asked for, and the client's history"), step1Body(ctx, true)),
+    h("details", { class: "v7-fold" }, h("summary", {}, `Contacts (${(contacts || []).filter((p) => p.is_active).length})`), contactsCard(c.id, contacts, reloadKeepingPlace, true)),
+    h("p", { class: "small", style: "margin:0" }, h("a", { href: "#client/" + c.id }, "Open the client record (all their requests and history)")));
+}
+
+// ---- Scenario ----
+const sponsorOf = (ctx) => {
+  const { c, contacts } = ctx;
+  const p = (contacts || []).find((k) => k.is_active && k.email && c.email && k.email.toLowerCase() === c.email.toLowerCase())
+    || (contacts || []).find((k) => k.is_active && k.email) || null;
+  return { name: (p && p.name) || c.contact_name || "", email: (p && p.email) || c.email || "", role: p && p.role };
+};
+const SEND_LINK_MARKER = "[the private link]";
+function reviewEmail(ctx, v) {
+  const sp = sponsorOf(ctx);
+  const first = (sp.name || "").trim().split(/\s+/)[0] || "";
+  const label = (v.scenario && v.scenario.label) || "the scenario";
+  const prev = v.version_no > 1 ? v.version_no - 1 : null;
+  const note = (v.scenario && v.scenario.versionNote) || v.note || "";
+  return {
+    to: sp.email,
+    subject: `PlanProof — exercise scenario v${v.version_no} for your review (${ctx.s.request_no || ""})`.replace(" ()", ""),
+    message: [`Dear ${first || "colleague"},`,
+      `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review at the private link below. The link is for you and the people you choose; please do not share it with the participants — the exercise only tests the teams if the injects are unseen.`,
+      `Open the scenario: ${SEND_LINK_MARKER}`,
+      prev && note ? `What changed from v${prev}: ${note}` : null,
+      "On the page you can send us your comments, or approve the version when you are happy with it. You can also print it or save it as a PDF.",
+      "Kind regards,\nAhmed — PlanProof · exercises@plan-proof.com"].filter(Boolean).join("\n\n"),
+  };
+}
+async function session7() {
+  const { data } = await sb.auth.getSession();
+  const ses = data && data.session;
+  if (!ses || !ses.access_token) throw new Error("Sign in again first.");
+  return { token: ses.access_token, email: (ses.user && ses.user.email) || "exercises@plan-proof.com" };
+}
+async function postEmail(payload) {
+  const { token } = await session7();
+  const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify(payload) });
+  const r = await res.json().catch(() => ({}));
+  if (!res.ok || !r.ok) throw new Error(r.error || "The email could not be sent (HTTP " + res.status + ").");
+  return r;
+}
+// Preview-before-send (remark 8): the versions previewed in this browser tab.
+const previewed = () => new Set(JSON.parse(sessionStorage.getItem("pp_admin_previewed") || "[]"));
+const markPreviewed = (id) => { const p = previewed(); p.add(id); sessionStorage.setItem("pp_admin_previewed", JSON.stringify([...p])); };
+function emailHtml(message, linkText) {
+  return String(message || "").replace(/\r\n/g, "\n").trim().split(/\n\s*\n/).map((p) =>
+    `<p>${esc7(p).replace(/\n/g, "<br>").split(esc7(SEND_LINK_MARKER)).join(`<a class="fake-link">${esc7(linkText)}</a>`)}</p>`).join("");
+}
+function sendForm(ctx, v, isResend) {
+  const e = reviewEmail(ctx, v);
+  const to = h("input", { type: "email", value: e.to, "aria-label": "To", autocomplete: "off" });
+  const subj = h("input", { type: "text", value: e.subject, maxlength: 300, "aria-label": "Subject" });
+  const msg = h("textarea", { rows: 12, "aria-label": "Message" }); msg.defaultValue = e.message;
+  const out = h("div", { class: "progress", role: "status" });
+  const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id && !l.revoked_at && Date.parse(l.expires_at) > Date.now()).slice(-1)[0];
+  const expires = link ? link.expires_at : new Date(Date.now() + 14 * 86400000).toISOString();
+  const previewMail = h("button", { class: "btn sm", type: "button", "data-act": "preview_email", onclick: () => {
+    const d = $("mailDlg");
+    $("mailTo").textContent = to.value; $("mailSubject").textContent = subj.value;
+    $("mailBody").innerHTML = emailHtml(msg.value, `${location.origin.replace(/^https?:\/\//, "")}/c/•••••• (private link, valid until ${dd(dubaiYmd(expires))})`);
+    d.showModal();
+  } }, "Preview the email");
+  const testBtn = h("button", { class: "btn sm", type: "button", "data-act": "send_test", onclick: async () => {
+    testBtn.disabled = true; out.textContent = "Sending a test copy…";
+    try {
+      const me = (await session7()).email;
+      await postEmail({ action: "send", kind: "test", submission_id: ctx.s.id, version_id: v.id, to: me, subject: subj.value, message: msg.value });
+      out.textContent = ""; toast("Test copy sent to " + me + " — marked TEST, without the sponsor's link");
+    } catch (err) { out.textContent = ""; fail(err); }
+    testBtn.disabled = false;
+  } }, "Send a test to myself");
+  const send = h("button", { class: "btn primary", type: "button", "data-act": "send_go", onclick: async () => {
+    const addr = to.value.trim();
+    if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
+    if (!previewed().has(v.id)) {
+      const ok = await confirmBox({ title: `You haven't previewed v${v.version_no}`, text: "Press \"Preview what the sponsor will see\" first, or send anyway.", ok: "Send anyway" });
+      if (!ok) return;
+    }
+    const clientDom = (ctx.c.email || "").split("@")[1];
+    if (clientDom && addr.split("@")[1].toLowerCase() !== clientDom.toLowerCase()) {
+      const ok = await confirmBox({ title: "Send to a different domain than the client's?", text: `${addr} is not on ${clientDom}. Send anyway?`, ok: "Send anyway" });
+      if (!ok) return;
+    }
+    const recent = (ctx.extra.emails || []).filter((m) => m.version_id === v.id && (m.kind || "review") === "review" && Date.now() - Date.parse(m.created_at) < 3 * 60000).slice(-1)[0];
+    if (recent) {
+      const ok = await confirmBox({ title: `Send v${v.version_no} again?`, text: `It was already sent ${Math.max(1, Math.round((Date.now() - Date.parse(recent.created_at)) / 60000))} minute(s) ago to ${recent.to_address}.`, ok: "Send again" });
+      if (!ok) return;
+    }
+    send.disabled = true; out.textContent = "Sending…";
+    try {
+      const r = await postEmail({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: msg.value });
+      toast(`v${v.version_no} sent to ${addr}` + (r.from && /notify\./.test(r.from) ? " (from exercises@notify.plan-proof.com, replies to exercises@plan-proof.com)" : ""));
+      if (!r.recorded) toast("Sent — but the page could not record it yet; it will repair itself within the hour.", true);
+      reloadKeepingPlace();
+    } catch (err) { send.disabled = false; out.textContent = ""; fail(err); }
+  } }, isResend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`);
+  const form = h("div", { class: "inline-form stack send-form", hidden: true, "data-form": "send" },
+    h("div", { class: "row check-first" }, h("span", { class: "small muted" }, "Check it first:"),
+      h("button", { class: "btn sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"), previewMail, testBtn),
+    h("label", { class: "f" }, "To (the sponsor)", to),
+    h("label", { class: "f" }, "Subject", subj),
+    h("label", { class: "f" }, "Message — edit freely; the private link goes where it says " + SEND_LINK_MARKER, msg),
+    h("p", { class: "small muted", style: "margin:0" }, (link ? "The same private link is used again" : "A private link is made when you press Send") + ` — valid until ${dd(dubaiYmd(expires))}. From exercises@plan-proof.com; replies come to exercises@plan-proof.com.`),
+    h("div", { class: "row" }, send, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; } }, "Cancel")), out);
+  return form;
+}
+function copyLinkBtn(link) {
+  return h("button", { class: "btn quiet sm", type: "button", "data-act": "copy_link", onclick: async () => {
+    const url = location.origin + "/c/" + link.token;
+    try { await navigator.clipboard.writeText(url); toast("Link copied — valid until " + dd(dubaiYmd(link.expires_at))); }
+    catch { window.prompt("Copy the link:", url); }
+  } }, "Copy the link");
+}
+function openCopyDialog(title, html, note) {
+  const dlg = $("copyDlg");
+  $("copyArticle").innerHTML = (note ? `<div class="pp-only">${esc7(note)}</div>` : "") + html;
+  $("copyTitle").textContent = title;
+  $("copyPrint").onclick = () => {
+    const w = window.open("", "_blank");
+    if (!w) return toast("Allow pop-ups to print", true);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc7(title)}</title><link rel="stylesheet" href="${location.origin}/c/copy.css"></head><body><article class="cc">${$("copyArticle").innerHTML}</article></body></html>`);
+    w.document.close(); setTimeout(() => w.print(), 400);
+  };
+  dlg.showModal();
+}
+async function showClientCopy(v) {
+  const data = await q(sb.rpc("admin_client_copy", { p_version: v.id })).catch(fail);
+  if (!data) return;
+  markPreviewed(v.id);
+  openCopyDialog(`Preview of v${v.version_no} — exactly what the sponsor sees`, window.PPCopy.renderHtml(data));
+}
+// The full version (remark 6): everything in the file, facilitator material included. PlanProof only.
+function renderFull(sc) {
+  const E = esc7, L = (a) => Array.isArray(a) && a.length ? `<ul>${a.map((x) => `<li>${E(typeof x === "object" ? x.text || JSON.stringify(x) : x)}</li>`).join("")}</ul>` : "";
+  const P = (t) => t ? `<p style="white-space:pre-wrap">${E(t)}</p>` : "";
+  const f = sc.format || {};
+  const out = [`<header class="cc-head"><div class="cc-eyebrow">Full version · PlanProof only</div><h1 class="cc-title">${E(sc.label)} — v${E(sc.version)}</h1><div class="cc-sub">${E(sc.subtitle || "")}</div></header>`];
+  if (sc.versionNote) out.push(`<section class="cc-box"><h2>What changed</h2>${P(sc.versionNote)}</section>`);
+  out.push(`<section class="cc-sec"><h2>Brief</h2><p class="cc-lead">${E(sc.briefTitle)}</p>${P(sc.briefDesc)}</section>`);
+  out.push(`<section class="cc-sec"><h2>Format</h2><table class="t7 kv"><tbody>${[["Length", f.lengthMinutes && f.lengthMinutes + " minutes"], ["Injects end at", f.injectsEndMinute != null && "minute " + f.injectsEndMinute], ["Debrief", f.debriefMinutes && f.debriefMinutes + " minutes"], ["Scenario clock", f.scenarioClock], ["Teams", (sc.requiredDepartments || []).join(", ")]].filter(([, v]) => v).map(([k, v]) => `<tr><th>${E(k)}</th><td>${E(v)}</td></tr>`).join("")}</tbody></table></section>`);
+  if ((sc.objectives || []).length) out.push(`<section class="cc-sec"><h2>Objectives</h2>${L((sc.objectives || []).map((o) => (o.capabilityArea ? o.capabilityArea + " — " : "") + o.text))}</section>`);
+  (sc.injects || []).forEach((i, n) => {
+    const fa = i.facilitator || {};
+    out.push(`<section class="cc-sec full-inject"><h2>Inject ${n + 1} · ${E(i.time || "")} · ${E(i.title)}</h2>`
+      + `<p class="small"><strong>Team:</strong> ${E(i.team)} · <strong>Delivered as:</strong> ${E(i.deliveredAs || "")} · <strong>Length:</strong> ${E(i.durationMinutes || "")} min</p>`
+      + P(i.desc) + (i.questions ? `<h3>Questions</h3>${L(i.questions)}` : "")
+      + (i.task ? `<h3>Task — ${E(i.task.type)}: ${E(i.task.label || "")}</h3>${P(i.task.text)}` : "")
+      + `<div class="pp-only-box"><h3>Facilitator</h3>${fa.purpose ? `<p><strong>Purpose:</strong> ${E(fa.purpose)}</p>` : ""}${fa.whatGoodLooksLike ? `<p><strong>What good looks like:</strong></p>${L(fa.whatGoodLooksLike)}` : ""}${fa.ifRoomStalls ? `<p><strong>If the room stalls:</strong> ${E(fa.ifRoomStalls)}</p>` : ""}${fa.record ? `<p><strong>Record:</strong></p>${L(fa.record)}` : ""}${fa.misinformation ? `<p><strong>Misinformation:</strong> ${E(fa.misinformation)}</p>` : ""}${i.observerWatch ? `<p><strong>Observers watch for:</strong></p>${L(i.observerWatch)}` : ""}</div></section>`);
+  });
+  if ((sc.readinessCriteria || []).length) out.push(`<section class="cc-sec"><h2>Readiness criteria (${sc.readinessCriteria.length})</h2><table class="t7"><thead><tr><th>Id</th><th>Area</th><th>Criterion</th><th>Tested by</th></tr></thead><tbody>${sc.readinessCriteria.map((k) => `<tr><td>${E(k.id)}</td><td>${E(k.area)}</td><td>${E(k.text)}</td><td>${E(k.testedBy || "")}</td></tr>`).join("")}</tbody></table></section>`);
+  if ((sc.debriefQuestions || []).length) out.push(`<section class="cc-sec"><h2>Debrief questions</h2>${L(sc.debriefQuestions)}</section>`);
+  if (sc.facilitatorNotes) out.push(`<section class="cc-sec pp-only-box"><h2>Facilitator notes</h2>${P(sc.facilitatorNotes)}</section>`);
+  if (sc.groundTruth) out.push(`<section class="cc-sec pp-only-box"><h2>Ground truth</h2>${P(sc.groundTruth)}</section>`);
+  return out.join("");
+}
+function showFull(v) {
+  openCopyDialog(`Full version of v${v.version_no} — PlanProof only`, renderFull(v.scenario || {}),
+    "PLANPROOF ONLY — facilitator notes, criteria and Observer prompts. Never send this to the client or the participants.");
+}
+// The revise prompt (remark 4): the page writes the instruction for the Claude chat.
+function revisePrompt(ctx, v) {
+  const { s, c } = ctx;
+  const cs = (s._comments || []).filter((k) => k.version_id === v.id);
+  const fromPage = cs.filter((k) => k.source === "client_page").length;
+  return [`Revise the scenario for ${s.request_no} (${c.company_name || "the client"}).`,
+    `Current version: v${v.version_no}${v.sent_on ? ", sent " + dShort(v.sent_on) : ""}. Sponsor comments on v${v.version_no}: ${cs.length} (${fromPage} from the sponsor's page, ${cs.length - fromPage} pasted). PlanProof team remarks: ${(s._remarks || []).length}.`,
+    `Use the planproof-scenario skill in revise mode. Read the request, every version, every comment and every team remark from the PlanProof database for ${s.request_no}.`,
+    `First, list every comment and remark you found in a table (source, what it says, your plan: accept / push back / question for me) and wait for my OK.`,
+    `Then write v${(s._lastVersionNo || v.version_no) + 1}, run the fresh-eyes check, add it to ${s.request_no} on the admin page, save your decision table as a team remark, and give me the reply to the sponsor for anything you push back on.`].join("\n");
+}
+// The facts of a version, from its file (or the summary the database stored).
+function factsOf(v) {
+  const sc = v.scenario, sm = v.summary || {};
+  if (!sc && !sm.line) return null;
+  const inj = sc && Array.isArray(sc.injects) ? sc.injects : [];
+  const typ = (t) => inj.filter((i) => i.task && String(i.task.type || "").toUpperCase() === t).length;
+  return {
+    label: (sc && sc.label) || sm.label,
+    minutes: (sc && sc.format && sc.format.lengthMinutes) ?? sm.minutes,
+    injects: sc ? inj.length : sm.injects,
+    teams: sc ? (Array.isArray(sc.requiredDepartments) ? sc.requiredDepartments.length : new Set(inj.map((i) => i.team).filter((t) => t && t !== "All")).size) : sm.teams,
+    criteria: sc ? (sc.readinessCriteria || []).length : sm.criteria,
+    produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide,
+  };
+}
+function designPrompt(ctx) {
+  const { s, c } = ctx;
+  return [`Design the scenario for ${s.request_no} (${c.company_name || "the client"}).`,
+    `Use the planproof-scenario skill. Read the request, its form answers and every PlanProof team remark for ${s.request_no} from the PlanProof database; ask me for the discovery-call notes if they are not on the request.`,
+    `When v1 has passed the fresh-eyes check, add it to ${s.request_no} on the admin page and tell me in two lines what it tests.`].join("\n");
+}
+function versionPanel(ctx, v) {
+  const { extra } = ctx;
+  const links = (extra.links || []).filter((l) => l.version_id === v.id).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  const link = links[links.length - 1] || null;
+  const liveLink = link && !link.revoked_at && Date.parse(link.expires_at) > Date.now() ? link : null;
+  const mails = (extra.emails || []).filter((m) => m.version_id === v.id);
+  const late = link ? (extra.opens || []).filter((o) => o.link_id === link.id && o.outcome !== "ok") : [];
+  const sm = factsOf(v);
+  const parts = [h("div", { class: "v7-vtitle" }, pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]), sm && sm.label ? h("span", {}, sm.label) : null,
+    h("span", { class: "small muted" }, v.added_how === "claude" ? "added by Claude " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded " + hm(v.created_at) : "recorded by hand"))];
+  if (sm) parts.push(table(["Length", "Injects", "Teams", "Criteria", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
+    [sm.produce ? plural(sm.produce, "produce task") : null, sm.decide ? sm.decide + " decide" : null].filter(Boolean).join(", ") || "none"]], "facts"));
+  else parts.push(h("p", { class: "small muted" }, "Recorded by hand — no scenario file on the page for this version."));
+  if (v.note) parts.push(factsTable([["What changed", v.note]]));
+  if (mails.length) parts.push(table(["Email", "To", "When", "Status"], mails.map((m) => [m.kind === "test" ? "Test copy" : "To the sponsor", m.to_address, hm(m.created_at),
+    h("span", { class: EMAIL_BAD.has(m.status) && m.kind !== "test" ? "due-bad" : "" }, (EMAIL_WORD[m.status] || m.status) + (m.from_address && /notify\./.test(m.from_address) ? " (from notify.plan-proof.com)" : ""))]), "emails"));
+  if (link) parts.push(factsTable([
+    ["Sponsor's link", link.revoked_at ? "revoked " + hm(link.revoked_at) : Date.parse(link.expires_at) > Date.now() ? "valid until " + dd(dubaiYmd(link.expires_at)) : "expired " + dd(dubaiYmd(link.expires_at))],
+    ["Opened", link.open_count ? `${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : "not yet"],
+    ["Tried after it closed", late.length ? hm(late[late.length - 1].at) : null],
+    ["Approved by the sponsor", v.sponsor_approved_at ? `✓ ${v.sponsor_approved_by}, ${hm(v.sponsor_approved_at)}` : null]]));
+  const btns = h("div", { class: "row v7-actions" });
+  const btns2 = h("div", { class: "row v7-actions secondary" });
+  if (v.scenario) { add(btns, h("button", { class: "btn sm", type: "button", "data-act": "view_copy", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"));
+    add(btns2, h("button", { class: "btn quiet sm", type: "button", "data-act": "view_full", onclick: () => showFull(v) }, "View full version (PlanProof only)")); }
+  let form = null;
+  if (v.scenario && v.status !== "approved" && v.status !== "superseded") {
+    const resend = v.status !== "draft";
+    form = sendForm(ctx, v, resend);
+    add(btns, h("button", { class: "btn sm", type: "button", "data-act": resend ? "resend" : "send", "data-next": resend ? "resend" : "send", onclick: () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector("input[type=email]").focus(); } },
+      resend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`));
+  }
+  if (liveLink) add(btns2, copyLinkBtn(liveLink), h("button", { class: "btn quiet sm", type: "button", "data-act": "extend", onclick: async () => {
+    const r = await q(sb.rpc("admin_link_action", { p_link: liveLink.id, p_action: "extend" })).catch(fail);
+    if (r) { toast("Link valid until " + dd(dubaiYmd(r.expires_at))); reloadKeepingPlace(); }
+  } }, "Extend 14 days"));
+  const revising = ctx.state && ctx.state.next && ctx.state.next.key === "revise";
+  if (!revising && v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
+    const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on their page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
+    if (!ok) return;
+    const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", v.id).select("id")).catch(fail);
+    if (upd) { toast("v" + v.version_no + " approved"); reloadKeepingPlace(); }
+  } }, "Approve v" + v.version_no));
+  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form, btns2.childNodes.length ? btns2 : null);
+}
+function addBox(ctx, nextNo) {
+  const { s } = ctx;
+  const ta = h("textarea", { rows: 6, placeholder: "Paste the scenario file (the JSON the scenario chat gives you) here — or drop the .json file on this box.", "aria-label": "Scenario file (JSON)" });
+  const file = h("input", { type: "file", accept: ".json,application/json", "aria-label": "Choose the scenario file" });
+  const result = h("div", { class: "add-result", role: "status" });
+  let how = "paste";
+  const readFile = (f) => { if (!f) return; if (f.size > 1500000) return toast("That file is too big for a scenario (over 1.5 MB)", true);
+    f.text().then((t) => { ta.value = t; how = "upload"; check(); }); };
+  file.onchange = () => readFile(file.files[0]);
+  ta.addEventListener("input", () => { how = "paste"; result.replaceChildren(); });
+  ta.addEventListener("dragover", (e) => { e.preventDefault(); ta.classList.add("drop"); });
+  ta.addEventListener("dragleave", () => ta.classList.remove("drop"));
+  ta.addEventListener("drop", (e) => { e.preventDefault(); ta.classList.remove("drop"); readFile(e.dataTransfer.files[0]); });
+  let parsed = null;
+  async function check() {
+    result.replaceChildren(); parsed = null;
+    try { parsed = JSON.parse(ta.value); } catch { put(result, h("p", { class: "alert small" }, "This is not a scenario file: it does not read as JSON. Paste the whole file, from the first { to the last }.")); return; }
+    const r = await q(sb.rpc("admin_add_version", { p_submission: s.id, p_scenario: parsed, p_how: how, p_check_only: true })).catch((err) => { put(result, h("p", { class: "alert small" }, err.message)); return null; });
+    if (!r) return;
+    const save = h("button", { class: "btn primary", type: "button", "data-act": "add_save", onclick: async () => {
+      save.disabled = true;
+      const done = await q(sb.rpc("admin_add_version", { p_submission: s.id, p_scenario: parsed, p_how: how })).catch((err) => { save.disabled = false; fail(err); return null; });
+      if (done) { toast(`v${done.version_no} saved — ${done.summary.line}`); reloadKeepingPlace(); }
+    } }, (r.replaces_draft ? "Replace" : "Save as") + " v" + r.version_no);
+    put(result, h("div", { class: "v7-summary" }, h("strong", {}, r.summary.line), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
+  }
+  const box = h("div", { class: "add-box inline-form stack", hidden: true, "data-form": "add" },
+    h("p", { class: "small muted", style: "margin:0" }, `Normally Claude adds v${nextNo} to this page itself. If it gave you a file instead, drop the file here or paste its contents, then press Check the file.`),
+    ta, h("div", { class: "row" }, h("button", { class: "btn", type: "button", "data-act": "add_check", onclick: check }, "Check the file"), file,
+      h("button", { class: "btn quiet", type: "button", onclick: () => { box.hidden = true; } }, "Cancel")), result);
+  return box;
+}
+const VIA_WORD = { email: "Email", phone: "Phone", meeting: "Meeting", other: "Other" };
+function pasteCommentForm(ctx) {
+  const { s } = ctx;
+  const vs = liveVersions(s._versions).filter((v) => v.status !== "draft");
+  const latest = vs.slice().sort((a, b) => b.version_no - a.version_no)[0];
+  const cs = s._comments || [];
+  const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai() });
+  const cFrom = h("input", { type: "text", maxlength: 200, placeholder: "e.g. Sara Ali, BCM Manager (sponsor)", value: cs.length ? cs[cs.length - 1].sender : sponsorOf(ctx).name });
+  const cVia = h("select", { "aria-label": "How it came" }, ...Object.entries(VIA_WORD).map(([k, w]) => h("option", { value: k }, w)));
+  const cVersion = h("select", { "aria-label": "Which version the comment is about" }, h("option", { value: "" }, "Not about a specific version"),
+    ...vs.slice().reverse().map((v) => h("option", { value: v.id, selected: latest && v.id === latest.id }, "v" + v.version_no)));
+  const cBody = h("textarea", { rows: 4, maxlength: 8000, placeholder: "Paste the email, or write your notes of the call, in the sponsor's words.", "aria-label": "Client comment" });
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "comment" },
+    h("div", { class: "grid2" }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "How it came", cVia),
+      h("label", { class: "f" }, "From (name and role)", cFrom), vs.length ? h("label", { class: "f" }, "About", cVersion) : null),
+    h("label", { class: "f" }, "Comment", cBody),
+    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async (e) => {
+      const body = cBody.value.trim(), sender = cFrom.value.trim();
+      if (!sender) { toast("Enter who sent the comment", true); cFrom.focus(); return; }
+      if (!body) { toast("Enter the comment", true); cBody.focus(); return; }
+      e.target.disabled = true;
+      const row = await q(sb.from("submission_client_comments").insert({ submission_id: s.id, received_on: cDate.value || todayDubai(), sender, body, version_id: cVersion.value || null, received_via: cVia.value }).select().single()).catch(fail);
+      e.target.disabled = false;
+      if (row) { toast("Comment added"); reloadKeepingPlace(); }
+    } }, "Add the comment"), h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; } }, "Cancel")));
+  return form;
+}
+function remarksTable(s) {
+  const items = s._remarks || [];
+  const ta = h("textarea", { rows: 3, maxlength: 4000, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
+  const addForm = h("div", { class: "inline-form", hidden: true, "data-form": "remark" }, ta, h("div", { class: "row", style: "margin-top:8px" },
+    h("button", { class: "btn primary sm", type: "button", onclick: async () => {
+      const body = ta.value.trim(); if (!body) return;
+      const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
+      if (row) { toast("Remark added"); reloadKeepingPlace(); }
+    } }, "Add the remark"), h("button", { class: "btn quiet sm", type: "button", onclick: () => { addForm.hidden = true; } }, "Cancel")));
+  const rows = items.map((r) => {
+    const cell = h("div", { class: "body" }, r.body);
+    const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
+      const t = h("textarea", { rows: 3, maxlength: 4000 }); t.value = r.body;
+      put(cell, t, h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", type: "button", onclick: async () => {
+        const body = t.value.trim(); if (!body) return;
+        const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
+        if (upd) { toast("Remark saved"); reloadKeepingPlace(); }
+      } }, "Save"), h("button", { class: "btn quiet sm", type: "button", onclick: () => put(cell, r.body) }, "Cancel"))); t.focus();
+    } }, "Edit");
+    return [dt(r.created_at), cell, edit];
+  });
+  return h("div", { class: "remarks" },
+    h("p", { class: "small", style: "margin:0 0 8px; color:var(--red-soft)" }, "Never shown to the sponsor. Claude reads these when it writes or revises the scenario."),
+    addForm,
+    items.length ? table(["Date", "Remark", ""], rows, "remarks-t") : h("p", { class: "empty" }, "No remarks yet. Add anything the scenario must test or avoid."),
+    addForm);
+}
+// A titled part of a block: a heading with its count and its one button, then the content.
+function section(key, title, button, ...body) {
+  return h("section", { class: "v7-sec", "data-sec": key }, h("div", { class: "v7-sechead" }, h("h3", {}, title), button || null), ...body);
+}
+function scenarioBlock(ctx) {
+  const { s, linked, state } = ctx;
+  const status = ctx.statusOf("scenario");
+  if (!linked || s.status === "new" || s.match_status === "pending") return block("scenario", "Scenario", { status: "later", line: "after Contacted" });
+  const vs = liveVersions(s._versions).slice().sort((a, b) => b.version_no - a.version_no);
+  const newest = vs[0] || null;
+  const nextNo = newest && newest.status === "draft" ? newest.version_no : (s._lastVersionNo || 0) + 1;
+  const cs = s._comments || [];
+  const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
+  const cform = pasteCommentForm(ctx);
+  const delivered = s.status === "delivered";
+  const commented = state.block === "scenario" && /commented/.test(state.where || "");
+  const pasteBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = false; cform.scrollIntoView({ block: "center", behavior: "smooth" }); cform.querySelector("textarea").focus(); } }, "+ Paste a sponsor comment");
+  const promptBtn = (kind) => h("button", { class: "btn primary", type: "button", "data-act": kind + "_prompt", "data-next": kind, onclick: async () => {
+    const text = kind === "design" ? designPrompt(ctx) : revisePrompt(ctx, newest);
+    try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
+    catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
+  } }, kind === "design" ? "Copy the first prompt for Claude" : "Copy the revised prompt for Claude");
+  // 1. What to do now — the steps of this moment, each with its own button
+  let todo = null;
+  if (!delivered && !newest) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+    h("li", {}, h("div", {}, h("strong", {}, "Copy the first prompt for Claude."), h("div", { class: "small muted" }, `Then open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
+    h("li", {}, h("div", {}, h("strong", {}, "v1 appears here by itself."), h("div", { class: "small muted" }, "Then press \"Preview what the sponsor will see\" and \"Send v1 to the sponsor\"."))));
+  else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+    h("li", {}, h("div", {}, h("strong", {}, "Did the sponsor also comment by email or phone?"), h("div", { class: "small muted" }, "Then + Paste a sponsor comment, so Claude sees it too. Comments the sponsor sent from their page are already in \"What the sponsor said\".")), pasteBtn("")),
+    h("li", {}, h("div", {}, h("strong", {}, "Copy the revised prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. v${nextNo} appears here by itself.`)), promptBtn("revise")));
+  // 3. What the sponsor said
+  const comTable = cs.length ? table(["Date", "From", "How it came", "About", "Comment"], cs.slice().reverse().map((k) => [
+    k.source === "client_page" ? hm(k.created_at) : dd(k.received_on), h("bdi", {}, k.sender),
+    k.source === "client_page" ? h("span", { class: "tag src-page" }, "Sponsor's page") : h("span", { class: "tag" }, VIA_WORD[k.received_via] || "Pasted"),
+    k.version_id ? vLabel(k.version_id) : "—", h("div", { class: "body" }, k.body)]), "comments") : h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from their page appear here by themselves.");
+  // 4. PlanProof remarks
+  const remarks = remarksTable(s);
+  const addRemarkBtn = h("button", { class: "btn quiet sm", type: "button", "data-act": "add_remark", onclick: () => { const f = remarks.querySelector('[data-form="remark"]'); f.hidden = false; f.querySelector("textarea").focus(); } }, "+ Add a PlanProof remark");
+  const older = vs.slice(1);
+  const line = newest ? `v${newest.version_no} · ${VERSION_WORD[newest.status] || newest.status}` + (cs.length ? ` · ${plural(cs.length, "sponsor comment")}` : "") : "no version yet";
+  return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
+    todo,
+    newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
+    section("comments", `What the sponsor said (${cs.length})`, delivered || todo ? null : pasteBtn("quiet sm"), cform, comTable),
+    section("remarks", `PlanProof remarks — team only (${(s._remarks || []).length})`, addRemarkBtn, remarks),
+    older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
+      table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
+        const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id).slice(-1)[0];
+        const n = cs.filter((k) => k.version_id === v.id).length;
+        return { attrs: { "data-vrow": String(v.version_no) }, cells: [h("strong", { class: "vno" }, "v" + v.version_no), pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]),
+          v.added_how === "claude" ? "by Claude, " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded, " + hm(v.created_at) : "recorded by hand",
+          v.status !== "draft" && v.sent_on ? dd(v.sent_on) : null,
+          v.sponsor_approved_at ? "✓ approved" : link && link.open_count ? "opened " + hm(link.last_opened_at) : link ? "not opened" : null,
+          n ? String(n) : null,
+          v.scenario ? h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see") : null] };
+      }), "versions")) : null);
+}
+function exerciseBlock(ctx) {
+  const { s } = ctx;
+  const approved = liveVersions(s._versions).some((v) => v.status === "approved");
+  const status = ctx.statusOf("exercise");
+  if ((!approved && !ctx.ses) || status === "later") return block("exercise", "Exercise", { status: "later", line: approved ? "after the newest version is approved" : "opens when the scenario is approved" });
+  const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
+  const body = step4Body(ctx, false, btns, forms);
+  const sel = body.querySelector("select[aria-label='Exercise to link']");
+  const linkBtn = [...body.querySelectorAll("button")].find((b) => /^Link the exercise$/.test(b.textContent.trim()));
+  if (linkBtn) linkBtn.setAttribute("data-next", "setup"); else if (sel) sel.setAttribute("data-next", "setup");
+  const map = { download: "ex_download", delivered: "ex_delivered", close_survey: "ex_close_survey" };
+  body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
+  const line = ctx.ses ? [ctx.ses.label || "exercise linked", ctx.rec.downloaded ? "record downloaded" : null].filter(Boolean).join(" · ") : "choose the exercise Claude set up";
+  return block("exercise", "Exercise", { status, line },
+    !ctx.ses ? h("p", { class: "small muted", style: "margin:0 0 10px" }, "For now, choose the exercise Claude set up and press Link. The next build does this from the page: Approve → the links, QR codes, confirmation and invitation.") : null,
+    body);
+}
+function reportBlock(ctx) {
+  const { s, rec } = ctx;
+  const reached = rec.downloaded || s.status === "delivered";
+  return block("report", "Report", { status: s.status === "delivered" ? "done" : reached ? "now" : "later",
+    line: s.status === "delivered" ? "delivered " + (s.delivered_at ? dDay(s.delivered_at) : "") : reached ? "write the report from the downloaded record" : "after the exercise" },
+    h("p", { class: "small muted", style: "margin:0" }, "Write the report with Claude from the downloaded record. When the client has accepted it, press Mark as delivered in the Exercise block. (Report files, Send the report and \"Client accepted the report\" come with build 3.)"));
+}
+function cleanupBlock(ctx, keep) {
+  const { s, rec } = ctx;
+  const delivered = s.status === "delivered";
+  const dataLine = !rec.linked ? "No exercise linked, so no participants' data to remove."
+    : rec.purged ? "Participants' data removed " + dt(rec.purged_at) + "."
+    : rec.purge_due_at ? (rec.overdue ? "Participants' data: OVERDUE — was due " : "Participants' data removed automatically on or after ") + dt(rec.purge_due_at) + "."
+    : "Participants' data is removed automatically 7 days after delivery.";
+  return block("cleanup", "Done", { status: delivered ? "now" : "later", line: delivered ? "clean-up is automatic — nothing to press" : "after delivery · clean-up is automatic" },
+    factsTable([["Report delivered", s.delivered_at ? dt(s.delivered_at) : null], ["Participants' data", h("span", { class: rec.overdue ? "due-bad" : "" }, dataLine)]]), keep);
 }
 
 // The folded line of a done step: one line on a phone (ellipsis); a tap opens
@@ -1484,7 +2308,7 @@ function moreFold(ctx) {
     h("div", { class: "row" }, h("div", { style: "flex:0 1 280px" }, stageSel), stageSave)));
   // Remove a version, a comment or a remark recorded by mistake.
   const removable = [
-    ...liveVersions(s._versions).map((v) => ["version", "v" + v.version_no + " (sent " + dd(v.sent_on) + ")", "submission_scenario_versions", v.id, "Its number is not reused."]),
+    ...liveVersions(s._versions).map((v) => ["version", "v" + v.version_no + (v.status === "draft" ? " (not sent)" : " (sent " + dd(v.sent_on) + ")"), "submission_scenario_versions", v.id, "Its number is not reused; its client link stops working."]),
     ...(s._comments || []).map((k) => ["comment", "Comment from " + k.sender + " (" + dd(k.received_on) + ")", "submission_client_comments", k.id, "It will no longer be used to revise the scenario."]),
     ...(s._remarks || []).map((r) => ["remark", "Remark: " + r.body.slice(0, 60) + (r.body.length > 60 ? "…" : ""), "submission_team_remarks", r.id, "It will no longer be used for the scenario."]),
   ];
@@ -1498,6 +2322,45 @@ function moreFold(ctx) {
           if (!ok) return;
           await q(sb.from(table).update({ withdrawn_at: new Date().toISOString() }).eq("id", rid).select("id")).then(() => { toast("Removed"); reloadKeepingPlace(); }).catch(fail);
         } }, "Remove")))));
+  }
+  // W8: revoke a client link (the sponsor then sees "this link was withdrawn").
+  const liveLinks = (ctx.extra && ctx.extra.links || []).filter((l) => !l.revoked_at && Date.parse(l.expires_at) > Date.now());
+  if (liveLinks.length) {
+    what.push("revoke a client link");
+    parts.push(h("div", { class: "more-part" }, h("h3", {}, "Revoke a client link"),
+      h("p", { class: "muted small" }, "The page at that link stops working at once. Use it if the link reached the wrong person."),
+      ...liveLinks.map((l) => {
+        const v = liveVersions(s._versions).find((k) => k.id === l.version_id);
+        return h("div", { class: "spread", style: "align-items:center; padding:6px 0; border-top:1px solid var(--border)" },
+          h("span", { class: "small" }, (l.kind === "report" ? "Report link" : "Link to " + (v ? "v" + v.version_no : "a version")) + " · valid until " + dd(dubaiYmd(l.expires_at)) + " · opened " + plural(l.open_count || 0, "time")),
+          h("button", { class: "btn danger sm", type: "button", "data-act": "revoke", onclick: async () => {
+            const ok = await confirmBox({ title: "Revoke this link?", text: "Whoever opens it from now on sees that it was withdrawn. You can send a fresh link with Resend.", ok: "Revoke link" });
+            if (!ok) return;
+            await q(sb.rpc("admin_link_action", { p_link: l.id, p_action: "revoke", p_reason: "Revoked on the admin page" })).then(() => { toast("Link revoked"); reloadKeepingPlace(); }).catch(fail);
+          } }, "Revoke"));
+      })));
+  }
+  // v7.2 (audit item 5): while the revise steps show, Approve lives here — for a sponsor who
+  // accepted the version by phone or email after all.
+  const nv = liveVersions(s._versions).slice().sort((a, b) => b.version_no - a.version_no)[0];
+  if (ctx.state && ctx.state.next && ctx.state.next.key === "revise" && nv && nv.status === "client_commented") {
+    what.push(`approve v${nv.version_no} after all`);
+    parts.push(h("div", { class: "more-part", "data-more": "approve" }, h("h3", {}, `Approve v${nv.version_no} — only if the sponsor accepted it by phone or email`),
+      h("p", { class: "muted small" }, "Normally you send a revised version. Use this only when the sponsor tells you v" + nv.version_no + " is fine as it is."),
+      h("button", { class: "btn sm", type: "button", "data-act": "approve_after_all", onclick: async () => {
+        const ok = await confirmBox({ title: `Approve v${nv.version_no}?`, text: "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: `Approve v${nv.version_no}` });
+        if (!ok) return;
+        const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", nv.id).select("id")).catch(fail);
+        if (upd) { toast(`v${nv.version_no} approved`); reloadKeepingPlace(); }
+      } }, `Approve v${nv.version_no}`)));
+  }
+  // W8 v7.1: the rare backup — Claude gave a file instead of adding the version itself.
+  if (s.status !== "delivered" && s.match_status !== "pending" && s.status !== "new") {
+    const vs = liveVersions(s._versions).slice().sort((a, b) => b.version_no - a.version_no);
+    const nextNo = vs[0] && vs[0].status === "draft" ? vs[0].version_no : (s._lastVersionNo || 0) + 1;
+    const box = addBox(ctx, nextNo); box.hidden = false;
+    what.push("upload a scenario file");
+    parts.push(h("div", { class: "more-part", "data-more": "upload" }, h("h3", {}, "Upload a scenario file (only if Claude gave you a file)"), box));
   }
   // Unlink this exercise (before a download) and remove the participants' data now.
   if (x) {
