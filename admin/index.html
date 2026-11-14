@@ -288,6 +288,11 @@
   .v7-actions, .v7-tools{ gap:8px; }
   .check-first{ gap:8px; align-items:center; border:1px dashed var(--border-strong); border-radius:8px; padding:8px 10px; }
   .t7-wrap{ overflow-x:auto; }
+  .v7-sec{ border-top:1px solid var(--border); padding-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .v7-sechead{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .v7-sechead h3{ margin:0; font-size:14px; letter-spacing:.02em; }
+  .v7-sec[data-sec="remarks"] .v7-sechead h3{ color:var(--red-soft); }
+  .v7-actions.secondary .btn{ font-size:13px; }
   ol.v7-todo{ list-style:none; counter-reset:todo; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
   ol.v7-todo > li{ counter-increment:todo; display:flex; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid var(--attn); border-radius:10px; padding:10px 12px; }
   ol.v7-todo > li::before{ content:counter(todo); flex:none; width:26px; height:26px; border-radius:50%; background:var(--attn); color:#111; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
@@ -875,13 +880,13 @@ function stateOf(s, versions, comments, rec, x = {}) {
     return R({ block: tile === 4 ? "report" : "exercise", tile, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
   }
   // Scenario
-  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: `Ask Claude for v${lastNo + 1}` }, showDue: true, hint: `The button copies the instruction for Claude. Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
+  if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
   const v = open || newest;
-  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Preview v${v.version_no} first (what the sponsor will see), then send it.` });
+  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve to make it final; the exercise is then set up from it.` });
   if (v.status === "client_commented") {
     const n = cs.filter((c) => c.version_id === v.id).length;
-    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: `Ask Claude for v${lastNo + 1}` }, hint: `Two steps — they are at the top of the Scenario block below: ① add any comments that came by email or phone, ② ask Claude for v${lastNo + 1}.` });
+    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `Two steps, at the top of the Scenario block below: ① + Paste a sponsor comment (only for comments that came by email or phone), ② Copy the revised prompt for Claude — v${lastNo + 1} then appears here by itself.` });
   }
   // sent — waiting, unless the email failed or the sponsor met an expired link
   const myEmails = (x.emails || []).filter((e) => e.version_id === v.id && (e.kind || "review") === "review").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
@@ -890,10 +895,10 @@ function stateOf(s, versions, comments, rec, x = {}) {
   const link = myLinks[0] || null;
   const linkLive = link && !link.revoked_at && Date.parse(link.expires_at) > nowMs;
   const lateTry = !linkLive && (x.opens || []).some((o) => link && o.link_id === link.id && o.outcome !== "ok");
-  if (lastEmail && EMAIL_BAD.has(lastEmail.status)) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the email to ${lastEmail.to_address} was not delivered (${EMAIL_WORD[lastEmail.status]})`, next: { key: "resend", label: `Resend v${v.version_no}` }, hint: "Check the address, then resend. If it fails again, press Copy the link and send it from your own mailbox." });
-  if (lateTry) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the sponsor tried the link after it ${link.revoked_at ? "was revoked" : "expired on " + dShort(dubaiYmd(link.expires_at))}`, next: { key: "resend", label: `Resend v${v.version_no}` }, hint: "Resend gives the sponsor a fresh link valid for 14 days." });
+  if (lastEmail && EMAIL_BAD.has(lastEmail.status)) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the email to ${lastEmail.to_address} was not delivered (${EMAIL_WORD[lastEmail.status]})`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Check the address, then resend. If it fails again, press Copy the link and send it from your own mailbox." });
+  if (lateTry) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the sponsor tried the link after it ${link.revoked_at ? "was revoked" : "expired on " + dShort(dubaiYmd(link.expires_at))}`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Resend gives the sponsor a fresh link valid for 14 days." });
   const opened = link && link.open_count ? ` · opened by the sponsor ${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : link ? " · not opened yet" : "";
-  return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${link ? "" : " (recorded by hand)"}${opened} — waiting for the sponsor`, next: null, waitText: "Waiting for the sponsor", hint: "Nothing to do. Their comments or approval appear here by themselves." });
+  return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${link ? "" : " (recorded by hand)"}${opened} — waiting for the sponsor`, next: null, waitText: "Waiting for the sponsor", hint: "Nothing to do. The sponsor's comments or approval appear here by themselves." });
 }
 
 window.PPAdmin = { stepOf, recordFacts, stateOf, workingDaysAfter };
@@ -1053,9 +1058,9 @@ function startLive(id, knownVersionIds) {
         const n = p.new || {};
         const fresh = n.id && !knownVersionIds.has(n.id);
         onActivity(fresh ? `v${n.version_no} arrived${n.added_how === "claude" ? " from Claude" : ""}${n.summary && n.summary.line ? " — " + n.summary.line : ""}`
-          : n.sponsor_approved_at ? `v${n.version_no} approved by the sponsor on the client page` : "");
+          : n.sponsor_approved_at ? `v${n.version_no} approved by the sponsor on their page` : "");
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submission_client_comments", filter: filt }, (p) => onActivity((p.new && p.new.source === "client_page") ? "A comment arrived from the client page" : "A comment was added"))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submission_client_comments", filter: filt }, (p) => onActivity((p.new && p.new.source === "client_page") ? "A comment arrived from the sponsor's page" : "A comment was added"))
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "client_link_opens", filter: filt }, (p) => onActivity(p.new && p.new.outcome !== "ok" ? "The sponsor tried an expired or revoked link" : ""))
       .on("postgres_changes", { event: "*", schema: "public", table: "sent_emails", filter: filt }, () => onActivity(""))
       .subscribe();
@@ -1297,7 +1302,7 @@ function sendForm(ctx, v, isResend) {
     const addr = to.value.trim();
     if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
     if (!previewed().has(v.id)) {
-      const ok = await confirmBox({ title: `You haven't previewed v${v.version_no}`, text: "Check exactly what the sponsor will see first (Preview — what the sponsor will see), or send anyway.", ok: "Send anyway" });
+      const ok = await confirmBox({ title: `You haven't previewed v${v.version_no}`, text: "Press \"Preview what the sponsor will see\" first, or send anyway.", ok: "Send anyway" });
       if (!ok) return;
     }
     const clientDom = (ctx.c.email || "").split("@")[1];
@@ -1317,10 +1322,10 @@ function sendForm(ctx, v, isResend) {
       if (!r.recorded) toast("Sent — but the page could not record it yet; it will repair itself within the hour.", true);
       reloadKeepingPlace();
     } catch (err) { send.disabled = false; out.textContent = ""; fail(err); }
-  } }, isResend ? `Resend v${v.version_no}` : `Send v${v.version_no}`);
+  } }, isResend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`);
   const form = h("div", { class: "inline-form stack send-form", hidden: true, "data-form": "send" },
     h("div", { class: "row check-first" }, h("span", { class: "small muted" }, "Check it first:"),
-      h("button", { class: "btn sm", type: "button", onclick: () => showClientCopy(v) }, `Preview v${v.version_no}`), previewMail, testBtn),
+      h("button", { class: "btn sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"), previewMail, testBtn),
     h("label", { class: "f" }, "To (the sponsor)", to),
     h("label", { class: "f" }, "Subject", subj),
     h("label", { class: "f" }, "Message — edit freely; the private link goes where it says " + SEND_LINK_MARKER, msg),
@@ -1387,7 +1392,7 @@ function revisePrompt(ctx, v) {
   const cs = (s._comments || []).filter((k) => k.version_id === v.id);
   const fromPage = cs.filter((k) => k.source === "client_page").length;
   return [`Revise the scenario for ${s.request_no} (${c.company_name || "the client"}).`,
-    `Current version: v${v.version_no}${v.sent_on ? ", sent " + dShort(v.sent_on) : ""}. Sponsor comments on v${v.version_no}: ${cs.length} (${fromPage} from the client page, ${cs.length - fromPage} pasted). PlanProof team remarks: ${(s._remarks || []).length}.`,
+    `Current version: v${v.version_no}${v.sent_on ? ", sent " + dShort(v.sent_on) : ""}. Sponsor comments on v${v.version_no}: ${cs.length} (${fromPage} from the sponsor's page, ${cs.length - fromPage} pasted). PlanProof team remarks: ${(s._remarks || []).length}.`,
     `Use the planproof-scenario skill in revise mode. Read the request, every version, every comment and every team remark from the PlanProof database for ${s.request_no}.`,
     `First, list every comment and remark you found in a table (source, what it says, your plan: accept / push back / question for me) and wait for my OK.`,
     `Then write v${(s._lastVersionNo || v.version_no) + 1}, run the fresh-eyes check, add it to ${s.request_no} on the admin page, save your decision table as a team remark, and give me the reply to the sponsor for anything you push back on.`].join("\n");
@@ -1421,7 +1426,8 @@ function versionPanel(ctx, v) {
   const mails = (extra.emails || []).filter((m) => m.version_id === v.id);
   const late = link ? (extra.opens || []).filter((o) => o.link_id === link.id && o.outcome !== "ok") : [];
   const sm = factsOf(v);
-  const parts = [h("h3", { class: "v7-vtitle" }, `v${v.version_no}`, sm && sm.label ? " — " + sm.label : "", " ", pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]))];
+  const parts = [h("div", { class: "v7-vtitle" }, pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]), sm && sm.label ? h("span", {}, sm.label) : null,
+    h("span", { class: "small muted" }, v.added_how === "claude" ? "added by Claude " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded " + hm(v.created_at) : "recorded by hand"))];
   if (sm) parts.push(table(["Length", "Injects", "Teams", "Criteria", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
     [sm.produce ? plural(sm.produce, "produce task") : null, sm.decide ? sm.decide + " decide" : null].filter(Boolean).join(", ") || "none"]], "facts"));
   else parts.push(h("p", { class: "small muted" }, "Recorded by hand — no scenario file on the page for this version."));
@@ -1434,27 +1440,27 @@ function versionPanel(ctx, v) {
     ["Tried after it closed", late.length ? hm(late[late.length - 1].at) : null],
     ["Approved by the sponsor", v.sponsor_approved_at ? `✓ ${v.sponsor_approved_by}, ${hm(v.sponsor_approved_at)}` : null]]));
   const btns = h("div", { class: "row v7-actions" });
-  if (v.scenario) add(btns,
-    h("button", { class: "btn sm", type: "button", "data-act": "view_copy", onclick: () => showClientCopy(v) }, "Preview — what the sponsor will see"),
-    h("button", { class: "btn quiet sm", type: "button", "data-act": "view_full", onclick: () => showFull(v) }, "View full version (PlanProof only)"));
+  const btns2 = h("div", { class: "row v7-actions secondary" });
+  if (v.scenario) { add(btns, h("button", { class: "btn sm", type: "button", "data-act": "view_copy", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"));
+    add(btns2, h("button", { class: "btn quiet sm", type: "button", "data-act": "view_full", onclick: () => showFull(v) }, "View full version (PlanProof only)")); }
   let form = null;
   if (v.scenario && v.status !== "approved" && v.status !== "superseded") {
     const resend = v.status !== "draft";
     form = sendForm(ctx, v, resend);
     add(btns, h("button", { class: "btn sm", type: "button", "data-act": resend ? "resend" : "send", "data-next": resend ? "resend" : "send", onclick: () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector("input[type=email]").focus(); } },
-      resend ? `Resend v${v.version_no}` : `Send v${v.version_no} to the sponsor`));
+      resend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`));
   }
-  if (liveLink) add(btns, copyLinkBtn(liveLink), h("button", { class: "btn quiet sm", type: "button", "data-act": "extend", onclick: async () => {
+  if (liveLink) add(btns2, copyLinkBtn(liveLink), h("button", { class: "btn quiet sm", type: "button", "data-act": "extend", onclick: async () => {
     const r = await q(sb.rpc("admin_link_action", { p_link: liveLink.id, p_action: "extend" })).catch(fail);
     if (r) { toast("Link valid until " + dd(dubaiYmd(r.expires_at))); reloadKeepingPlace(); }
   } }, "Extend 14 days"));
   if (v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
-    const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on the client page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
+    const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on their page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
     if (!ok) return;
     const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", v.id).select("id")).catch(fail);
     if (upd) { toast("v" + v.version_no + " approved"); reloadKeepingPlace(); }
   } }, "Approve v" + v.version_no));
-  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form);
+  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form, btns2.childNodes.length ? btns2 : null);
 }
 function addBox(ctx, nextNo) {
   const { s } = ctx;
@@ -1483,7 +1489,7 @@ function addBox(ctx, nextNo) {
     put(result, h("div", { class: "v7-summary" }, h("strong", {}, r.summary.line), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
   }
   const box = h("div", { class: "add-box inline-form stack", hidden: true, "data-form": "add" },
-    h("p", { class: "small muted", style: "margin:0" }, `Only if Claude gave you the scenario file instead of adding v${nextNo} itself: paste the file or drop it here.`),
+    h("p", { class: "small muted", style: "margin:0" }, `Normally Claude adds v${nextNo} to this page itself. If it gave you a file instead, drop the file here or paste its contents, then press Check the file.`),
     ta, h("div", { class: "row" }, h("button", { class: "btn", type: "button", "data-act": "add_check", onclick: check }, "Check the file"), file,
       h("button", { class: "btn quiet", type: "button", onclick: () => { box.hidden = true; } }, "Cancel")), result);
   return box;
@@ -1523,7 +1529,7 @@ function remarksTable(s) {
       const body = ta.value.trim(); if (!body) return;
       const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
       if (row) { toast("Remark added"); reloadKeepingPlace(); }
-    } }, "Add remark"), h("button", { class: "btn quiet sm", type: "button", onclick: () => { addForm.hidden = true; } }, "Cancel")));
+    } }, "Add the remark"), h("button", { class: "btn quiet sm", type: "button", onclick: () => { addForm.hidden = true; } }, "Cancel")));
   const rows = items.map((r) => {
     const cell = h("div", { class: "body" }, r.body);
     const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
@@ -1537,9 +1543,14 @@ function remarksTable(s) {
     return [dt(r.created_at), cell, edit];
   });
   return h("div", { class: "remarks" },
-    h("p", { class: "small", style: "margin:0 0 8px; color:var(--red-soft)" }, "Team only — never shown to the client. Claude reads these when it designs or revises the scenario."),
-    items.length ? table(["Date", "Remark", ""], rows, "remarks-t") : h("p", { class: "empty" }, "No remarks yet. Add anything the scenario must test or take into account."),
-    h("div", { style: "margin-top:8px" }, h("button", { class: "btn quiet sm", type: "button", onclick: () => { addForm.hidden = !addForm.hidden; if (!addForm.hidden) ta.focus(); } }, "+ Add a remark")), addForm);
+    h("p", { class: "small", style: "margin:0 0 8px; color:var(--red-soft)" }, "Never shown to the sponsor. Claude reads these when it writes or revises the scenario."),
+    addForm,
+    items.length ? table(["Date", "Remark", ""], rows, "remarks-t") : h("p", { class: "empty" }, "No remarks yet. Add anything the scenario must test or avoid."),
+    addForm);
+}
+// A titled part of a block: a heading with its count and its one button, then the content.
+function section(key, title, button, ...body) {
+  return h("section", { class: "v7-sec", "data-sec": key }, h("div", { class: "v7-sechead" }, h("h3", {}, title), button || null), ...body);
 }
 function scenarioBlock(ctx) {
   const { s, linked, state } = ctx;
@@ -1550,49 +1561,49 @@ function scenarioBlock(ctx) {
   const nextNo = newest && newest.status === "draft" ? newest.version_no : (s._lastVersionNo || 0) + 1;
   const cs = s._comments || [];
   const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
-  const box = addBox(ctx, nextNo), cform = pasteCommentForm(ctx);
+  const cform = pasteCommentForm(ctx);
   const delivered = s.status === "delivered";
-  // the versions, newest first
-  const vtable = vs.length ? table(["Version", "Status", "Added", "Sent", "Sponsor", "Comments"], vs.map((v) => {
-    const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id).slice(-1)[0];
-    const n = cs.filter((k) => k.version_id === v.id).length;
-    return { attrs: { "data-vrow": String(v.version_no) }, cells: [h("strong", { class: "vno" }, "v" + v.version_no), pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]),
-      v.added_how === "claude" ? "by Claude, " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "on the page, " + hm(v.created_at) : "recorded by hand",
-      v.status !== "draft" && v.sent_on ? dd(v.sent_on) : null,
-      v.sponsor_approved_at ? "✓ approved" : link && link.open_count ? "opened " + hm(link.last_opened_at) : link ? "not opened" : null,
-      n ? String(n) : null] };
-  }), "versions") : h("p", { class: "empty" }, "No version yet. Ask Claude to design the scenario for " + (s.request_no || "this request") + " — v1 appears here by itself.");
-  const older = vs.slice(1);
   const commented = state.block === "scenario" && /commented/.test(state.where || "");
-  const pasteBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = false; cform.scrollIntoView({ block: "center", behavior: "smooth" }); cform.querySelector("textarea").focus(); } }, "+ Paste a comment");
+  const pasteBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = false; cform.scrollIntoView({ block: "center", behavior: "smooth" }); cform.querySelector("textarea").focus(); } }, "+ Paste a sponsor comment");
   const promptBtn = (kind) => h("button", { class: "btn primary", type: "button", "data-act": kind + "_prompt", "data-next": kind, onclick: async () => {
     const text = kind === "design" ? designPrompt(ctx) : revisePrompt(ctx, newest);
     try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
     catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
-  } }, kind === "design" ? `Copy the instruction for Claude (v${nextNo})` : `Copy the revise prompt for Claude (v${nextNo})`);
-  // "What to do now": the steps of this moment, each with its own button (remark 14)
+  } }, kind === "design" ? "Copy the first prompt for Claude" : "Copy the revised prompt for Claude");
+  // 1. What to do now — the steps of this moment, each with its own button
   let todo = null;
   if (!delivered && !newest) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
-    h("li", {}, h("div", {}, h("strong", {}, "Ask Claude to design the scenario."), h("div", { class: "small muted" }, `Copy the instruction, open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
-    h("li", {}, h("div", {}, h("strong", {}, `v${nextNo} appears here by itself.`), h("div", { class: "small muted" }, "Then preview it and send it to the sponsor."))));
+    h("li", {}, h("div", {}, h("strong", {}, "Copy the first prompt for Claude."), h("div", { class: "small muted" }, `Then open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
+    h("li", {}, h("div", {}, h("strong", {}, "v1 appears here by itself."), h("div", { class: "small muted" }, "Then press \"Preview what the sponsor will see\" and \"Send v1 to the sponsor\"."))));
   else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
-    h("li", {}, h("div", {}, h("strong", {}, "Did the sponsor also comment by email or phone?"), h("div", { class: "small muted" }, "Add those here so Claude sees them. Comments sent from the client page are already below.")), pasteBtn("")),
-    h("li", {}, h("div", {}, h("strong", {}, `Ask Claude for v${nextNo}.`), h("div", { class: "small muted" }, `Copy the prompt and paste it into your Claude chat for ${s.request_no}. v${nextNo} then appears here by itself.`)), promptBtn("revise")));
-  const byHand = delivered ? null : h("details", { class: "v7-fold small-fold", "data-fold": "byhand" }, h("summary", {}, "Claude gave you a file instead? Add it by hand ▸"), box);
-  box.hidden = false;
+    h("li", {}, h("div", {}, h("strong", {}, "Did the sponsor also comment by email or phone?"), h("div", { class: "small muted" }, "Then + Paste a sponsor comment, so Claude sees it too. Comments the sponsor sent from their page are already in \"What the sponsor said\".")), pasteBtn("")),
+    h("li", {}, h("div", {}, h("strong", {}, "Copy the revised prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. v${nextNo} appears here by itself.`)), promptBtn("revise")));
+  // 3. What the sponsor said
   const comTable = cs.length ? table(["Date", "From", "How it came", "About", "Comment"], cs.slice().reverse().map((k) => [
     k.source === "client_page" ? hm(k.created_at) : dd(k.received_on), h("bdi", {}, k.sender),
-    k.source === "client_page" ? h("span", { class: "tag src-page" }, "Client page") : h("span", { class: "tag" }, VIA_WORD[k.received_via] || "Pasted"),
-    k.version_id ? vLabel(k.version_id) : "—", h("div", { class: "body" }, k.body)]), "comments") : h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from the client page appear here by themselves.");
-  const line = newest ? `v${newest.version_no} · ${VERSION_WORD[newest.status] || newest.status}` + (cs.length ? ` · ${plural(cs.length, "comment")}` : "") : "no version yet";
+    k.source === "client_page" ? h("span", { class: "tag src-page" }, "Sponsor's page") : h("span", { class: "tag" }, VIA_WORD[k.received_via] || "Pasted"),
+    k.version_id ? vLabel(k.version_id) : "—", h("div", { class: "body" }, k.body)]), "comments") : h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from their page appear here by themselves.");
+  // 4. PlanProof remarks
+  const remarks = remarksTable(s);
+  const addRemarkBtn = h("button", { class: "btn quiet sm", type: "button", "data-act": "add_remark", onclick: () => { const f = remarks.querySelector('[data-form="remark"]'); f.hidden = false; f.querySelector("textarea").focus(); } }, "+ Add a PlanProof remark");
+  const older = vs.slice(1);
+  const line = newest ? `v${newest.version_no} · ${VERSION_WORD[newest.status] || newest.status}` + (cs.length ? ` · ${plural(cs.length, "sponsor comment")}` : "") : "no version yet";
   return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
-    todo, cform,
-    newest ? versionPanel(ctx, newest) : null,
-    h("details", { class: "v7-fold", "data-fold": "comments", open: commented && cs.length > 0 }, h("summary", {}, `What the client said (${cs.length})`), comTable, h("div", { style: "margin-top:8px" }, pasteBtn("quiet sm"))),
-    h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `All versions (${vs.length})`), vtable,
-      older.length ? h("div", { class: "row", style: "margin-top:8px; gap:6px" }, ...older.filter((v) => v.scenario).map((v) => h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy(v) }, `Preview v${v.version_no}`))) : null),
-    h("details", { class: "v7-fold remarks-fold", "data-fold": "remarks" }, h("summary", {}, `PlanProof remarks — team only (${(s._remarks || []).length})`), remarksTable(s)),
-    byHand);
+    todo,
+    newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
+    section("comments", `What the sponsor said (${cs.length})`, delivered ? null : pasteBtn("quiet sm"), cform, comTable),
+    section("remarks", `PlanProof remarks — team only (${(s._remarks || []).length})`, addRemarkBtn, remarks),
+    older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
+      table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
+        const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id).slice(-1)[0];
+        const n = cs.filter((k) => k.version_id === v.id).length;
+        return { attrs: { "data-vrow": String(v.version_no) }, cells: [h("strong", { class: "vno" }, "v" + v.version_no), pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]),
+          v.added_how === "claude" ? "by Claude, " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded, " + hm(v.created_at) : "recorded by hand",
+          v.status !== "draft" && v.sent_on ? dd(v.sent_on) : null,
+          v.sponsor_approved_at ? "✓ approved" : link && link.open_count ? "opened " + hm(link.last_opened_at) : link ? "not opened" : null,
+          n ? String(n) : null,
+          v.scenario ? h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see") : null] };
+      }), "versions")) : null);
 }
 function exerciseBlock(ctx) {
   const { s } = ctx;
@@ -2295,6 +2306,14 @@ function moreFold(ctx) {
             await q(sb.rpc("admin_link_action", { p_link: l.id, p_action: "revoke", p_reason: "Revoked on the admin page" })).then(() => { toast("Link revoked"); reloadKeepingPlace(); }).catch(fail);
           } }, "Revoke"));
       })));
+  }
+  // W8 v7.1: the rare backup — Claude gave a file instead of adding the version itself.
+  if (s.status !== "delivered" && s.match_status !== "pending" && s.status !== "new") {
+    const vs = liveVersions(s._versions).slice().sort((a, b) => b.version_no - a.version_no);
+    const nextNo = vs[0] && vs[0].status === "draft" ? vs[0].version_no : (s._lastVersionNo || 0) + 1;
+    const box = addBox(ctx, nextNo); box.hidden = false;
+    what.push("upload a scenario file");
+    parts.push(h("div", { class: "more-part", "data-more": "upload" }, h("h3", {}, "Upload a scenario file (only if Claude gave you a file)"), box));
   }
   // Unlink this exercise (before a download) and remove the participants' data now.
   if (x) {
