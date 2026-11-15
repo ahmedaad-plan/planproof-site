@@ -1363,12 +1363,15 @@ function reviewEmail(ctx, v) {
     top: [`Dear ${first || "colleague"},`,
       `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review.`,
       prev && note ? `What changed from v${prev}: ${note}` : null].filter(Boolean).join("\n\n"),
-    bottom: ["On the page you can send us your comments, or approve the version when you are happy with it. You can also print it or save it as a PDF.",
+    // v7.3 (remark 21, Ahmed 15 Nov): one plain promise instead of revision rounds; **…** = bold in the email
+    bottom: ["On the page you can approve this version, or send us your comments. You can also print it or save it as a PDF.",
+      "**" + REVIEW_PROMISE + "**",
       "Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond.",
       "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
   };
 }
 const LINK_LINE = "Open the scenario: " + SEND_LINK_MARKER;
+const REVIEW_PROMISE = "We will send you the final scenario within 5 working days of your last comments. To leave enough time for the exercise arrangements, we would be grateful to receive any comments at least 10 working days before the exercise date.";
 const composeEmail = (top, bottom) => [String(top || "").trim(), LINK_LINE, String(bottom || "").trim()].filter(Boolean).join("\n\n");
 async function session7() {
   const { data } = await sb.auth.getSession();
@@ -1393,7 +1396,7 @@ const previewed = () => new Set(JSON.parse(sessionStorage.getItem("pp_admin_prev
 const markPreviewed = (id) => { const p = previewed(); p.add(id); sessionStorage.setItem("pp_admin_previewed", JSON.stringify([...p])); };
 function emailHtml(message, linkText) {
   return String(message || "").replace(/\r\n/g, "\n").trim().split(/\n\s*\n/).map((p) =>
-    `<p>${esc7(p).replace(/\n/g, "<br>").split(esc7(SEND_LINK_MARKER)).join(`<a class="fake-link">${esc7(linkText)}</a>`)}</p>`).join("");
+    `<p>${esc7(p).replace(/\n/g, "<br>").split(esc7(SEND_LINK_MARKER)).join(`<a class="fake-link">${esc7(linkText)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
 }
 function sendForm(ctx, v, isResend) {
   const e = reviewEmail(ctx, v);

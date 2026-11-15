@@ -87,9 +87,10 @@ export function buildBody(message, link, expiresAt) {
       text = parts.join("\n\n");
     }
   }
+  // v7.3 (remark 21): **…** is bold in the HTML email; the plain-text part shows it without the stars
   const html = text.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>")
-    .replace(link ? new RegExp(esc(link).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g") : /$^/, `<a href="${esc(link)}">${esc(link)}</a>`)}</p>`).join("");
-  return { text, html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}</div>` };
+    .replace(link ? new RegExp(esc(link).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g") : /$^/, `<a href="${esc(link)}">${esc(link)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
+  return { text: text.replace(/\*\*(.+?)\*\*/gs, "$1"), html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}</div>` };
 }
 
 // One Resend send; tries the senders in order on a sender (4xx, not 429) refusal.

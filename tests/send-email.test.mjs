@@ -163,3 +163,9 @@ test("test send: kind 'test' goes out marked TEST, with the link place marked, a
   // v7.3 (remark 10): the test copy says at once why it has no working link
   assert.ok(w.emails[0].text.startsWith("TEST COPY — this is how the sponsor's email will look. It has no working link"), w.emails[0].text.slice(0, 120));
 });
+
+test("v7.3 (remark 21): **…** in the message is bold in the HTML email and plain in the text part", () => {
+  const { text, html } = buildBody("Dear Sara,\n\nOpen the scenario: [the private link]\n\n**We will send you the final scenario within 5 working days of your last comments.**", "https://plan-proof.com/c/abc", null);
+  assert.ok(html.includes("<strong>We will send you the final scenario within 5 working days of your last comments.</strong>"));
+  assert.ok(text.includes("We will send you the final scenario within 5 working days") && !text.includes("**"));
+});

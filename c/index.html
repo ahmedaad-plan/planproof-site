@@ -111,7 +111,8 @@
       '<div class="pfoot">PlanProof · scenario v' + esc(v) + ' for ' + esc(org) + ' · Confidential — for the sponsor and reviewers only, not for participants</div>';
     var canApprove = !d.newer_version_no && !d.approved_by_sponsor;
     var panel = '<section class="panel" id="respond" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
-      '<p class="hint">Write anything you would like changed — they reach PlanProof at once. You can send comments more than once.</p>' +
+      '<p class="hint">Write anything you would like changed — your comments reach PlanProof at once.</p>' +
+      '<p class="hint"><b>We will send you the final scenario within 5 working days of your last comments. To leave enough time for the exercise arrangements, we would be grateful to receive any comments at least 10 working days before the exercise date.</b></p>' +
       '<form id="cForm" novalidate><label for="cName">Your name</label><input type="text" id="cName" maxlength="200" autocomplete="name">' +
       '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
       '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>' +
