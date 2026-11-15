@@ -5,6 +5,7 @@
 //                      add requests to the database (optional until set)
 //   SUPABASE_SECRET_KEY  server-only key (production): the hourly email-status poll (W8)
 //   RESEND_API_KEY, RESEND_FROM_ADDRESS     email
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY  push alerts to the admin page (W8 build 2)
 //   ALERT_EMAIL        extra address(es) for system alerts, comma-separated —
 //                      ideally NOT on plan-proof.com, so an alert still
 //                      arrives if the business inbox is the thing that broke
@@ -18,5 +19,7 @@ export function serverEnv() {
     RESEND_API_KEY: get("RESEND_API_KEY"),
     RESEND_FROM_ADDRESS: get("RESEND_FROM_ADDRESS"),
     ALERT_EMAIL: get("ALERT_EMAIL"),
+    VAPID_PUBLIC_KEY: get("VAPID_PUBLIC_KEY"),
+    VAPID_PRIVATE_KEY: get("VAPID_PRIVATE_KEY"),
   };
 }

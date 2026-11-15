@@ -5,6 +5,8 @@
 // tests/media-prepare.test.mjs. Uses the admin's own sign-in (no secret key).
 import { readFile } from "node:fs/promises";
 import { runMediaPrepare } from "../lib/media-prepare.mjs";
+import { raiseAndDeliver } from "../lib/alerts.mjs";
+import { serverEnv } from "../lib/env.mjs";
 
 // The newsroom plates are bundled (netlify.toml included_files); where they
 // land depends on the bundler, so try the likely places in turn.
@@ -40,6 +42,15 @@ export default async (req) => {
       log: (m) => console.log("media-prepare:", m),
     }, { session_id: sessionId, langs: body.langs, what: body.what, force: !!body.force });
     console.log("media-prepare: done", JSON.stringify(done));
+    // W8 build 2 (D.10): "Prepare → ready / failed" reaches the phone, and by email.
+    if (done && (done.ok || done.plan)) {
+      const out = await raiseAndDeliver({ fetchFn: fetch, env: serverEnv(), origin: new URL(req.url).origin }, {
+        kind: done.ok ? "media_ready" : "media_failed", ref: crypto.randomUUID(), submission: done.submission_id,
+        title: done.ok ? "Voice and video ready" : "Voice and video: some items failed",
+        body: (done.label || "The exercise") + (done.ok ? " — narration and clips are ready." : " — open the request and press Retry failed."),
+        url: done.submission_id ? "/admin/#request/" + done.submission_id : "/admin/" });
+      console.log("media-prepare: alert", JSON.stringify({ claimed: out.claimed, pushed: out.pushed, emailed: out.emailed }));
+    }
   } catch (err) {
     // Never throw: a background function that throws is retried by Netlify.
     console.log("media-prepare: error", String(err && err.message || err).slice(0, 300));

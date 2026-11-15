@@ -94,7 +94,31 @@ export function buildBody(message, link, expiresAt) {
 }
 
 // One Resend send; tries the senders in order on a sender (4xx, not 429) refusal.
-export async function resendSend(deps, { to, subject, text, html }) {
+// W8 build 2 (D.8): the calendar file for the confirmation and the invitation. The time is
+// UAE time, written with its zone (Asia/Dubai, no daylight saving: UTC+4 all year), so a
+// calendar abroad shows the right hour. One event; its UID stays the same for one exercise,
+// so a re-sent invitation updates the event instead of adding a second one (SEQUENCE grows).
+export const ICS_JOIN_MARKER = "[the join link]";
+export const ICS_CHECK_MARKER = "[the connection check link]";
+const icsEsc = (s) => String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const fold = (line) => { const out = []; let s = line; while (Buffer.byteLength(s, "utf8") > 74) { let n = 74; while (Buffer.byteLength(s.slice(0, n), "utf8") > 74) n--; out.push(s.slice(0, n)); s = " " + s.slice(n); } out.push(s); return out.join("\r\n"); };
+export function buildIcs({ uid, date, time, minutes, title, location, description, sequence = 0, stampMs = Date.now() }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || "")) || !/^\d{2}:\d{2}$/.test(String(time || ""))) throw new SendError(400, "The exercise date and time are not set.");
+  const [y, mo, d] = date.split("-").map(Number), [hh, mm] = time.split(":").map(Number);
+  // UAE local → UTC is −4 hours (no daylight saving)
+  const startUtc = Date.UTC(y, mo - 1, d, hh - 4, mm), endUtc = startUtc + (Number(minutes) || 90) * 60000;
+  const loc = (ms) => { const x = new Date(ms + 4 * 3600000); return x.toISOString().replace(/[-:]/g, "").slice(0, 15); };
+  const utc = (ms) => new Date(ms).toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//PlanProof//Exercise//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VTIMEZONE", "TZID:Asia/Dubai", "X-LIC-LOCATION:Asia/Dubai", "BEGIN:STANDARD", "TZOFFSETFROM:+0400", "TZOFFSETTO:+0400", "TZNAME:+04", "DTSTART:19700101T000000", "END:STANDARD", "END:VTIMEZONE",
+    "BEGIN:VEVENT", `UID:${uid}@plan-proof.com`, `DTSTAMP:${utc(stampMs)}`, `SEQUENCE:${sequence}`,
+    `DTSTART;TZID=Asia/Dubai:${loc(startUtc)}`, `DTEND;TZID=Asia/Dubai:${loc(endUtc)}`,
+    `SUMMARY:${icsEsc(title)}`, `LOCATION:${icsEsc(location)}`, `DESCRIPTION:${icsEsc(description)}`, "STATUS:CONFIRMED", "TRANSP:OPAQUE",
+    "END:VEVENT", "END:VCALENDAR"];
+  return lines.map(fold).join("\r\n") + "\r\n";
+}
+
+export async function resendSend(deps, { to, subject, text, html, attachments }) {
   const tries = [];
   for (const from of FROM_CANDIDATES) {
     let res;
@@ -102,7 +126,7 @@ export async function resendSend(deps, { to, subject, text, html }) {
       res = await deps.fetchFn("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${deps.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to: [to], reply_to: REPLY_TO, subject, text, html }),
+        body: JSON.stringify({ from, to: [to], reply_to: REPLY_TO, subject, text, html, ...(attachments && attachments.length ? { attachments } : {}) }),
         signal: AbortSignal.timeout(deps.timeoutMs ?? 15000),
       });
     } catch (err) { tries.push(`${from}: ${err.message}`); break; }
@@ -140,12 +164,27 @@ export async function sendClientEmail(deps, token, body) {
   const rec = await rpc("admin_record_email", { p_submission: body.submission_id, p_kind: kind, p_to: to, p_subject: subject, p_version: (kind === "review" || kind === "test") && UUID.test(String(body.version_id || "")) ? body.version_id : null });
   const link = rec && rec.token ? linkFor(deps.origin, rec.token) : null;
   if ((kind === "review" || kind === "report") && !link) throw new SendError(500, "The private link was not made — nothing was sent.");
+  let attachments = null, msg = message;
+  if (kind === "confirmation" || kind === "invitation") {
+    // the facts come from the database (admin_record_email), never from the page
+    const x = rec.exercise || {};
+    if (!x.session_id) throw new SendError(400, "Set up the exercise first.");
+    const join = `${String(deps.origin).replace(/\/+$/, "")}/play/join.html?session=${x.session_id}`;
+    const check = `${String(deps.origin).replace(/\/+$/, "")}/play/check.html`;
+    msg = msg.split(ICS_JOIN_MARKER).join(join).split(ICS_CHECK_MARKER).join(check);
+    if (kind === "confirmation" && msg.includes(join)) throw new SendError(400, "The confirmation must not carry the join link — it goes in the invitation.");
+    const ics = buildIcs({ uid: `exercise-${x.session_id}`, date: x.date, time: x.time, minutes: x.minutes, sequence: Math.floor((deps.nowMs ?? Date.now()) / 60000) % 100000,
+      title: `${kind === "invitation" ? "Business continuity exercise" : "PlanProof exercise"} — ${x.organisation || ""}`.replace(/ — $/, ""),
+      location: x.venue, description: kind === "invitation" ? `Join on the day: ${join}\nPlease bring a charged phone or laptop.` : `PlanProof tabletop exercise (${x.minutes} minutes). Reference ${x.request_no}.` });
+    attachments = [{ filename: kind === "invitation" ? "exercise-invitation.ics" : "exercise.ics", content: Buffer.from(ics, "utf8").toString("base64"), content_type: "text/calendar; charset=utf-8" }];
+  }
+  if (/facilitator-test\.html|[?&]token=/.test(msg)) throw new SendError(400, "The facilitator link must never be emailed.");
   const { text, html } = kind === "test"
-    ? buildBody(TEST_INTRO + "\n\n" + message.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
-    : buildBody(message, link, rec.expires_at);
+    ? buildBody(TEST_INTRO + "\n\n" + msg.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
+    : buildBody(msg, link, rec.expires_at);
 
   // 2. send
-  const sent = await resendSend(deps, { to, subject: kind === "test" && !/^TEST\b/.test(subject) ? "TEST — " + subject : subject, text, html });
+  const sent = await resendSend(deps, { to, subject: kind === "test" && !/^TEST\b/.test(subject) ? "TEST — " + subject : subject, text, html, attachments });
 
   // 3. record the answer (three tries; the poll repairs a lost write)
   const status = sent.ok ? "sent" : "failed";

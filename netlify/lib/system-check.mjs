@@ -22,6 +22,7 @@
 // The public /api/health answer contains only these four words and short
 // problem codes — never client data, counts or settings.
 
+import { deliverAlerts, raiseAndDeliver } from "./alerts.mjs";
 import { INBOX, supabaseHeaders, sendViaResend, readStats } from "./intake-core.mjs";
 import { pollForSystemCheck } from "./send-email.mjs";
 
@@ -238,9 +239,25 @@ export async function runSystemCheck(deps) {
         ["An email sent from the admin page has not reached its recipient:", "",
           ...fresh.map((p) => `• ${p.request_no || "(request)"} — ${p.kind} to ${p.to}: ${p.status === "sent" || p.status === "delayed" ? "not delivered after 1 hour" : p.status}`), "",
           "Open the request on plan-proof.com/admin: press Resend, or Copy the link and send it from exercises@plan-proof.com yourself."].join("\n"));
+      done.clientEmailFresh = fresh;
       if (done.sent.includes("client-email")) state.clientEmailAlerted = [...seen, ...fresh.map((p) => p.id)].slice(-200);
     }
   } catch (err) { log.error("system-check: client email poll failed:", err.message); }
+
+  // W8 build 2 (D.10): the safety net for push alerts — anything not yet sent (a sponsor's
+  // comment whose page could not call us, a request saved by the retry job) goes out now,
+  // once; a client email problem also reaches the phone (its email is the one above).
+  if (deps.env && deps.env.VAPID_PUBLIC_KEY) {
+    try {
+      const deliver = deps.deliverAlerts || deliverAlerts, raise = deps.raiseAndDeliver || raiseAndDeliver;
+      for (const p of (done.clientEmailFresh || [])) {
+        await raise({ ...deps, origin: "https://plan-proof.com" }, { kind: "email_problem", ref: p.id, title: `${p.request_no || "A request"} · an email was not delivered`,
+          body: `${p.kind} to ${p.to}: ${p.status === "sent" || p.status === "delayed" ? "not delivered after 1 hour" : p.status} — Resend, or copy the link`, email_by: "system-check" });
+      }
+      done.alerts = await deliver({ ...deps, origin: "https://plan-proof.com" });
+    } catch (err) { log.error("system-check: alerts failed:", err.message); }
+  }
+  delete done.clientEmailFresh;
 
   try { await deps.pending.setJSON("meta/alert-state", state); } catch { /* reported by the health check */ }
   if (h.problems.length) log.error("system-check problems:", JSON.stringify({ problems: h.problems, internal: h.internal }));

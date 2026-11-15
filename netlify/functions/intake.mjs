@@ -4,6 +4,7 @@
 import { getStore } from "@netlify/blobs";
 import { handleIntake, IntakeError, MAX_BODY_CHARS } from "../lib/intake-core.mjs";
 import { serverEnv } from "../lib/env.mjs";
+import { deliverAlerts } from "../lib/alerts.mjs";
 
 const json = (status, obj) => Response.json(obj, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -23,6 +24,7 @@ export default async (req, context) => {
       uploads: getStore({ name: "intake-uploads", consistency: "strong" }),
       fetchFn: fetch,
       env: serverEnv(),
+      onSaved: () => deliverAlerts({ fetchFn: fetch, env: serverEnv(), origin: new URL(req.url).origin }),
       // Finish the database save and the email after replying (fast thank-you).
       defer: context && typeof context.waitUntil === "function" ? (work) => context.waitUntil(work()) : undefined,
     });

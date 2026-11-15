@@ -104,7 +104,22 @@ async function fetchSession(sessionId) {
   // shows a calm "closed" screen instead of a load error. The caller never
   // gets a row back, so nothing tries to draw an exercise that is gone.
   if (row && row.purged) { showClosedPage(sessionId); return new Promise(() => {}); }
+  if (row && row.purpose === "play") showPlayStrip(row);
   return row || null;
+}
+
+// W8 build 2 (15 November 2026, fix 11): a PLAY copy — the throw-away session PlanProof
+// shows on a screen-share call — carries a permanent red strip on every page, so it can
+// never be mistaken for the real exercise. Nothing in it is kept (deleted after 7 days).
+function showPlayStrip(row) {
+  if (document.getElementById("ppPlayStrip")) return;
+  const strip = document.createElement("div");
+  strip.id = "ppPlayStrip";
+  strip.setAttribute("role", "note");
+  strip.style.cssText = "position:sticky;top:0;z-index:9999;background:#b0281c;color:#fff;font:700 14px/1.3 system-ui,sans-serif;text-align:center;padding:7px 10px;letter-spacing:.02em";
+  const m = String((row && row.label) || "").match(/^PLAY — v(\d+)/);
+  strip.textContent = T("shared.play.strip", { version: m ? m[1] : "?" });
+  document.body.prepend(strip);
 }
 
 // The "this exercise is closed" screen (W5). Forgets everything this device
