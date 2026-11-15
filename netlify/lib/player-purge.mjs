@@ -19,6 +19,10 @@ import { INBOX, sendViaResend } from "./intake-core.mjs";
 export const BUCKET = "submission-attachments";
 // W6a: an exercise's narration and news clips (briefing videos are shared and never removed).
 export const MEDIA_BUCKET = "exercise-media";
+// W8: files the client sent or that we send them (scenario drafts, report files).
+// The database marks a file "to delete" when its request or client goes; this
+// morning job removes it from storage (storage refuses deleting by SQL).
+export const CLIENT_BUCKET = "client-files";
 export const mediaPrefixes = (sessionId) => [`narration/${sessionId}`, `clips/${sessionId}`];
 
 function headers(env, extra = {}) {
@@ -66,7 +70,7 @@ const name = (x) => `${x.request_no || "(no request)"} — ${x.label || "exercis
 
 export async function runPlayerPurge(deps) {
   const { env } = deps;
-  const report = { removed: [], failed: [], reminded: [], retention: [], skipped: null };
+  const report = { removed: [], failed: [], reminded: [], retention: [], clientFiles: null, nightly: null, skipped: null };
   if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY) { report.skipped = "SUPABASE_SECRET_KEY not set"; return report; }
 
   const due = await rpc(deps, "service_purge_due");
@@ -129,5 +133,29 @@ export async function runPlayerPurge(deps) {
     await rpc(deps, "service_mark_retention_reported", { p_ids: gone.map((x) => x.id) });
     report.retention.push(...gone);
   }
+  // W8 (11 November 2026): client files whose request or client was deleted overnight.
+  try {
+    const pending = await rpc(deps, "service_client_files_pending") || [];
+    const deleted = [], failed = [];
+    let err = null;
+    for (let i = 0; i < pending.length; i += 100) {
+      const batch = pending.slice(i, i + 100);
+      try {
+        // A file already missing from storage counts as gone (storage answers
+        // without an error); a refused call leaves the whole batch for tomorrow.
+        await call(deps, `/storage/v1/object/${CLIENT_BUCKET}`, {
+          method: "DELETE", headers: headers(env, { "Content-Type": "application/json" }), body: JSON.stringify({ prefixes: batch.map((f) => f.path) }) });
+        batch.forEach((f) => deleted.push(f.id));
+      } catch (e) { err = e.message; batch.forEach((f) => failed.push(f.id)); }
+    }
+    const res = pending.length ? await rpc(deps, "service_client_files_result", { p_deleted: deleted, p_failed: failed, p_error: err }) : { rows_deleted: 0, failed: 0, stuck: 0 };
+    report.clientFiles = { pending: pending.length, deleted: deleted.length, failed: failed.length, stuck: (res && res.stuck) || 0, error: err };
+    report.nightly = await rpc(deps, "service_last_purge").catch(() => null);
+    if (failed.length && report.clientFiles.stuck) {
+      await sendViaResend({ to, subject: "PlanProof: client files could not be deleted", text: [
+        `The morning job could not delete ${report.clientFiles.stuck} client file(s) from storage after two tries (bucket ${CLIENT_BUCKET}).`,
+        err ? "Error: " + err : "", "", "Open Supabase → Storage → client-files and delete them by hand, or tell Claude."].filter(Boolean).join("\n") }, deps);
+    }
+  } catch (e) { report.clientFiles = { error: e.message }; }
   return report;
 }

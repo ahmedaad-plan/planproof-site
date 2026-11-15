@@ -18,6 +18,14 @@ function world(opts = {}) {
     if (u.pathname === "/rest/v1/rpc/service_mark_reminded") { w.reminded.push(body.p_session); return ok(null); }
     // W7: the client records the database deleted overnight
     if (u.pathname === "/rest/v1/rpc/service_retention_unreported") return ok(w.gone ?? []);
+    // W8: client files to delete from storage
+    if (u.pathname === "/rest/v1/rpc/service_client_files_pending") return ok(w.clientPending ?? []);
+    if (u.pathname === "/rest/v1/rpc/service_client_files_result") { w.clientResult = body; return ok({ rows_deleted: body.p_deleted.length, failed: body.p_failed.length, stuck: w.clientStuck ?? 0 }); }
+    if (u.pathname === "/rest/v1/rpc/service_last_purge") return ok({ ran_at: "2026-11-11T19:00:00Z", records_deleted: 2, files_pending: (w.clientPending ?? []).length });
+    if (u.pathname === "/storage/v1/object/client-files" && init.method === "DELETE") {
+      if (w.clientRefuse) return ok({ message: "storage down" }, 500);
+      w.clientDeleted = body.prefixes; return ok(body.prefixes.map((name) => ({ name })));
+    }
     if (u.pathname === "/rest/v1/rpc/service_mark_retention_reported") { w.markedGone = body.p_ids; return ok(body.p_ids.length); }
     if (u.pathname === "/rest/v1/rpc/service_purge_session") {
       if ([...w.files].some((p) => p.startsWith(body.p_session + "/"))) return ok({ message: "files still stored" }, 400);
@@ -136,4 +144,32 @@ test("W7: nothing deleted overnight — no retention email and nothing marked", 
   await runPlayerPurge(w);
   assert.equal(w.emails.length, 0);
   assert.equal(w.markedGone, undefined);
+});
+
+// ---- W8: client files marked "to delete" by the database are removed from storage ----
+const CF = [{ id: "f1", path: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/scenario/v1.pdf", attempts: 0 }, { id: "f2", path: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/report/report-en.docx", attempts: 1 }];
+test("W8: pending client files are deleted from the client-files bucket and their rows released", async () => {
+  const w = world({ due: [], clientPending: CF });
+  const r = await runPlayerPurge({ env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_test", RESEND_API_KEY: "re_test" }, fetchFn: w.fetchFn });
+  assert.deepEqual(w.clientDeleted, CF.map((f) => f.path));
+  assert.deepEqual(w.clientResult, { p_deleted: ["f1", "f2"], p_failed: [], p_error: null });
+  assert.equal(r.clientFiles.deleted, 2);
+  assert.equal(r.nightly.records_deleted, 2, "the night's purge count is read back");
+  assert.equal(w.emails.length, 0);
+});
+test("W8: storage refusing the delete keeps the rows for tomorrow and, once stuck, emails PlanProof", async () => {
+  const w = world({ due: [], clientPending: CF, clientRefuse: true, clientStuck: 1 });
+  const r = await runPlayerPurge({ env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_test", RESEND_API_KEY: "re_test" }, fetchFn: w.fetchFn });
+  assert.deepEqual(w.clientResult.p_deleted, []);
+  assert.deepEqual(w.clientResult.p_failed, ["f1", "f2"]);
+  assert.match(w.clientResult.p_error, /HTTP 500/);
+  assert.equal(r.clientFiles.failed, 2);
+  assert.equal(w.emails.length, 1);
+  assert.match(w.emails[0].subject, /client files could not be deleted/);
+});
+test("W8: nothing pending → no storage call", async () => {
+  const w = world({ due: [] });
+  await runPlayerPurge({ env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_test", RESEND_API_KEY: "re_test" }, fetchFn: w.fetchFn });
+  assert.ok(!w.calls.some((c) => c.includes("client-files")));
+  assert.equal(w.clientResult, undefined);
 });

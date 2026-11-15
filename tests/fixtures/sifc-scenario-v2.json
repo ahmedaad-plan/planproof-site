@@ -1,0 +1,773 @@
+{
+  "label": "Renewal Season",
+  "eyebrow": "Built from your organization's profile",
+  "subtitle": "Financial services · 300–500 staff · Sareef Island · ISO 22301 and NCEMA 7000:2021",
+  "briefTitle": "On a Wednesday morning in licence-renewal season, a ransomware attack takes down the SIFC registry portal.",
+  "briefDesc": "Corporate-service providers are already on the phone, regulated firms want to know whether their own reporting clock is running, and by mid-morning the Tower 2 data centre is losing its cooling. The Crisis Management Team, Regulation & Supervision, Registry & Client Services and Estates & Technology must decide what goes manual, who signs, who is told what, and in what order systems come back.",
+  "language": "en",
+  "format": {
+    "lengthMinutes": 90,
+    "breakAfterInject": null,
+    "breakMinutes": 0,
+    "injectsEndMinute": 70,
+    "debriefMinutes": 20,
+    "scenarioClock": "Wednesday 9 December 2026, 09:40 local; no time jump"
+  },
+  "videoScript": {},
+  "objectives": [
+    {
+      "text": "Test whether the Crisis Management Team is activated and a decision log opened within 20 minutes of the first alert, with the portal isolated rather than powered off.",
+      "capabilityArea": "Activation and escalation"
+    },
+    {
+      "text": "Test whether the switch to manual registry processing is taken as an explicit decision with a named owner, a signature and a stated promise to firms, within the five minutes the registry asks for.",
+      "capabilityArea": "Decision-making and command"
+    },
+    {
+      "text": "Test whether regulated firms receive a first notice, in English and Arabic, within 60 minutes of the incident being confirmed, and whether the room knows where the firms' contact list is.",
+      "capabilityArea": "Regulatory notification"
+    },
+    {
+      "text": "Test whether tenants receive one authoritative message within 30 minutes of the Tower 2 cooling loss, and whether the room ranks system restoration against stated tolerable downtimes.",
+      "capabilityArea": "Media, social media and stakeholder communication"
+    }
+  ],
+  "injects": [
+    {
+      "time": "T+0 min",
+      "minute": 0,
+      "durationMinutes": 15,
+      "phase": "detect",
+      "pressure": 3,
+      "icon": "monitor",
+      "team": "Estates & Technology",
+      "output": "group",
+      "sfx": "phone-ring",
+      "video": null,
+      "narration": "on",
+      "attachments": "none",
+      "extendable": true,
+      "mustPlay": true,
+      "title": "Ransom note on the registry portal",
+      "desc": "Phone call (log) · From: Rania Saleh, registry service desk supervisor, Tower 1 · taken by: Estates & Technology duty officer · Wednesday 9 December, 09:40\n\nRania here from the service desk. Since about nine fifteen every filing on the registry portal fails with an error, and the admin console now shows a message saying our files are encrypted and giving a payment address. The supplier's on-call engineer is logged in from their site. He has disconnected the portal servers from the network and says only the public front end is affected and the licence register database is untouched. I have four corporate-service providers on hold, one with thirty renewals queued, and the counter is filling up. Who is in charge of this, and what do I tell people?",
+      "deliveredAs": "call",
+      "resources": [
+        "technology",
+        "suppliers"
+      ],
+      "questions": [
+        "What do you do in the next fifteen minutes, and who decides it — the duty officer, the head of IT, or the Crisis Management Team?",
+        "The supplier's engineer has already isolated the servers and says the database is untouched. Do you accept that, and what would you ask him before you repeat it to anyone?",
+        "Who outside this room needs to know in the first fifteen minutes, and by which channel?"
+      ],
+      "facilitatorMessages": [
+        {
+          "atMinute": 10,
+          "text": "5 minutes left on this inject"
+        }
+      ],
+      "observerWatch": [
+        "who takes charge and whether they say so",
+        "whether anyone asks about the backup",
+        "whether the counter gets a line within the fifteen minutes"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 1 — Activation and escalation; good practice on cyber isolation (isolate, do not power off; keep evidence).",
+        "whatGoodLooksLike": [
+          "the Crisis Management Team is activated now, not after \"more information\"",
+          "a decision log is opened with a time",
+          "the engineer's \"database untouched\" is treated as a claim to verify (ask: how do you know, what did the note say, when was the last clean backup)",
+          "the service desk is given a holding line (\"a technical incident; we will update you by 10:30\")"
+        ],
+        "ifRoomStalls": "\"The engineer is on the line now. What are the three questions you ask him?\"",
+        "record": [
+          "time the CMT is activated (A2)",
+          "whether isolation is confirmed (not a power-off) and logged with a time (A1)",
+          "whether the backup question is asked (W2)",
+          "P2 — note by name who leads, who records, who speaks, and whether it needed discussion"
+        ],
+        "misinformation": "the engineer's \"only the front end is affected; the database is untouched\" is wrong — inject 7 corrects it. Record whether the room repeats it to firms or tenants before verifying."
+      }
+    },
+    {
+      "time": "T+15 min",
+      "minute": 15,
+      "durationMinutes": 10,
+      "phase": "widen",
+      "pressure": 2,
+      "icon": "people",
+      "team": "Registry & Client Services",
+      "output": "group",
+      "sfx": "none",
+      "video": null,
+      "narration": "on",
+      "attachments": "none",
+      "extendable": true,
+      "mustPlay": true,
+      "title": "Queue at the counter",
+      "desc": "Email · From: Hessa Saeed, counter supervisor, Registration Authority · To: Head of Registry & Client Services · Wednesday 9 December, 09:55\nSubject: EXERCISE – Counter: what are we allowed to do?\n\nWe have thirty-five people at the counter and more arriving. Most want certificates of good standing for bank transactions today; about a dozen are renewals. The portal is still down. Right now we are writing names and licence numbers on a sheet and telling people we will call them. Two of the corporate-service providers are asking for a signed receipt to show their clients. Can we accept paper applications and payments, and can we issue anything by hand? If yes, on whose authority, and what do we say about the licence expiry dates? I need an answer before the ten o'clock rush.",
+      "deliveredAs": "email",
+      "resources": [
+        "records",
+        "technology"
+      ],
+      "questions": [
+        "Is the counter allowed to go manual on its own, or is that a decision for someone else? Who?",
+        "If you say yes: what exactly is \"manual\" — which services, what forms, what register, who signs, and how will it be reconciled later?",
+        "What do you promise a firm whose licence or certificate is needed by a bank today?"
+      ],
+      "facilitatorMessages": [
+        {
+          "atMinute": 8,
+          "text": "2 minutes left — please finalise your answer"
+        }
+      ],
+      "observerWatch": [
+        "whether \"manual\" is described as a procedure or a phrase",
+        "whether anyone opens a document",
+        "whether the team escalates or decides alone"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 2 — Recovery and manual workarounds, Decision-making; the first appearance of the sponsor's question.",
+        "whatGoodLooksLike": [
+          "the team names who owns the decision (not the counter), lists what manual covers (intake only vs intake + signed receipt vs issuance), and gives the counter a holding line with a time",
+          "the question \"what evidence does a paper receipt give a bank?\" is raised"
+        ],
+        "ifRoomStalls": "\"A corporate-service provider is at the counter with a bank letter in hand. What does your counter supervisor say to her, word for word?\"",
+        "record": [
+          "W1 (procedure vs phrase)",
+          "P1 (any document opened)",
+          "whether the counter gets its answer within the 10 minutes"
+        ],
+        "misinformation": ""
+      }
+    },
+    {
+      "time": "T+25 min",
+      "minute": 25,
+      "durationMinutes": 10,
+      "phase": "widen",
+      "pressure": 3,
+      "icon": "scale",
+      "team": "Regulation & Supervision",
+      "output": "group",
+      "sfx": "none",
+      "video": null,
+      "narration": "on",
+      "attachments": "wanted",
+      "extendable": true,
+      "mustPlay": true,
+      "title": "\"Is this a reportable cyber incident?\"",
+      "desc": "Email · From: Head of Compliance, Cedarpoint Capital Limited (regulated firm) · To: Sareef Financial Services Authority incident-reporting desk · Wednesday 9 December, 10:05\nSubject: EXERCISE – Portal failure: our 24-hour notification clock\n\nOur filings to the registry portal have failed since 09:20 and a corporate-service provider tells us the centre has been attacked. Under our rules we must report a material cyber incident to you within twenty-four hours. Please confirm by 11:00 today: is this an SIFC incident or ours, is any firm data held on the portal exposed, and what is the Authority telling regulated firms? Our board meets at noon and I would rather read your notice than a news site. I have copied our chief executive.",
+      "deliveredAs": "email",
+      "resources": [
+        "records",
+        "technology"
+      ],
+      "questions": [
+        "What is your answer to this firm by 11:00 — and is it the same answer every regulated firm gets?",
+        "When does your first notice go to all regulated firms, by which channel, and who approves it?",
+        "Where is the contact list of regulated firms right now — open it. How many firms, and is it current?"
+      ],
+      "task": {
+        "type": "PRODUCE",
+        "text": "Draft the first notice to all regulated firms, in English and in Arabic as two separate outputs: what has happened, what SIFC knows about firms' data, whether their own reporting clock is running, what SIFC is doing, and when the next update comes. Keep each under 120 words. State who signs it.",
+        "label": "Notice to regulated firms",
+        "bilingual": true
+      },
+      "facilitatorMessages": [
+        {
+          "atMinute": 8,
+          "text": "2 minutes left — please finalise your answer"
+        }
+      ],
+      "observerWatch": [
+        "whether the team checks with the CMT before answering",
+        "whether the \"database untouched\" claim is repeated",
+        "how long it takes to find the contact list"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 3 — Regulatory notification; coordination between the regulator's desk and the CMT.",
+        "whatGoodLooksLike": [
+          "one notice for all firms rather than individual replies",
+          "it says what is not known",
+          "it does not repeat \"database untouched\" as fact",
+          "it names a time for the next update",
+          "the contact list is found and its owner named"
+        ],
+        "ifRoomStalls": "\"The firm's chief executive rings your director in three minutes. What is the one sentence she can say?\"",
+        "record": [
+          "time of the first notice (R1)",
+          "whether the notice addresses the firms' clock and their data (R2)",
+          "where the contact list is and how long it took (R4, P1)",
+          "whether the two messages (firms, later tenants) are agreed centrally (C2)",
+          "M3 (no unsupported figure or cause)"
+        ],
+        "misinformation": ""
+      }
+    },
+    {
+      "time": "T+35 min",
+      "minute": 35,
+      "durationMinutes": 10,
+      "phase": "constrain",
+      "pressure": 4,
+      "icon": "clock",
+      "team": "Estates & Technology",
+      "output": "group",
+      "sfx": "system-warning",
+      "video": null,
+      "narration": "on",
+      "urgency": "urgent",
+      "attachments": "none",
+      "extendable": false,
+      "mustPlay": true,
+      "title": "Tower 2 is heating up",
+      "desc": "Staff report · From: Prakash Nair, data-centre duty engineer, Tower 2 · WhatsApp to the Estates & Technology group · Wednesday 9 December, 10:15\n\nChilled-water supply to the whole of Tower 2 dropped at 10:02, the provider confirms a pressure fault on their island network and gives no time. Our standby chiller covers the hall only, and it did not start, motor fault, the contractor is forty minutes away. Hall is at 31 degrees and rising about one degree every three minutes. At 38 I have to start shutting servers or we lose hardware. In the hall: the mail system, the access-control server for both towers, the regulator's returns system, document management, and the isolated portal servers. I can hold about twenty minutes. Tell me the order to shut down and what stays up. Tenants on floors eight to twelve are already complaining the air is warm.",
+      "deliveredAs": "chat",
+      "resources": [
+        "equipment",
+        "buildings",
+        "technology",
+        "suppliers"
+      ],
+      "questions": [
+        "Which systems do you shut down first and which do you protect to the end? Who decides — this team or the Crisis Management Team — and how fast can you reach them?",
+        "When the mail system goes, how does the incident desk receive and send anything? What is your fallback channel, and does the regulated-firms list exist outside the mail system?",
+        "If the access-control server goes, what happens at the turnstiles and lifts, and who tells tenants?"
+      ],
+      "facilitatorMessages": [
+        {
+          "atMinute": 8,
+          "text": "2 minutes left — please finalise your answer"
+        }
+      ],
+      "observerWatch": [
+        "whether the CMT is told, and when",
+        "whether the remote participant is brought in",
+        "whether anyone connects this to the tenants"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 4 (recovery decisions) and Objective 1 (escalation speed); the second risk concern. Written so that no person at SIFC is at fault: the supply fault is the provider's, the chiller fault is mechanical.",
+        "whatGoodLooksLike": [
+          "the decision reaches the CMT within 10 minutes",
+          "a shutdown order is stated (keep access control and the returns system; shut document management first; the isolated portal servers are powered down last or kept for evidence — either answer with a reason)",
+          "a fallback channel for the desk (phone, a personal-device WhatsApp group, a web mail) is named",
+          "the remote supplier representative is asked what the restart sequence needs"
+        ],
+        "ifRoomStalls": "\"Prakash has twelve minutes left. Give him three system names in order.\"",
+        "record": [
+          "time the CMT learns of the cooling loss (A3)",
+          "the shutdown order and who decided it (D3)",
+          "whether the supplier representative was included (C3)"
+        ],
+        "misinformation": ""
+      }
+    },
+    {
+      "time": "T+45 min",
+      "minute": 45,
+      "durationMinutes": 5,
+      "phase": "external",
+      "pressure": 5,
+      "icon": "scale",
+      "team": "Crisis Management Team",
+      "output": "group",
+      "sfx": "phone-ring",
+      "video": null,
+      "narration": "on",
+      "urgency": "urgent-high",
+      "attachments": "none",
+      "extendable": false,
+      "mustPlay": true,
+      "title": "\"Yes or no: do we go manual?\"",
+      "desc": "Phone call (log) · From: Khalid Mansouri, head of registry operations, Registration Authority · taken by: the Head of Registry & Client Services' assistant, passed straight to the Crisis Management Team · Wednesday 9 December, 10:25\n\nI have sixty renewals that were paid online this morning and show nowhere, four hundred and ten more due by Friday, and a queue out of the door for certificates. Legal says a paper receipt has no standing unless the Registrar signs an instruction that manual processing is in force. The counter has had \"we're looking at it\" three times. I need a yes or a no in five minutes: are we going manual, who signs the instruction, what services does it cover, and what do I promise firms about their licence dates and the money they have already paid? If it is no, tell me what to say to the people in front of me.",
+      "deliveredAs": "call",
+      "resources": [
+        "records",
+        "technology"
+      ],
+      "questions": [
+        "Yes or no — and who, by name and role, owns that decision at SIFC?",
+        "What does the instruction say: services covered, what a paper receipt means, how the sixty paid renewals are protected, how everything is reconciled when the portal returns?",
+        "What do firms hear about expiry dates and fees paid, and from whom?"
+      ],
+      "task": {
+        "type": "DECIDE",
+        "text": "Record the decision (yes/no), the owner by name and role, the time it was taken, the services it covers, what a paper receipt means, and the one-sentence promise to firms about licence dates and fees already paid.",
+        "label": "Manual processing decision",
+        "bilingual": false
+      },
+      "facilitatorMessages": [
+        {
+          "atMinute": 3,
+          "text": "2 minutes left — please finalise your answer"
+        }
+      ],
+      "observerWatch": [
+        "whether the decision is actually taken or deferred",
+        "who speaks for the CMT",
+        "whether the team refers back to what the counter was told at inject 2"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 2 — the sponsor's question. Decision-making and command; recovery and manual workarounds.",
+        "whatGoodLooksLike": [
+          "a decision inside five minutes, with an owner (Registrar or CEO), a signed instruction, a scope (intake and receipts now; issuance of certificates by hand only with a stated check), a promise (\"no licence lapses and no fee is lost because of this incident; confirmations follow within 48 hours\"), and an instruction to log every paper transaction for reconciliation"
+        ],
+        "ifRoomStalls": "\"Khalid is holding. The answer is one word and one name.\"",
+        "record": [
+          "D1 (decision, owner, time)",
+          "D2 (scope, signature, receipt meaning)",
+          "W1 (procedure)",
+          "whether the five-minute deadline is met"
+        ],
+        "misinformation": ""
+      }
+    },
+    {
+      "time": "T+50 min",
+      "minute": 50,
+      "durationMinutes": 5,
+      "phase": "external",
+      "pressure": 5,
+      "icon": "megaphone",
+      "team": "All",
+      "output": "group",
+      "sfx": "news-bed",
+      "video": {
+        "title": "Breaking news: Registry portal down at Sareef Island Financial Centre",
+        "variant": "breaking",
+        "headline": "Registry portal down at Sareef Island Financial Centre",
+        "headline2": "Firms unable to file in renewal season",
+        "script_en": "We begin with breaking news. The online registry portal of the Sareef Island Financial Centre has been unavailable since before ten this morning, in the middle of the licence-renewal season.\n\nFirms on the island tell Marsa News they cannot file renewals or obtain certificates, and that queues have formed at the registry counter in Tower 1.\n\nSources tell Marsa News that some staff were seen outside Tower 2 and that the building's air conditioning is not working. The centre has not yet commented.\n\nThe island's emergency and crisis management centre says it is in contact with the centre's management.\n\nWe'll bring you more as it comes in.",
+        "script_ar": "نبدأ بخبر عاجل. توقفت بوابة السجل الإلكترونية في مركز جزيرة صريف المالي عن العمل منذ ما قبل الساعة العاشرة من صباح اليوم، وذلك في ذروة موسم تجديد التراخيص.\n\nوتقول شركات في الجزيرة لمرسى نيوز إنها لا تستطيع تقديم طلبات التجديد أو الحصول على الشهادات، وإن طوابير تشكّلت أمام مكاتب السجل في البرج الأول.\n\nوأفادت مصادر لـ«مرسى نيوز» بأن بعض الموظفين شوهدوا خارج البرج الثاني، وبأن تكييف المبنى لا يعمل. ولم تعلّق الجهة المشغّلة بعد.\n\nويقول مركز الطوارئ والأزمات في الجزيرة إنه على تواصل مع إدارة المركز.\n\nوسنوافيكم بالمستجدات تباعاً.",
+        "clock": "10:30"
+      },
+      "narration": "on",
+      "attachments": "wanted",
+      "extendable": false,
+      "mustPlay": true,
+      "title": "Marsa News and six hundred tenants",
+      "desc": "News · Marsa News · Wednesday 9 December, 10:30\nBreaking news: the SIFC registry portal has been down since before ten this morning, in the middle of licence-renewal season; firms say they cannot file or obtain certificates, and sources say the air conditioning in Tower 2 is not working. The centre has not commented.\n\nEmail · From: Maria Dela Cruz, tenant helpdesk supervisor, SIFC Real Estate & Facilities · To: Crisis Management Team · Wednesday 9 December, 10:28\nSubject: EXERCISE – Tenants asking whether to go home — reply by 10:45\nForty-one calls in twenty minutes from Tower 2 tenants: warm air on floors eight to twelve, some lift card readers not responding, and two firms asking if the building is being evacuated because of what Marsa News is saying. I have nothing to tell them except \"we are aware\". I need one message I can send to all six hundred tenant contacts by 10:45, and a decision on whether tenants in Tower 2 should stay or leave.",
+      "deliveredAs": "news",
+      "resources": [
+        "buildings",
+        "technology"
+      ],
+      "questions": [
+        "Do you respond to Marsa News and the posts — and if so, who speaks, and what is the one line you can say that is true now?",
+        "Stay or leave, for Tower 2 tenants: who decides, on what facts, and what if the access-control server goes down while they are deciding?",
+        "Firms heard from the news before they heard from you. What changes in your notification sequence from here on?"
+      ],
+      "task": {
+        "type": "PRODUCE",
+        "text": "Write the message to all six hundred tenant contacts: three sentences in English and the same three in Arabic, as two separate outputs — what is happening in Tower 2, stay or leave, and when the next update comes. Name who sends it and by which channel.",
+        "label": "Message to all tenants",
+        "bilingual": true
+      },
+      "socialPosts": [
+        {
+          "platform": "instagram",
+          "name": "Tower 2 tenants",
+          "handle": "@tower2life",
+          "text": "photo of a corridor thermometer reading 29 °C · \"No AC since 10. Lifts not reading cards. Are we evacuating or not??\"",
+          "stats": "480 likes · 96 comments"
+        }
+      ],
+      "facilitatorMessages": [
+        {
+          "atMinute": 3,
+          "text": "2 minutes left — please finalise your answer"
+        }
+      ],
+      "observerWatch": [
+        "whether the tenant message and the firms' notice contradict each other",
+        "whether the CMT had told the other teams what the cooling loss meant for them before the clip",
+        "whether anyone checks facts before posting"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 4 — Media, social media and stakeholder communication; coordination. The compound inject: the press and the tenants arrive together.",
+        "whatGoodLooksLike": [
+          "one spokesperson named",
+          "a short true holding line to the press (\"a technical incident affecting the registry portal; manual processing is in place; building services are being restored; next update at 11:30\")",
+          "one short tenant message in both languages, consistent with what firms were told",
+          "a stay/leave decision with a reason (comfort, not safety — the turnstiles are configured to fail open)",
+          "nobody guesses a cause. The video carries the bulletin, so the written news line is deliberately one sentence"
+        ],
+        "ifRoomStalls": "\"Maria sends at 10:45 whatever you give her. Give her three sentences.\"",
+        "record": [
+          "M1 (tenant message time; English text and the Arabic version)",
+          "M2 (respond or not, spokesperson)",
+          "M3 (no unsupported figure or cause)",
+          "C1 (whether the CMT briefed the other teams before the clip)",
+          "C2 (messages agreed centrally)"
+        ],
+        "misinformation": ""
+      }
+    },
+    {
+      "time": "T+55 min",
+      "minute": 55,
+      "durationMinutes": 15,
+      "phase": "recover",
+      "pressure": 2,
+      "icon": "monitor",
+      "team": "Crisis Management Team",
+      "output": "group",
+      "sfx": "none",
+      "video": null,
+      "narration": "on",
+      "urgency": "calm",
+      "attachments": "none",
+      "extendable": true,
+      "mustPlay": true,
+      "title": "The supplier's facts, and what comes back first",
+      "desc": "Staff report · From: Prakash Nair, data-centre duty engineer, Tower 2 · WhatsApp to the Estates & Technology group · Wednesday 9 December, 10:33\n\nProvider supply came back at 10:28. Hall is 33 degrees and falling, below 30 by 10:50. Standby chiller still out, contractor due 10:55. Anything we shut can come back in sequence from 10:50 — tell me the order.\n\nEmail · From: Vikram Sethi, account manager, your IT support supplier · To: Crisis Management Team · Wednesday 9 December, 10:34\nSubject: EXERCISE – Portal status, backups, and the decisions we need from you by 10:50\n\nCorrection to what my engineer said at 09:40: the licence register database was encrypted too. The last data backup we can certify clean is Monday 7 December, 23:00, at our site; restored into a rebuilt environment, everything filed since then, thirty-four hours, needs re-entry from paper or your logs. The portal can be back in a clean environment thirty-six hours after your go-ahead. We need by 10:50: the restoration order, your go-ahead for the restore, and whether the national cyber security authority has been told. The island's crisis centre called us as your supplier; we referred them to you. They want your written position by 12:00.",
+      "deliveredAs": "email",
+      "resources": [
+        "technology",
+        "records",
+        "suppliers",
+        "equipment"
+      ],
+      "questions": [
+        "In what order do systems come back — and what is the longest the portal can be down before SIFC's own obligations are breached? Say the number.",
+        "Thirty-four hours of filings are gone from the system — Tuesday's and this morning's. How are they recovered, who owns the reconciliation, and what do the sixty firms who paid this morning hear?",
+        "Do you extend the renewal deadline and waive late fees — from when to when — and which team and which person tells the national cyber security authority, the island's crisis centre and the regulated firms, by 12:00?"
+      ],
+      "facilitatorMessages": [
+        {
+          "atMinute": 10,
+          "text": "5 minutes left on this inject"
+        },
+        {
+          "atMinute": 13,
+          "text": "Please submit now"
+        }
+      ],
+      "observerWatch": [
+        "whether the room recalls what it told firms and tenants earlier",
+        "whether the backup question was asked before now",
+        "whether the deadline extension is dated"
+      ],
+      "breakAfterMinutes": 0,
+      "facilitator": {
+        "purpose": "Objective 4 — Recovery and manual workarounds; Regulatory notification (R3); corrects the misinformation.",
+        "whatGoodLooksLike": [
+          "a stated restoration order (access control and mail first, returns system, document management, portal last from the clean restore)",
+          "a tolerable downtime stated as a number",
+          "a dated deadline extension and fee waiver",
+          "a named owner for reconciliation of the thirty-four hours (about 240 filings on Tuesday plus 60 this morning)",
+          "notifications assigned by name with times",
+          "the room notices it may have told firms the database was untouched and corrects it"
+        ],
+        "ifRoomStalls": "\"The supplier's clock is running. Give him three decisions and one name for each.\"",
+        "record": [
+          "D4 (restoration order and tolerable downtime)",
+          "W2 (backup questions)",
+          "W3 (extension dated)",
+          "R3 (who notifies whom, by when)",
+          "whether the earlier misinformation was corrected in the firms' notice"
+        ],
+        "misinformation": "this inject corrects inject 1's \"database untouched\". Record whether any output before this inject repeated it."
+      }
+    }
+  ],
+  "facilitatorNotes": "Likely failure points for this client: the manual-processing question will be answered as a phrase in inject 2 and only becomes a decision in inject 5 — watch whether anyone names an owner before Khalid asks; the regulated-firms contact list \"somewhere in a spreadsheet\" may take minutes to locate and may live in the mail system that goes down in inject 4; the supplier's \"database untouched\" is likely to be repeated to firms in inject 3 — let it happen and record it, inject 7 corrects it; the tenants will be forgotten until the clip plays, which is the point of inject 6. The second risk (cooling) must be run as an event, never a person's fault — if a participant blames facilities, redirect to the decision. Hold the curve: allow \"+5\" on injects 1, 2, 3 and 7 if a team is genuinely writing; refuse it on 4, 5 and 6 — the five-minute peaks are the test. Warn the room before the system-warning tone on inject 4. In the debrief, come back to the sponsor's question first.",
+  "facilitationScript": "",
+  "debriefQuestions": [
+    {
+      "icon": "scale",
+      "text": "At 10:25 Khalid asked for a yes or a no. Who at SIFC owns the decision to go manual, and did the room know that before he asked?"
+    },
+    {
+      "icon": "megaphone",
+      "text": "Firms and tenants heard about Tower 2 from Marsa News before they heard from SIFC. What would have to be in place for that order to be reversed next time?"
+    },
+    {
+      "icon": "monitor",
+      "text": "The supplier said the database was untouched; it was not. What did the room repeat before checking, and what question would have caught it at 09:40?"
+    },
+    {
+      "icon": "clock",
+      "text": "Say the number: how long can the registry portal be down before SIFC breaches its own obligations — and what did the room agree comes back first?"
+    }
+  ],
+  "requiredDepartments": [
+    "Crisis Management Team",
+    "Regulation & Supervision",
+    "Registry & Client Services",
+    "Estates & Technology"
+  ],
+  "clientTargets": "Escalation / notification targets: No client plan provided — assess against good practice only\nCrisis team activation target: Not stated (good practice used here: within 20 minutes of the first alert — the 09:40 call, inject 1)\nRecovery time objectives (RTOs): Not stated — the room is asked to state the portal's tolerable downtime in inject 7\nRegulatory notification deadlines: Regulated firms report material cyber incidents to the SFSA within 24 hours (fictional SIFC rule); SIFC's own duty to the national cyber authority — not stated, tested in inject 7\nNamed roles and deputies: Not stated — the owner of the manual-processing decision is established in inject 5\nOther commitments tested: Tenant communication (inject 6); switch to manual processing (injects 2 and 5)",
+  "areaWeights": {
+    "Activation and escalation": 15,
+    "Decision-making and command": 20,
+    "Internal coordination between departments": 10,
+    "Media, social media and stakeholder communication": 15,
+    "Regulatory notification": 15,
+    "Recovery and manual workarounds": 15,
+    "Plan usability": 10
+  },
+  "readinessCriteria": [
+    {
+      "id": "A1",
+      "area": "Activation and escalation",
+      "text": "The room confirms the portal is isolated rather than ordering a power-off, and records the confirmation with a time",
+      "testedBy": "Inject 1 answer",
+      "ncema": "8.5.3.2"
+    },
+    {
+      "id": "A2",
+      "area": "Activation and escalation",
+      "text": "The Crisis Management Team is activated within 20 minutes of the first alert (the 09:40 call; i.e. by 10:00), with a named lead and a decision log",
+      "testedBy": "Inject 1 answer; facilitator timing",
+      "ncema": "8.5.3.2"
+    },
+    {
+      "id": "A3",
+      "area": "Activation and escalation",
+      "text": "The cooling loss in Tower 2 reaches the Crisis Management Team within 10 minutes of the engineer's message",
+      "testedBy": "Inject 4 timing; Observer",
+      "ncema": "8.5.3.2"
+    },
+    {
+      "id": "D1",
+      "area": "Decision-making and command",
+      "text": "The switch to manual registry processing is an explicit decision with a named owner and a time",
+      "testedBy": "Inject 5 DECIDE task",
+      "ncema": "8.5.3.1"
+    },
+    {
+      "id": "D2",
+      "area": "Decision-making and command",
+      "text": "The decision states the services covered, what a paper receipt means, and who signs the instruction",
+      "testedBy": "Inject 5 task text",
+      "ncema": "8.5.2.2(g)"
+    },
+    {
+      "id": "D3",
+      "area": "Decision-making and command",
+      "text": "The Tower 2 shutdown order is decided within 20 minutes of the engineer's message, naming what is kept running",
+      "testedBy": "Inject 4 answer",
+      "ncema": "8.5.3.1"
+    },
+    {
+      "id": "D4",
+      "area": "Decision-making and command",
+      "text": "The restoration order and a tolerable downtime for the portal are stated in the recovery decision",
+      "testedBy": "Inject 7 answer",
+      "ncema": "8.5.3.1"
+    },
+    {
+      "id": "C1",
+      "area": "Internal coordination between departments",
+      "text": "The Crisis Management Team tells Registry & Client Services and Regulation & Supervision what the cooling loss means for them before the news clip plays (inject 6)",
+      "testedBy": "Observer; injects 4–6",
+      "ncema": "8.5.1"
+    },
+    {
+      "id": "C2",
+      "area": "Internal coordination between departments",
+      "text": "The notice to firms and the message to tenants are agreed centrally and do not contradict each other",
+      "testedBy": "Injects 3 and 6 outputs",
+      "ncema": "8.5.3.3(a)"
+    },
+    {
+      "id": "C3",
+      "area": "Internal coordination between departments",
+      "text": "The remote supplier representative is included in the Tower 2 decision",
+      "testedBy": "Inject 4 answer; Observer",
+      "ncema": "8.5.1"
+    },
+    {
+      "id": "M1",
+      "area": "Media, social media and stakeholder communication",
+      "text": "Tenants receive one authoritative message, in English and Arabic, within 30 minutes of the cooling loss",
+      "testedBy": "Inject 6 PRODUCE task",
+      "ncema": "8.5.3.3"
+    },
+    {
+      "id": "M2",
+      "area": "Media, social media and stakeholder communication",
+      "text": "The room decides whether and how to respond to Marsa News and the posts, and names one spokesperson",
+      "testedBy": "Inject 6 questions",
+      "ncema": "8.5.3.3"
+    },
+    {
+      "id": "M3",
+      "area": "Media, social media and stakeholder communication",
+      "text": "No message gives a figure or cause that the facts in hand do not support",
+      "testedBy": "Injects 3 and 6 outputs",
+      "ncema": "8.5.3.3"
+    },
+    {
+      "id": "R1",
+      "area": "Regulatory notification",
+      "text": "A first notice to regulated firms is issued within 60 minutes of the incident being confirmed (the 09:40 call; i.e. by 10:40, inside inject 3's window)",
+      "testedBy": "Inject 3 PRODUCE task; timing",
+      "ncema": "8.5.3.2(g)"
+    },
+    {
+      "id": "R2",
+      "area": "Regulatory notification",
+      "text": "The notice tells firms whether their own 24-hour reporting clock is running and what SIFC knows about their data",
+      "testedBy": "Inject 3 output",
+      "ncema": "8.5.3.3"
+    },
+    {
+      "id": "R3",
+      "area": "Regulatory notification",
+      "text": "The room states who notifies the national cyber security authority and the island's crisis centre, and by when",
+      "testedBy": "Inject 7 answer",
+      "ncema": "4.2"
+    },
+    {
+      "id": "R4",
+      "area": "Regulatory notification",
+      "text": "The regulated-firms contact list is located and its channel and owner named",
+      "testedBy": "Inject 3 question 3; Observer",
+      "ncema": "8.5.3.3"
+    },
+    {
+      "id": "W1",
+      "area": "Recovery and manual workarounds",
+      "text": "Manual processing is described as a procedure (forms, register, receipts, reconciliation), not a phrase",
+      "testedBy": "Injects 2 and 5 answers",
+      "ncema": "8.4.3"
+    },
+    {
+      "id": "W2",
+      "area": "Recovery and manual workarounds",
+      "text": "The room asks about the backup (date, location, who certifies it clean) before relying on it",
+      "testedBy": "Injects 1 and 7 answers",
+      "ncema": "8.5.3.4"
+    },
+    {
+      "id": "W3",
+      "area": "Recovery and manual workarounds",
+      "text": "The renewal-deadline extension and late-fee waiver are decided and dated",
+      "testedBy": "Inject 7 answer",
+      "ncema": "8.5.3.5"
+    },
+    {
+      "id": "P1",
+      "area": "Plan usability",
+      "text": "A documented procedure or contact list is opened during the exercise and the room can say where it lives",
+      "testedBy": "Observer; injects 2 and 3",
+      "ncema": "7.2"
+    },
+    {
+      "id": "P2",
+      "area": "Plan usability",
+      "text": "Roles are clear without discussion: who leads, who records, who speaks",
+      "testedBy": "Observer throughout",
+      "ncema": "8.5.2.2"
+    },
+    {
+      "id": "P3",
+      "area": "Plan usability",
+      "text": "The debrief names at least one gap to fix with an owner",
+      "testedBy": "Debrief",
+      "ncema": "8.5.2.2"
+    }
+  ],
+  "resourceCoverage": [
+    {
+      "category": "people",
+      "tested": false,
+      "injects": [],
+      "note": "no absence or welfare thread in 90 minutes"
+    },
+    {
+      "category": "buildings",
+      "tested": true,
+      "injects": [
+        4,
+        6
+      ],
+      "note": "Tower 2 occupancy, lifts and access cards during the cooling loss"
+    },
+    {
+      "category": "equipment",
+      "tested": true,
+      "injects": [
+        4,
+        7
+      ],
+      "note": "chilled-water supply fault and a standby chiller that does not start; restart sequence"
+    },
+    {
+      "category": "technology",
+      "tested": true,
+      "injects": [
+        1,
+        2,
+        4,
+        5,
+        7
+      ],
+      "note": "portal encrypted; mail, access control, returns system at risk of shutdown"
+    },
+    {
+      "category": "suppliers",
+      "tested": true,
+      "injects": [
+        1,
+        4,
+        7
+      ],
+      "note": "the IT supplier holds admin access and the backups; the cooling provider's supply"
+    },
+    {
+      "category": "records",
+      "tested": true,
+      "injects": [
+        2,
+        3,
+        5,
+        7
+      ],
+      "note": "the licence register (34 hours of filings), the regulated-firms contact list"
+    }
+  ],
+  "groundTruth": "- **Scenario day:** Wednesday 9 December 2026, the week after the Eid Al Etihad holiday (2–3 December); renewal season; counters busiest 09:00–12:00. Weather ordinary (about 26 °C); no other event on the island.\n- **The attack (not told to the room unless asked):** entry three weeks earlier through a remote-access account used by the IT supplier, without multi-factor authentication; ransomware ran at about 09:10. The ransom note gives a payment address and a 72-hour timer. No attribution; no group named. Nothing has been paid and nobody in the scenario proposes paying.\n- **What is true at each inject:**\n  - 09:15 filings fail; 09:31 note seen on the admin console; 09:36 the supplier's engineer disconnects the portal servers (correct action). His statement that only the front end is affected is **wrong**: the register database was encrypted too. He does not know this until 10:20.\n  - 09:55: 35 at the counter; most want certificates of good standing; about 12 renewals.\n  - 10:05: regulated firms have their own rule to report material cyber incidents to the SFSA within 24 hours; no firm's data has been shown to be exposed, and nothing proves it has not. The regulated-firms contact list exists as a spreadsheet on the shared drive and inside the desk's mail system; it was last updated in September (about 180 regulated firms; roughly 1,900 licences on the whole register).\n  - 10:02: chilled-water supply pressure from the island's district-cooling provider drops for the whole of Tower 2 because of a fault on the provider's network (office floors lose cooling too); 10:10 SIFC's standby chiller — which serves the data hall only — fails to start (motor fault, no one's omission; the contractor arrives about 10:55); 10:15 the hall is at 31 °C rising about 1 °C per 3 minutes; generator power is fine throughout. Systems in the hall: mail, the access-control server (both towers), the regulator's returns system, document management, the isolated portal servers. Turnstiles are configured to fail open; lift card readers stop. Tenants on floors 8–12 of Tower 2 notice warm air from about 10:10.\n  - 10:25: 60 renewals paid online this morning now show nowhere; 410 renewals due by Friday 11 December; most licences expire 31 December. Legal's position: a paper receipt has standing only under a signed Registrar's instruction that manual processing is in force.\n  - 10:28–10:30: Marsa News runs the clip at 10:30; the tenant helpdesk has had 41 calls; nobody has been told to evacuate and there is no safety reason to.\n  - 10:28: the cooling provider restores supply to Tower 2; the hall and the office floors cool on the restored district supply; the standby chiller stays faulted until the contractor arrives (about 10:55) and plays no part in the recovery. Nobody left Tower 2 for good; a few staff and tenants stepped outside for air, which is what the Marsa News source saw.\n  - 10:34: the supplier's correction. Last certified-clean data backup: Monday 7 December, 23:00, held at the supplier's site. About 34 hours of filings (Monday 23:00 to Wednesday 09:10) must be re-entered from paper or logs: about 240 filings received on Tuesday 8 December (a full working day) and the 60 renewals paid this morning. Clean restore: about 36 hours from go-ahead. The hall is below 30 °C by 10:50; shut-down systems can return in sequence from 10:50. The island's emergency and crisis management centre wants SIFC's written position by 12:00. The supplier is obliged to state in its own report whether the national cyber security authority has been told.\n- **Deadlines that stay fixed whatever the room decides:** 11:00 (Cedarpoint's board question); 10:45 (tenant message); 10:50 (supplier's decisions); 12:00 (crisis centre).\n- **Branches:** inject 6 holds whether or not the room went manual at inject 5 (the tenants' question is about Tower 2); inject 7 holds whichever shutdown order was given at inject 4 (the supplier lists what \"can return\", not what was shut).\n- **Fictional people (all invented):** Rania Saleh, registry service desk supervisor; Hessa Saeed, counter supervisor; Head of Compliance, Cedarpoint Capital Limited (regulated firm, unnamed person); Prakash Nair, data-centre duty engineer; Khalid Mansouri, head of registry operations; Maria Dela Cruz, tenant helpdesk supervisor; Vikram Sethi, account manager at the IT support supplier. Officials by role only: the island's emergency and crisis management centre; the national cyber security authority. Firms and handles in the posts are fictional. Marsa News is the fictional channel.\n- **Numbers that follow from others:** 34 hours = Monday 23:00 → Wednesday 09:10 (34 h 10 min; the supplier says \"about thirty-four\"). Hall temperature: 31 °C at 10:15, ~38 °C at about 10:36 if nothing is shut; the restored supply at 10:28 means the peak stays below 36 °C — so a room that shut nothing was lucky, not right; say so in the debrief.",
+  "inspirationSources": [
+    {
+      "title": "PlanProof library — hazard-cyber-it-outage.md (§1 how it unfolds; British Library 2023; Colonial 2021)",
+      "url": "",
+      "used": "discovery by staff, isolate-don't-power-off, backups as the hinge, shutdown as a decision"
+    },
+    {
+      "title": "PlanProof library — hazard-power-water-cooling.md (§1; Singapore 2023; Dubai Marina 2019)",
+      "url": "",
+      "used": "cooling as the fastest clock; a third party's cooling fault; the chillers belong to someone else"
+    },
+    {
+      "title": "PlanProof library — sector-financial-centres-free-zones.md (§1, §4, §5; TSE 2020)",
+      "url": "",
+      "used": "one organisation, four hats; CSPs ring the desk; the 24-hour firm notification clock; restart-or-stay-down"
+    },
+    {
+      "title": "PlanProof library — uae-context.md (§2 calendar, §5 information flow, §6 fictional organisations)",
+      "url": "",
+      "used": "Eid Al Etihad 2–3 Dec 2026; WhatsApp as the real channel; the building layer; naming conventions"
+    }
+  ],
+  "review": {
+    "by": "fresh-eyes agent",
+    "findings": 20,
+    "fixed": 18
+  },
+  "version": 2,
+  "versionNote": "v2, 11 November 2026 — sponsor comments 1, 2, 3, 6 accepted; 4 and 5 pushed back",
+  "history": {
+    "mode": "first"
+  }
+}

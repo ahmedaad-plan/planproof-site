@@ -23,6 +23,7 @@
 // problem codes — never client data, counts or settings.
 
 import { INBOX, supabaseHeaders, sendViaResend, readStats } from "./intake-core.mjs";
+import { pollForSystemCheck } from "./send-email.mjs";
 
 export const DELAYED_AFTER_MS = 30 * 60 * 1000;
 export const RETRY_STALE_AFTER_MS = 20 * 60 * 1000;
@@ -224,6 +225,22 @@ export async function runSystemCheck(deps) {
           "", "If this email ever stops arriving on Monday mornings, the alarm itself is not working — tell Claude."].join("\n"));
     }
   }
+
+  // W8: client emails sent from the admin page — poll Resend for their delivery status and
+  // alert once per email that bounced, failed, or is still not delivered after an hour.
+  try {
+    const ce = await pollForSystemCheck({ ...deps, nowMs });
+    done.clientEmails = ce.skipped ? "skipped" : ce.checked;
+    const seen = new Set(state.clientEmailAlerted || []);
+    const fresh = (ce.problems || []).filter((p) => !seen.has(p.id));
+    if (fresh.length) {
+      await send("client-email", "⚠ PlanProof: a client email was not delivered",
+        ["An email sent from the admin page has not reached its recipient:", "",
+          ...fresh.map((p) => `• ${p.request_no || "(request)"} — ${p.kind} to ${p.to}: ${p.status === "sent" || p.status === "delayed" ? "not delivered after 1 hour" : p.status}`), "",
+          "Open the request on plan-proof.com/admin: press Resend, or Copy the link and send it from exercises@plan-proof.com yourself."].join("\n"));
+      if (done.sent.includes("client-email")) state.clientEmailAlerted = [...seen, ...fresh.map((p) => p.id)].slice(-200);
+    }
+  } catch (err) { log.error("system-check: client email poll failed:", err.message); }
 
   try { await deps.pending.setJSON("meta/alert-state", state); } catch { /* reported by the health check */ }
   if (h.problems.length) log.error("system-check problems:", JSON.stringify({ problems: h.problems, internal: h.internal }));
