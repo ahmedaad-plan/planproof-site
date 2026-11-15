@@ -1559,7 +1559,8 @@ function versionPanel(ctx, v) {
   if (sm) parts.push(table(["Length", "Messages", "Teams", "Things the report will score", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
     plainTasks(sm)]], "facts"));
   else parts.push(h("p", { class: "small muted" }, "Recorded by hand — no scenario file on the page for this version."));
-  if (v.note) parts.push(factsTable([["What changed", v.note]]));
+  // v7.3 (remark 22): the version note is client-facing — it goes into the email and onto the sponsor's page
+  if (v.note) parts.push(factsTable([[h("span", {}, "What changed", h("br"), h("span", { class: "small", style: "color:var(--attn)" }, "the sponsor sees this")), v.note]]));
   if (mails.length) parts.push(table(["Email", "To", "When", "Status"], mails.map((m) => [m.kind === "test" ? "Test copy" : "To the sponsor", m.to_address, hm(m.created_at),
     h("span", { class: EMAIL_BAD.has(m.status) && m.kind !== "test" ? "due-bad" : "" }, (EMAIL_WORD[m.status] || m.status) + (m.from_address && /notify\./.test(m.from_address) ? " (from notify.plan-proof.com)" : ""))]), "emails"));
   if (link) parts.push(factsTable([
