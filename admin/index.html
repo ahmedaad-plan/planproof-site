@@ -422,6 +422,7 @@
   nav.views button{ border-color:var(--blue); }
   nav.views button[aria-current="page"]{ background:var(--blue); border-color:var(--blue); color:#fff; }
   #app td .btn{ white-space:normal; text-align:left; }
+  #app a.next-cell.bad{ color:var(--red-soft); font-weight:700; } .next-cell.wait, .next-cell.white, .next-cell.none{ color:var(--text-muted); } .next-cell.ok{ color:var(--green-soft); }
   #app input[type=file]{ max-width:100%; }
   .filter-line{ margin:0 0 8px; font-size:14px; color:var(--text-muted); }
   .link-line{ margin:0; padding:8px 12px; border:1px dashed var(--border-strong); border-radius:8px; font-size:14px; }
@@ -896,7 +897,8 @@ function stateOf(s, versions, comments, rec, x = {}) {
   const firstSent = vs.some((v) => v.status !== "draft");
   const overdue = !!due && !firstSent && pastDue(due, nowMs) && s.status !== "delivered";
   const R = (o) => {
-    const pillText = o.next ? o.next.label + (o.showDue && due ? " — due " + dayName(due) : "") : o.waitText || "Waiting";
+    // v7.3 (remark 20): the Day-5 date belongs to v1 only — never shown once a version has been sent
+    const pillText = o.next ? o.next.label + (o.showDue && due && !firstSent ? " — due " + dayName(due) : "") : o.waitText || "Waiting";
     // red: the Day-5 date passed with no version sent, or the data removal is overdue
     const ov = o.overdue != null ? !!o.overdue : (o.block === "scenario" || o.block === "client") ? overdue : false;
     return { due, firstSent, waiting: !o.next, ...o, overdue: ov,
@@ -1033,7 +1035,10 @@ function requestTable(shown) {
       h("bdi", {}, c.company_name || "(no organisation name)"),
       dDay(s.created_at),
       (V7_TILES.find(([n]) => n === st.tile) || [0, ""])[1],
-      pill(st.pill ? st.pill.text : "", st.pill ? st.pill.tone : "none"),
+      // v7.3 (remark 20): the next action is a link (blue, underlined) that opens the request — not a button-shaped label;
+      // waiting and done are plain text; overdue is red text
+      st.next ? h("a", { class: "next-cell next-link" + (st.overdue ? " bad" : ""), href: "#request/" + s.id }, st.pill.text)
+        : h("span", { class: "next-cell " + (st.pill ? st.pill.tone : "none") }, (st.pill && st.pill.tone === "ok" ? "✓ " : "") + (st.pill ? st.pill.text : "")),
       dueCell] };
   }), "requests");
   t.querySelectorAll("tr.rrow").forEach((tr) => {
