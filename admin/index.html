@@ -2626,8 +2626,13 @@ function exerciseEmails(ctx) {
     message: [`Dear ${first},`,
       `Thank you — version ${v.version_no || ""} of "${label}" is approved and your exercise is set up.`,
       `When: ${when} (${minutes} minutes)\nWhere: ${s.venue}${teams.length ? "\nTeams: " + teams.join(" · ") + (obs ? ` · ${plural(obs, "Observer")}` : "") : ""}\nLanguage: ${lang}`,
-      "What we need from you before the day:\n1. One laptop connected to the room's screen and speakers, on the Wi-Fi the exercise will use. Please ask your IT contact to open this short check on it and press \"Email results to PlanProof\": " + "[the connection check link]" + "\n2. The participants' invitation — it comes in a separate email, for you to forward to everyone taking part.\n3. The names of the Observers.",
-      "Nothing is installed; participants bring a charged phone or laptop. Everything entered during the exercise is deleted 7 days after your report is delivered; findings describe teams, never individuals. A calendar file is attached.",
+      "What we need from you before the day:",
+      "1. A laptop for the room's screen. On the day, the exercise is shown on the room's screen from one laptop. Please connect a laptop to the screen and the speakers, on the same Wi-Fi the exercise will use.",
+      "2. A quick check of that laptop, a few days before. Please ask your IT contact to open the link below on that laptop. It checks the connection, the sound and the screen in about 20 seconds. When it finishes, they press the button \"Email results to PlanProof\", so we can confirm that everything works:\n" + "[the connection check link]",
+      "3. The participants' invitation. It comes in a separate email: please forward it to everyone taking part.",
+      "4. The names of the Observers.",
+      "Nothing needs to be installed; participants bring a charged phone or laptop. Everything entered during the exercise is deleted 7 days after your report is delivered; findings describe teams, never individuals.",
+      "The exercise is also attached as a calendar invitation (exercise.ics): open it and choose Add (or Save) to put it in your calendar.",
       "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
   };
   const inv = {
@@ -2636,7 +2641,7 @@ function exerciseEmails(ctx) {
       "Please bring a charged phone or laptop (and a charger). There is nothing to install. On the day you will scan a code on the room screen to join; if you prefer, here is the join link: [the join link]",
       `Before the day, this short video explains how the exercise works: ${BRIEFING_VIDEO_URL}`,
       "This exercise tests the plan, not individuals. Your name and job title appear only in the attendance list of your organisation's report; everything entered during the exercise is deleted 7 days after the report is delivered.",
-      "A calendar file is attached.\n\nThe PlanProof team"].join("\n\n"),
+      "The exercise is attached as a calendar invitation (exercise-invitation.ics): open it and choose Add (or Save) to put it in your calendar.\n\nThe PlanProof team"].join("\n\n"),
   };
   return { to: sp.email, conf, inv };
 }
