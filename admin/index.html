@@ -1394,7 +1394,7 @@ const sponsorOf = (ctx) => {
 };
 const SEND_LINK_MARKER = "[the private link]";
 // v7.3 (remark 6): plain words for the summary of a version.
-const plainTasks = (sm) => [sm.produce ? plural(sm.produce, "written statement") : null, sm.decide ? plural(sm.decide, "recorded decision") : null].filter(Boolean).join(" · ") || "none";
+const plainTasks = (sm) => [sm.produce ? plural(sm.produce, "written statement") : null, sm.decide ? plural(sm.decide, "recorded decision") : null, sm.locate ? sm.locate + (sm.locate === 1 ? " thing to find" : " things to find") : null].filter(Boolean).join(" · ") || "none";
 const plainLine = (sm) => !sm ? "" : sm.injects == null && sm.line ? sm.line : [sm.label, sm.version ? "v" + sm.version : null, sm.injects != null ? plural(sm.injects, "message") : null, sm.minutes ? sm.minutes + " minutes" : null,
   sm.teams != null ? plural(sm.teams, "team") : null, plainTasks(sm), sm.criteria != null ? sm.criteria + " things the report will score" : null].filter(Boolean).join(" · ");
 function reviewEmail(ctx, v) {
@@ -1592,7 +1592,7 @@ function factsOf(v) {
     injects: sc ? inj.length : sm.injects,
     teams: sc ? (Array.isArray(sc.requiredDepartments) ? sc.requiredDepartments.length : new Set(inj.map((i) => i.team).filter((t) => t && t !== "All")).size) : sm.teams,
     criteria: sc ? (sc.readinessCriteria || []).length : sm.criteria,
-    produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide,
+    produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide, locate: sc ? typ("LOCATE") : sm.locate,
   };
 }
 function designPrompt(ctx) {
