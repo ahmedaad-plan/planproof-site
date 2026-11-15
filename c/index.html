@@ -105,23 +105,24 @@
       '<p class="hint" style="margin:8px 0 0">Need a change? Reply to our email or write to <a href="mailto:exercises@plan-proof.com">exercises@plan-proof.com</a>.</p></div>'];
     top.push('<div class="tools"><button class="btn dark" type="button" id="printBtn">Print or save as PDF</button>' +
       '<span class="hint">To save a PDF, choose <b>Save as PDF</b> as the printer. If a web address appears at the foot of the pages, untick <b>Headers and footers</b>.</span>' +
-      (done ? '' : '<a class="btn" href="#respond">Comment or approve ↓</a>') + '</div>');
+      (done ? '' : '<a class="btn" href="#respond">Approve or comment ↓</a>') + '</div>');
     var body = '<table class="pt" role="presentation"><thead><tr><td><div class="ph"></div></td></tr></thead><tfoot><tr><td><div class="pf"></div></td></tr></tfoot><tbody><tr><td>' +
       '<article class="cc">' + window.PPCopy.renderHtml(d) + '</article></td></tr></tbody></table>' +
       '<div class="pfoot">PlanProof · scenario v' + esc(v) + ' for ' + esc(org) + ' · Confidential — for the sponsor and reviewers only, not for participants</div>';
     var canApprove = !d.newer_version_no && !d.approved_by_sponsor;
-    var panel = '<section class="panel" id="respond" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
-      '<p class="hint">Write anything you would like changed — your comments reach PlanProof at once.</p>' +
-      '<p class="hint"><b>We will send you the final scenario within 5 working days of your last comments. To leave enough time for the exercise arrangements, we would be grateful to receive any comments at least 10 working days before the exercise date.</b></p>' +
-      '<form id="cForm" novalidate><label for="cName">Your name</label><input type="text" id="cName" maxlength="200" autocomplete="name">' +
-      '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
-      '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>' +
-      '<section class="panel" aria-labelledby="apH"><h2 id="apH">I approve this version</h2>' +
+    // v7.3 (Ahmed 15 Nov): approving comes first, comments second
+    var panel = '<section class="panel" id="respond" aria-labelledby="apH"><h2 id="apH">I approve this version</h2>' +
       (canApprove ? '<p class="hint">When you are happy with v' + esc(v) + ', approve it here. PlanProof then confirms the date, time and room with you.</p>' +
         '<form id="aForm" novalidate><label for="aName">Your name</label><input type="text" id="aName" maxlength="200" autocomplete="name">' +
         '<label class="tick"><input type="checkbox" id="aTick"> <span>I confirm this is the version to run.</span></label>' +
         '<div style="margin-top:12px"><button class="btn green" type="submit" id="aSend">I approve this version</button></div><div class="msg" id="aMsg" role="status"></div></form>'
-        : '<p class="hint">' + (d.approved_by_sponsor ? 'This version is already approved.' : 'Please use the newest version\'s link to approve.') + '</p>') + '</section>';
+        : '<p class="hint">' + (d.approved_by_sponsor ? 'This version is already approved.' : 'Please use the newest version\'s link to approve.') + '</p>') + '</section>' +
+      '<section class="panel" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
+      '<p class="hint">Write anything you would like changed — your comments reach PlanProof at once.</p>' +
+      '<p class="hint"><b>We will send you the final scenario within 5 working days of your last comments. To leave enough time for the exercise arrangements, we would be grateful to receive any comments at least 10 working days before the exercise date.</b></p>' +
+      '<form id="cForm" novalidate><label for="cName">Your name</label><input type="text" id="cName" maxlength="200" autocomplete="name">' +
+      '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
+      '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>';
     main.innerHTML = top.join("") + body + (done ? "" : panel);
     document.getElementById("printBtn").onclick = function () { window.print(); };
     var cForm = document.getElementById("cForm"), cMsg = document.getElementById("cMsg"), cSend = document.getElementById("cSend");

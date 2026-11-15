@@ -1440,6 +1440,12 @@ function sendForm(ctx, v, isResend) {
       const ok = await confirmBox({ title: `Send v${v.version_no} again?`, text: `It was already sent ${Math.max(1, Math.round((Date.now() - Date.parse(recent.created_at)) / 60000))} minute(s) ago to ${recent.to_address}.`, ok: "Send again" });
       if (!ok) return;
     }
+    // v7.3 (remark 22, Ahmed 15 Nov): the "What changed" line goes to the sponsor — show it before sending
+    const changed = (message().match(/What changed from v\d+:[^\n]*/) || [])[0];
+    if (changed) {
+      const ok = await confirmBox({ title: "Check what the sponsor will read", text: "“" + changed + "” — if anything here is internal, go back and edit it in the top box.", ok: "Send" });
+      if (!ok) return;
+    }
     send.disabled = true; out.textContent = "Sending…";
     try {
       const r = await postEmail({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: message() });
