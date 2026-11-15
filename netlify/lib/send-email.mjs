@@ -28,6 +28,8 @@ export const NOT_DELIVERED_AFTER_MS = 60 * 60 * 1000; // design D.3: alert after
 const KINDS = new Set(["review", "confirmation", "invitation", "report", "test"]);
 // A test copy to PlanProof itself (v7.1): no private link; the place where it would go is marked.
 export const TEST_LINK_TEXT = "[TEST COPY — the sponsor's private link appears here]";
+// v7.3 (remark 10): the test copy says at once why it has no working link.
+export const TEST_INTRO = "TEST COPY — this is how the sponsor's email will look. It has no working link: the sponsor's private link is made only when you press Send on the admin page.";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class SendError extends Error {
@@ -138,7 +140,7 @@ export async function sendClientEmail(deps, token, body) {
   const link = rec && rec.token ? linkFor(deps.origin, rec.token) : null;
   if ((kind === "review" || kind === "report") && !link) throw new SendError(500, "The private link was not made — nothing was sent.");
   const { text, html } = kind === "test"
-    ? buildBody(message.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
+    ? buildBody(TEST_INTRO + "\n\n" + message.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
     : buildBody(message, link, rec.expires_at);
 
   // 2. send

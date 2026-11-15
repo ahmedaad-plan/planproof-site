@@ -40,10 +40,18 @@
   .center{ text-align:center; padding:60px 18px; }
   .center h1{ font-family:"Space Grotesk",system-ui,sans-serif; font-size:24px; margin:0 0 10px; }
   :focus-visible{ outline:3px solid #1d2433; outline-offset:2px; }
+  .pt{ width:100%; border-collapse:collapse; } .pt td{ padding:0; } .ph, .pf, .pfoot{ display:none; }
+  .final{ background:#eaf6f0; border:1px solid #9fd3b9; border-radius:10px; padding:16px 18px; margin:0 0 14px; }
+  .final strong{ display:block; font-size:17px; margin-bottom:4px; }
   @media print{
-    body{ background:#fff; } .bar, .tools, .panel, .notice.screen-only{ display:none !important; }
-    main{ padding:0; max-width:none; }
-    @page{ margin:16mm 14mm; }
+    /* v7.3 (remark 11): page margin 0 stops Chrome and Edge printing the page address
+       (the sponsor's private link) and the date; the spacer rows repeat on every page
+       and give the margins, and our own footer replaces the browser's. */
+    @page{ margin:0; size:A4; }
+    body{ background:#fff; } .bar, .tools, .panel, .notice.screen-only, .final{ display:none !important; }
+    main{ padding:0 14mm; max-width:none; }
+    .ph{ display:block; height:14mm; } .pf{ display:block; height:14mm; }
+    .pfoot{ display:block; position:fixed; left:14mm; right:14mm; bottom:5mm; font-size:8.5pt; color:#5b6575; border-top:1px solid #d9dee5; padding-top:3px; }
   }
 </style>
 </head>
@@ -60,6 +68,8 @@
   var main = document.getElementById("main");
   var token = (location.pathname.match(/\/c\/([A-Za-z0-9_-]{32,64})\/?$/) || [])[1] || "";
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function longDateTime(iso) { try { var x = new Date(iso); return x.toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "long", year: "numeric" }) + " at " + x.toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } }
+  function firstName(n) { return String(n || "").trim().split(/\s+/)[0] || ""; }
   function longDate(iso) { try { return new Date(iso).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "long", year: "numeric" }); } catch (e) { return ""; } }
   function rpc(name, args) {
     return fetch(SB + "/rest/v1/rpc/" + name, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(args), cache: "no-store" })
@@ -87,13 +97,18 @@
     document.getElementById("barTag").textContent = "Scenario v" + v + " — for " + org;
     var top = [];
     top.push('<div class="notice screen-only"><strong>Prepared for ' + esc(org) + ' — version v' + esc(v) + ' — for the sponsor\'s approval.</strong>' +
-      'Please do not share it with the participants: the exercise only tests the teams if they have not seen the injects. This link works until ' + esc(longDate(d.expires_at)) + '.</div>');
+      'Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond. This link works until ' + esc(longDate(d.expires_at)) + '.</div>');
     if (d.newer_version_no) top.push('<div class="notice red screen-only"><strong>A newer version (v' + esc(d.newer_version_no) + ') has been sent to you.</strong>Please use the link in the newest email to comment on or approve the scenario.</div>');
-    if (d.approved_by_sponsor) top.push('<div class="notice ok screen-only"><strong>Approved by ' + esc(d.approved_by_sponsor.by) + ' on ' + esc(longDate(d.approved_by_sponsor.at)) + '.</strong>Thank you — PlanProof will confirm the exercise details.</div>');
+    var done = d.approved_by_sponsor;
+    if (done) top = ['<div class="final" role="status" id="finalBox"><strong>You approved version ' + esc(v) + ' on ' + esc(longDateTime(done.at)) + '.</strong>' +
+      'Thank you, ' + esc(firstName(done.by)) + ' — PlanProof will be in touch to confirm the exercise details.' +
+      '<p class="hint" style="margin:8px 0 0">Need a change? Reply to our email or write to <a href="mailto:exercises@plan-proof.com">exercises@plan-proof.com</a>.</p></div>'];
     top.push('<div class="tools"><button class="btn dark" type="button" id="printBtn">Print or save as PDF</button>' +
-      '<span class="hint">To save a PDF, choose <b>Save as PDF</b> as the printer.</span>' +
-      '<a class="btn" href="#respond">Comment or approve ↓</a></div>');
-    var body = '<article class="cc">' + window.PPCopy.renderHtml(d) + '</article>';
+      '<span class="hint">To save a PDF, choose <b>Save as PDF</b> as the printer. If a web address appears at the foot of the pages, untick <b>Headers and footers</b>.</span>' +
+      (done ? '' : '<a class="btn" href="#respond">Comment or approve ↓</a>') + '</div>');
+    var body = '<table class="pt" role="presentation"><thead><tr><td><div class="ph"></div></td></tr></thead><tfoot><tr><td><div class="pf"></div></td></tr></tfoot><tbody><tr><td>' +
+      '<article class="cc">' + window.PPCopy.renderHtml(d) + '</article></td></tr></tbody></table>' +
+      '<div class="pfoot">PlanProof · scenario v' + esc(v) + ' for ' + esc(org) + ' · Confidential — for the sponsor and reviewers only, not for participants</div>';
     var canApprove = !d.newer_version_no && !d.approved_by_sponsor;
     var panel = '<section class="panel" id="respond" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
       '<p class="hint">Write anything you would like changed — they reach PlanProof at once. You can send comments more than once.</p>' +
@@ -106,10 +121,10 @@
         '<label class="tick"><input type="checkbox" id="aTick"> <span>I confirm this is the version to run.</span></label>' +
         '<div style="margin-top:12px"><button class="btn green" type="submit" id="aSend">I approve this version</button></div><div class="msg" id="aMsg" role="status"></div></form>'
         : '<p class="hint">' + (d.approved_by_sponsor ? 'This version is already approved.' : 'Please use the newest version\'s link to approve.') + '</p>') + '</section>';
-    main.innerHTML = top.join("") + body + panel;
+    main.innerHTML = top.join("") + body + (done ? "" : panel);
     document.getElementById("printBtn").onclick = function () { window.print(); };
     var cForm = document.getElementById("cForm"), cMsg = document.getElementById("cMsg"), cSend = document.getElementById("cSend");
-    cForm.onsubmit = function (e) {
+    if (cForm) cForm.onsubmit = function (e) {
       e.preventDefault();
       var name = document.getElementById("cName").value.trim(), text = document.getElementById("cBody").value.trim();
       cMsg.className = "msg err";
@@ -131,7 +146,7 @@
       if (!tick) { aMsg.textContent = "Please tick “I confirm this is the version to run”."; return; }
       aSend.disabled = true; aMsg.className = "msg"; aMsg.textContent = "Sending…";
       rpc("client_approve", { p_token: token, p_name: name, p_confirm: true }).then(function (r) {
-        if (r && r.ok) { aMsg.className = "msg ok"; aMsg.textContent = "Approved — thank you, " + name + ". PlanProof will confirm the exercise details with you."; aSend.disabled = true; return; }
+        if (r && r.ok) { d.approved_by_sponsor = { by: name, at: new Date().toISOString() }; draw(d); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
         aMsg.className = "msg err";
         aMsg.textContent = r && r.state === "newer" ? "A newer version (v" + r.newer_version_no + ") exists — please use its link." : r && r.state === "expired" ? "This link has expired — please ask PlanProof for a new one." : "Not recorded — please write to exercises@plan-proof.com.";
         aSend.disabled = false;

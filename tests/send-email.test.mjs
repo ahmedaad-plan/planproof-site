@@ -160,4 +160,6 @@ test("test send: kind 'test' goes out marked TEST, with the link place marked, a
   assert.ok(w.emails[0].text.includes("[TEST COPY — the sponsor's private link appears here]"));
   assert.ok(!w.emails[0].text.includes("/c/"), "no private link in a test copy");
   assert.equal(out.link, null);
+  // v7.3 (remark 10): the test copy says at once why it has no working link
+  assert.ok(w.emails[0].text.startsWith("TEST COPY — this is how the sponsor's email will look. It has no working link"), w.emails[0].text.slice(0, 120));
 });

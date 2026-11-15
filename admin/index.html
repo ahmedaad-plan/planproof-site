@@ -403,6 +403,33 @@
   dialog{ background:var(--panel); color:var(--text); border:1px solid var(--red); border-radius:12px; max-width:460px; width:92vw; padding:22px; }
   dialog::backdrop{ background:rgba(0,0,0,.65); }
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+
+  /* v7.3 (remarks 13 + 3, Ahmed 14 Nov): one meaning per look.
+     Red filled = the one thing to do now. Blue filled = something you can click now.
+     Faded grey = not yet (hover or tap says why). Green ✓ = done (no button).
+     Blue underlined = a link. Plain text never looks clickable. */
+  :root{ --blue:#2f63c9; --blue-hover:#4377dd; --link:#8db8ff; }
+  #app .btn:not(.red):not(.danger), dialog .btn:not(.red):not(.danger){ background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+  #app .btn:not(.red):not(.danger):hover, dialog .btn:not(.red):not(.danger):hover{ background:var(--blue-hover); border-color:var(--blue-hover); }
+  #app .btn.red{ background:var(--red); border-color:var(--red); color:#fff; font-weight:700; }
+  #app .btn[disabled], dialog .btn[disabled]{ background:#353a42 !important; border-color:#353a42 !important; color:#8c95a1 !important; opacity:1; cursor:not-allowed; }
+  #app a:not(.btn), dialog a:not(.btn){ color:var(--link); text-decoration:underline; text-underline-offset:2px; }
+  #app details.v7-block > summary::after{ content:"Open ▾"; font-size:13px; color:var(--link); text-decoration:underline; white-space:nowrap; }
+  #app details.v7-block[open] > summary::after{ content:"Close ▴"; }
+  #app details.v7-fold > summary, #app details.more > summary{ color:var(--link); text-decoration:underline; text-underline-offset:2px; }
+  #app .v7-goto:not([disabled]){ text-decoration:underline; text-underline-offset:3px; }
+  #app .v7-goto[disabled]{ opacity:.55; cursor:not-allowed; }
+  nav.views button{ border-color:var(--blue); }
+  nav.views button[aria-current="page"]{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  #app td .btn{ white-space:normal; text-align:left; }
+  #app input[type=file]{ max-width:100%; }
+  .filter-line{ margin:0 0 8px; font-size:14px; color:var(--text-muted); }
+  .link-line{ margin:0; padding:8px 12px; border:1px dashed var(--border-strong); border-radius:8px; font-size:14px; }
+  .link-line .fake-link{ color:var(--link); text-decoration:underline; }
+  .tag.team-only{ border-color:var(--red); color:var(--red-soft); }
+  .team-note{ color:var(--red-soft); margin:0; }
+  fieldset.who{ border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin:0; display:flex; flex-direction:column; gap:6px; }
+  fieldset.who legend{ font-weight:600; font-size:14px; padding:0 4px; }
 </style>
 <link rel="stylesheet" href="/c/copy.css">
 </head>
@@ -414,7 +441,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v7.2</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v7.3</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -835,7 +862,11 @@ let requestTile = Number(sessionStorage.getItem("pp_admin_reqtile7")) || 0;
 let showDelivered = sessionStorage.getItem("pp_admin_showdelivered") === "1";
 let requestSearch = "";
 let keepScroll = null;
-const reloadKeepingPlace = () => { keepScroll = window.scrollY; route(); };
+// v7.3 (remark 15): a form whose own button was just pressed is done with its text —
+// when the page then redraws, that form's drafts are forgotten (a failure does not redraw).
+let lastSubmit = null;
+document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-form] .btn.primary, [data-form] .btn.red"); if (b) lastSubmit = { form: b.closest("[data-form]"), at: Date.now() }; }, true);
+const reloadKeepingPlace = () => { if (lastSubmit && Date.now() - lastSubmit.at < 20000) { clearDrafts(lastSubmit.form); } lastSubmit = null; keepScroll = window.scrollY; route(); };
 
 // Dates: Day-5 due date = Contacted + 5 working days (Monday–Friday, UAE time).
 const dubaiYmd = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
@@ -968,7 +999,10 @@ async function renderRequests() {
     let shown = requestTile ? inTile(requestTile) : rows.filter((r) => showDelivered || r.status !== "delivered");
     if (needle) shown = rows.filter((r) => [r.request_no, r.client && r.client.company_name, r.client && r.client.contact_name, r.client && r.client.email, r.risk_concern_1, r.org_unit, r.service_type]
       .filter(Boolean).some((v) => String(v).toLowerCase().includes(needle)));
-    list.replaceChildren(shown.length ? requestTable(shown) :
+    const tileName = requestTile ? (V7_TILES.find(([n]) => n === requestTile) || [0, ""])[1] : "";
+    const filterLine = requestTile && !needle ? h("p", { class: "filter-line", id: "filterLine" }, "Showing: " + tileName + " only · ",
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); requestTile = 0; sessionStorage.setItem("pp_admin_reqtile7", ""); draw(); } }, "Show all")) : null;
+    list.replaceChildren(...(filterLine ? [filterLine] : []), shown.length ? requestTable(shown) :
       h("div", { class: "card plain" }, h("p", { class: "empty" }, needle ? "No request matches that search." : requestTile ? "No requests here." : "No open requests.")));
     searchHint.textContent = needle ? plural(shown.length, "request") + " match \"" + requestSearch.trim() + "\" across all " + rows.length + " requests" : "";
     searchHint.hidden = !needle;
@@ -1026,6 +1060,37 @@ function keptLine(ret) {
   return h("p", { class: "small muted keep-until", style: "margin:6px 0 0" }, text);
 }
 
+// v7.3 (remark 15): text typed in an open form survives a live redraw. Each box is
+// remembered by request, form, version and label; it is forgotten when the form is
+// sent or cancelled.
+const DRAFTS = "pp_admin_drafts";
+const draftKey = (el) => {
+  const f = el.closest && el.closest("[data-form]"); if (!f) return null;
+  const k = el.getAttribute("data-k") || el.getAttribute("aria-label") || el.getAttribute("placeholder"); if (!k) return null;
+  const v = el.closest("[data-version]");
+  return [location.hash.split("?")[0], f.getAttribute("data-form"), v ? v.getAttribute("data-version") : "", k].join("|");
+};
+const readDrafts = () => { try { return JSON.parse(sessionStorage.getItem(DRAFTS) || "{}"); } catch { return {}; } };
+const DRAFT_FIELDS = "textarea, input[type=text], input[type=email], input[type=date]";
+document.addEventListener("input", (e) => {
+  const el = e.target; if (!el || !el.matches || !el.matches(DRAFT_FIELDS)) return;
+  const k = draftKey(el); if (!k) return;
+  const d = readDrafts(); if (el.value === el.defaultValue) delete d[k]; else d[k] = el.value;
+  try { sessionStorage.setItem(DRAFTS, JSON.stringify(d)); } catch { /* full */ }
+}, true);
+function clearDrafts(form) {
+  if (!form) return; const d = readDrafts();
+  form.querySelectorAll(DRAFT_FIELDS).forEach((el) => { const k = draftKey(el); if (k) delete d[k]; });
+  try { sessionStorage.setItem(DRAFTS, JSON.stringify(d)); } catch { /* full */ }
+}
+function restoreDrafts(root) {
+  const d = readDrafts(); let n = 0;
+  root.querySelectorAll("[data-form] textarea, [data-form] input[type=text], [data-form] input[type=email], [data-form] input[type=date]").forEach((el) => {
+    const k = draftKey(el);
+    if (k && Object.prototype.hasOwnProperty.call(d, k) && el.value !== d[k]) { el.value = d[k]; const f = el.closest("[data-form]"); f.hidden = false; openAround(f); n++; }
+  });
+  return n;
+}
 let live = { channel: null, timer: null, sig: null, id: null, note: null };
 function stopLive() {
   if (live.channel) { try { sb.removeChannel(live.channel); } catch { /* gone */ } }
@@ -1034,14 +1099,15 @@ function stopLive() {
 // Someone is typing: a box has the focus, or a box in an open form was changed
 // from what the page filled in. Then a live change shows a Refresh banner
 // instead of redrawing the page under their fingers.
+// v7.3: typed text now survives a redraw (drafts), so only the box being typed in holds the redraw back.
 const editing = () => [...document.querySelectorAll("#app textarea, #app input[type=text], #app input[type=email], #app input[type=search]")]
-  .some((el) => el === document.activeElement || (el.value !== el.defaultValue && el.closest(".inline-form:not([hidden]), .add-box:not([hidden])")));
+  .some((el) => el === document.activeElement);
 function onActivity(why) {
   if (live.note == null) live.note = why || "";
   else if (why) live.note = why;
   if (editing()) {
     const b = $("liveBanner");
-    if (b) { put(b, h("span", {}, (live.note || "New activity on this request") + " — "), h("button", { class: "btn sm", type: "button", onclick: () => reloadKeepingPlace() }, "Refresh")); b.hidden = false; }
+    if (b) { put(b, h("span", {}, (live.note || "New activity on this request") + " — "), h("button", { class: "btn sm", type: "button", onclick: () => reloadKeepingPlace() }, "Refresh"), h("span", { class: "small muted" }, " (your typed text is kept)")); b.hidden = false; }
     return;
   }
   clearTimeout(onActivity._t);
@@ -1065,7 +1131,7 @@ function startLive(id, knownVersionIds) {
       .on("postgres_changes", { event: "*", schema: "public", table: "submission_scenario_versions", filter: filt }, (p) => {
         const n = p.new || {};
         const fresh = n.id && !knownVersionIds.has(n.id);
-        onActivity(fresh ? `v${n.version_no} arrived${n.added_how === "claude" ? " from Claude" : ""}${n.summary && n.summary.line ? " — " + n.summary.line : ""}`
+        onActivity(fresh ? `v${n.version_no} arrived${n.added_how === "claude" ? " from Claude" : ""}${n.summary ? " — " + plainLine(n.summary) : ""}`
           : n.sponsor_approved_at ? `v${n.version_no} approved by the sponsor on their page` : "");
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "submission_client_comments", filter: filt }, (p) => onActivity((p.new && p.new.source === "client_page") ? "A comment arrived from the sponsor's page" : "A comment was added"))
@@ -1197,6 +1263,12 @@ async function renderRequest(id) {
     if (primary) { primary.classList.add("red"); primary.classList.remove("quiet", "primary", "sm"); primary.id = "nextBtn"; openAround(primary); }
   }
   app.replaceChildren(head, banner, blocks, moreFold(ctx));
+  // v7.3 (remark 18): More… stays as it was (open after Remove, Revoke, Save).
+  const moreEl = app.querySelector("details.more");
+  if (moreEl) { if (sessionStorage.getItem("pp_admin_more_open") === s.id) moreEl.open = true;
+    moreEl.addEventListener("toggle", () => sessionStorage.setItem("pp_admin_more_open", moreEl.open ? s.id : "")); }
+  // v7.3 (remark 15): typed text comes back after a redraw.
+  if (restoreDrafts(app)) toast("Updated — your typed text is kept");
   if (keepScroll != null) { const y = keepScroll; keepScroll = null; requestAnimationFrame(() => window.scrollTo({ top: y })); }
   startLive(id, new Set((versions || []).map((v) => v.id)));
   if ((emails || []).some((e) => ["sending", "sent", "delayed"].includes(e.status))) {
@@ -1269,6 +1341,10 @@ const sponsorOf = (ctx) => {
   return { name: (p && p.name) || c.contact_name || "", email: (p && p.email) || c.email || "", role: p && p.role };
 };
 const SEND_LINK_MARKER = "[the private link]";
+// v7.3 (remark 6): plain words for the summary of a version.
+const plainTasks = (sm) => [sm.produce ? plural(sm.produce, "written statement") : null, sm.decide ? plural(sm.decide, "recorded decision") : null].filter(Boolean).join(" · ") || "none";
+const plainLine = (sm) => !sm ? "" : sm.injects == null && sm.line ? sm.line : [sm.label, sm.version ? "v" + sm.version : null, sm.injects != null ? plural(sm.injects, "message") : null, sm.minutes ? sm.minutes + " minutes" : null,
+  sm.teams != null ? plural(sm.teams, "team") : null, plainTasks(sm), sm.criteria != null ? sm.criteria + " things the report will score" : null].filter(Boolean).join(" · ");
 function reviewEmail(ctx, v) {
   const sp = sponsorOf(ctx);
   const first = (sp.name || "").trim().split(/\s+/)[0] || "";
@@ -1278,14 +1354,17 @@ function reviewEmail(ctx, v) {
   return {
     to: sp.email,
     subject: `PlanProof — exercise scenario v${v.version_no} for your review (${ctx.s.request_no || ""})`.replace(" ()", ""),
-    message: [`Dear ${first || "colleague"},`,
-      `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review at the private link below. The link is for you and the people you choose; please do not share it with the participants — the exercise only tests the teams if the injects are unseen.`,
-      `Open the scenario: ${SEND_LINK_MARKER}`,
-      prev && note ? `What changed from v${prev}: ${note}` : null,
-      "On the page you can send us your comments, or approve the version when you are happy with it. You can also print it or save it as a PDF.",
-      "Kind regards,\nAhmed — PlanProof · exercises@plan-proof.com"].filter(Boolean).join("\n\n"),
+    // v7.3 (remarks 7, 8, 14): the message is two boxes around a fixed link line, so the link cannot be deleted.
+    top: [`Dear ${first || "colleague"},`,
+      `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review.`,
+      prev && note ? `What changed from v${prev}: ${note}` : null].filter(Boolean).join("\n\n"),
+    bottom: ["On the page you can send us your comments, or approve the version when you are happy with it. You can also print it or save it as a PDF.",
+      "Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond.",
+      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
   };
 }
+const LINK_LINE = "Open the scenario: " + SEND_LINK_MARKER;
+const composeEmail = (top, bottom) => [String(top || "").trim(), LINK_LINE, String(bottom || "").trim()].filter(Boolean).join("\n\n");
 async function session7() {
   const { data } = await sb.auth.getSession();
   const ses = data && data.session;
@@ -1296,7 +1375,12 @@ async function postEmail(payload) {
   const { token } = await session7();
   const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify(payload) });
   const r = await res.json().catch(() => ({}));
-  if (!res.ok || !r.ok) throw new Error(r.error || "The email could not be sent (HTTP " + res.status + ").");
+  if (!res.ok || !r.ok) {
+    if (res.status === 401 && !r.error) throw new Error(/netlify\.app$/.test(location.hostname)
+      ? "Your Netlify sign-in for this preview has expired — reload the page (Ctrl + F5) and sign in again. Nothing was sent."
+      : "Your sign-in has expired — reload the page and sign in again. Nothing was sent.");
+    throw new Error(r.error || "The email could not be sent (HTTP " + res.status + ").");
+  }
   return r;
 }
 // Preview-before-send (remark 8): the versions previewed in this browser tab.
@@ -1310,22 +1394,24 @@ function sendForm(ctx, v, isResend) {
   const e = reviewEmail(ctx, v);
   const to = h("input", { type: "email", value: e.to, "aria-label": "To", autocomplete: "off" });
   const subj = h("input", { type: "text", value: e.subject, maxlength: 300, "aria-label": "Subject" });
-  const msg = h("textarea", { rows: 12, "aria-label": "Message" }); msg.defaultValue = e.message;
+  const msgTop = h("textarea", { rows: 5, "aria-label": "Message — above the link" }); msgTop.defaultValue = e.top;
+  const msgBottom = h("textarea", { rows: 8, "aria-label": "Message — below the link" }); msgBottom.defaultValue = e.bottom;
+  const message = () => composeEmail(msgTop.value, msgBottom.value);
   const out = h("div", { class: "progress", role: "status" });
   const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id && !l.revoked_at && Date.parse(l.expires_at) > Date.now()).slice(-1)[0];
   const expires = link ? link.expires_at : new Date(Date.now() + 14 * 86400000).toISOString();
   const previewMail = h("button", { class: "btn sm", type: "button", "data-act": "preview_email", onclick: () => {
     const d = $("mailDlg");
     $("mailTo").textContent = to.value; $("mailSubject").textContent = subj.value;
-    $("mailBody").innerHTML = emailHtml(msg.value, `${location.origin.replace(/^https?:\/\//, "")}/c/•••••• (private link, valid until ${dd(dubaiYmd(expires))})`);
+    $("mailBody").innerHTML = emailHtml(message(), `${location.origin.replace(/^https?:\/\//, "")}/c/•••••• (private link, valid until ${dd(dubaiYmd(expires))})`);
     d.showModal();
   } }, "Preview the email");
   const testBtn = h("button", { class: "btn sm", type: "button", "data-act": "send_test", onclick: async () => {
     testBtn.disabled = true; out.textContent = "Sending a test copy…";
     try {
       const me = (await session7()).email;
-      await postEmail({ action: "send", kind: "test", submission_id: ctx.s.id, version_id: v.id, to: me, subject: subj.value, message: msg.value });
-      out.textContent = ""; toast("Test copy sent to " + me + " — marked TEST, without the sponsor's link");
+      await postEmail({ action: "send", kind: "test", submission_id: ctx.s.id, version_id: v.id, to: me, subject: subj.value, message: message() });
+      out.textContent = ""; toast("Test copy sent to " + me + ". It is marked TEST and has no working link — the sponsor's private link is made only when you press Send.");
     } catch (err) { out.textContent = ""; fail(err); }
     testBtn.disabled = false;
   } }, "Send a test to myself");
@@ -1348,7 +1434,8 @@ function sendForm(ctx, v, isResend) {
     }
     send.disabled = true; out.textContent = "Sending…";
     try {
-      const r = await postEmail({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: msg.value });
+      const r = await postEmail({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: message() });
+      clearDrafts(form);
       toast(`v${v.version_no} sent to ${addr}` + (r.from && /notify\./.test(r.from) ? " (from exercises@notify.plan-proof.com, replies to exercises@plan-proof.com)" : ""));
       if (!r.recorded) toast("Sent — but the page could not record it yet; it will repair itself within the hour.", true);
       reloadKeepingPlace();
@@ -1359,9 +1446,11 @@ function sendForm(ctx, v, isResend) {
       h("button", { class: "btn sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"), previewMail, testBtn),
     h("label", { class: "f" }, "To (the sponsor)", to),
     h("label", { class: "f" }, "Subject", subj),
-    h("label", { class: "f" }, "Message — edit freely; the private link goes where it says " + SEND_LINK_MARKER, msg),
+    h("label", { class: "f" }, "Message — above the link (edit freely)", msgTop),
+    h("p", { class: "link-line", "aria-label": "The link line" }, "Open the scenario: ", h("span", { class: "fake-link" }, "the sponsor's private link"), h("span", { class: "small muted" }, " — added here by itself when you press Send")),
+    h("label", { class: "f" }, "Message — below the link (edit freely)", msgBottom),
     h("p", { class: "small muted", style: "margin:0" }, (link ? "The same private link is used again" : "A private link is made when you press Send") + ` — valid until ${dd(dubaiYmd(expires))}. From exercises@plan-proof.com; replies come to exercises@plan-proof.com.`),
-    h("div", { class: "row" }, send, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; } }, "Cancel")), out);
+    h("div", { class: "row" }, send, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); msgTop.value = msgTop.defaultValue; msgBottom.value = msgBottom.defaultValue; } }, "Cancel")), out);
   return form;
 }
 function copyLinkBtn(link) {
@@ -1446,7 +1535,7 @@ function factsOf(v) {
 function designPrompt(ctx) {
   const { s, c } = ctx;
   return [`Design the scenario for ${s.request_no} (${c.company_name || "the client"}).`,
-    `Use the planproof-scenario skill. Read the request, its form answers and every PlanProof team remark for ${s.request_no} from the PlanProof database; ask me for the discovery-call notes if they are not on the request.`,
+    `Use the planproof-scenario skill. Read the request, its form answers and every PlanProof team remark for ${s.request_no} from the PlanProof database — the discovery-call notes are the remark that starts "Discovery-call notes:". If there are no call notes, design from the form, list your assumptions at the top and carry on.`,
     `When v1 has passed the fresh-eyes check, add it to ${s.request_no} on the admin page and tell me in two lines what it tests.`].join("\n");
 }
 function versionPanel(ctx, v) {
@@ -1459,8 +1548,8 @@ function versionPanel(ctx, v) {
   const sm = factsOf(v);
   const parts = [h("div", { class: "v7-vtitle" }, pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]), sm && sm.label ? h("span", {}, sm.label) : null,
     h("span", { class: "small muted" }, v.added_how === "claude" ? "added by Claude " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded " + hm(v.created_at) : "recorded by hand"))];
-  if (sm) parts.push(table(["Length", "Injects", "Teams", "Criteria", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
-    [sm.produce ? plural(sm.produce, "produce task") : null, sm.decide ? sm.decide + " decide" : null].filter(Boolean).join(", ") || "none"]], "facts"));
+  if (sm) parts.push(table(["Length", "Messages", "Teams", "Things the report will score", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
+    plainTasks(sm)]], "facts"));
   else parts.push(h("p", { class: "small muted" }, "Recorded by hand — no scenario file on the page for this version."));
   if (v.note) parts.push(factsTable([["What changed", v.note]]));
   if (mails.length) parts.push(table(["Email", "To", "When", "Status"], mails.map((m) => [m.kind === "test" ? "Test copy" : "To the sponsor", m.to_address, hm(m.created_at),
@@ -1516,9 +1605,9 @@ function addBox(ctx, nextNo) {
     const save = h("button", { class: "btn primary", type: "button", "data-act": "add_save", onclick: async () => {
       save.disabled = true;
       const done = await q(sb.rpc("admin_add_version", { p_submission: s.id, p_scenario: parsed, p_how: how })).catch((err) => { save.disabled = false; fail(err); return null; });
-      if (done) { toast(`v${done.version_no} saved — ${done.summary.line}`); reloadKeepingPlace(); }
+      if (done) { clearDrafts(box); toast(`v${done.version_no} saved — ${plainLine(done.summary)}`); reloadKeepingPlace(); }
     } }, (r.replaces_draft ? "Replace" : "Save as") + " v" + r.version_no);
-    put(result, h("div", { class: "v7-summary" }, h("strong", {}, r.summary.line), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
+    put(result, h("div", { class: "v7-summary" }, h("strong", {}, plainLine(r.summary)), h("div", { class: "small muted" }, "for " + (r.summary.organisation || "this client") + (r.replaces_draft ? " — replaces the unsent v" + r.version_no : ""))), h("div", { class: "row", style: "margin-top:8px" }, save));
   }
   const box = h("div", { class: "add-box inline-form stack", hidden: true, "data-form": "add" },
     h("p", { class: "small muted", style: "margin:0" }, `Normally Claude adds v${nextNo} to this page itself. If it gave you a file instead, drop the file here or paste its contents, then press Check the file.`),
@@ -1584,6 +1673,95 @@ function remarksTable(s) {
 function section(key, title, button, ...body) {
   return h("section", { class: "v7-sec", "data-sec": key }, h("div", { class: "v7-sechead" }, h("h3", {}, title), button || null), ...body);
 }
+// v7.3 (remark 12): the sponsor's comments and PlanProof's own remarks in one list.
+// They stay in two tables underneath: remarks are never shown to the sponsor and
+// win over comments when Claude revises.
+function notesTable(ctx) {
+  const { s } = ctx;
+  const vs = liveVersions(s._versions);
+  const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
+  const items = [
+    ...(s._comments || []).map((k) => ({ at: k.created_at, k })),
+    ...(s._remarks || []).map((r) => ({ at: r.created_at, r })),
+  ].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  if (!items.length) return h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from their page appear here by themselves.");
+  return table(["Date", "From", "Comment"], items.map((it) => {
+    if (it.k) {
+      const k = it.k;
+      return { attrs: { "data-note": "sponsor" }, cells: [k.source === "client_page" ? hm(k.created_at) : dd(k.received_on),
+        h("div", {}, h("bdi", {}, k.sender), " ", k.source === "client_page" ? h("span", { class: "tag src-page" }, "Sponsor's page") : h("span", { class: "tag" }, "Sponsor · " + (VIA_WORD[k.received_via] || "pasted")),
+          k.version_id ? h("div", { class: "small muted" }, "about " + vLabel(k.version_id)) : null),
+        h("div", { class: "body" }, k.body)] };
+    }
+    const r = it.r;
+    const cell = h("div", { class: "body" }, r.body);
+    const edit = h("button", { class: "btn quiet sm", type: "button", style: "margin-top:6px", onclick: () => {
+      const t = h("textarea", { rows: 3, maxlength: 4000 }); t.value = r.body;
+      put(cell, t, h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", type: "button", onclick: async () => {
+        const body = t.value.trim(); if (!body) return;
+        const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
+        if (upd) { toast("Saved"); reloadKeepingPlace(); }
+      } }, "Save"), h("button", { class: "btn quiet sm", type: "button", onclick: () => put(cell, r.body) }, "Cancel"))); t.focus();
+    } }, "Edit");
+    return { attrs: { "data-note": "team" }, cells: [dt(r.created_at), h("span", { class: "tag team-only" }, "PlanProof team · team only"), h("div", {}, cell, edit)] };
+  }), "notes");
+}
+// One "+ Add a comment" form: who said it (no default), then the comment.
+function noteForm(ctx) {
+  const { s } = ctx;
+  const vs = liveVersions(s._versions).filter((v) => v.status !== "draft");
+  const latest = vs.slice().sort((a, b) => b.version_no - a.version_no)[0];
+  const cs = s._comments || [];
+  const name = "who-" + s.id;
+  const rSponsor = h("input", { type: "radio", name, value: "sponsor" }), rTeam = h("input", { type: "radio", name, value: "team" });
+  const cDate = h("input", { type: "date", value: todayDubai(), max: todayDubai(), "aria-label": "Received on" });
+  const cFrom = h("input", { type: "text", maxlength: 200, "aria-label": "From (name and role)", placeholder: "e.g. Sara Ali, BCM Manager (sponsor)", value: cs.length ? cs[cs.length - 1].sender : sponsorOf(ctx).name });
+  const cVia = h("select", { "aria-label": "How it came" }, h("option", { value: "" }, "— choose —"), ...Object.entries(VIA_WORD).map(([k, w]) => h("option", { value: k }, w)));
+  const cVersion = h("select", { "aria-label": "Which version the comment is about" }, h("option", { value: "" }, "Not about a specific version"),
+    ...vs.slice().reverse().map((v) => h("option", { value: v.id, selected: latest && v.id === latest.id }, "v" + v.version_no)));
+  const body = h("textarea", { rows: 4, maxlength: 8000, "aria-label": "Comment or remark", placeholder: "The sponsor's words (email or call notes), or PlanProof's own remark." });
+  const sponsorPart = h("div", { class: "grid2", hidden: true }, h("label", { class: "f" }, "Received on", cDate), h("label", { class: "f" }, "How it came", cVia),
+    h("label", { class: "f" }, "From (name and role)", cFrom), vs.length ? h("label", { class: "f" }, "About", cVersion) : null);
+  const teamNote = h("p", { class: "small team-note", hidden: true }, "Never shown to the sponsor. Claude reads it when it writes or revises the scenario.");
+  const pick = () => { sponsorPart.hidden = !rSponsor.checked; teamNote.hidden = !rTeam.checked; };
+  rSponsor.onchange = pick; rTeam.onchange = pick;
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "note" },
+    h("fieldset", { class: "who" }, h("legend", {}, "Who said it?"),
+      h("label", { class: "row", style: "gap:8px" }, rSponsor, "The sponsor (by email, phone or in a meeting)"),
+      h("label", { class: "row", style: "gap:8px" }, rTeam, "PlanProof team (never shown to the sponsor)")),
+    sponsorPart, teamNote, h("label", { class: "f" }, "Comment", body),
+    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", "data-act": "add_note_go", onclick: async (e) => {
+      const text = body.value.trim();
+      if (!rSponsor.checked && !rTeam.checked) { toast("Choose who said it: the sponsor or PlanProof", true); return; }
+      if (!text) { toast("Write the comment", true); body.focus(); return; }
+      let row;
+      if (rTeam.checked) { e.target.disabled = true; row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body: text }).select().single()).catch(fail); }
+      else {
+        const sender = cFrom.value.trim();
+        if (!sender) { toast("Enter who sent the comment", true); cFrom.focus(); return; }
+        if (!cVia.value) { toast("Choose how it came", true); cVia.focus(); return; }
+        e.target.disabled = true;
+        row = await q(sb.from("submission_client_comments").insert({ submission_id: s.id, received_on: cDate.value || todayDubai(), sender, body: text, version_id: cVersion.value || null, received_via: cVia.value }).select().single()).catch(fail);
+      }
+      e.target.disabled = false;
+      if (row) { clearDrafts(form); toast(rTeam.checked ? "Remark added — team only" : "Comment added"); reloadKeepingPlace(); }
+    } }, "Add"), h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); body.value = ""; } }, "Cancel")));
+  return form;
+}
+// v7.3 (remark 4): the discovery-call notes, kept as a team remark Claude reads first.
+function callNotesForm(ctx) {
+  const { s } = ctx;
+  const ta = h("textarea", { rows: 6, maxlength: 8000, "aria-label": "Discovery-call notes", placeholder: "Date and time, venue and rooms, departments and numbers, focus, key operations and suppliers, recent incidents, anything to avoid, who reviews the scenario." });
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "callnotes", style: "flex-basis:100%" }, ta,
+    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async (e) => {
+      const text = ta.value.trim(); if (!text) { toast("Write the call notes", true); ta.focus(); return; }
+      e.target.disabled = true;
+      const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body: "Discovery-call notes:\n" + text }).select().single()).catch(fail);
+      e.target.disabled = false;
+      if (row) { clearDrafts(form); toast("Call notes saved — Claude will read them"); reloadKeepingPlace(); }
+    } }, "Save the call notes"), h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); ta.value = ""; } }, "Cancel")));
+  return form;
+}
 function scenarioBlock(ctx) {
   const { s, linked, state } = ctx;
   const status = ctx.statusOf("scenario");
@@ -1593,10 +1771,10 @@ function scenarioBlock(ctx) {
   const nextNo = newest && newest.status === "draft" ? newest.version_no : (s._lastVersionNo || 0) + 1;
   const cs = s._comments || [];
   const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
-  const cform = pasteCommentForm(ctx);
+  const nform = noteForm(ctx);
   const delivered = s.status === "delivered";
   const commented = state.block === "scenario" && /commented/.test(state.where || "");
-  const pasteBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "paste_comment", onclick: () => { cform.hidden = false; cform.scrollIntoView({ block: "center", behavior: "smooth" }); cform.querySelector("textarea").focus(); } }, "+ Paste a sponsor comment");
+  const addBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "add_note", onclick: () => { nform.hidden = false; openAround(nform); nform.scrollIntoView({ block: "center", behavior: "smooth" }); } }, "+ Add a comment");
   const promptBtn = (kind) => h("button", { class: "btn primary", type: "button", "data-act": kind + "_prompt", "data-next": kind, onclick: async () => {
     const text = kind === "design" ? designPrompt(ctx) : revisePrompt(ctx, newest);
     try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
@@ -1604,27 +1782,26 @@ function scenarioBlock(ctx) {
   } }, kind === "design" ? "Copy the first prompt for Claude" : "Copy the revised prompt for Claude");
   // 1. What to do now — the steps of this moment, each with its own button
   let todo = null;
+  const callNotes = (s._remarks || []).find((r) => /^Discovery-call notes:/i.test(r.body));
+  const cnForm = callNotesForm(ctx);
   if (!delivered && !newest) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+    h("li", {}, h("div", {}, h("strong", {}, callNotes ? "✓ Discovery-call notes added." : "Add your discovery-call notes."),
+      h("div", { class: "small muted" }, callNotes ? "They are in Comments and remarks below (Edit there). Claude reads them before writing v1." : "What the sponsor told you on the call. Claude reads them before writing v1 — without them it works from the form and lists its assumptions.")),
+      callNotes ? null : h("button", { class: "btn", type: "button", "data-act": "add_call_notes", onclick: () => { cnForm.hidden = false; cnForm.querySelector("textarea").focus(); } }, "+ Add call notes"), cnForm),
     h("li", {}, h("div", {}, h("strong", {}, "Copy the first prompt for Claude."), h("div", { class: "small muted" }, `Then open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
     h("li", {}, h("div", {}, h("strong", {}, "v1 appears here by itself."), h("div", { class: "small muted" }, "Then press \"Preview what the sponsor will see\" and \"Send v1 to the sponsor\"."))));
   else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
-    h("li", {}, h("div", {}, h("strong", {}, "Did the sponsor also comment by email or phone?"), h("div", { class: "small muted" }, "Then + Paste a sponsor comment, so Claude sees it too. Comments the sponsor sent from their page are already in \"What the sponsor said\".")), pasteBtn("")),
+    h("li", {}, h("div", {}, h("strong", {}, "Anything else from the sponsor (by phone or email) or from us?"), h("div", { class: "small muted" }, "Add it with + Add a comment, so Claude sees it too. Comments the sponsor sent from their page are already in the list below.")), addBtn("")),
     h("li", {}, h("div", {}, h("strong", {}, "Copy the revised prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. v${nextNo} appears here by itself.`)), promptBtn("revise")));
-  // 3. What the sponsor said
-  const comTable = cs.length ? table(["Date", "From", "How it came", "About", "Comment"], cs.slice().reverse().map((k) => [
-    k.source === "client_page" ? hm(k.created_at) : dd(k.received_on), h("bdi", {}, k.sender),
-    k.source === "client_page" ? h("span", { class: "tag src-page" }, "Sponsor's page") : h("span", { class: "tag" }, VIA_WORD[k.received_via] || "Pasted"),
-    k.version_id ? vLabel(k.version_id) : "—", h("div", { class: "body" }, k.body)]), "comments") : h("p", { class: "empty" }, "No comments yet. Comments the sponsor sends from their page appear here by themselves.");
-  // 4. PlanProof remarks
-  const remarks = remarksTable(s);
-  const addRemarkBtn = h("button", { class: "btn quiet sm", type: "button", "data-act": "add_remark", onclick: () => { const f = remarks.querySelector('[data-form="remark"]'); f.hidden = false; f.querySelector("textarea").focus(); } }, "+ Add a PlanProof remark");
+  // 2. Comments and remarks — one list (v7.3, remark 12), right under the steps
+  const notes = notesTable(ctx);
+  const nCount = cs.length + (s._remarks || []).length;
   const older = vs.slice(1);
   const line = newest ? `v${newest.version_no} · ${VERSION_WORD[newest.status] || newest.status}` + (cs.length ? ` · ${plural(cs.length, "sponsor comment")}` : "") : "no version yet";
   return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
     todo,
+    section("comments", `Comments and remarks (${nCount})`, delivered || commented ? null : addBtn("quiet sm"), nform, notes),
     newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
-    section("comments", `What the sponsor said (${cs.length})`, delivered || todo ? null : pasteBtn("quiet sm"), cform, comTable),
-    section("remarks", `PlanProof remarks — team only (${(s._remarks || []).length})`, addRemarkBtn, remarks),
     older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
       table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
         const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id).slice(-1)[0];
@@ -2309,12 +2486,13 @@ function moreFold(ctx) {
   // Remove a version, a comment or a remark recorded by mistake.
   const removable = [
     ...liveVersions(s._versions).map((v) => ["version", "v" + v.version_no + (v.status === "draft" ? " (not sent)" : " (sent " + dd(v.sent_on) + ")"), "submission_scenario_versions", v.id, "Its number is not reused; its client link stops working."]),
-    ...(s._comments || []).map((k) => ["comment", "Comment from " + k.sender + " (" + dd(k.received_on) + ")", "submission_client_comments", k.id, "It will no longer be used to revise the scenario."]),
-    ...(s._remarks || []).map((r) => ["remark", "Remark: " + r.body.slice(0, 60) + (r.body.length > 60 ? "…" : ""), "submission_team_remarks", r.id, "It will no longer be used for the scenario."]),
+    ...(s._comments || []).map((k) => ["comment", "Comment from " + k.sender + " (" + dd(k.received_on) + "): “" + k.body.slice(0, 60) + (k.body.length > 60 ? "…" : "") + "”", "submission_client_comments", k.id, "It will no longer be used to revise the scenario."]),
+    ...(s._remarks || []).filter((r) => !/^Contact note:/i.test(r.body)).map((r) => ["remark", "PlanProof remark: “" + r.body.slice(0, 60) + (r.body.length > 60 ? "…" : "") + "”", "submission_team_remarks", r.id, "It will no longer be used for the scenario."]),
   ];
   if (removable.length) {
     what.push("remove a version or comment");
     parts.push(h("div", { class: "more-part" }, h("h3", {}, "Remove a version, comment or remark recorded by mistake"),
+      (s._remarks || []).some((r) => /^Contact note:/i.test(r.body)) ? h("p", { class: "muted small" }, "The Contact note is not listed: it holds the Contacted date. To change it, use Edit in Comments and remarks.") : null,
       ...removable.map(([kind, label, table, rid, why]) => h("div", { class: "spread", style: "align-items:center; padding:6px 0; border-top:1px solid var(--border)" },
         h("span", { class: "small", style: "min-width:0; overflow-wrap:anywhere" }, h("bdi", {}, label)),
         h("button", { class: "btn danger sm", type: "button", onclick: async () => {
