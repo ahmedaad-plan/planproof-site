@@ -26,6 +26,9 @@ function world(opts = {}) {
       if (w.clientRefuse) return ok({ message: "storage down" }, 500);
       w.clientDeleted = body.prefixes; return ok(body.prefixes.map((name) => ({ name })));
     }
+    // W8 build 2: voice files of a never-started exercise whose request was deleted
+    if (u.pathname === "/rest/v1/rpc/service_media_remove_pending") return ok(w.orphans ?? []);
+    if (u.pathname === "/rest/v1/rpc/service_media_remove_result") { (w.orphanResults ||= []).push(body); return ok({ removed: body.p_ok }); }
     if (u.pathname === "/rest/v1/rpc/service_mark_retention_reported") { w.markedGone = body.p_ids; return ok(body.p_ids.length); }
     if (u.pathname === "/rest/v1/rpc/service_purge_session") {
       if ([...w.files].some((p) => p.startsWith(body.p_session + "/"))) return ok({ message: "files still stored" }, 400);
@@ -172,4 +175,23 @@ test("W8: nothing pending → no storage call", async () => {
   await runPlayerPurge({ env: { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SECRET_KEY: "sb_secret_test", RESEND_API_KEY: "re_test" }, fetchFn: w.fetchFn });
   assert.ok(!w.calls.some((c) => c.includes("client-files")));
   assert.equal(w.clientResult, undefined);
+});
+
+const ORPHAN = "99999999-2222-4333-8444-555555555555";
+test("W8b: voice files of a deleted request's exercise are removed and the queue cleared", async () => {
+  const w = world({ due: [], orphans: [{ session_id: ORPHAN, label: "TEST", attempts: 0 }] });
+  w.media.add(`narration/${ORPHAN}/x.mp3`); w.media.add(`narration/${ORPHAN}/y.mp3`);
+  const r = await runPlayerPurge({ fetchFn: w.fetchFn, env: w.env });
+  assert.deepEqual(r.orphanMedia, { queued: 1, removed: 1, failed: 0 });
+  assert.ok(![...w.media].some((p) => p.includes(ORPHAN)));
+  assert.ok(w.media.has("briefing/participant-en.mp4"), "shared briefing films are never touched");
+  assert.deepEqual(w.orphanResults, [{ p_session: ORPHAN, p_ok: true }]);
+});
+test("W8b: files that will not go stay queued with the error", async () => {
+  const w = world({ due: [], mediaStuck: true, orphans: [{ session_id: ORPHAN, label: "TEST", attempts: 0 }] });
+  w.media.add(`narration/${ORPHAN}/x.mp3`);
+  const r = await runPlayerPurge({ fetchFn: w.fetchFn, env: w.env });
+  assert.equal(r.orphanMedia.failed, 1);
+  assert.equal(w.orphanResults[0].p_ok, false);
+  assert.match(w.orphanResults[0].p_error, /still in storage/);
 });
