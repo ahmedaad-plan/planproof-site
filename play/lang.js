@@ -38,6 +38,7 @@
       "shared.error.updateSessionFailed": "Update session failed: HTTP {status}",
       "shared.error.updateRejected": "Update rejected: the facilitator token in this link doesn't match this session. Use the exact Facilitator link that was issued for it.",
       "shared.error.couldntJoin": "Couldn't join: {detail}",
+      "shared.play.strip": "PLAY — practice copy of v{version}, nothing is kept",
       "shared.error.saveAnswerNoConnection": "Couldn't save your answer: no connection. It is kept on this device — it will be saved when the connection is back.",
       "shared.error.couldntSaveAnswer": "Couldn't save your answer: {detail}",
       "shared.error.fetchSubmissionStatusFailed": "Fetch submission status failed: {detail}",

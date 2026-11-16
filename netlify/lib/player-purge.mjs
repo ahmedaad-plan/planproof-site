@@ -157,5 +157,26 @@ export async function runPlayerPurge(deps) {
         err ? "Error: " + err : "", "", "Open Supabase → Storage → client-files and delete them by hand, or tell Claude."].filter(Boolean).join("\n") }, deps);
     }
   } catch (e) { report.clientFiles = { error: e.message }; }
+  // W8 build 2 (16 Nov 2026): voice and clip files of a never-started exercise
+  // whose request was deleted. A refused call stays queued for tomorrow.
+  try {
+    const queued = await rpc(deps, "service_media_remove_pending") || [];
+    report.orphanMedia = { queued: queued.length, removed: 0, failed: 0 };
+    for (const q of queued) {
+      try {
+        const paths = [];
+        for (const pre of mediaPrefixes(q.session_id)) paths.push(...await listFiles(deps, pre, 0, MEDIA_BUCKET));
+        if (paths.length) await removeFiles(deps, paths, MEDIA_BUCKET);
+        const left = [];
+        for (const pre of mediaPrefixes(q.session_id)) left.push(...await listFiles(deps, pre, 0, MEDIA_BUCKET));
+        if (left.length) throw new Error(left.length + " file(s) still in storage");
+        await rpc(deps, "service_media_remove_result", { p_session: q.session_id, p_ok: true });
+        report.orphanMedia.removed++;
+      } catch (e) {
+        report.orphanMedia.failed++;
+        await rpc(deps, "service_media_remove_result", { p_session: q.session_id, p_ok: false, p_error: e.message }).catch(() => null);
+      }
+    }
+  } catch (e) { report.orphanMedia = { error: e.message }; }
   return report;
 }

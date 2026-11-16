@@ -399,6 +399,9 @@ export async function processRecord(record, deps) {
       await saveToSupabase(record, deps);
       record.steps.supabase = true;
       delete record.lastErrors.supabase;
+      // W8 build 2 (D.10): the push alert for the new request (its email is this function's own email).
+      // Never allowed to fail the request: deliverAlerts never throws, and a slow push is cut off.
+      if (deps.onSaved) { try { await Promise.race([deps.onSaved(), new Promise((r) => setTimeout(r, 8000))]); } catch { /* the hourly check retries */ } }
     } catch (err) {
       record.lastErrors.supabase = err.message;
       log.error(`[intake ${record.id}] Supabase save failed:`, err.message);

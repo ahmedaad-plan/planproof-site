@@ -517,6 +517,9 @@ export async function runMediaPrepare(deps, args) {
   if (speechReady && args.samples !== false) {
     try { media.samples = await ensureSamples(deps, api, note); } catch (err) { note(`Voice samples: ${String(err.message || err).slice(0, 160)}`); }
   }
+  // W8 build 2: the first write comes before any paid call — the database refuses it on a
+  // play copy ("Prepare is refused"), so nothing is spent on a throw-away session.
+  try { await save("preparing"); } catch (err) { return { ok: false, error: String(err.message || err).slice(0, 200) }; }
   for (const job of plan.narration) {
     const key = `narration_${job.lang}`;
     try {
@@ -567,7 +570,7 @@ export async function runMediaPrepare(deps, args) {
     Object.values(media.items).some((it) => it && it.failed && Object.keys(it.failed).length);
   note(anyFailed ? "Finished with problems — press Retry failed." : "Finished.");
   await save(anyFailed ? "failed" : "ready");
-  return { ok: !anyFailed, plan: { narration: plan.narration.length, clips: plan.clips.length, refused: plan.refused.length }, counts: countMedia(media) };
+  return { ok: !anyFailed, label: sess.label || null, submission_id: sess.submission_id || null, plan: { narration: plan.narration.length, clips: plan.clips.length, refused: plan.refused.length }, counts: countMedia(media) };
 }
 
 export function countMedia(media) {

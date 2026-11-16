@@ -431,6 +431,11 @@
   .team-note{ color:var(--red-soft); margin:0; }
   fieldset.who{ border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin:0; display:flex; flex-direction:column; gap:6px; }
   fieldset.who legend{ font-weight:600; font-size:14px; padding:0 4px; }
+  /* v7.4 */
+  .confirm-big{ font-size:22px; font-weight:700; margin:0; color:var(--red-soft); overflow-wrap:anywhere; }
+  #bellBtn{ margin-right:6px; } @media (max-width:560px){ #bellBtn .bell-word{ display:none; } .bar .who #bellBtn{ padding:4px 6px; margin-right:0; } } @media (max-width:400px){ .bar{ gap:6px; flex-wrap:wrap; } .bar .who{ gap:4px; } nav.views button{ padding:6px 8px; } } #bellBtn.bell-ended{ border-color:var(--red); color:var(--red-soft); }
+  .setup-form table.t7.counts input{ width:90px; }
+  table.t7.links td:last-child{ white-space:normal; }
 </style>
 <link rel="stylesheet" href="/c/copy.css">
 </head>
@@ -442,7 +447,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v7.3</span><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><span class="ver" title="Page version">v7.4</span><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -461,7 +466,8 @@
 <dialog id="confirmDlg">
   <form method="dialog" class="stack">
     <h2 id="confirmTitle"></h2>
-    <p id="confirmText" class="muted"></p>
+    <p id="confirmBig" class="confirm-big" hidden></p>
+    <p id="confirmText" class="muted" style="white-space:pre-wrap"></p>
     <label class="f" id="confirmTypeWrap" hidden>Type <strong id="confirmTypeWord"></strong> to confirm<input type="text" id="confirmType" autocomplete="off"></label>
     <div class="row end">
       <button class="btn quiet" value="cancel">Cancel</button>
@@ -480,12 +486,23 @@
     <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div>
   <div class="mail"><div class="hdr">To: <span id="mailTo"></span><br>From: exercises@plan-proof.com · Reply-To: exercises@plan-proof.com<br>Subject: <strong id="mailSubject"></strong></div><div id="mailBody"></div></div>
 </dialog>
+<dialog id="bellDlg" aria-labelledby="bellTitle">
+  <div class="copy-bar"><h2 id="bellTitle">Alerts on this device</h2><button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div>
+  <div id="bellBody" class="stack" style="padding:14px 18px"></div>
+</dialog>
+<dialog id="qrDlg" aria-labelledby="qrTitle">
+  <div class="copy-bar"><h2 id="qrTitle">QR code</h2><button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div>
+  <div style="text-align:center;padding:16px"><img id="qrImg" alt="QR code" style="width:min(80vw,420px);height:auto;background:#fff;padding:8px;border-radius:8px"><p id="qrUrl" class="small" style="word-break:break-all"></p></div>
+</dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="/vendor/fflate-0.8.2.js"
         integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT"
         crossorigin="anonymous"></script>
 <script src="/admin/exercise-record.js"></script>
+<script src="/vendor/qrcode-generator-1.4.4.js"
+        integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"
+        crossorigin="anonymous"></script>
 <script src="/c/copy.js"></script>
 <script src="/vendor/supabase-js-2.117.2.js"
         integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"
@@ -551,10 +568,11 @@ function toast(msg, isErr) {
 function fail(err) { console.error(err); toast(err && err.message ? err.message : String(err), true); }
 async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
 
-function confirmBox({ title, text, ok, typeWord }) {
+function confirmBox({ title, text, ok, typeWord, big }) {
   return new Promise((resolve) => {
     const d = $("confirmDlg");
     $("confirmTitle").textContent = title; $("confirmText").textContent = text || "";
+    $("confirmBig").hidden = !big; $("confirmBig").textContent = big || "";
     $("confirmOk").textContent = ok || "Confirm";
     $("confirmTypeWrap").hidden = !typeWord; $("confirmType").value = "";
     $("confirmTypeWord").textContent = typeWord || "";
@@ -676,6 +694,7 @@ async function enterApp() {
   $("gate").hidden = true; $("app").hidden = false; $("bar").hidden = false;
   bumpIdle();
   checkSystem(); setInterval(checkSystem, 5 * 60000);
+  $("bellBtn").onclick = () => openBell().catch(fail); drawBell();
   route();
 }
 
@@ -912,8 +931,29 @@ function stateOf(s, versions, comments, rec, x = {}) {
   }
   // A version newer than the approved one (e.g. v3 after v2 was approved) is the live question.
   const open = newest && newest.status !== "approved" && newest.version_no > (approved ? approved.version_no : 0) ? newest : null;
+  // v7.4: reopened after approval (until the exercise starts) — back to the Scenario stage; the exercise and its links stay
+  if (!open && approved && s.reopened_at) return R({ block: "scenario", tile: 2, where: `Reopened ${hm(s.reopened_at)}${s.reopen_reason ? " — " + s.reopen_reason : ""}`, next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `The exercise and its three links stay as they are. Claude writes v${lastNo + 1}; send it, and when it is approved press Approve v${lastNo + 1} → update the exercise.` });
   if (!open && approved) {
-    if (!rec || !rec.linked) return R({ block: "exercise", tile: 3, where: `v${approved.version_no} approved${approved.status_changed_on ? " on " + dShort(approved.status_changed_on) : ""}`, next: { key: "setup", label: `Approve v${approved.version_no} → set up the exercise` }, hint: `Ask Claude to set up the exercise from v${approved.version_no}, then choose it in the Exercise block. (The next build does this from the page.)` });
+    if (!rec || !rec.linked) return R({ block: "exercise", tile: 3, where: `v${approved.version_no} approved — the exercise is not set up yet`, next: { key: "setup", label: "Set up the exercise" }, hint: "Fill in the date, time, room and expected numbers, then press Set up the exercise." });
+    // v7.4: before the day — test the links, the date and room, the two emails, voice and video
+    const fr = x.facts ? x.facts.real : undefined;
+    if (!rec.ended && !(fr && fr.started)) {
+      const mails = x.exEmails || x.emails || [];
+      const sc = sentOk(mails, "confirmation"), si = sentOk(mails, "invitation");
+      const daysTo = s.exercise_date ? Math.round((Date.parse(s.exercise_date + "T00:00:00Z") - Date.parse(dubaiYmd(new Date(nowMs).toISOString()) + "T00:00:00Z")) / 86400000) : null;
+      const when = s.exercise_date ? `${dayName(s.exercise_date)}${daysTo != null && daysTo >= 0 ? ` · ${daysTo === 0 ? "today" : plural(daysTo, "day") + " to go"}` : ""}` : "date not set";
+      const base = `Exercise set up from v${approved.version_no} · ${when}`;
+      if (!s.links_tested_at || !(s.links_test && s.links_test.all)) return R({ block: "exercise", tile: 3, where: base + (s.links_tested_at ? " · the last link test failed" : " · links not tested yet"), next: { key: "test_links", label: "Test the links" }, hint: "Test the links: the page opens the three links in the background and checks that each answers." });
+      if (!detailsSet(s)) return R({ block: "exercise", tile: 3, where: base, next: { key: "details", label: "Fill in the date, time and room" }, hint: "The confirmation and the invitation wait for the date, the start time and the room." });
+      if (!sc || !si) return R({ block: "exercise", tile: 3, where: base + " · links tested", next: !sc && !si ? { key: "send_both", label: "Send both" } : !sc ? { key: "send_confirmation", label: "Send confirmation" } : { key: "send_invitation", label: "Send invitation" }, hint: "The confirmation goes to the sponsor; the invitation goes to the sponsor too, to forward to everyone taking part. Each has a calendar file." });
+      if (fr) {
+        if (fr.media_status === "none") return R({ block: "exercise", tile: 3, where: base + " · confirmation and invitation sent", next: { key: "prepare", label: "Prepare" }, hint: "A few days before the exercise, press Prepare (voice and video). It runs by itself for a few minutes." });
+        if (fr.media_status === "failed") return R({ block: "exercise", tile: 3, where: base + " · voice and video: some items failed", next: { key: "prepare", label: "Retry failed" } });
+        if (fr.media_status === "preparing") return R({ block: "exercise", tile: 3, where: base + " · voice and video are being prepared", next: null, waitText: "Preparing voice and video" });
+        return R({ block: "exercise", tile: 3, where: base + " · voice and video ready", next: null, waitText: "Ready for the day", hint: "Nothing to do here. On the day, run the exercise from your facilitator link." });
+      }
+      return R({ block: "exercise", tile: 3, where: base + " · confirmation and invitation sent", next: null, waitText: "Exercise set up — emails sent" });
+    }
     const o = stepOf(s, versions, comments, rec);
     const b = (o.buttons || [])[0];
     const label = b === "download" ? `Download run ${rec.run}` : b === "delivered" ? "Mark as delivered" : b === "close_survey" ? "Close survey now" : b === "link" ? "Link the exercise" : null;
@@ -924,10 +964,10 @@ function stateOf(s, versions, comments, rec, x = {}) {
   if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
   const v = open || newest;
   if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
-  if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve to make it final; the exercise is then set up from it.` });
+  if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve v${v.version_no}: one box asks for the date, time, room and numbers and sets up the exercise.` });
   if (v.status === "client_commented") {
     const n = cs.filter((c) => c.version_id === v.id).length;
-    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `Two steps, at the top of the Scenario block below: ① + Paste a sponsor comment (only for comments that came by email or phone), ② Copy the revised prompt for Claude — v${lastNo + 1} then appears here by itself.` });
+    return R({ block: "scenario", tile: 2, where: `The sponsor commented on v${v.version_no}` + (n ? ` (${plural(n, "comment")})` : ""), next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `Two steps, at the top of the Scenario block below: ① + Add a comment (only for comments that came by email or phone), ② Copy the revised prompt for Claude — v${lastNo + 1} then appears here by itself.` });
   }
   // sent — waiting, unless the email failed or the sponsor met an expired link
   const myEmails = (x.emails || []).filter((e) => e.version_id === v.id && (e.kind || "review") === "review").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
@@ -964,19 +1004,20 @@ const esc7 = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
 const urgencyOf = (r) => r.status === "delivered" ? 4 : r._state.overdue ? 0 : r._state.next ? 1 : 2;
 async function renderRequests() {
   const app = $("app");
-  const [rows, versions, sessions, contactRemarks] = await Promise.all([
+  const [rows, versions, sessions, contactRemarks, exMails] = await Promise.all([
     q(sb.from("submissions")
-      .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
+      .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, exercise_date, exercise_time, venue, expected_counts, reopened_at, reopen_reason, links_tested_at, links_test, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
     q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
     q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at").ilike("body", "Contact note:%")).catch(() => []),
+    q(sb.from("sent_emails").select("submission_id, kind, status, created_at").in("kind", ["confirmation", "invitation"])).catch(() => []),
   ]);
   rows.forEach((r) => {
     const vs = (versions || []).filter((v) => v.submission_id === r.id);
     r._lastVersionNo = vs.reduce((m, v) => Math.max(m, v.version_no), 0);
     r._state = stateOf(r, vs, [], recordFacts(sessions.find((x) => x.submission_id === r.id), null),
-      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)) });
+      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)), exEmails: (exMails || []).filter((m) => m.submission_id === r.id) });
     r._tile = r._state.tile;
   });
   rows.sort((a, b) => urgencyOf(a) - urgencyOf(b)
@@ -990,7 +1031,9 @@ async function renderRequests() {
   const searchHint = h("div", { class: "small muted", style: "margin-top:4px" });
   const deliveredBox = h("input", { type: "checkbox", checked: showDelivered, onchange: () => { showDelivered = deliveredBox.checked; sessionStorage.setItem("pp_admin_showdelivered", showDelivered ? "1" : ""); drawList(); } });
   const open = rows.filter((r) => r.status !== "delivered");
-  const needYou = open.filter((r) => r._state.next).length, overdueN = rows.filter((r) => r._state.overdue).length, waitingN = open.filter((r) => !r._state.next).length;
+  const needYou = open.filter((r) => r._state.next).length;
+  setBadge(needYou);
+  const overdueN = rows.filter((r) => r._state.overdue).length, waitingN = open.filter((r) => !r._state.next).length;
   const summary = h("p", { class: "v7-summary-line", id: "listSummary" },
     needYou ? h("strong", {}, plural(needYou, "request") + " need" + (needYou === 1 ? "s" : "") + " you now") : "Nothing needs you now",
     overdueN ? [" · ", h("span", { class: "due-bad" }, overdueN + " overdue")] : null,
@@ -1215,7 +1258,8 @@ async function renderRequest(id) {
     ses.chosenRun = runs && runs.some((u) => u.run_number === stored && u.exportable) ? stored : firstChoice ? firstChoice.run_number : null;
   }
   const rec = recordFacts(ses, ses ? ses.chosenRun : null);
-  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [] };
+  const facts = await q(sb.rpc("admin_exercise_facts", { p_submission: id })).catch(() => null);
+  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [], facts };
   const state = stateOf(s, s._versions, s._comments, rec, extra);
   const now = stepOf(s, s._versions, s._comments, rec);
   const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now, state, extra };
@@ -1252,7 +1296,7 @@ async function renderRequest(id) {
 
   const keep = linked ? keptLine(await loadRetention(c.id)) : null;
   const blocks = h("div", { class: "v7-blocks" },
-    clientBlock(ctx), scenarioBlock(ctx), exerciseBlock(ctx), reportBlock(ctx), cleanupBlock(ctx, keep));
+    clientBlock(ctx), scenarioBlock(ctx), exerciseBlock74(ctx), reportBlock(ctx), cleanupBlock(ctx, keep));
   // Where it is: at the top of the open stage, once.
   const nowBlock = blocks.querySelector(`.v7-block.now[data-block="${state.tile === 5 ? "cleanup" : state.block}"]`) || blocks.querySelector(".v7-block.now");
   const nowBox = h("div", { class: "v7-now" + (state.overdue ? " overdue" : ""), role: "status" },
@@ -1268,6 +1312,9 @@ async function renderRequest(id) {
     if (primary) { primary.classList.add("red"); primary.classList.remove("quiet", "primary", "sm"); primary.id = "nextBtn"; openAround(primary); }
   }
   app.replaceChildren(head, banner, blocks, moreFold(ctx));
+  // v7.4: a stage the last action happened in stays open after the redraw (e.g. Play / End play in Scenario)
+  const keepOpen = sessionStorage.getItem("pp_admin_keep_open"); sessionStorage.removeItem("pp_admin_keep_open");
+  if (keepOpen) { const kb = app.querySelector(`details.v7-block[data-block="${keepOpen}"]`); if (kb) kb.open = true; }
   // v7.3 (remark 18): More… stays as it was (open after Remove, Revoke, Save).
   const moreEl = app.querySelector("details.more");
   if (moreEl) { if (sessionStorage.getItem("pp_admin_more_open") === s.id) moreEl.open = true;
@@ -1347,7 +1394,7 @@ const sponsorOf = (ctx) => {
 };
 const SEND_LINK_MARKER = "[the private link]";
 // v7.3 (remark 6): plain words for the summary of a version.
-const plainTasks = (sm) => [sm.produce ? plural(sm.produce, "written statement") : null, sm.decide ? plural(sm.decide, "recorded decision") : null].filter(Boolean).join(" · ") || "none";
+const plainTasks = (sm) => [sm.produce ? plural(sm.produce, "written statement") : null, sm.decide ? plural(sm.decide, "recorded decision") : null, sm.locate ? sm.locate + (sm.locate === 1 ? " thing to find" : " things to find") : null].filter(Boolean).join(" · ") || "none";
 const plainLine = (sm) => !sm ? "" : sm.injects == null && sm.line ? sm.line : [sm.label, sm.version ? "v" + sm.version : null, sm.injects != null ? plural(sm.injects, "message") : null, sm.minutes ? sm.minutes + " minutes" : null,
   sm.teams != null ? plural(sm.teams, "team") : null, plainTasks(sm), sm.criteria != null ? sm.criteria + " things the report will score" : null].filter(Boolean).join(" · ");
 function reviewEmail(ctx, v) {
@@ -1364,10 +1411,11 @@ function reviewEmail(ctx, v) {
       `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review.`,
       prev && note ? `What changed from v${prev}: ${note}` : null].filter(Boolean).join("\n\n"),
     // v7.3 (remark 21, Ahmed 15 Nov): one plain promise instead of revision rounds; **…** = bold in the email
-    bottom: ["On the page you can approve this version, or send us your comments. You can also print it or save it as a PDF.",
+    // fix 14: Claude's reply to the sponsor (saved with the version by the scenario chat) comes first, under the link
+    bottom: [v.sponsor_reply ? String(v.sponsor_reply).trim() : null, "On the page you can approve this version, or send us your comments. You can also print it or save it as a PDF.",
       "**" + REVIEW_PROMISE + "**",
       "Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond.",
-      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
+      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].filter(Boolean).join("\n\n"),
   };
 }
 const LINK_LINE = "Open the scenario: " + SEND_LINK_MARKER;
@@ -1442,8 +1490,9 @@ function sendForm(ctx, v, isResend) {
     }
     // v7.3 (remark 22, Ahmed 15 Nov): the "What changed" line goes to the sponsor — show it before sending
     const changed = (message().match(/What changed from v\d+:[^\n]*/) || [])[0];
-    if (changed) {
-      const ok = await confirmBox({ title: "Check what the sponsor will read", text: "“" + changed + "” — if anything here is internal, go back and edit it in the top box.", ok: "Send" });
+    const reply = v.sponsor_reply && msgBottom.value.includes(String(v.sponsor_reply).trim().slice(0, 40)) ? String(v.sponsor_reply).trim() : null;
+    if (changed || reply) {
+      const ok = await confirmBox({ title: "Check what the sponsor will read", text: [changed ? "“" + changed + "”" : null, reply ? "Claude's reply (under the link): “" + (reply.length > 400 ? reply.slice(0, 400) + "…" : reply) + "”" : null].filter(Boolean).join("\n\n") + "\n\nIf anything here is internal, go back and edit it in the boxes.", ok: "Send" });
       if (!ok) return;
     }
     send.disabled = true; out.textContent = "Sending…";
@@ -1543,7 +1592,7 @@ function factsOf(v) {
     injects: sc ? inj.length : sm.injects,
     teams: sc ? (Array.isArray(sc.requiredDepartments) ? sc.requiredDepartments.length : new Set(inj.map((i) => i.team).filter((t) => t && t !== "All")).size) : sm.teams,
     criteria: sc ? (sc.readinessCriteria || []).length : sm.criteria,
-    produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide,
+    produce: sc ? typ("PRODUCE") : sm.produce, decide: sc ? typ("DECIDE") : sm.decide, locate: sc ? typ("LOCATE") : sm.locate,
   };
 }
 function designPrompt(ctx) {
@@ -1590,13 +1639,15 @@ function versionPanel(ctx, v) {
     if (r) { toast("Link valid until " + dd(dubaiYmd(r.expires_at))); reloadKeepingPlace(); }
   } }, "Extend 14 days"));
   const revising = ctx.state && ctx.state.next && ctx.state.next.key === "revise";
-  if (!revising && v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: async () => {
-    const ok = await confirmBox({ title: "Approve v" + v.version_no + "?", text: (v.sponsor_approved_at ? `${v.sponsor_approved_by} approved it on their page. ` : "") + "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: "Approve v" + v.version_no });
-    if (!ok) return;
-    const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", v.id).select("id")).catch(fail);
-    if (upd) { toast("v" + v.version_no + " approved"); reloadKeepingPlace(); }
-  } }, "Approve v" + v.version_no));
-  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form, btns2.childNodes.length ? btns2 : null);
+  // v7.4: Approve vN opens ONE box — date, time, room, numbers — and sets up (or updates) the exercise in one call.
+  let apForm = null;
+  if (!revising && v.scenario && v.status !== "draft" && v.status !== "approved" && v.status !== "superseded") {
+    apForm = setupForm(ctx, v, ctx.extra.facts && ctx.extra.facts.real ? "update" : "approve");
+    add(btns, h("button", { class: "btn sm", type: "button", "data-act": "approve", "data-next": "approve", onclick: () => {
+      apForm.hidden = !apForm.hidden; if (!apForm.hidden) { const i = apForm.querySelector("input"); if (i) i.focus(); }
+    } }, ctx.extra.facts && ctx.extra.facts.real ? `Approve v${v.version_no} → update the exercise` : "Approve v" + v.version_no));
+  }
+  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form, apForm, btns2.childNodes.length ? btns2 : null);
 }
 function addBox(ctx, nextNo) {
   const { s } = ctx;
@@ -1788,7 +1839,7 @@ function scenarioBlock(ctx) {
   const vLabel = (id) => { const v = vs.find((x) => x.id === id); return v ? "v" + v.version_no : "a removed version"; };
   const nform = noteForm(ctx);
   const delivered = s.status === "delivered";
-  const commented = state.block === "scenario" && /commented/.test(state.where || "");
+  const commented = state.block === "scenario" && !!(state.next && state.next.key === "revise");
   const addBtn = (cls) => h("button", { class: "btn " + cls, type: "button", "data-act": "add_note", onclick: () => { nform.hidden = false; openAround(nform); nform.scrollIntoView({ block: "center", behavior: "smooth" }); } }, "+ Add a comment");
   const promptBtn = (kind) => h("button", { class: "btn primary", type: "button", "data-act": kind + "_prompt", "data-next": kind, onclick: async () => {
     const text = kind === "design" ? designPrompt(ctx) : revisePrompt(ctx, newest);
@@ -1817,6 +1868,7 @@ function scenarioBlock(ctx) {
     todo,
     section("comments", `Comments and remarks (${nCount})`, delivered || commented ? null : addBtn("quiet sm"), nform, notes),
     newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
+    delivered ? null : playSection(ctx),
     older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
       table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
         const link = (ctx.extra.links || []).filter((l) => l.version_id === v.id).slice(-1)[0];
@@ -1829,23 +1881,7 @@ function scenarioBlock(ctx) {
           v.scenario ? h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see") : null] };
       }), "versions")) : null);
 }
-function exerciseBlock(ctx) {
-  const { s } = ctx;
-  const approved = liveVersions(s._versions).some((v) => v.status === "approved");
-  const status = ctx.statusOf("exercise");
-  if ((!approved && !ctx.ses) || status === "later") return block("exercise", "Exercise", { status: "later", line: approved ? "after the newest version is approved" : "opens when the scenario is approved" });
-  const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
-  const body = step4Body(ctx, false, btns, forms);
-  const sel = body.querySelector("select[aria-label='Exercise to link']");
-  const linkBtn = [...body.querySelectorAll("button")].find((b) => /^Link the exercise$/.test(b.textContent.trim()));
-  if (linkBtn) linkBtn.setAttribute("data-next", "setup"); else if (sel) sel.setAttribute("data-next", "setup");
-  const map = { download: "ex_download", delivered: "ex_delivered", close_survey: "ex_close_survey" };
-  body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
-  const line = ctx.ses ? [ctx.ses.label || "exercise linked", ctx.rec.downloaded ? "record downloaded" : null].filter(Boolean).join(" · ") : "choose the exercise Claude set up";
-  return block("exercise", "Exercise", { status, line },
-    !ctx.ses ? h("p", { class: "small muted", style: "margin:0 0 10px" }, "For now, choose the exercise Claude set up and press Link. The next build does this from the page: Approve → the links, QR codes, confirmation and invitation.") : null,
-    body);
-}
+// (v7.4: the Exercise block is exerciseBlock74, after Approve; the v7.3 interim picker is gone.)
 function reportBlock(ctx) {
   const { s, rec } = ctx;
   const reached = rec.downloaded || s.status === "delivered";
@@ -2316,7 +2352,7 @@ function mediaLine(x, readOnly) {
     const [word, tone] = mediaTone(f);
     const running = x.status === "running";
     const btnText = f.status === "none" ? "Prepare" : f.status === "ready" ? "Prepare again" : f.status === "preparing" ? "Preparing…" : "Retry failed";
-    const btn = readOnly || x.purged ? null : h("button", { class: "btn sm" + (f.status === "none" ? " primary" : ""), type: "button", "data-act": "media_prepare",
+    const btn = readOnly || x.purged ? null : h("button", { class: "btn sm" + (x.next ? " red" : f.status === "none" ? " primary" : ""), type: "button", "data-act": "media_prepare", "data-next": x.next ? "prepare" : null, id: x.next ? "nextBtn" : null,
       disabled: f.status === "preparing" || running, title: running ? "Prepare voice and video before Start" : "", onclick: async () => {
         let clips = 0;
         try {
@@ -2352,25 +2388,7 @@ function mediaLine(x, readOnly) {
 function step4Body(ctx, readOnly, btns, forms) {
   const { s, ses: x, free, rec, now, mine } = ctx;
   const out = h("div", {});
-  if (!x) {
-    if (readOnly) { add(out, h("p", { class: "muted small" }, "No exercise linked yet. When the scenario is approved, link the player exercise here, run it, wait for the notes and the survey, then download the record.")); return out; }
-    const sel = h("select", { "aria-label": "Exercise to link" }, h("option", { value: "" }, free.length ? "Choose an exercise…" : "No unlinked exercise"),
-      ...free.map((e) => h("option", { value: e.id }, `${e.label || "(no name)"} — ${e.status}${e.ended_at ? ", ended " + dt(e.ended_at) : ""} · ${e.registered} registered`)));
-    const linkBtn = h("button", { class: "btn red", type: "button", disabled: !free.length, onclick: async () => {
-      if (!sel.value) return toast("Choose an exercise first", true);
-      linkBtn.disabled = true;
-      try {
-        await q(sb.rpc("admin_link_session", { p_session: sel.value, p_submission: s.id }));
-        // Linking schedules the exercise: the stage moves on (never backwards).
-        if (s.status === "scenario_approved" || s.status === "contacted" || s.status === "scenario_sent" || s.status === "client_reviewing")
-          await q(sb.from("submissions").update({ status: "exercise_scheduled" }).eq("id", s.id).eq("status", s.status)).catch(() => null);
-        toast("Exercise linked to " + (s.request_no || "this request")); reloadKeepingPlace();
-      } catch (err) { linkBtn.disabled = false; fail(err); }
-    } }, "Link the exercise");
-    add(out, h("div", { class: "row" }, h("div", { style: "flex:1 1 260px;min-width:0" }, sel), linkBtn),
-      h("p", { class: "muted small", style: "margin:8px 0 0" }, "Only exercises not linked to another request are listed. One exercise link per client — \"Start fresh\" is for a trial run, never for a second client."));
-    return out;
-  }
+  if (!x) { add(out, h("p", { class: "muted small" }, "No exercise yet — Approve the scenario to set it up (More… → Link an existing exercise only to repair).")); return out; }
   const r = x.record || {};
   const runs = Array.isArray(x.runs) ? x.runs : null;
   const chosen = runs ? runs.find((u) => u.run_number === x.chosenRun) || null : null;
@@ -2480,6 +2498,429 @@ function step4Body(ctx, readOnly, btns, forms) {
   return out;
 }
 
+// ================= v7.4 (W8 build 2, 15 November 2026): after Approve =================
+// Design: w8-design.md Part C (the Exercise block), D.4, D.5, D.7, D.8, D.10; fix list 11–16.
+// Approve vN → the set-up box (date, time, room, expected numbers) → ONE database call
+// (admin_setup_exercise: approves, creates or updates the one real exercise, links it).
+// Then: the three links + QR · Test the links · Send confirmation / invitation / both ·
+// Prepare (voice and video) · Reopen the scenario…. Play vN (PlanProof only) for a
+// screen-share call. The links never change, even after Reopen.
+const SITE_ORIGIN = location.origin;
+const linkFor7 = {
+  facilitator: (x) => `${SITE_ORIGIN}/play/facilitator-test.html?session=${x.id}&token=${x.facilitator_token}`,
+  join: (x) => `${SITE_ORIGIN}/play/join.html?session=${x.id}`,
+  room: (x) => `${SITE_ORIGIN}/play/room-display.html?session=${x.id}`,
+};
+const longDay = (ymd) => ymd ? new Date(ymd + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
+const addMinutes = (hhmm, min) => { if (!/^\d{2}:\d{2}$/.test(hhmm || "")) return ""; const [h0, m0] = hhmm.split(":").map(Number); const t = h0 * 60 + m0 + (Number(min) || 0); return String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
+const todayUae = () => dubaiYmd(new Date().toISOString());
+const detailsSet = (s) => !!(s.exercise_date && s.exercise_time && s.venue);
+const sentOk = (emails, kind) => (emails || []).filter((m) => m.kind === kind && !EMAIL_BAD.has(m.status)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+const countsLine = (c) => {
+  if (!c || typeof c !== "object") return "";
+  const deps = c.departments || {}, obs = c.observers || {};
+  const people = Object.values(deps).reduce((a, b) => a + (Number(b) || 0), 0), o = Object.values(obs).reduce((a, b) => a + (Number(b) || 0), 0);
+  return [Object.keys(deps).length ? `${plural(Object.keys(deps).length, "team")}, ${plural(people, "person").replace("persons", "people")}` : null, o ? plural(o, "Observer") : null].filter(Boolean).join(" · ");
+};
+function qrDataUrl(text, cell = 6) {
+  try { const qr = window.qrcode(0, "M"); qr.addData(text); qr.make(); return qr.createDataURL(cell, 2); } catch { return ""; }
+}
+function showLarge(title, url) {
+  const d = $("qrDlg");
+  $("qrTitle").textContent = title; $("qrImg").src = qrDataUrl(url, 10); $("qrUrl").textContent = url;
+  d.showModal();
+}
+function printQr(title, url, org) {
+  const w = window.open("", "_blank");
+  if (!w) return toast("Allow pop-ups to print", true);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc7(title)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:30px}img{width:320px;height:320px}p{font-size:14px;word-break:break-all}</style></head><body><h1>${esc7(org || "")}</h1><h2>${esc7(title)}</h2><img src="${qrDataUrl(url, 10)}" alt="QR code"><p>${esc7(url)}</p><p>Scan with your phone camera to join the exercise.</p></body></html>`);
+  w.document.close(); setTimeout(() => w.print(), 400);
+}
+async function copyText(text, what) {
+  try { await navigator.clipboard.writeText(text); toast(what + " copied"); } catch { window.prompt("Copy:", text); }
+}
+
+// --- the set-up box: Approve vN → set up the exercise (one call) ---
+function setupForm(ctx, v, mode) {
+  const { s } = ctx;
+  const teams = (v.scenario && Array.isArray(v.scenario.requiredDepartments)) ? v.scenario.requiredDepartments : [];
+  const prev = s.expected_counts || (ctx.extra.facts && ctx.extra.facts.expected_counts) || {};
+  const date = h("input", { type: "date", min: todayUae(), "aria-label": "Exercise date" }); date.defaultValue = s.exercise_date || "";
+  const time = h("input", { type: "time", step: 300, "aria-label": "Start time" }); time.defaultValue = s.exercise_time || "";
+  const room = h("input", { type: "text", maxlength: 200, "aria-label": "Room", placeholder: "e.g. Tower 1, 4th-floor boardroom" }); room.defaultValue = s.venue || "";
+  const nums = teams.map((t) => { const i = h("input", { type: "number", min: 0, max: 500, inputmode: "numeric", "aria-label": "People expected — " + t, style: "width:90px" }); i.defaultValue = String((prev.departments || {})[t] ?? ""); return [t, i]; });
+  const obs = h("input", { type: "number", min: 0, max: 50, inputmode: "numeric", "aria-label": "Observers expected", style: "width:90px" }); obs.defaultValue = String(Object.values(prev.observers || {})[0] ?? "");
+  const out = h("div", { class: "progress", role: "status" });
+  const minutes = (v.scenario && v.scenario.format && v.scenario.format.lengthMinutes) || 90;
+  const label = mode === "update" ? `Approve v${v.version_no} → update the exercise` : mode === "setup" ? "Set up the exercise" : `Approve v${v.version_no} and set up the exercise`;
+  const go = h("button", { class: "btn primary", type: "button", "data-act": "setup_go", onclick: async () => {
+    if (date.value && date.value < todayUae()) { toast("The date is in the past", true); date.focus(); return; }
+    const counts = { departments: {}, observers: {} };
+    for (const [t, i] of nums) if (i.value !== "") counts.departments[t] = Math.max(0, Math.min(500, parseInt(i.value, 10) || 0));
+    if (obs.value !== "") counts.observers["1"] = Math.max(0, Math.min(50, parseInt(obs.value, 10) || 0));
+    if (!Object.keys(counts.observers).length) delete counts.observers;
+    if (!Object.keys(counts.departments).length) delete counts.departments;
+    go.disabled = true; out.textContent = mode === "update" ? "Updating the exercise…" : "Setting up the exercise…";
+    try {
+      const r = await q(sb.rpc("admin_setup_exercise", { p_version: v.id, p_date: date.value || null, p_time: time.value || null, p_venue: room.value.trim() || null, p_counts: counts }));
+      clearDrafts(form);
+      toast(r && r.created ? `v${v.version_no} approved — the exercise is set up. Next: Test the links.` : mode === "update" ? `The exercise now runs v${v.version_no} — same links.` : "Saved");
+      reloadKeepingPlace();
+    } catch (err) { go.disabled = false; out.textContent = ""; fail(err); }
+  } }, label);
+  const form = h("div", { class: "inline-form stack setup-form", hidden: true, "data-form": "setup-" + mode },
+    h("p", { class: "small", style: "margin:0" }, mode === "update"
+      ? `This puts v${v.version_no} into the same exercise. The three links stay the same — nothing you sent needs changing. If voice and video were prepared, prepare them again.`
+      : `This makes v${v.version_no} the final version and sets up the real exercise from it: the three links and QR codes. You can fill in or change the date, time and room later — the emails wait for them.`),
+    h("div", { class: "row", style: "gap:10px 18px; align-items:flex-end" },
+      h("label", { class: "f" }, "Date", date), h("label", { class: "f" }, "Start time (UAE)", time),
+      h("span", { class: "small muted" }, `${minutes} minutes`)),
+    h("label", { class: "f" }, "Room", room),
+    teams.length ? h("div", {}, h("div", { class: "small muted", style: "margin:4px 0" }, "People expected (from the discovery call)"),
+      table(["Team", "People"], nums.map(([t, i]) => [t, i]).concat([["Observers", obs]]), "counts")) : null,
+    h("div", { class: "row" }, go, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); } }, "Cancel")), out);
+  return form;
+}
+
+// --- the details (date, time, room, numbers), changeable until the day ---
+function detailsForm(ctx) {
+  const { s } = ctx;
+  const sentC = sentOk(ctx.extra.emails, "confirmation"), sentI = sentOk(ctx.extra.emails, "invitation");
+  const date = h("input", { type: "date", min: todayUae(), "aria-label": "Exercise date" }); date.defaultValue = s.exercise_date || "";
+  const time = h("input", { type: "time", step: 300, "aria-label": "Start time" }); time.defaultValue = s.exercise_time || "";
+  const room = h("input", { type: "text", maxlength: 200, "aria-label": "Room" }); room.defaultValue = s.venue || "";
+  const out = h("div", { class: "progress", role: "status" });
+  const save = h("button", { class: "btn primary", type: "button", "data-act": "details_go", onclick: async () => {
+    save.disabled = true;
+    try {
+      const r = await q(sb.rpc("admin_set_exercise_details", { p_submission: s.id, p_date: date.value || null, p_time: time.value || null, p_venue: room.value.trim() || null, p_counts: null }));
+      clearDrafts(form);
+      if (r && r.date_changed && (sentC || sentI)) toast("Saved. The date or time changed — send the confirmation and the invitation again (Send both).", true);
+      else toast("Saved");
+      reloadKeepingPlace();
+    } catch (err) { save.disabled = false; fail(err); }
+  } }, "Save");
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "details" },
+    h("div", { class: "row", style: "gap:10px 18px" }, h("label", { class: "f" }, "Date", date), h("label", { class: "f" }, "Start time (UAE)", time)),
+    h("label", { class: "f" }, "Room", room),
+    (sentC || sentI) ? h("p", { class: "small", style: "color:var(--attn);margin:0" }, "Already sent: " + [sentC ? "confirmation " + hm(sentC.created_at) : null, sentI ? "invitation " + hm(sentI.created_at) : null].filter(Boolean).join(" · ") + ". If the date or time changes, send both again.") : null,
+    h("div", { class: "row" }, save, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); } }, "Cancel")), out);
+  return form;
+}
+
+// --- the two emails (D.8), written for the sponsor ---
+function exerciseEmails(ctx) {
+  const { s, c } = ctx;
+  const f = ctx.extra.facts || {}, x = f.real || {};
+  const sp = sponsorOf(ctx);
+  const first = (sp.name || "").replace(/\s*\((test|fictional)\)\s*$/i, "").trim().split(/\s+/)[0] || "colleague";
+  const minutes = x.minutes || 90;
+  const v = liveVersions(s._versions).find((y) => y.id === x.version_id) || {};
+  const label = (v.scenario && v.scenario.label) || "the exercise";
+  const teams = (v.scenario && v.scenario.requiredDepartments) || [];
+  const obs = Object.values((s.expected_counts || {}).observers || {})[0];
+  const when = `${longDay(s.exercise_date)}, ${s.exercise_time}–${addMinutes(s.exercise_time, minutes)} UAE time`;
+  const lang = s.exercise_language === "arabic" ? "Arabic (the report follows in English and Arabic)" : "English (the report follows in English and Arabic)";
+  const conf = {
+    subject: `PlanProof — your exercise is confirmed: ${longDay(s.exercise_date)}, ${s.exercise_time}`,
+    message: [`Dear ${first},`,
+      `Thank you — version ${v.version_no || ""} of "${label}" is approved and your exercise is set up.`,
+      `When: ${when} (${minutes} minutes)\nWhere: ${s.venue}${teams.length ? "\nTeams: " + teams.join(" · ") + (obs ? ` · ${plural(obs, "Observer")}` : "") : ""}\nLanguage: ${lang}`,
+      "What we need from you before the day:",
+      "1. A laptop for the room's screen. On the day, the exercise is shown on the room's screen from one laptop. Please connect a laptop to the screen and the speakers, on the same Wi-Fi the exercise will use.",
+      "2. A quick check of that laptop, a few days before. Please ask your IT contact to open the link below on that laptop. It checks the connection, the sound and the screen in about 20 seconds. When it finishes, they press the button \"Email results to PlanProof\", so we can confirm that everything works:\n" + "[the connection check link]",
+      "3. The participants' invitation. It comes in a separate email: please forward it to everyone taking part.",
+      "4. The names of the Observers.",
+      "Nothing needs to be installed; participants bring a charged phone or laptop. Everything entered during the exercise is deleted 7 days after your report is delivered; findings describe teams, never individuals.",
+      "The exercise is also attached as a calendar invitation (exercise.ics): open it and choose Add (or Save) to put it in your calendar.",
+      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
+  };
+  const inv = {
+    subject: `Invitation — business continuity exercise, ${longDay(s.exercise_date)}, ${s.exercise_time}`,
+    message: [`You are invited to a ${minutes}-minute tabletop exercise${c.company_name ? " for " + c.company_name.replace(/^TEST – /, "") : ""} on ${longDay(s.exercise_date)} at ${s.exercise_time} (UAE time), ${s.venue}.`,
+      "Please bring a charged phone or laptop (and a charger). There is nothing to install. On the day you will scan a code on the room screen to join; if you prefer, here is the join link: [the join link]",
+      `Before the day, this short video explains how the exercise works: ${BRIEFING_VIDEO_URL}`,
+      "This exercise tests the plan, not individuals. Your name and job title appear only in the attendance list of your organisation's report; everything entered during the exercise is deleted 7 days after the report is delivered.",
+      "The exercise is attached as a calendar invitation (exercise-invitation.ics): open it and choose Add (or Save) to put it in your calendar.\n\nThe PlanProof team"].join("\n\n"),
+  };
+  return { to: sp.email, conf, inv };
+}
+const BRIEFING_VIDEO_URL = "https://qryfayienxrngavhwfgw.supabase.co/storage/v1/object/public/exercise-media/briefing/participant-en.mp4";
+
+function exerciseSendForm(ctx, which) {
+  const { s } = ctx;
+  const e = exerciseEmails(ctx);
+  const kinds = which === "both" ? ["confirmation", "invitation"] : [which];
+  const to = h("input", { type: "email", "aria-label": "To", autocomplete: "off" }); to.defaultValue = e.to || "";
+  const boxes = kinds.map((k) => {
+    const m = k === "confirmation" ? e.conf : e.inv;
+    const subj = h("input", { type: "text", maxlength: 300, "aria-label": "Subject — " + k }); subj.defaultValue = m.subject;
+    const body = h("textarea", { rows: k === "confirmation" ? 14 : 10, "aria-label": "Message — " + k }); body.defaultValue = m.message;
+    return { k, subj, body };
+  });
+  const out = h("div", { class: "progress", role: "status" });
+  const preview = h("button", { class: "btn sm", type: "button", "data-act": "preview_ex_email", onclick: () => {
+    const d = $("mailDlg");
+    $("mailTo").textContent = to.value; $("mailSubject").textContent = boxes.map((b) => b.subj.value).join("  +  ");
+    $("mailBody").innerHTML = boxes.map((b) => `<h3>${b.k === "confirmation" ? "Confirmation" : "Invitation"}</h3>` + emailHtml(b.body.value
+      .split("[the join link]").join(`${SITE_ORIGIN}/play/join.html?session=•••`).split("[the connection check link]").join(`${SITE_ORIGIN}/play/check.html`), "")
+      + `<p class="small muted">Attached: ${b.k === "invitation" ? "exercise-invitation.ics" : "exercise.ics"} (calendar, UAE time)</p>`).join("<hr>");
+    d.showModal();
+  } }, "Preview the email" + (kinds.length > 1 ? "s" : ""));
+  const send = h("button", { class: "btn primary", type: "button", "data-act": "send_ex_go", onclick: async () => {
+    const addr = to.value.trim();
+    if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
+    const dup = kinds.map((k) => sentOk(ctx.extra.emails, k)).filter((m) => m && Date.now() - Date.parse(m.created_at) < 5 * 60000);
+    if (dup.length) { const ok = await confirmBox({ title: "Send again?", text: `It was sent ${Math.max(1, Math.round((Date.now() - Date.parse(dup[0].created_at)) / 60000))} minute(s) ago to ${dup[0].to_address}.`, ok: "Send again" }); if (!ok) return; }
+    send.disabled = true;
+    const done = [];
+    try {
+      for (const b of boxes) {
+        out.textContent = `Sending the ${b.k}…`;
+        await postEmail({ action: "send", kind: b.k, submission_id: s.id, to: addr, subject: b.subj.value, message: b.body.value });
+        done.push(b.k);
+      }
+      clearDrafts(form);
+      toast((done.length > 1 ? "Confirmation and invitation" : done[0] === "confirmation" ? "Confirmation" : "Invitation") + " sent to " + addr);
+      reloadKeepingPlace();
+    } catch (err) {
+      send.disabled = false; out.textContent = done.length ? `The ${done.join(" and ")} went; the rest did not.` : "";
+      fail(err); if (done.length) reloadKeepingPlace();
+    }
+  } }, which === "both" ? "Send both" : which === "confirmation" ? "Send confirmation" : "Send invitation");
+  const form = h("div", { class: "inline-form stack send-form", hidden: true, "data-form": "ex-" + which },
+    h("div", { class: "row check-first" }, h("span", { class: "small muted" }, "Check it first:"), preview),
+    h("label", { class: "f" }, "To (the sponsor — they forward the invitation)", to),
+    ...boxes.flatMap((b) => [h("h4", { style: "margin:8px 0 0" }, b.k === "confirmation" ? "Confirmation (to the sponsor)" : "Invitation (for the participants — the sponsor forwards it)"),
+      h("label", { class: "f" }, "Subject", b.subj), h("label", { class: "f" }, "Message (edit freely; [the join link] and [the connection check link] are put in when you press Send)", b.body)]),
+    h("p", { class: "small muted", style: "margin:0" }, "A calendar file (UAE time) is attached to each. The facilitator link is never in these emails."),
+    h("div", { class: "row" }, send, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); } }, "Cancel")), out);
+  return form;
+}
+
+// --- Test the links (D.7): each page answers, and the exercise is reachable with the public key ---
+async function testLinks(ctx, x) {
+  const res = {};
+  const page = async (u) => { try { const r = await fetch(u, { cache: "no-store" }); return r.ok; } catch { return false; } };
+  const ps = async (tok) => {
+    try {
+      const headers = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
+      if (tok) headers["x-facilitator-token"] = tok;
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/player_session`, { method: "POST", headers, body: JSON.stringify({ p_session_id: x.id }), cache: "no-store" });
+      const j = r.ok ? await r.json() : null; return j && j.id === x.id ? j.view : null;
+    } catch { return null; }
+  };
+  const [pf, pj, pr, vPlayer, vFac] = await Promise.all([page(linkFor7.facilitator(x)), page(linkFor7.join(x)), page(linkFor7.room(x)), ps(null), ps(x.facilitator_token)]);
+  res.facilitator = pf && vFac === "facilitator";
+  res.join = pj && vPlayer === "player";
+  res.room = pr && vPlayer === "player";
+  res.all = res.facilitator && res.join && res.room;
+  return res;
+}
+
+function exerciseBlock74(ctx) {
+  const { s, c, rec, state } = ctx;
+  const status = ctx.statusOf("exercise");
+  const f = ctx.extra.facts || {};
+  const x = f.real;
+  const approvedV = liveVersions(s._versions).filter((v) => v.status === "approved").sort((a, b) => b.version_no - a.version_no)[0] || null;
+  if (status === "later" && !x) return block("exercise", "Exercise", { status: "later", line: "opens when the scenario is approved" });
+  // No exercise yet (an approval made before v7.4, or the set-up failed): the set-up box.
+  if (!x) {
+    if (!approvedV) return block("exercise", "Exercise", { status: "later", line: "opens when the scenario is approved" });
+    const sf = setupForm(ctx, approvedV, "setup");
+    const btn = h("button", { class: "btn", type: "button", "data-act": "setup", "data-next": "setup", onclick: () => { sf.hidden = !sf.hidden; } }, "Set up the exercise");
+    return block("exercise", "Exercise", { status, line: `v${approvedV.version_no} approved — not set up yet` },
+      h("p", { class: "small muted", style: "margin:0 0 8px" }, `Set up the real exercise from v${approvedV.version_no}: the three links and QR codes.`), btn, sf);
+  }
+  // After the start: the day and after the day (notes, survey, the record) — as before.
+  const started = x.started || (rec && (rec.ended || rec.waiting));
+  const parts = [];
+  const minutes = x.minutes || 90;
+  const when = s.exercise_date && s.exercise_time ? `${longDay(s.exercise_date)}, ${s.exercise_time}–${addMinutes(s.exercise_time, minutes)} UAE time` : null;
+  const dForm = detailsForm(ctx);
+  parts.push(factsTable([
+    ["Exercise", h("span", {}, h("bdi", {}, x.label || ""), h("span", { class: "small muted" }, ` · v${x.version_no || "?"} · ${x.status}`))],
+    ["Date and time", when || h("span", { class: "due-bad" }, "not set yet — the emails wait for it")],
+    ["Room", s.venue || h("span", { class: "due-bad" }, "not set yet")],
+    ["People expected", countsLine(s.expected_counts || x.expected_counts) || "—"]]));
+  if (!started) parts.push(h("div", { class: "row v7-actions secondary" }, h("button", { class: "btn quiet sm", type: "button", "data-act": "details", "data-next": "details", onclick: () => { dForm.hidden = !dForm.hidden; } }, detailsSet(s) ? "Change date, time or room" : "Fill in the date, time and room")), dForm);
+
+  // The three links, named as in the Facilitator Guide (the facilitator link has no QR).
+  const lk = [["Your facilitator link (private)", "facilitator", "yours only — never send it"], ["Participant / Observer join link", "join", "for the participants and Observers"], ["Room screen link", "room", "for the laptop on the room's screen"]];
+  parts.push(section("links", "The three links", null, table(["Link", "For", ""], lk.map(([name, k, who]) => {
+    const url = linkFor7[k](x);
+    const btns = h("div", { class: "row", style: "gap:6px" },
+      h("button", { class: "btn quiet sm", type: "button", "data-act": "copy_" + k, onclick: () => copyText(url, name) }, "Copy"),
+      k === "facilitator" ? h("a", { class: "btn quiet sm", href: url, target: "_blank", rel: "noopener" }, "Open") : null,
+      k !== "facilitator" ? h("button", { class: "btn quiet sm", type: "button", "data-act": "large_" + k, onclick: () => showLarge(name, url) }, "Show large") : null,
+      k === "join" ? h("button", { class: "btn quiet sm", type: "button", "data-act": "print_" + k, onclick: () => printQr(name, url, c.company_name) }, "Print") : null);
+    return [h("strong", {}, name), h("span", { class: "small" }, who), btns];
+  }), "links")));
+  if (!started) {
+    const tested = s.links_tested_at ? (s.links_test && s.links_test.all ? `✓ All three answered · ${hm(s.links_tested_at)}` : `Not all answered (${hm(s.links_tested_at)}): ` + ["facilitator", "join", "room"].filter((k) => !(s.links_test || {})[k]).join(", ") + " — check your connection, then test again") : "not tested yet";
+    const tBtn = h("button", { class: "btn sm", type: "button", "data-act": "test_links", "data-next": "test_links", onclick: async () => {
+      tBtn.disabled = true; tBtn.textContent = "Testing…";
+      const r = await testLinks(ctx, x);
+      await q(sb.rpc("admin_record_link_test", { p_submission: s.id, p_result: { ...r, at: new Date().toISOString() } })).catch(fail);
+      toast(r.all ? "All three answered" : "Not all three answered — see the line", !r.all); reloadKeepingPlace();
+    } }, "Test the links");
+    parts.push(h("div", { class: "row", style: "align-items:center;gap:10px" }, tBtn, h("span", { class: "small " + (s.links_test && !s.links_test.all ? "due-bad" : "muted"), id: "linkTest" }, tested)));
+  }
+
+  // Voice and video (Prepare moved in here; refused on a play copy by the database).
+  const ml = mediaLine({ id: x.id, status: x.status, purged: false, next: !!(state.next && state.next.key === "prepare") }, false);
+  parts.push(h("ul", { class: "checks" }, ml));
+  if (x.media_stale_from) parts.push(h("p", { class: "small", style: "color:var(--attn);margin:4px 0 0" }, `Voice and video were prepared for v${x.media_stale_from} — press Prepare again for v${x.version_no}.`));
+
+  // The emails (grey until date, time and room are set).
+  if (!started) {
+    const ready = detailsSet(s);
+    const why = ready ? null : "Fill in the date, start time and room first";
+    const forms = { confirmation: exerciseSendForm(ctx, "confirmation"), invitation: exerciseSendForm(ctx, "invitation"), both: exerciseSendForm(ctx, "both") };
+    const open = (k) => { Object.entries(forms).forEach(([kk, fm]) => { fm.hidden = kk !== k ? true : !fm.hidden; }); };
+    const sentC = sentOk(ctx.extra.emails, "confirmation"), sentI = sentOk(ctx.extra.emails, "invitation");
+    const eb = (k, label) => h("button", { class: "btn sm", type: "button", "data-act": "ex_" + k, "data-next": "send_" + k, disabled: !ready, title: why, onclick: () => open(k) }, label);
+    parts.push(section("emails", "Confirmation and invitation", null,
+      h("div", { class: "row v7-actions" }, eb("confirmation", sentC ? "Send confirmation again" : "Send confirmation"), eb("invitation", sentI ? "Send invitation again" : "Send invitation"), eb("both", "Send both")),
+      ready ? null : h("p", { class: "small muted", style: "margin:4px 0 0" }, why + " (Change date, time or room above)."),
+      forms.confirmation, forms.invitation, forms.both,
+      (ctx.extra.emails || []).some((m) => m.kind === "confirmation" || m.kind === "invitation") ? table(["Email", "To", "When", "Status"],
+        (ctx.extra.emails || []).filter((m) => m.kind === "confirmation" || m.kind === "invitation").map((m) => [m.kind === "confirmation" ? "Confirmation" : "Invitation", m.to_address, hm(m.created_at),
+          h("span", { class: EMAIL_BAD.has(m.status) ? "due-bad" : "" }, EMAIL_WORD[m.status] || m.status)]), "emails") : null));
+    // Reopen the scenario… (until the exercise has started; the links never change).
+    const reason = h("textarea", { rows: 3, maxlength: 500, "aria-label": "Why reopen?" });
+    const rForm = h("div", { class: "inline-form stack", hidden: true, "data-form": "reopen" },
+      h("p", { class: "small", style: "margin:0" }, "The scenario goes back to the Scenario stage for a new version. The exercise and its three links stay the same." + (sentC || sentI ? " Already sent: " + [sentC ? "confirmation " + hm(sentC.created_at) : null, sentI ? "invitation " + hm(sentI.created_at) : null].filter(Boolean).join(" · ") + " — the links in them keep working." : "")),
+      h("label", { class: "f" }, "Why? (Claude reads this when it writes the next version)", reason),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", "data-act": "reopen_go", onclick: async (ev) => {
+        if (reason.value.trim().length < 3) { toast("Write the reason first", true); reason.focus(); return; }
+        ev.target.disabled = true;
+        await q(sb.rpc("admin_reopen_scenario", { p_submission: s.id, p_reason: reason.value.trim() }))
+          .then(() => { clearDrafts(rForm); toast("Reopened — copy the revised prompt for Claude in the Scenario stage"); reloadKeepingPlace(); })
+          .catch((err) => { ev.target.disabled = false; fail(err); });
+      } }, "Reopen the scenario"), h("button", { class: "btn quiet", type: "button", onclick: () => { rForm.hidden = true; clearDrafts(rForm); } }, "Cancel")));
+    parts.push(h("details", { class: "v7-fold", "data-fold": "reopen" }, h("summary", {}, "Reopen the scenario…"), rForm));
+    rForm.hidden = false;
+  } else {
+    // the day itself and after it: the checklist from v7.3 (ended · notes · survey · record · Mark as delivered)
+    const btns = h("div", { class: "step-actions row" }), frm = h("div", { class: "step-forms" });
+    const body = step4Body(ctx, false, btns, frm);
+    body.querySelectorAll(".media-line").forEach((n) => n.remove());
+    const map = { download: "ex_download", delivered: "ex_delivered", close_survey: "ex_close_survey" };
+    body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
+    parts.push(body);
+  }
+  const line = [x.label ? `v${x.version_no}` : null, started ? (rec.downloaded ? "record downloaded" : x.status) : s.exercise_date ? dayName(s.exercise_date) : "date not set",
+    !started && s.links_test && s.links_test.all ? "links tested" : null].filter(Boolean).join(" · ");
+  return block("exercise", "Exercise", { status, line }, ...parts);
+}
+
+// Play vN (fix 11): a throw-away copy for PlanProof only, shown on a screen-share call.
+function playSection(ctx) {
+  const f = ctx.extra.facts || {};
+  const plays = f.plays || [];
+  const vs = liveVersions(ctx.s._versions).filter((v) => v.scenario).sort((a, b) => b.version_no - a.version_no);
+  if (!vs.length) return null;
+  const v = vs[0];
+  const playBtn = h("button", { class: "btn quiet sm", type: "button", "data-act": "play", onclick: async () => {
+    const w = window.open("about:blank", "_blank");
+    playBtn.disabled = true;
+    try {
+      const r = await q(sb.rpc("admin_create_play_session", { p_version: v.id }));
+      const url = linkFor7.facilitator({ id: r.session_id, facilitator_token: r.facilitator_token });
+      if (w) w.location = url; else window.open(url, "_blank");
+      toast(`Play v${v.version_no} opened in a new tab — a practice copy, nothing is kept. End play when you finish.`);
+      sessionStorage.setItem("pp_admin_keep_open", "scenario"); reloadKeepingPlace();
+    } catch (err) { if (w) w.close(); playBtn.disabled = false; fail(err); }
+  } }, `Play v${v.version_no} (PlanProof only)`);
+  return section("play", "Walk the sponsor through it on a call", null,
+    h("p", { class: "small muted", style: "margin:0 0 6px" }, `Press Play v${v.version_no}, then share your screen on the call. It is a practice copy with no narration or clips: never counted, never sent, deleted by itself after 7 days. The sponsor never gets a play link.`),
+    h("div", { class: "row v7-actions secondary" }, playBtn),
+    plays.length ? table(["Play copy", "Opened", "Deleted by itself", ""], plays.map((p) => [`PLAY — v${p.version_no}`, hm(p.created_at), dd(dubaiYmd(p.expires_at)),
+      h("div", { class: "row", style: "gap:6px" },
+        h("a", { class: "btn quiet sm", href: linkFor7.facilitator(p), target: "_blank", rel: "noopener" }, "Open"),
+        h("a", { class: "btn quiet sm", href: linkFor7.join(p), target: "_blank", rel: "noopener" }, "Join as a participant"),
+        h("button", { class: "btn quiet sm", type: "button", "data-act": "end_play", onclick: async (ev) => {
+          ev.target.disabled = true;
+          await q(sb.rpc("admin_end_play", { p_session: p.id })).then(() => { toast("Play copy ended and deleted"); sessionStorage.setItem("pp_admin_keep_open", "scenario"); reloadKeepingPlace(); }).catch((err) => { ev.target.disabled = false; fail(err); });
+        } }, "End play"))]), "plays") : null);
+}
+
+// ---------- Alerts (D.10): the bell, per device; every alert is also an email ----------
+const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const b64u = (s) => { const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...r].map((ch) => ch.charCodeAt(0))); };
+const bufB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+async function bellState() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return { supported: false };
+  // never wait on serviceWorker.ready here: with no registration it never settles
+  const reg = await navigator.serviceWorker.getRegistration("./").catch(() => null) || null;
+  const sub = reg ? await reg.pushManager.getSubscription().catch(() => null) : null;
+  let devices = [];
+  try { devices = (await q(sb.rpc("admin_push_devices"))) || []; } catch { /* shown as unknown */ }
+  const mine = sub ? devices.find((d) => d.endpoint === sub.endpoint) : null;
+  return { supported: true, reg, sub, devices, mine, on: !!(sub && mine && !mine.disabled_at), ended: !!(mine && mine.disabled_at), permission: Notification.permission };
+}
+async function drawBell() {
+  const b = $("bellBtn"); if (!b) return;
+  const st = await bellState().catch(() => ({ supported: false }));
+  b.replaceChildren(st.on ? "🔔" : "🔕", h("span", { class: "bell-word" }, st.on ? " Alerts: on" : " Alerts: off"));
+  b.setAttribute("aria-label", st.on ? "Alerts: on" : "Alerts: off");
+  b.classList.toggle("bell-ended", !!st.ended);
+  b.title = st.ended ? "Alerts off on this device — the browser ended them. Turn on again." : st.on ? "Alerts are on for this device" : "Turn alerts on for this device";
+}
+async function openBell() {
+  const st = await bellState().catch(() => ({ supported: false }));
+  const box = $("bellBody");
+  const label = (isIos() ? "iPhone" : /Android/.test(navigator.userAgent) ? "Android phone" : "Laptop") + " — " + new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const parts = [];
+  if (!st.supported) parts.push(h("p", {}, isIos() && !isStandalone()
+    ? "On an iPhone, alerts work only from the installed app: in Safari press Share → Add to Home Screen, open PlanProof from the home screen, sign in, then press Alerts here again."
+    : "This browser cannot show push alerts. Every alert still comes by email to exercises@plan-proof.com."));
+  else {
+    parts.push(h("p", {}, st.on ? "Alerts are ON for this device." : st.ended ? "Alerts are OFF on this device — the browser ended them. Turn them on again." : "Alerts are off for this device."));
+    if (st.permission === "denied") parts.push(h("p", { class: "due-bad small" }, "This browser blocks notifications for this site. Allow them in the browser's site settings, then try again."));
+    parts.push(h("div", { class: "row" },
+      st.on ? h("button", { class: "btn", type: "button", "data-act": "bell_off", onclick: async () => {
+        try { await q(sb.rpc("admin_push_unsubscribe", { p_endpoint: st.sub.endpoint })); await st.sub.unsubscribe(); toast("Alerts off on this device"); } catch (err) { fail(err); }
+        $("bellDlg").close(); drawBell();
+      } }, "Turn alerts off") : h("button", { class: "btn", type: "button", "data-act": "bell_on", onclick: async (ev) => {
+        ev.target.disabled = true;
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm !== "granted") throw new Error("Notifications were not allowed on this device.");
+          const kr = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"action":"key"}' }).then((r) => r.json());
+          if (!kr.publicKey) throw new Error("The push key is not set on the server yet.");
+          const reg = st.reg || await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("The app's helper (service worker) is not running — reload the page and try again.")), 8000))]);
+          const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(kr.publicKey) });
+          await q(sb.rpc("admin_push_subscribe", { p_endpoint: sub.endpoint, p_p256dh: bufB64u(sub.getKey("p256dh")), p_auth: bufB64u(sub.getKey("auth")), p_label: label }));
+          toast("Alerts on for this device — press Send a test alert");
+        } catch (err) { fail(err); }
+        ev.target.disabled = false; $("bellDlg").close(); drawBell();
+      } }, st.ended ? "Turn alerts on again" : "Turn alerts on"),
+      h("button", { class: "btn quiet", type: "button", "data-act": "bell_test", onclick: async (ev) => {
+        ev.target.disabled = true;
+        try {
+          const { token } = await session7();
+          const r = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: '{"action":"test"}' }).then((x) => x.json());
+          if (!r.ok) throw new Error(r.error || "The test alert was not sent.");
+          toast(`Test alert: ${plural(r.pushed, "device")} reached by push${r.emailed ? ", and the email went to exercises@plan-proof.com" : ""}.`, !r.pushed);
+        } catch (err) { fail(err); }
+        ev.target.disabled = false;
+      } }, "Send a test alert")));
+    if (isIos() && !isStandalone()) parts.push(h("p", { class: "small muted" }, "iPhone: alerts need the installed app (Safari → Share → Add to Home Screen)."));
+    if ((st.devices || []).length) parts.push(table(["Device", "Since", "State"], st.devices.map((d) => [d.device_label || "device", dd(dubaiYmd(d.created_at)),
+      d.disabled_at ? h("span", { class: "due-bad" }, "off — turn on again on that device") : st.sub && d.endpoint === st.sub.endpoint ? "on (this device)" : "on"])));
+  }
+  parts.push(h("p", { class: "small muted" }, "Every alert is also an email to exercises@plan-proof.com — push is an extra, the email is the record."));
+  box.replaceChildren(...parts);
+  $("bellDlg").showModal();
+}
+// The app icon's badge: the number of requests whose next step is yours (set when the list is drawn).
+function setBadge(n) { try { if (navigator.setAppBadge) { if (n > 0) navigator.setAppBadge(n); else navigator.clearAppBadge(); } } catch { /* not supported */ } }
+navigator.serviceWorker && navigator.serviceWorker.addEventListener && navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "open" && e.data.url) location.href = e.data.url; });
+
 // ---- More… : the rare and destructive actions, in one fold at the bottom ----
 function moreFold(ctx) {
   const { s, ses: x, rec } = ctx;
@@ -2540,12 +2981,8 @@ function moreFold(ctx) {
     what.push(`approve v${nv.version_no} after all`);
     parts.push(h("div", { class: "more-part", "data-more": "approve" }, h("h3", {}, `Approve v${nv.version_no} — only if the sponsor accepted it by phone or email`),
       h("p", { class: "muted small" }, "Normally you send a revised version. Use this only when the sponsor tells you v" + nv.version_no + " is fine as it is."),
-      h("button", { class: "btn sm", type: "button", "data-act": "approve_after_all", onclick: async () => {
-        const ok = await confirmBox({ title: `Approve v${nv.version_no}?`, text: "This is the version the exercise will use. The scenario is done and the request moves to the exercise.", ok: `Approve v${nv.version_no}` });
-        if (!ok) return;
-        const upd = await q(sb.from("submission_scenario_versions").update({ status: "approved" }).eq("id", nv.id).select("id")).catch(fail);
-        if (upd) { toast(`v${nv.version_no} approved`); reloadKeepingPlace(); }
-      } }, `Approve v${nv.version_no}`)));
+      (() => { const sf = setupForm(ctx, nv, ctx.extra.facts && ctx.extra.facts.real ? "update" : "approve");
+        return h("div", {}, h("button", { class: "btn sm", type: "button", "data-act": "approve_after_all", onclick: () => { sf.hidden = !sf.hidden; } }, `Approve v${nv.version_no}`), sf); })()));
   }
   // W8 v7.1: the rare backup — Claude gave a file instead of adding the version itself.
   if (s.status !== "delivered" && s.match_status !== "pending" && s.status !== "new") {
@@ -2602,14 +3039,34 @@ function moreFold(ctx) {
       h("p", { class: "muted small" }, r.state === "purged" ? "Already removed on " + dt(r.purged_at) + "." : !r.exported_at ? "Possible only after the record is downloaded." : "Normally this happens by itself 7 days after delivery. You type DELETE to confirm."),
       purge));
   }
-  // Delete this request (typed DELETE).
+  // v7.4: Link an existing exercise — a repair (e.g. one Claude set up by hand before v7.4). One exercise per request.
+  if (!(ctx.extra.facts && ctx.extra.facts.real) && s.status !== "delivered") {
+    const free = (ctx.free || []);
+    const vAppr = liveVersions(s._versions).filter((v) => v.status === "approved").sort((a, b) => b.version_no - a.version_no)[0];
+    const sel = h("select", { "aria-label": "Existing exercise to link" }, h("option", { value: "" }, free.length ? "Choose an exercise…" : "No unlinked exercise"),
+      ...free.map((e) => h("option", { value: e.id }, `${e.label || "(no name)"} — ${e.status} · ${e.registered} registered`)));
+    what.push("link an existing exercise");
+    parts.push(h("div", { class: "more-part", "data-more": "link" }, h("h3", {}, "Link an existing exercise (repair)"),
+      h("p", { class: "muted small" }, "Only for an exercise set up by hand before this page could do it. Normally Approve sets it up. One exercise per request; play copies are never listed."),
+      h("div", { class: "row" }, h("div", { style: "flex:1 1 260px;min-width:0" }, sel), h("button", { class: "btn sm", type: "button", disabled: !free.length, "data-act": "link_existing", onclick: async (ev) => {
+        if (!sel.value) return toast("Choose an exercise first", true);
+        ev.target.disabled = true;
+        try {
+          await q(sb.rpc("admin_link_session", { p_session: sel.value, p_submission: s.id }));
+          if (vAppr && ["scenario_approved", "contacted", "scenario_sent", "client_reviewing"].includes(s.status)) await q(sb.from("submissions").update({ status: "exercise_scheduled" }).eq("id", s.id).eq("status", s.status)).catch(() => null);
+          toast("Exercise linked to " + (s.request_no || "this request")); reloadKeepingPlace();
+        } catch (err) { ev.target.disabled = false; fail(err); }
+      } }, "Link this exercise"))));
+  }
+  // Delete this request (you type the request number — remark 25).
   what.push("delete this request");
   parts.push(h("div", { class: "more-part" }, h("h3", {}, "Delete this request"),
-    h("p", { class: "muted small" }, "For a test, a duplicate or a request sent by mistake. You type DELETE to confirm."),
+    h("p", { class: "muted small" }, "For a test, a duplicate or a request sent by mistake. You type the request number to confirm."),
     h("button", { class: "btn danger sm", type: "button", onclick: async () => {
       const ok = await confirmBox({ title: "Delete request " + (s.request_no || "") + "?",
-        text: "Use this for a test, a duplicate or a request sent by mistake. Its scenario versions, client comments and team remarks are deleted with it. If the client record was created only by this request and is still unconfirmed, it is removed too. A confirmed client and its history are never touched. This can't be undone.",
-        ok: "Delete request", typeWord: "DELETE" });
+        big: (ctx.c.company_name || "(no organisation name)") + " — " + (s.request_no || ""),
+        text: "Check the organisation above. Use this for a test, a duplicate or a request sent by mistake. Its scenario versions, client comments, team remarks, play copies and an exercise that never started are deleted with it. If the client record was created only by this request and is still unconfirmed, it is removed too. A confirmed client and its history are never touched. This can't be undone.",
+        ok: "Delete request", typeWord: s.request_no || "DELETE" });
       if (!ok) return;
       await q(sb.rpc("admin_delete_submission", { p_submission: s.id, p_reason: "Deleted on the admin page" }))
         .then(() => { toast("Request " + (s.request_no || "") + " deleted"); go("#"); })
@@ -2831,11 +3288,11 @@ async function renderClient(id) {
     kpi(String(openActions), "Open actions", openActions ? "wait" : "ok"),
     kpi(String(requests.filter((r) => r.status !== "delivered").length), "Open requests", requests.some((r) => r.status !== "delivered") ? "wait" : "none"),
     kpi(String(contacts.filter((x) => x.is_active).length), "Active contacts", contacts.some((x) => x.is_active) ? "ok" : "bad"));
+  // v7.4 (fix 15): tables instead of comma lines in the client record
   const requestsCard = h("div", { class: "card" }, h("h2", {}, "Requests"),
-    requests.length ? h("div", { class: "list" }, ...requests.map((r) => h("a", { class: "lrow", href: "#request/" + r.id },
-      h("div", {}, h("div", { class: "t", style: "font-size:15px" }, h("span", { class: "rno" }, r.request_no || ""), " ", dt(r.created_at)), h("div", { class: "s" }, [r.source === "website" ? "Website" : r.source[0].toUpperCase() + r.source.slice(1), r.org_unit].filter(Boolean).join(" · "))),
-      h("div", { class: "s" }, [r.service_type, r.risk_concern_1 && "Main risk: " + r.risk_concern_1].filter(Boolean).join(" · ")),
-      h("div", { class: "r" }, stagePill(r.status))))) : h("p", { class: "empty" }, "No requests yet."),
+    requests.length ? table(["Request", "Arrived", "How it came", "Service", "Main risk", "Stage"], requests.map((r) => [
+      h("a", { href: "#request/" + r.id }, h("span", { class: "rno" }, r.request_no || "(no number)")), dt(r.created_at),
+      r.source === "website" ? "Website" : r.source ? r.source[0].toUpperCase() + r.source.slice(1) : "", r.service_type, r.risk_concern_1, stagePill(r.status)]), "client-requests") : h("p", { class: "empty" }, "No requests yet."),
     h("p", { class: "muted small", style: "margin:10px 0 0" }, "A new call or email from this client: ", h("a", { href: "#new-client" }, "+ New request"), " — choose this client in the form."));
   const overview = h("div", {}, tiles, requestsCard);
 
@@ -2848,7 +3305,7 @@ async function renderClient(id) {
         h("div", {}, h("h3", {}, dd(x.exercise_date) + (x.main_risk ? " — " + x.main_risk : "")),
           h("div", { class: "small muted" }, [x.service_type, x.is_retest ? "re-test" : null, x.delivery_mode && x.delivery_mode.replace("_", " "), x.plan_title && "plan: " + x.plan_title + (x.plan_version ? " v" + x.plan_version : "")].filter(Boolean).join(" · "))),
         x.overall_score != null ? h("div", { class: "band " + (x.band || ""), style: "font-size:20px" }, Math.round(x.overall_score) + "% " + (x.band ? x.band[0].toUpperCase() + x.band.slice(1) : "")) : null),
-      Object.keys(x.capability_scores || {}).length ? h("dl", { class: "facts", style: "margin-top:10px" }, ...Object.entries(x.capability_scores).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v == null ? "Not tested" : Math.round(v) + "%")])) : null,
+      Object.keys(x.capability_scores || {}).length ? h("div", { style: "margin-top:10px" }, table(["Area", "Score"], Object.entries(x.capability_scores).map(([k, v]) => [k, v == null ? "Not tested" : Math.round(v) + "%"]), "scores")) : null,
       (x.findings || []).length ? h("details", { style: "margin-top:10px" }, h("summary", {}, x.findings.length + (x.findings.length === 1 ? " finding" : " findings")),
         h("div", { class: "table-wrap" }, h("table", {}, h("tbody", {}, ...x.findings.slice().sort((a, b) => a.sort_order - b.sort_order).map((f) => h("tr", {},
           h("td", {}, f.criterion, f.plan_cause ? h("div", { class: "small muted" }, "Plan-level cause: " + f.plan_cause) : null),
@@ -2863,10 +3320,8 @@ async function renderClient(id) {
           }))))) : null))
       : [h("div", { class: "card plain" }, h("p", { class: "empty" }, client.history_opt_out ? "This client opted out — no exercise history is kept." :
           "No exercises recorded yet. At delivery, the report skill saves the exercise here (score, findings and corrective actions)."))]),
-    profile ? h("div", { class: "card" }, h("h2", {}, "Organisation profile"), h("dl", { class: "facts" },
-      ...[["Departments", (profile.departments || []).join(", ")], ["Key operations", profile.key_operations], ["Dependencies", profile.dependencies],
-          ["Plan tested", [profile.plan_title, profile.plan_version && "v" + profile.plan_version].filter(Boolean).join(" ")], ["Updated", dt(profile.updated_at)]]
-        .filter(([, v]) => v).flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]))) : null);
+    profile ? h("div", { class: "card" }, h("h2", {}, "Organisation profile"), factsTable([["Departments", (profile.departments || []).join(", ")], ["Key operations", profile.key_operations], ["Dependencies", profile.dependencies],
+          ["Plan tested", [profile.plan_title, profile.plan_version && "v" + profile.plan_version].filter(Boolean).join(" ")], ["Updated", dt(profile.updated_at)]])) : null);
 
   // --- Contacts tab: contacts + other names ---
   const nn = h("input", { type: "text", placeholder: "e.g. brand name, Arabic name, former name" });
@@ -2923,7 +3378,7 @@ async function renderClient(id) {
   const historyChoice = h("div", { class: "card" }, h("h2", {}, "Exercise history choice"),
     h("div", { class: "spread" }, h("p", { class: "small muted", style: "margin:0" }, client.history_opt_out ? "The client opted out: no exercise history is kept." : "History is kept for 3 years from the latest exercise (" + (client.retain_until ? "until " + dd(client.retain_until) : "no exercise yet") + ")."), optBtn), keptLine(await loadRetention(id)));
   const eventsCard = h("div", { class: "card plain" }, h("details", {}, h("summary", {}, "Activity log (" + events.length + ")"),
-    events.length ? h("ul", { class: "small", style: "margin:0; padding-left:18px" }, ...events.map((ev) => h("li", {}, dt(ev.at) + " — " + ev.event.replace(/_/g, " ") + (ev.detail ? ": " + ev.detail : "")))) : h("p", { class: "empty" }, "Nothing recorded yet.")));
+    events.length ? table(["When", "What", "Detail"], events.map((ev) => [dt(ev.at), ev.event.replace(/_/g, " "), ev.detail || ""]), "events") : h("p", { class: "empty" }, "Nothing recorded yet.")));
   const word = client.company_name.split(/\s+/)[0];
   const dangerCard = h("div", { class: "card danger-zone stack" }, h("h2", {}, "Delete or erase"),
     h("div", { class: "spread" }, h("div", {}, h("h3", {}, "Delete exercise history"), h("p", { class: "small muted" }, "Removes exercises, findings, actions and the organisation profile, and records the opt-out. Contacts and requests stay.")),

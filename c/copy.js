@@ -71,7 +71,7 @@
           i.message ? `<div class="cc-msg">${para(i.message)}</div>` : "",
           posts.length ? `<div class="cc-posts">${posts.map((s) => `<div class="cc-post"><div class="cc-post-who">${esc([s.name, s.handle, s.platform].filter(Boolean).join(" · "))}</div>${para(s.text)}${s.stats ? `<div class="cc-post-stats">${esc(s.stats)}</div>` : ""}</div>`).join("")}</div>` : "",
           arr(i.questions).length ? `<div class="cc-q"><div class="cc-label">Questions for the team</div><ul>${arr(i.questions).map((q) => `<li>${esc(str(q))}</li>`).join("")}</ul></div>` : "",
-          t.text ? `<div class="cc-task"><div class="cc-label">Task — ${esc(t.type === "DECIDE" ? "decide" : "produce")}${t.label ? ": " + esc(t.label) : ""}${t.bilingual ? " (English and Arabic)" : ""}</div>${para(t.text)}</div>` : "",
+          t.text ? `<div class="cc-task"><div class="cc-label">Task — ${esc(t.type === "DECIDE" ? "decide" : t.type === "LOCATE" ? "find" : "produce")}${t.label ? ": " + esc(t.label) : ""}${t.bilingual ? " (English and Arabic)" : ""}</div>${para(t.text)}</div>` : "",
           `</article>`);
       });
       out.push(`</section>`);
