@@ -35,7 +35,7 @@
       if (busy || (!force && Date.now() - lastAt < 20000)) return;
       busy = true;
       try { facts = await callNotesRpc("facilitator_before_day", { p_session_id: opts.sessionId }, opts.token); err = null; lastAt = Date.now(); }
-      catch (e) { err = e.message || String(e); }
+      catch (e) { err = e.message || String(e); lastAt = Date.now(); } // a failed load waits its normal interval too
       finally { busy = false; render(); }
     }
     async function tick(which, on) {
@@ -113,7 +113,7 @@
       if (busy || (!force && Date.now() - lastAt < 15000)) return;
       busy = true;
       try { data = await callNotesRpc("facilitator_criteria", { p_session_id: opts.sessionId }, opts.token); err = null; lastAt = Date.now(); }
-      catch (e) { err = e.message || String(e); }
+      catch (e) { err = e.message || String(e); lastAt = Date.now(); } // a failed load waits its normal interval too
       finally { busy = false; render(); }
     }
     function list() { return (data && data.criteria) || []; }
