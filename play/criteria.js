@@ -51,9 +51,9 @@
     function btn(act, label, primary) { return '<button type="button" class="' + (primary ? "primary " : "") + 'day-btn" data-act="' + act + '">' + esc(label) + "</button>"; }
     function render() {
       var r = row();
-      if (!r || r.status !== "lobby" || r.purpose === "play") { el.hidden = true; el.innerHTML = ""; return; }
+      if (!r || r.status !== "lobby" || r.purpose === "play") { el.hidden = true; el.__ppDayHtml = null; el.innerHTML = ""; return; }
       el.hidden = false;
-      if (!facts) { el.innerHTML = '<h2>' + esc(T("fac.day.heading")) + '</h2><p class="pp-hint">' + esc(err ? T("fac.day.loadFailed", { error: err }) : T("fac.common.loading")) + "</p>"; return; }
+      if (!facts) { el.__ppDayHtml = null; el.innerHTML = '<h2>' + esc(T("fac.day.heading")) + '</h2><p class="pp-hint">' + esc(err ? T("fac.day.loadFailed", { error: err }) : T("fac.common.loading")) + "</p>"; return; }
       var t = facts.ticks || {};
       var lines = [];
       lines.push(line(true, T("fac.day.links"), T("fac.day.linksReady"), btn("links", T("fac.day.linksBtn")), "links"));
@@ -82,10 +82,14 @@
       if (!facts.expected_set) openAuto.push(T("fac.day.numbers"));
       var summary = manualDone && !openAuto.length ? T("fac.day.ready") : manualDone ? T("fac.day.foldedStill", { list: openAuto.join(" · ") }) : T("fac.day.heading");
       var wasOpen = el.querySelector("details") ? el.querySelector("details").open : !manualDone;
-      el.innerHTML = '<details class="day-fold"' + (manualDone && !wasOpen ? "" : " open") + '><summary><h2>' + esc(summary) + "</h2></summary>" +
+      var html = '<details class="day-fold"' + (manualDone && !wasOpen ? "" : " open") + '><summary><h2>' + esc(summary) + "</h2></summary>" +
         '<p class="pp-hint">' + esc(T("fac.day.sub")) + "</p><ul class=\"day-list\">" + lines.join("") + "</ul>" +
         (err ? '<p class="pp-hint" role="alert">' + esc(err) + "</p>" : "") + "</details>";
       el.classList.toggle("folded", manualDone);
+      // Redraw only when something changed: a redraw between a press and its release loses the click (build 3 finish).
+      if (html === el.__ppDayHtml && el.querySelector("details")) return;
+      el.__ppDayHtml = html;
+      el.innerHTML = html;
       el.querySelectorAll("[data-act]").forEach(function (b) {
         b.addEventListener("click", function () {
           var a = b.getAttribute("data-act");
@@ -143,7 +147,7 @@
     }
     function render() {
       if (opts.onBadge) opts.onBadge(data && data.open ? unratedCurrent() : 0);
-      if (!data) { el.innerHTML = '<div class="pp-card"><h2>' + esc(T("fac.crit.heading")) + '</h2><p class="pp-hint">' + esc(err ? T("fac.crit.loadFailed", { error: err }) : T("fac.common.loading")) + "</p></div>"; return; }
+      if (!data) { el.__ppCritHtml = null; el.innerHTML = '<div class="pp-card"><h2>' + esc(T("fac.crit.heading")) + '</h2><p class="pp-hint">' + esc(err ? T("fac.crit.loadFailed", { error: err }) : T("fac.common.loading")) + "</p></div>"; return; }
       var all = list(), n = currentInject();
       var cur = forCurrent(), curIds = cur.map(function (c) { return c.id; });
       var rest = all.filter(function (c) { return curIds.indexOf(c.id) < 0; });
@@ -155,7 +159,7 @@
         '<p class="crit-count">' + esc(T("fac.crit.count", { rated: rated, total: all.length })) + (data.is_trial ? ' <span class="crit-trial">' + esc(T("fac.crit.trial")) + "</span>" : "") + "</p>" +
         (data.open ? "" : '<p class="crit-closed" role="status">' + esc(data.closed_reason || "") + "</p>") +
         (err ? '<p class="pp-hint" role="alert">' + esc(err) + "</p>" : "") + "</div>";
-      if (!all.length) { el.innerHTML = head + '<div class="pp-card"><p class="pp-hint">' + esc(T("fac.crit.none")) + "</p></div>"; return; }
+      if (!all.length) { el.__ppCritHtml = null; el.innerHTML = head + '<div class="pp-card"><p class="pp-hint">' + esc(T("fac.crit.none")) + "</p></div>"; return; }
       var html = head;
       if (n != null) {
         html += '<div class="pp-card crit-group current"><h3>' + esc(T("fac.crit.thisInject", { number: n })) + "</h3>" +
@@ -166,7 +170,17 @@
         html += '<div class="pp-card crit-group"><h3>' + esc(a) + "</h3><ul class=\"crit-list\">" + items.map(function (c) { return item(c, false); }).join("") + "</ul></div>";
       });
       var focus = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute("data-note");
+      // Keep what the facilitator is typing: a timed reload must not put a half-typed note back to the saved one (build 3 finish).
+      var drafts = {}, caret = null;
+      el.querySelectorAll("[data-note]").forEach(function (inp) {
+        var id = inp.getAttribute("data-note"), c = list().find(function (x) { return x.id === id; });
+        if (c && inp.value !== (c.note || "")) drafts[id] = inp.value;
+        if (id === focus) { try { caret = [inp.selectionStart, inp.selectionEnd]; } catch (e) { caret = null; } }
+      });
+      if (html === el.__ppCritHtml && !Object.keys(drafts).length && el.querySelector(".crit-top")) return;
+      el.__ppCritHtml = html;
       el.innerHTML = html;
+      Object.keys(drafts).forEach(function (id) { var inp = el.querySelector('[data-note="' + id + '"]'); if (inp && !inp.disabled) inp.value = drafts[id]; });
       el.querySelectorAll("[data-rating]").forEach(function (b) {
         b.addEventListener("click", function () {
           var id = b.getAttribute("data-crit"), k = b.getAttribute("data-rating");
@@ -181,10 +195,10 @@
           if (c && c.rating) rate(id, c.rating, inp.value.trim() || null);
         });
       });
-      if (focus) { var back = el.querySelector('[data-note="' + focus + '"]'); if (back) back.focus(); }
+      if (focus) { var back = el.querySelector('[data-note="' + focus + '"]'); if (back) { back.focus(); if (caret) try { back.setSelectionRange(caret[0], caret[1]); } catch (e) {} } }
     }
     return {
-      refresh: function (force) { var r = row(); if (r && r.status !== "lobby") load(force); else { data = null; if (opts.onBadge) opts.onBadge(0); el.innerHTML = '<div class="pp-card"><h2>' + esc(T("fac.crit.heading")) + '</h2><p class="pp-hint">' + esc(T("fac.crit.fromStart")) + "</p></div>"; } },
+      refresh: function (force) { var r = row(); if (r && r.status !== "lobby") load(force); else { data = null; if (opts.onBadge) opts.onBadge(0); el.__ppCritHtml = null; el.innerHTML = '<div class="pp-card"><h2>' + esc(T("fac.crit.heading")) + '</h2><p class="pp-hint">' + esc(T("fac.crit.fromStart")) + "</p></div>"; } },
       unrated: function () { return data && data.open && !data.is_trial ? { unrated: unratedAll(), total: list().length } : null; },
     };
   }
