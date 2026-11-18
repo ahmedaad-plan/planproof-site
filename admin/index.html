@@ -431,7 +431,11 @@
   .team-note{ color:var(--red-soft); margin:0; }
   fieldset.who{ border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin:0; display:flex; flex-direction:column; gap:6px; }
   fieldset.who legend{ font-weight:600; font-size:14px; padding:0 4px; }
-  /* v7.4 */
+  /* v7.5 */
+  .ok-line{ color:var(--ok, #2f7d62); font-weight:600; }
+  .export-panel .btn{ white-space:nowrap; }
+  .bar a.ver{ text-decoration:none; }
+  .about h2{ font-size:16px; margin:14px 0 4px; }
   .confirm-big{ font-size:22px; font-weight:700; margin:0; color:var(--red-soft); overflow-wrap:anywhere; }
   #bellBtn{ margin-right:6px; } @media (max-width:560px){ #bellBtn .bell-word{ display:none; } .bar .who #bellBtn{ padding:4px 6px; margin-right:0; } } @media (max-width:400px){ .bar{ gap:6px; flex-wrap:wrap; } .bar .who{ gap:4px; } nav.views button{ padding:6px 8px; } } #bellBtn.bell-ended{ border-color:var(--red); color:var(--red-soft); }
   .setup-form table.t7.counts input{ width:90px; }
@@ -447,7 +451,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><span class="ver" title="Page version">v7.4</span><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><a class="ver" href="#about" title="Page version — About PlanProof and how to move it">v7.5</a><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -742,7 +746,7 @@ function route() {
     (b.dataset.view === "requests" && (view === "requests" || view === "request")) || (b.dataset.view === "clients" && (view === "clients" || view === "client")) ? "page" : "false"));
   document.body.classList.remove("has-tabs", "kbd");
   const app = $("app"); app.replaceChildren(h("p", { class: "muted" }, "Loading…"));
-  const run = hsh === "#new-client" ? newClientForm : view === "request" ? () => renderRequest(hsh.slice(9)) : view === "client" ? () => renderClient(hsh.slice(8)) : view === "clients" ? renderClients : renderRequests;
+  const run = hsh === "#new-client" ? newClientForm : hsh === "#about" ? renderAbout : view === "request" ? () => renderRequest(hsh.slice(9)) : view === "client" ? () => renderClient(hsh.slice(8)) : view === "clients" ? renderClients : renderRequests;
   Promise.resolve().then(run).catch(fail);
   refreshPendingCount();
 }
@@ -847,9 +851,9 @@ function stepOf(request, versions, comments, record) {
   // Step 4: scenario approved or exercise scheduled (or an approved version
   // while the stage was left behind).
   if (!rec.linked) return base(4, { sentence: "Link the player exercise to this request when you set it up.", buttons: ["link"], due: "link the exercise" });
-  if (rec.purged) return base(4, { sentence: "The participants' data has been removed. Once the client has accepted the final report, press Mark as delivered.", buttons: rec.downloaded ? ["delivered"] : [], due: "mark delivered" });
+  if (rec.purged) return base(4, { sentence: "The participants' data has been removed. Once the client has accepted the final report, press Client accepted the report in the Report block.", buttons: [], due: "mark delivered" });
   if (!rec.ended) return base(4, { sentence: "The exercise has not ended yet. Run it; after End, the notes and the survey stay open for a while.", buttons: [], due: "run the exercise" });
-  if (rec.downloaded) return base(4, { report: true, sentence: `Run ${rec.run} is downloaded. Write the report from it; once the client has accepted the final report, press Mark as delivered.`, buttons: ["delivered", "download"], due: "deliver the report, then mark delivered" });
+  if (rec.downloaded) return base(4, { report: true, sentence: `Run ${rec.run} is downloaded. Write the report from it; then use the Report block (Add the report, Send the report, Client accepted the report).`, buttons: ["download"], due: "deliver the report, then mark delivered" });
   if (rec.waiting) return base(4, { sentence: "Wait for the notes and the survey to close" + (rec.survey_open ? " — or close the survey now — then" : ", then") + " download the record.", buttons: (rec.survey_open ? ["close_survey"] : []).concat(["download"]), due: "notes or survey still open" });
   return base(4, { sentence: `Download run ${rec.run} and give it to the report chat.`, buttons: ["download"], due: "download the record" });
 }
@@ -927,7 +931,11 @@ function stateOf(s, versions, comments, rec, x = {}) {
   if (s.status === "new") return R({ block: "client", tile: 1, where: "Client confirmed", next: { key: "contacted", label: "Contacted" }, hint: "Call the sponsor (the discovery call), then press Contacted. Scenario v1 is due 5 working days later." });
   if (s.status === "delivered") {
     const o = stepOf(s, versions, comments, rec);
-    return R({ block: "cleanup", tile: 5, where: o.step >= 7 ? "Done — " + o.sentence.replace(/^Nothing left to do — /, "") : "Delivered · " + o.sentence, next: null, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue });
+    // v7.5: two things may still need you after delivery — the lessons insight, and the Zoho Mail deletion
+    const lr = x.lessons;
+    const nx = lr && !lr.has_insight ? { key: "lessons", label: "Complete the lessons record" } : x.lessons !== undefined && !s.zoho_done_at ? { key: "zoho", label: "Zoho Mail: delete the request emails" } : null;
+    return R({ block: "cleanup", tile: 5, where: o.step >= 7 ? "Done — " + o.sentence.replace(/^Nothing left to do — /, "") : "Delivered · " + o.sentence, next: nx, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue,
+      hint: nx && nx.key === "lessons" ? "Copy the lessons prompt for Claude and paste it into the report chat. Claude writes the anonymised insight; you approve the wording." : nx ? "Delete this request's emails with client material in Zoho Mail (Inbox and Sent), then press Done ✓." : null });
   }
   // A version newer than the approved one (e.g. v3 after v2 was approved) is the live question.
   const open = newest && newest.status !== "approved" && newest.version_no > (approved ? approved.version_no : 0) ? newest : null;
@@ -954,11 +962,21 @@ function stateOf(s, versions, comments, rec, x = {}) {
       }
       return R({ block: "exercise", tile: 3, where: base + " · confirmation and invitation sent", next: null, waitText: "Exercise set up — emails sent" });
     }
+    // v7.5: the Report stage — Add the report → Send the report → Client accepted the report
+    if (rec.ended && rec.downloaded) {
+      const rf = x.reportFiles;
+      const four = rf ? ["report_client_en", "report_client_ar", "report_archive_en", "report_archive_ar"].every((k) => rf.some((f) => f.kind === k)) : null;
+      const rsent = (x.emails || x.exEmails || []).filter((e) => e.kind === "report" && !EMAIL_BAD.has(e.status) && e.status !== "sending")
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+      if (s.report_client_accepted_at) return R({ block: "report", tile: 4, where: `${s.report_client_accepted_by || "The client"} accepted the report on the page, ${hm(s.report_client_accepted_at)}`, next: { key: "accept_report", label: "Client accepted the report" }, hint: "Press Client accepted the report: it closes the request, starts the 7-day clock and saves the anonymised lessons record." });
+      if (rsent) return R({ block: "report", tile: 4, where: `Report sent ${dShort(dubaiYmd(rsent.created_at))} to ${rsent.to_address || "the client"} — waiting for the client`, next: { key: "accept_report", label: "Client accepted the report" }, hint: "When the client accepts — on the page, by email or by phone — press Client accepted the report. Comments from the page appear here and come as an alert." });
+      if (four) return R({ block: "report", tile: 4, where: `Run ${rec.run} downloaded · the four report files are added`, next: { key: "send_report", label: "Send the report" }, hint: "Check the email, then press Send the report. The client gets a private link (30 days) to the two client copies." });
+      return R({ block: "report", tile: 4, where: `Run ${rec.run} is downloaded — write the report with Claude from it`, next: { key: "add_report", label: "Add the report" }, hint: "When the report chat has made the four PDFs (client copy EN and AR, archive copy EN and AR), press Add the report and choose them." });
+    }
     const o = stepOf(s, versions, comments, rec);
     const b = (o.buttons || [])[0];
-    const label = b === "download" ? `Download run ${rec.run}` : b === "delivered" ? "Mark as delivered" : b === "close_survey" ? "Close survey now" : b === "link" ? "Link the exercise" : null;
-    const tile = o.report || (rec.downloaded && !rec.purged) ? 4 : 3;
-    return R({ block: tile === 4 ? "report" : "exercise", tile, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
+    const label = b === "download" ? `Download run ${rec.run}` : b === "close_survey" ? "Close survey now" : b === "link" ? "Link the exercise" : null;
+    return R({ block: "exercise", tile: 3, where: o.sentence, next: label ? { key: "ex_" + b, label } : null, waitText: o.due ? o.due.replace(/^./, (c) => c.toUpperCase()) : "Waiting" });
   }
   // Scenario
   if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
@@ -1006,12 +1024,12 @@ async function renderRequests() {
   const app = $("app");
   const [rows, versions, sessions, contactRemarks, exMails] = await Promise.all([
     q(sb.from("submissions")
-      .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, exercise_date, exercise_time, venue, expected_counts, reopened_at, reopen_reason, links_tested_at, links_test, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
+      .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, exercise_date, exercise_time, venue, expected_counts, reopened_at, reopen_reason, links_tested_at, links_test, report_client_accepted_at, report_client_accepted_by, zoho_done_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
     q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
     q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at").ilike("body", "Contact note:%")).catch(() => []),
-    q(sb.from("sent_emails").select("submission_id, kind, status, created_at").in("kind", ["confirmation", "invitation"])).catch(() => []),
+    q(sb.from("sent_emails").select("submission_id, kind, status, created_at, to_address").in("kind", ["confirmation", "invitation", "report"])).catch(() => []),
   ]);
   rows.forEach((r) => {
     const vs = (versions || []).filter((v) => v.submission_id === r.id);
@@ -1258,8 +1276,15 @@ async function renderRequest(id) {
     ses.chosenRun = runs && runs.some((u) => u.run_number === stored && u.exportable) ? stored : firstChoice ? firstChoice.run_number : null;
   }
   const rec = recordFacts(ses, ses ? ses.chosenRun : null);
-  const facts = await q(sb.rpc("admin_exercise_facts", { p_submission: id })).catch(() => null);
-  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [], facts };
+  const [facts, reportFiles, lessons] = await Promise.all([
+    q(sb.rpc("admin_exercise_facts", { p_submission: id })).catch(() => null),
+    q(sb.rpc("admin_report_files", { p_submission: id })).catch(() => []),
+    q(sb.rpc("admin_lessons_record", { p_submission: id })).catch(() => null)]);
+  // v7.5: comments sent from the report page belong to the Report block, not the Scenario block
+  const reportLinkIds = new Set((links || []).filter((l) => l.kind === "report").map((l) => l.id));
+  s._reportComments = s._comments.filter((k) => k.link_id && reportLinkIds.has(k.link_id));
+  s._comments = s._comments.filter((k) => !(k.link_id && reportLinkIds.has(k.link_id)));
+  const extra = { contactedAt: contactedAt(s._remarks), links: links || [], emails: emails || [], opens: opens || [], facts, reportFiles: reportFiles || [], lessons: lessons || null };
   const state = stateOf(s, s._versions, s._comments, rec, extra);
   const now = stepOf(s, s._versions, s._comments, rec);
   const ctx = { s, c, linked, contacts, exercises, actions, ses, mine, free, rec, now, state, extra };
@@ -1269,7 +1294,8 @@ async function renderRequest(id) {
   const at = state.tile === 5 ? order.indexOf("cleanup") : order.indexOf(state.block);
   // Until build 3 brings the Report block its own buttons, "Mark as delivered" lives in the
   // Exercise block, so at the report stage that block stays open too.
-  ctx.statusOf = (k) => { const i = order.indexOf(k); if (k === "exercise" && state.block === "report" && s.status !== "delivered") return "now"; return i < at ? "done" : i === at ? "now" : "later"; };
+  // v7.5 (fix 16(3)): the Report block has its own buttons, so the Exercise block folds once the record is downloaded.
+  ctx.statusOf = (k) => { const i = order.indexOf(k); return i < at ? "done" : i === at ? "now" : "later"; };
 
   const contactName = (contacts || []).find((p) => p.is_active && p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) || null;
   const head = h("div", { class: "rhead" },
@@ -1882,22 +1908,373 @@ function scenarioBlock(ctx) {
       }), "versions")) : null);
 }
 // (v7.4: the Exercise block is exerciseBlock74, after Approve; the v7.3 interim picker is gone.)
+// ================= v7.5 (W8 build 3, 18 November 2026): Report · Clean-up · Export everything =================
+// Design: w8-design.md D.6, D.9, D.11 (decisions 9–16). The Report block holds the record download line, the
+// four report files (+ the signed sign-off page later), Send the report (a 30-day link to the client copies
+// only) and Client accepted the report (delivered + 7-day clock + the anonymised lessons copy, one call).
+// The Clean-up block shows the dates, the one hand deletion left (Zoho Mail) and the lessons record line.
+const CLIENT_BUCKET = "client-files";
+const REPORT_SLOTS = [
+  ["report_client_en", "Client copy — English", "with names · goes to the client"],
+  ["report_client_ar", "Client copy — Arabic", "with names · goes to the client"],
+  ["report_archive_en", "Archive copy — English", "(names removed) · kept 3 years"],
+  ["report_archive_ar", "Archive copy — Arabic", "(names removed) · kept 3 years"],
+  ["signoff", "Signed sign-off page", "later, when it comes back signed (optional)"],
+];
+const SECTOR_BANDS = ["Financial services", "Government services", "Healthcare", "Tourism, leisure and hospitality", "Real estate, construction and facilities",
+  "Energy and utilities", "Logistics and transport", "Education", "Retail and consumer", "Technology and telecoms", "Industry and manufacturing", "Other"];
+// The client's sector → the broad band (anonymisation rule 1: bands only, never the organisation).
+function sectorBandOf(sector) {
+  const t = String(sector || "").toLowerCase();
+  const map = [[/financ|bank|insur|invest|capital|exchange|free zone|financial centre/, "Financial services"], [/govern|public sector|ministry|authority|municip/, "Government services"],
+    [/health|clinic|hospital|pharma|medic/, "Healthcare"], [/touris|leisure|hospitality|hotel|theme|entertain|events?/, "Tourism, leisure and hospitality"],
+    [/real estate|construct|facilit|property/, "Real estate, construction and facilities"], [/energy|utilit|water|power|oil|gas/, "Energy and utilities"],
+    [/logist|transport|aviation|shipping|port|freight/, "Logistics and transport"], [/educat|school|universit/, "Education"], [/retail|consumer|food|bakery|fmcg/, "Retail and consumer"],
+    [/tech|telecom|software|digital|it\b/, "Technology and telecoms"], [/industr|manufact|factory/, "Industry and manufacturing"]];
+  const hit = map.find(([re]) => re.test(t));
+  return hit ? hit[1] : "Other";
+}
+// Slot from a file name (Claude's names: <Client>-Exercise-Report-EN-v1.0[-ARCHIVE].pdf).
+function slotOfName(name) {
+  const n = String(name || "");
+  if (/sign-?off/i.test(n)) return "signoff";
+  const ar = /(^|[-_ .])AR([-_ .]|$)/i.test(n) || /arabic/i.test(n);
+  return (/archive/i.test(n) ? "report_archive_" : "report_client_") + (ar ? "ar" : "en");
+}
+// "(names removed)" check (D.9): the archive slots must hold the copy without names. The file name must say
+// ARCHIVE; where the PDF's text can be read, it must contain "(names removed)". A client slot must not hold it.
+async function pdfText(bytes) {
+  const raw = new TextDecoder("latin1").decode(bytes);
+  let out = raw;
+  const re = /stream\r?\n/g; let m;
+  while ((m = re.exec(raw))) {
+    const start = m.index + m[0].length, end = raw.indexOf("endstream", start);
+    if (end < 0) break;
+    try { out += "\n" + new TextDecoder("latin1").decode(fflate.unzlibSync(bytes.subarray(start, end))); } catch { /* not a deflate stream */ }
+  }
+  // literal strings inside text operators: (na) (mes removed) → join pieces
+  const lit = (out.match(/\(((?:\\.|[^\\)])*)\)/g) || []).map((x) => x.slice(1, -1).replace(/\\(.)/g, "$1")).join("");
+  return (out + "\n" + lit).replace(/\s+/g, " ");
+}
+async function reportFileProblem(kind, file, bytes) {
+  const named = /archive/i.test(file.name);
+  if (kind === "signoff") return null;
+  if (!/^%PDF-/.test(new TextDecoder("latin1").decode(bytes.subarray(0, 5)))) return "This is not a PDF file.";
+  const isArchive = kind.startsWith("report_archive");
+  const text = await pdfText(bytes).catch(() => "");
+  const readable = /\b(the|exercise|report)\b/i.test(text);
+  const noNames = /names? removed/i.test(text);
+  if (isArchive && !named) return `"${file.name}" does not look like the ARCHIVE copy (the archive copy's name ends in -ARCHIVE.pdf). The archive slots are kept for 3 years, so they must hold the copy with "(names removed)".`;
+  if (isArchive && readable && !noNames) return `"${file.name}" does not contain "(names removed)". The archive copy is kept for 3 years and must not carry participants' names.`;
+  if (!isArchive && named) return `"${file.name}" looks like the ARCHIVE copy (no names). The client copy is the one WITH the attendance list.`;
+  return null;
+}
+async function uploadReportFile(s, kind, file) {
+  if (file.size > 26214400) throw new Error(`${file.name} is over 25 MB.`);
+  if (!/\.pdf$/i.test(file.name)) throw new Error(`${file.name} is not a PDF.`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const problem = await reportFileProblem(kind, file, bytes);
+  if (problem) {
+    const ok = await confirmBox({ title: "Check this file — wrong slot?", text: problem + " Choose another file, or use this one anyway.", ok: "Use it anyway" });
+    if (!ok) return false;
+  }
+  const sha = await sha256hex(bytes);
+  const begun = await q(sb.rpc("admin_report_file_begin", { p_submission: s.id, p_kind: kind, p_name: file.name, p_bytes: file.size, p_sha256: sha }));
+  const { error } = await sb.storage.from(CLIENT_BUCKET).upload(begun.path, new Blob([bytes], { type: "application/pdf" }), { contentType: "application/pdf", upsert: false });
+  if (error) throw new Error(`${file.name} could not be stored (${error.message || error}). Add it again.`);
+  await q(sb.rpc("admin_report_file_done", { p_file: begun.id }));
+  return true;
+}
+const kb = (n) => n ? (n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB") : "";
+const REPORT_LINK_LINE = "Open the report: " + SEND_LINK_MARKER;
+function reportEmail(ctx) {
+  const { s, c } = ctx;
+  const sp = sponsorOf(ctx);
+  const first = String(sp.name || "").replace(/\s*\((test|fictional)\)\s*$/i, "").split(/\s+/)[0] || "";
+  return {
+    to: sp.email || c.email || "",
+    subject: `Your exercise report — ${c.company_name || ""} (${s.request_no || ""})`.replace(/ — \(/, " ("),
+    message: [`Dear ${first || "colleague"},`, `Thank you for taking part in the exercise. Your report is ready, in English and Arabic.`, REPORT_LINK_LINE,
+      "On the page you can view and download both copies. If you would like a change, write it in the comments box there. When you are happy with the report, please press \"We accept the report\" on the same page.",
+      "This link is private to you and works for 30 days.", "Kind regards,\nPlanProof"].join("\n\n"),
+  };
+}
+// Sign each client copy for the link's lifetime and put the signed addresses on the link (before the email goes).
+async function signReportLink(s) {
+  const l = await q(sb.rpc("admin_report_link", { p_submission: s.id }));
+  const secs = Math.max(3600, Math.floor((Date.parse(l.expires_at) - Date.now()) / 1000) + 86400);
+  const signed = [];
+  for (const f of l.files || []) {
+    const { data, error } = await sb.storage.from(CLIENT_BUCKET).createSignedUrl(f.path, secs);
+    if (error || !data) throw new Error(`The ${f.kind === "report_client_ar" ? "Arabic" : "English"} client copy could not be signed (${(error && error.message) || "no answer"}). Nothing was sent.`);
+    signed.push({ id: f.id, url: data.signedUrl });
+  }
+  if (signed.length < 2) throw new Error("Both client copies (EN and AR) are needed on the link. Nothing was sent.");
+  await q(sb.rpc("admin_report_link_files", { p_link: l.link_id, p_files: signed }));
+  return l;
+}
 function reportBlock(ctx) {
-  const { s, rec } = ctx;
-  const reached = rec.downloaded || s.status === "delivered";
-  return block("report", "Report", { status: s.status === "delivered" ? "done" : reached ? "now" : "later",
-    line: s.status === "delivered" ? "delivered " + (s.delivered_at ? dDay(s.delivered_at) : "") : reached ? "write the report from the downloaded record" : "after the exercise" },
-    h("p", { class: "small muted", style: "margin:0" }, "Write the report with Claude from the downloaded record. When the client has accepted it, press Mark as delivered in the Exercise block. (Report files, Send the report and \"Client accepted the report\" come with build 3.)"));
+  const { s, rec, extra } = ctx;
+  const delivered = s.status === "delivered";
+  const reached = rec.downloaded || delivered;
+  const files = extra.reportFiles || [];
+  const bySlot = Object.fromEntries(files.map((f) => [f.kind, f]));
+  const four = ["report_client_en", "report_client_ar", "report_archive_en", "report_archive_ar"].every((k) => bySlot[k]);
+  const mails = (extra.emails || []).filter((e) => e.kind === "report").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const sentOkMail = mails.find((e) => !EMAIL_BAD.has(e.status) && e.status !== "sending");
+  const rlinks = (extra.links || []).filter((l) => l.kind === "report").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const rlink = rlinks[0] || null;
+  const line = delivered ? "client accepted " + (s.delivered_at ? dShort(dubaiYmd(s.delivered_at)) : "") : !reached ? "after the exercise record is downloaded"
+    : s.report_client_accepted_at ? "the client accepted it on the page" : sentOkMail ? "sent " + dShort(dubaiYmd(sentOkMail.created_at)) + (rlink && rlink.open_count ? " · opened" : " · not opened yet")
+    : four ? "four files added — not sent yet" : `${files.filter((f) => f.kind !== "signoff").length} of 4 files added`;
+  if (!reached) return block("report", "Report", { status: "later", line });
+  const busy = h("p", { class: "progress small", role: "status", "aria-live": "polite" });
+  // 1. The record (the download itself stays in the Exercise block, where the run is chosen)
+  const recLine = h("p", { class: "small", style: "margin:0 0 8px" }, rec.downloaded ? `Exercise record: run ${rec.run} downloaded ${dt(ctx.ses && ctx.ses.record && ctx.ses.record.exported_at)} — give the zip to the report chat, then delete it.` : "Exercise record: not downloaded yet.");
+  // 2. Report files — four named slots + the sign-off page
+  const picker = h("input", { type: "file", accept: "application/pdf,.pdf", multiple: true, hidden: true });
+  let pickFor = null;
+  picker.onchange = async () => {
+    const list = [...picker.files]; picker.value = "";
+    if (!list.length) return;
+    try {
+      for (const f of list) {
+        const kind = pickFor || slotOfName(f.name);
+        if (delivered && kind !== "signoff") { toast("Delivered — only the signed sign-off page can still be added.", true); continue; }
+        busy.textContent = `Adding ${f.name}…`;
+        const done = await uploadReportFile(s, kind, f);
+        if (done) toast(`${f.name} added as: ${REPORT_SLOTS.find(([k]) => k === kind)[1]}`);
+      }
+      busy.textContent = "";
+      sessionStorage.setItem("pp_admin_keep_open", "report"); reloadKeepingPlace();
+    } catch (err) { busy.textContent = ""; fail(err); }
+    finally { pickFor = null; }
+  };
+  const pick = (kind) => { pickFor = kind; picker.click(); };
+  const addBtn = h("button", { class: "btn primary", type: "button", "data-next": "add_report", "data-act": "add_report", disabled: delivered, onclick: () => pick(null) }, four ? "Add or replace report files" : "Add the report");
+  const slots = table(["Slot", "File", "Size", "Added", ""], REPORT_SLOTS.map(([k, label, why]) => {
+    const f = bySlot[k];
+    return { attrs: { "data-slot": k }, cells: [h("div", {}, h("strong", {}, label), h("div", { class: "small muted" }, why)),
+      f ? h("bdi", {}, f.name) : h("span", { class: "muted" }, "—"), f ? kb(f.bytes) : null, f ? hm(f.uploaded_at) : null,
+      h("div", { class: "row", style: "gap:6px" },
+        (delivered && k !== "signoff") ? null : h("button", { class: "btn quiet sm", type: "button", "data-slot-add": k, onclick: () => pick(k) }, f ? "Replace" : "Add"),
+        f && k.startsWith("report_client") ? h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
+          const { data, error } = await sb.storage.from(CLIENT_BUCKET).createSignedUrl(f.path, 300);
+          if (error || !data) return fail(new Error("Could not open it: " + ((error && error.message) || "no answer")));
+          window.open(data.signedUrl, "_blank", "noopener");
+        } }, "View") : null)] };
+  }), "report-slots");
+  const filesSec = section("report-files", "Report files", null,
+    h("p", { class: "small muted", style: "margin:0 0 6px" }, "Drop in the PDFs the report chat made. The page puts each in its slot by its name (…-EN-… / …-AR-…, …-ARCHIVE.pdf) and checks that the archive copies say \"(names removed)\". Files are stored privately, never in OneDrive."),
+    h("div", { class: "row v7-actions" }, addBtn), picker, slots);
+  // 3. Send the report
+  const draft = reportEmail(ctx);
+  const fTo = h("input", { type: "email", value: draft.to, "aria-label": "To" });
+  const fSub = h("input", { type: "text", value: draft.subject, maxlength: 300, "aria-label": "Subject" });
+  const fMsg = h("textarea", { rows: 9, "aria-label": "Message" }, draft.message);
+  const sendBtn = h("button", { class: "btn primary", type: "button", "data-next": "send_report", "data-act": "send_report", disabled: !four || delivered, onclick: async () => {
+    if (!fMsg.value.includes(SEND_LINK_MARKER)) { const ok = await confirmBox({ title: "The link marker is missing", text: `The message has no ${SEND_LINK_MARKER}. The link will be put after the first paragraph.`, ok: "Send anyway" }); if (!ok) return; }
+    sendBtn.disabled = true; busy.textContent = "Preparing the private link…";
+    try {
+      await signReportLink(s);
+      busy.textContent = "Sending…";
+      const r = await postEmail({ action: "send", submission_id: s.id, kind: "report", to: fTo.value.trim(), subject: fSub.value.trim(), message: fMsg.value });
+      busy.textContent = "";
+      toast("Report sent to " + fTo.value.trim() + " — the link works until " + dDay(r.expires_at));
+      clearDrafts(sForm); sessionStorage.setItem("pp_admin_keep_open", "report"); reloadKeepingPlace();
+    } catch (err) { busy.textContent = ""; sendBtn.disabled = false; fail(err); }
+  } }, sentOkMail ? "Send the report again" : "Send the report");
+  const sForm = h("div", { class: "inline-form stack", "data-form": "send-report" },
+    h("p", { class: "small muted", style: "margin:0" }, four ? "The email carries a private link (30 days) to a page with the two client copies, a comments box and \"We accept the report\". Never the archive copy or the record." : "Add the four files first — Send the report is grey until then."),
+    h("label", { class: "f" }, "To", fTo), h("label", { class: "f" }, "Subject", fSub), h("label", { class: "f" }, "Message", fMsg),
+    h("div", { class: "row" }, sendBtn));
+  const sentRows = mails.map((m) => [hm(m.created_at), m.to_address, h("span", { class: EMAIL_BAD.has(m.status) ? "due-bad" : "" }, EMAIL_WORD[m.status] || m.status)]);
+  const linkRow = rlink ? h("div", { class: "row", style: "gap:8px; margin-top:6px; align-items:center" },
+    h("span", { class: "small" }, `Report link: ${rlink.revoked_at ? "revoked" : Date.parse(rlink.expires_at) > Date.now() ? "works until " + dDay(rlink.expires_at) : "EXPIRED " + dDay(rlink.expires_at)} · ${rlink.open_count ? "opened " + plural(rlink.open_count, "time") + ", last " + hm(rlink.last_opened_at) : "not opened yet"}`),
+    !delivered && !rlink.revoked_at ? h("button", { class: "btn quiet sm", type: "button", onclick: async (ev) => {
+      ev.target.disabled = true;
+      try { await q(sb.rpc("admin_link_action", { p_link: rlink.id, p_action: "extend" })); await signReportLink(s); toast("Extended by 30 days"); reloadKeepingPlace(); }
+      catch (err) { ev.target.disabled = false; fail(err); }
+    } }, "Extend link") : null,
+    h("button", { class: "btn quiet sm", type: "button", onclick: () => navigator.clipboard.writeText(location.origin + "/c/" + rlink.token).then(() => toast("Link copied")).catch(fail) }, "Copy the link")) : null;
+  const sendSec = section("report-send", "Send the report", null, sForm, sentRows.length ? table(["Sent", "To", "Status"], sentRows, "emails") : null, linkRow);
+  // 4. What the client said on the report page
+  const rc = (s._reportComments || []);
+  const commentsSec = rc.length || s.report_client_accepted_at ? section("report-comments", `The client's comments on the report (${rc.length})`, null,
+    s.report_client_accepted_at ? h("p", { class: "ok-line", style: "margin:0 0 6px" }, `✓ ${s.report_client_accepted_by} accepted the report on the page, ${hm(s.report_client_accepted_at)}.`) : null,
+    rc.length ? table(["Received", "From", "Comment"], rc.map((k) => [hm(k.created_at), k.sender, h("div", { style: "white-space:pre-wrap" }, k.body)]), "report-comments") : null,
+    rc.length && !delivered ? h("p", { class: "small muted", style: "margin:6px 0 0" }, "Revise the report with Claude in the report chat, then Replace the files above and Send the report again.") : null) : null;
+  // 5. Client accepted the report = delivered + the 7-day clock + the anonymised lessons copy
+  let acceptSec = null;
+  if (!delivered) {
+    const band = h("select", { "aria-label": "Sector band for the lessons record" }, ...SECTOR_BANDS.map((b) => h("option", { value: b, selected: b === sectorBandOf(ctx.c.sector) }, b)));
+    const acc = h("button", { class: "btn primary", type: "button", "data-next": "accept_report", "data-act": "accept_report", disabled: !rec.downloaded, onclick: async () => {
+      const when = dDay(plusDays(new Date().toISOString(), 7));
+      const ok = await confirmBox({ title: `${s.request_no}: the client accepted the report?`,
+        text: `This marks ${s.request_no} as delivered and starts the 7-day clock: the participants' data and the report copies WITH names are removed on or after ${when}. The archive copies (no names) stay 3 years. The anonymised lessons record is saved now, as "${band.value}", with the quarter only — no name, no request number.`,
+        ok: "Client accepted the report" });
+      if (!ok) return;
+      acc.disabled = true;
+      await q(sb.rpc("admin_accept_report", { p_submission: s.id, p_sector_band: band.value, p_size_band: null }))
+        .then(() => { toast("Delivered — lessons record numbers saved; participants' data removed on or after " + when); sessionStorage.setItem("pp_admin_keep_open", "cleanup"); reloadKeepingPlace(); })
+        .catch((err) => { acc.disabled = false; fail(err); });
+    } }, "Client accepted the report");
+    acceptSec = section("report-accept", "Client accepted the report", null,
+      h("p", { class: "small muted", style: "margin:0 0 6px" }, s.report_client_accepted_at ? "The client pressed \"We accept the report\" on the page. Press this to close the request." : "Press this when the client has accepted the report — on the page, by email or by phone."),
+      h("div", { class: "row", style: "align-items:end; gap:10px" }, h("label", { class: "f", style: "flex:1 1 260px" }, "Sector band for the lessons record (anonymised — a broad band when the sector is small)", band), acc));
+  }
+  const w9 = h("p", { class: "small muted", style: "margin:10px 0 0" }, h("button", { class: "btn quiet sm", type: "button", disabled: true, title: "W9, after the pilot" }, "Write report (later)"), " Until then, write the report with Claude in the report chat (skill planproof-report).");
+  return block("report", "Report", { status: delivered ? "done" : "now", line }, recLine, filesSec, four || sentOkMail ? sendSec : null, commentsSec, acceptSec, busy, delivered ? null : w9);
+}
+function lessonsPrompt(ctx) {
+  const { s } = ctx;
+  return [`${s.request_no} — the lessons record.`,
+    `The report is delivered and the anonymised numbers are saved. Please write the insight part of the lessons record in the knowledge-base format (planproof-knowledge-base/README.md), from the report chat's material for ${s.request_no}.`,
+    "Anonymisation rules: no organisation, brand, venue, product or person; no quotes; patterns, not specifics; the quarter or year, never the month; a broad sector band when the sector is small.",
+    `Show me the wording first. When I say OK, save it with admin_save_lessons_insight('${s.request_no}', <the insight>) and add it to the knowledge base.`].join("\n\n");
 }
 function cleanupBlock(ctx, keep) {
-  const { s, rec } = ctx;
+  const { s, rec, extra } = ctx;
   const delivered = s.status === "delivered";
+  const at = s.delivered_at;
+  const purgeOn = at ? dDay(plusDays(at, 7)) : null;
   const dataLine = !rec.linked ? "No exercise linked, so no participants' data to remove."
-    : rec.purged ? "Participants' data removed " + dt(rec.purged_at) + "."
-    : rec.purge_due_at ? (rec.overdue ? "Participants' data: OVERDUE — was due " : "Participants' data removed automatically on or after ") + dt(rec.purge_due_at) + "."
-    : "Participants' data is removed automatically 7 days after delivery.";
-  return block("cleanup", "Done", { status: delivered ? "now" : "later", line: delivered ? "clean-up is automatic — nothing to press" : "after delivery · clean-up is automatic" },
-    factsTable([["Report delivered", s.delivered_at ? dt(s.delivered_at) : null], ["Participants' data", h("span", { class: rec.overdue ? "due-bad" : "" }, dataLine)]]), keep);
+    : rec.purged ? "Removed " + dt(rec.purged_at) + "."
+    : rec.purge_due_at ? (rec.overdue ? "OVERDUE — was due " : "Removed automatically on or after ") + dt(rec.purge_due_at) + "."
+    : purgeOn ? "Removed automatically on or after " + purgeOn + "." : "Removed automatically 7 days after the client accepts the report.";
+  const named = (extra.reportFiles || []).filter((f) => f.kind.startsWith("report_client"));
+  const lr = extra.lessons;
+  const lessonsLine = !lr ? (delivered ? "not saved (this request was delivered before W8 build 3)" : "saved automatically when the client accepts the report")
+    : `numbers saved ${dShort(dubaiYmd(lr.numbers_saved_at))} · ` + (lr.has_insight ? `insight completed ${dShort(dubaiYmd(lr.insight_completed_at))}` : "insight not yet");
+  const promptBtn = lr && !lr.has_insight ? h("button", { class: "btn primary sm", type: "button", "data-next": "lessons", "data-act": "lessons", onclick: () =>
+    navigator.clipboard.writeText(lessonsPrompt(ctx)).then(() => toast("Copied — paste it into the report chat for " + s.request_no + ". The line turns green when Claude saves the insight.")).catch(fail) }, "Copy the lessons prompt for Claude") : null;
+  const zohoBtn = delivered ? (s.zoho_done_at ? h("span", { class: "ok-line" }, "✓ Done " + dShort(dubaiYmd(s.zoho_done_at)))
+    : h("button", { class: "btn primary sm", type: "button", "data-next": "zoho", "data-act": "zoho", onclick: async (ev) => {
+      const ok = await confirmBox({ title: "Deleted in Zoho Mail?", text: `Tick this once the emails of ${s.request_no} with client material (the request with the plan, any attachments) are deleted from the exercises@plan-proof.com mailbox — Inbox and Sent.`, ok: "Done ✓" });
+      if (!ok) return;
+      ev.target.disabled = true;
+      await q(sb.from("submissions").update({ zoho_done_at: new Date().toISOString() }).eq("id", s.id).select("id")).then(() => { toast("Zoho Mail: done"); sessionStorage.setItem("pp_admin_keep_open", "cleanup"); reloadKeepingPlace(); }).catch((err) => { ev.target.disabled = false; fail(err); });
+    } }, "Done ✓")) : null;
+  return block("cleanup", "Done", { status: delivered ? "now" : "later", line: delivered ? (lr && !lr.has_insight ? "lessons insight not yet" : !s.zoho_done_at ? "one hand deletion left (Zoho Mail)" : "clean-up is automatic — nothing to press") : "after delivery · clean-up is automatic" },
+    factsTable([
+      ["Client accepted the report", at ? dt(at) : null],
+      ["Participants' data", h("span", { class: rec.overdue ? "due-bad" : "" }, dataLine)],
+      ["Report copies with names", named.length ? (purgeOn ? "removed with the participants' data, on or after " + purgeOn : "removed with the participants' data") : delivered ? "removed" : "removed with the participants' data"],
+      ["Archive copies (names removed)", "kept 3 years, then deleted with the client's record"],
+      ["Lessons record", h("span", { class: lr && !lr.has_insight ? "due-bad" : "" }, lessonsLine)],
+    ]),
+    lr && !lr.has_insight ? h("div", { class: "row", style: "gap:8px; margin:6px 0" }, promptBtn, h("span", { class: "small muted" }, "Claude writes the insight in the report chat; you approve the wording. The morning email reminds you until it is done.")) : null,
+    delivered ? h("div", { class: "row", style: "gap:8px; align-items:center; margin:6px 0" }, h("span", { class: "small" }, h("strong", {}, "By hand (Zoho Mail): "), "delete the request's emails with client material (Inbox and Sent)."), zohoBtn) : null,
+    keep);
+}
+
+// ---------- Export everything (D.6, decision 11) ----------
+function csvOf(rows) {
+  const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  const cell = (v) => { if (v == null) return ""; const t = typeof v === "object" ? JSON.stringify(v) : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  return [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n") + "\r\n";
+}
+async function exportEverything(say) {
+  if (!window.fflate) throw new Error("The export tools did not load. Reload the page and try again.");
+  const enc = new TextEncoder();
+  say("Counting every table…");
+  const before = await q(sb.rpc("admin_export_tables"));
+  const counts = before.counts || {};
+  const files = [], got = {};
+  const names = Object.keys(counts).sort();
+  for (const [i, t] of names.entries()) {
+    say(`Table ${i + 1} of ${names.length}: ${t}…`);
+    const rows = [];
+    for (let off = 0; ; off += 1000) {
+      const page = await q(sb.rpc("admin_export_table", { p_table: t, p_offset: off, p_limit: 1000 }));
+      rows.push(...(page || []));
+      if (!page || page.length < 1000) break;
+    }
+    got[t] = rows.length;
+    files.push({ name: `tables/${t}.json`, bytes: enc.encode(JSON.stringify(rows, null, 1) + "\n") }, { name: `tables/${t}.csv`, bytes: enc.encode(csvOf(rows)) });
+    if (t === "client_files") files._clientFiles = rows;
+  }
+  const want = (files._clientFiles || []).filter((f) => !f.delete_pending_at && (f.uploaded_at || f.kind === "plan" || f.kind === "other"));
+  let fileCount = 0; const missing = [];
+  for (const [i, f] of want.entries()) {
+    say(`Client file ${i + 1} of ${want.length}…`);
+    const { data, error } = await sb.storage.from(CLIENT_BUCKET).download(f.path);
+    if (error || !data) { missing.push(f.path); continue; }
+    files.push({ name: "client-files/" + f.path, bytes: new Uint8Array(await data.arrayBuffer()) }); fileCount++;
+  }
+  say("Checking the counts against the database…");
+  const after = await q(sb.rpc("admin_export_tables"));
+  const mismatch = names.filter((t) => got[t] !== counts[t] && got[t] !== (after.counts || {})[t]);
+  if (fileCount !== Number(before.files) && fileCount !== Number(after.files)) mismatch.push(`client files (${fileCount} of ${before.files}${missing.length ? "; missing: " + missing.slice(0, 3).join(", ") : ""})`);
+  for (const f of files) { f.size = f.bytes.length; f.sha256 = await sha256hex(f.bytes); }
+  const stamp = new Date().toISOString();
+  const manifest = { format: "planproof-full-export/1", exported_at: stamp, tables: names.map((t) => ({ table: t, rows: got[t], database_rows: counts[t] })),
+    client_files: { exported: fileCount, database: Number(before.files) }, files: files.map((f) => ({ file: f.name, bytes: f.size, sha256: f.sha256 })), complete: !mismatch.length };
+  const entries = {};
+  files.forEach((f) => { entries[f.name] = [f.bytes, { level: /\.(pdf|png|jpe?g|zip|docx)$/i.test(f.name) ? 0 : 6 }]; });
+  entries["manifest.json"] = enc.encode(JSON.stringify(manifest, null, 2) + "\n");
+  entries["README.txt"] = enc.encode(["PLANPROOF — EXPORT EVERYTHING", "Exported (UTC): " + stamp, "", "tables/<table>.json and .csv — every table of the database, every row.",
+    "client-files/ — every file in the private client-files bucket (reports, plans).", "manifest.json — the row count of each table (and the database's own count at export time), and the SHA-256 of every file.",
+    "", "This zip holds client and participant data. Keep it in 08 Full backup only, keep the two newest exports and delete older ones — an export keeps what the database has since deleted.",
+    "How to restore it into a fresh database: planproof-reference/how-to-move-planproof.md (Project) or More… → About on the admin page."].join("\n") + "\n");
+  say("Building the zip…");
+  const zip = fflate.zipSync(entries, { mtime: new Date() });
+  const back = fflate.unzipSync(zip);
+  for (const f of files) if (!back[f.name] || await sha256hex(back[f.name]) !== f.sha256) throw new Error(`The zip did not reopen correctly (${f.name}). Nothing was saved — try again.`);
+  const sha = await sha256hex(zip);
+  const name = `PlanProof-export-everything-${stamp.slice(0, 10)}.zip`;
+  saveBytes(zip, name, "application/zip");
+  if (mismatch.length) throw new Error(`Saved ${name}, but it is NOT complete — the counts do not match for: ${mismatch.join("; ")}. Press Export everything again; if it repeats, tell Claude.`);
+  const totalRows = names.reduce((m, t) => m + got[t], 0);
+  await q(sb.rpc("admin_record_full_export", { p_tables: names.length, p_rows: totalRows, p_files: fileCount, p_bytes: zip.length, p_sha256: sha, p_counts: got }));
+  return { name, tables: names.length, rows: totalRows, files: fileCount, bytes: zip.length, sha };
+}
+async function exportPanel() {
+  const last = await q(sb.rpc("admin_last_full_export")).catch(() => null);
+  const say = h("p", { class: "progress small", role: "status", "aria-live": "polite", style: "margin:4px 0 0" });
+  const lastLine = h("p", { class: "small " + (last && Date.now() - Date.parse(last.exported_at) < 35 * 86400000 ? "muted" : "due-bad"), id: "lastExport", style: "margin:4px 0 0" },
+    last ? `Last export: ${dt(last.exported_at)} — ${plural(last.tables, "table")}, ${plural(last.rows, "row")}, ${plural(last.files, "file")}, ${kb(last.bytes)}` : "Last export: never");
+  const btn = h("button", { class: "btn", type: "button", id: "exportAllBtn", onclick: async () => {
+    btn.disabled = true;
+    try {
+      const r = await exportEverything((m) => { say.textContent = m; });
+      say.textContent = `Export complete — ${r.name}: ${plural(r.tables, "table")}, ${plural(r.rows, "row")}, ${plural(r.files, "client file")}, ${kb(r.bytes)}. The manifest counts match the database. Move it to 08 Full backup\\<date>.`;
+      say.id = "exportDone";
+      lastLine.textContent = `Last export: ${dt(new Date().toISOString())} — ${plural(r.tables, "table")}, ${plural(r.rows, "row")}, ${plural(r.files, "file")}, ${kb(r.bytes)}`; lastLine.className = "small muted";
+    } catch (err) { say.textContent = ""; fail(err); }
+    finally { btn.disabled = false; }
+  } }, "Export everything");
+  return h("div", { class: "export-panel", style: "text-align:right" }, btn, lastLine, say);
+}
+
+// ---------- About · How to move PlanProof (D.6) ----------
+function renderAbout() {
+  const app = $("app");
+  const li = (...x) => h("li", {}, ...x);
+  app.replaceChildren(h("div", { class: "card stack about" },
+    h("h1", {}, "About PlanProof — and how to move it"),
+    h("p", { class: "muted small" }, "Admin page v7.5 (W8 build 3, 18 November 2026). The full version of this page is the Project doc planproof-reference/how-to-move-planproof.md."),
+    h("h2", {}, "What runs where"),
+    table(["Part", "Service", "What it holds"], [
+      ["Website, admin page, player, client pages, 11 functions", "Netlify (site brilliant-baklava-669fa6 → plan-proof.com)", "Code only — from GitHub ahmedaad-plan/planproof-site (main)"],
+      ["Database, sign-in, private files", "Supabase (project planproof, Pro plan, daily backups)", "Every table; buckets client-files, submission-attachments, exercise-media"],
+      ["Email", "Resend (exercises@plan-proof.com, notify.plan-proof.com)", "Nothing kept — sends only"],
+      ["Voice and video", "Azure speech, HeyGen (the media studio)", "Files land in exercise-media"],
+      ["Mailbox", "Zoho Mail (exercises@plan-proof.com)", "Emails — the one place to delete by hand"],
+      ["Domain", "GoDaddy (plan-proof.com DNS)", "DNS records for Netlify, Resend, Zoho"],
+    ]),
+    h("h2", {}, "Keys (Netlify → Site configuration → Environment variables)"),
+    h("p", { class: "small" }, "SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY, INTAKE_DB_SECRET, RESEND_API_KEY, RESEND_FROM_ADDRESS, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, ALERT_EMAIL, and the speech and video keys. Values are never written anywhere else."),
+    h("h2", {}, "Export everything"),
+    h("p", { class: "small" }, "Clients → Export everything (top right) saves one zip: every table as JSON and CSV, every client file, and a manifest with row counts and SHA-256 fingerprints. \"Export complete\" shows only when the counts match the database. The morning email reminds you on the 1st of each month. Keep the two newest exports in 08 Full backup."),
+    h("h2", {}, "Moving, in order"),
+    h("ol", { class: "small" },
+      li("Export everything; keep the zip safe."), li("New Supabase project: run the migrations (supabase_migrations list), then load each tables/<table>.json; upload client-files/ into a private bucket with the same paths."),
+      li("Point the Netlify variables at the new project; redeploy; sign in and press one real action."), li("Check: a test request from the website form, a review email, a client link, the morning job."),
+      li("Only then pause the old project.")),
+    h("h2", {}, "What a client would notice"),
+    h("p", { class: "small" }, "Nothing, if the links keep the same address (plan-proof.com/c/…). Client links made before the move keep working only if the client_links table is restored with its tokens; signed report addresses must be re-made (Extend link on the request)."),
+    h("p", {}, h("a", { href: "#" }, "← Back to requests"))));
 }
 
 // The folded line of a done step: one line on a phone (ellipsis); a tap opens
@@ -1975,7 +2352,7 @@ function stepBody(n, ctx, readOnly, btns, forms) {
   if (n === 5) {
     const at = ctx.s.delivered_at;
     return h("p", { class: "muted small" }, at ? "Marked as delivered on " + dt(at) + "." + (ctx.rec.linked && !ctx.rec.purged ? " The participants' data is removed on or after " + dDay(plusDays(at, 7)) + "." : "")
-      : "Once the client has accepted the final report, press \"Mark as delivered\" in step 4. That starts the 7-day clock for removing the participants' data.");
+      : "Once the client has accepted the final report, press \"Client accepted the report\" in the Report block. That starts the 7-day clock for removing the participants' data.");
   }
   const r = ctx.rec;
   return h("p", { class: "muted small" }, !r.linked ? "No exercise is linked, so there is nothing to remove." : r.purged ? "Removed on " + dt(r.purged_at) + ": registrations, answers, notes, messages and files of every run. The anonymous survey taps stay."
@@ -2279,7 +2656,9 @@ async function buildRecordZip(sessionId, say, run) {
   const base = PPRecord.fileBase(rec);
   files.unshift(
     { name: `exercise-report-${base}.txt`, bytes: enc.encode(PPRecord.buildText(rec, { exportedAt })) },
-    { name: "exercise-record.json", bytes: enc.encode(JSON.stringify(PPRecord.publicJson(rec), null, 2) + "\n") });
+    { name: "exercise-record.json", bytes: enc.encode(JSON.stringify(PPRecord.publicJson(rec), null, 2) + "\n") },
+    // W8 build 3 (decision 9): the facilitator's criterion ratings, one row per criterion
+    { name: "criteria.json", bytes: enc.encode(JSON.stringify(PPRecord.criteriaJson(rec), null, 2) + "\n") });
   say("Checking every file…");
   for (const f of files) { f.size = f.bytes.length; f.sha256 = await sha256hex(f.bytes); }
   const entries = {};
@@ -2476,24 +2855,7 @@ function step4Body(ctx, readOnly, btns, forms) {
   ];
   add(out, h("ul", { class: "checks" }, ...lines), progress);
 
-  // ---- Mark as delivered (step 5 is pressed from here) ----
-  if (!readOnly) {
-    const deliverOk = rec.downloaded;
-    const deliver = h("button", { class: "btn " + (deliverOk ? "red" : ""), type: "button", "data-act": "delivered", disabled: !deliverOk, onclick: async () => {
-      if (!recordFacts(x, x.chosenRun).downloaded) return toast(`Download run ${runNo} first — the report is written from it.`, true);
-      const when = dDay(plusDays(new Date().toISOString(), 7));
-      const ok = await confirmBox({ title: "Mark " + (s.request_no || "this request") + " as delivered?",
-        text: `Do this once the client has accepted the final report. It starts the 7-day clock: the participants' data of this exercise (names, answers, notes, files) is removed automatically on or after ${when}. The record you downloaded and the client's history are kept.`,
-        ok: "Mark as delivered" });
-      if (!ok) return;
-      deliver.disabled = true;
-      await q(sb.from("submissions").update({ status: "delivered" }).eq("id", s.id))
-        .then(() => { toast("Delivered — participants' data removed on or after " + when); reloadKeepingPlace(); })
-        .catch((err) => { deliver.disabled = false; fail(err); });
-    } }, "Mark as delivered");
-    add(out, h("div", { class: "deliver-row" }, h("span", { class: "small muted" }, "Once the client has accepted the final report:"), deliver,
-      deliverOk ? null : h("span", { class: "small muted" }, `(after run ${runNo} is downloaded)`)));
-  }
+  // v7.5: "Mark as delivered" moved to the Report block as "Client accepted the report" (fix 16(3)).
   add(out, h("p", { class: "muted small", style: "margin:10px 0 0" }, "The zip holds participants' names and answers: give it to the report chat, then delete it. Never save it in OneDrive."));
   return out;
 }
@@ -3072,6 +3434,9 @@ function moreFold(ctx) {
         .then(() => { toast("Request " + (s.request_no || "") + " deleted"); go("#"); })
         .catch((err) => fail(/function|not found|schema cache/i.test(err && err.message || "") ? new Error("Deleting is not switched on yet: paste delete-request-paste-into-supabase.sql in Supabase → SQL Editor first.") : err));
     } }, "Delete this request")));
+  what.push("About");
+  parts.push(h("div", { class: "more-part", "data-more": "about" }, h("h3", {}, "About PlanProof — how to move it"),
+    h("p", { class: "muted small" }, "What runs where, the keys, Export everything and how to restore it."), h("a", { class: "btn quiet sm", href: "#about" }, "Open About")));
   return h("details", { class: "more" }, h("summary", {}, "More… ", h("span", {}, "(" + what.join(" · ") + ")")), ...parts);
 }
 
@@ -3129,7 +3494,7 @@ async function renderClients() {
   }
   app.replaceChildren(
     h("div", { class: "spread", style: "margin-bottom:12px" }, h("div", {}, h("h1", {}, "Clients"), h("p", { class: "muted small", style: "margin:4px 0 0" }, "Day-to-day work happens on the request. Come here to search, edit details, record an opt-out or erase a client.")),
-      h("a", { class: "btn", href: "#new-client" }, "+ New request or client (call, email, referral)")),
+      h("div", { class: "row", style: "gap:10px; align-items:flex-start" }, h("a", { class: "btn", href: "#new-client" }, "+ New request or client (call, email, referral)"), await exportPanel())),
     h("form", { class: "row", style: "margin-bottom:14px", onsubmit: (e) => { e.preventDefault(); run().catch(fail); } },
       h("div", { style: "flex:1;min-width:240px" }, sq), h("button", { class: "btn primary", type: "submit" }, "Search")),
     list);

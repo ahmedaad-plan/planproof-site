@@ -126,11 +126,10 @@ test("W7: deleted client records with a delivered report — one email asking to
     { id: 5, company_name: "Quiet Co", request_nos: ["R-2026-0031"], had_delivery: false, reason: "No exercise went ahead; 1 year since the last contact" }] });
   const r = await runPlayerPurge(w);
   assert.equal(w.emails.length, 1);
-  assert.match(w.emails[0].subject, /delete the report copy/);
+  assert.match(w.emails[0].subject, /delete their emails in Zoho Mail/);
   assert.match(w.emails[0].text, /Old Co — R-2026-0020: 3 years/);
-  assert.match(w.emails[0].text, /ACTION — please delete our copy of the delivered report for:\n- Old Co \(R-2026-0020\)/);
-  assert.doesNotMatch(w.emails[0].text.split("ACTION")[1], /Quiet Co/);
-  assert.match(w.emails[0].text, /03 Delivered reports/);
+  assert.match(w.emails[0].text, /ACTION \(Zoho Mail only\)[^\n]*\n(- .*\n)*- Old Co \(R-2026-0020\)/);
+  assert.doesNotMatch(w.emails[0].text, /03 Delivered reports/); // W8 build 3: retired (decision 12)
   assert.deepEqual(w.markedGone, [4, 5]);
   assert.equal(r.retention.length, 2);
 });
@@ -140,7 +139,7 @@ test("W7: only old enquiries — a plain email, nothing to delete on the drive",
   assert.equal(w.emails.length, 1);
   assert.equal(w.emails[0].subject, "PlanProof: old enquiries deleted");
   assert.match(w.emails[0].text, /nothing to delete on the drive/);
-  assert.doesNotMatch(w.emails[0].text, /ACTION/);
+  assert.match(w.emails[0].text, /ACTION \(Zoho Mail only\)/);
 });
 test("W7: nothing deleted overnight — no retention email and nothing marked", async () => {
   const w = world({ due: [] });
@@ -194,4 +193,22 @@ test("W8b: files that will not go stay queued with the error", async () => {
   assert.equal(r.orphanMedia.failed, 1);
   assert.equal(w.orphanResults[0].p_ok, false);
   assert.match(w.orphanResults[0].p_error, /still in storage/);
+});
+
+// W8 build 3: the morning reminders email — only when something needs Ahmed.
+import { morningReminders } from "../netlify/lib/player-purge.mjs";
+test("W8c: morning reminders — lessons, Zoho Mail, the export on the 1st only", () => {
+  const nothing = morningReminders({ lessons_missing: [], zoho_open: [], last_export_at: null }, Date.parse("2026-11-18T02:17:00Z"));
+  assert.equal(nothing.lines.length, 0);
+  const some = morningReminders({ lessons_missing: [{ request_no: "R-2026-0030", delivered_at: "2026-11-10T08:00:00Z" }], zoho_open: ["R-2026-0029"], last_export_at: "2026-11-01T05:00:00Z" }, Date.parse("2026-11-18T02:17:00Z"));
+  assert.match(some.lines.join("\n"), /Lessons record — the insight is not written yet for:\n- R-2026-0030/);
+  assert.match(some.lines.join("\n"), /Zoho Mail[^\n]*\n- R-2026-0029/);
+  assert.doesNotMatch(some.lines.join("\n"), /Monthly export/);
+  assert.equal(some.subject, "PlanProof: this morning's reminders");
+  // the 1st of the month in UAE time (02:17 UTC on 1 December = 06:17 UAE)
+  const first = morningReminders({ lessons_missing: [], zoho_open: [], last_export_at: "2026-11-01T05:00:00Z" }, Date.parse("2026-12-01T02:17:00Z"));
+  assert.match(first.lines.join("\n"), /Monthly export due — last export/);
+  assert.equal(first.subject, "PlanProof: monthly export due");
+  // 30 November 21:00 UTC is already 1 December in the UAE
+  assert.ok(morningReminders({}, Date.parse("2026-11-30T21:00:00Z")).monthly);
 });

@@ -68,6 +68,30 @@ function recipients(env) {
 const uaeDate = (iso) => new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const name = (x) => `${x.request_no || "(no request)"} — ${x.label || "exercise"}`;
 
+// The morning reminders email (W8 build 3): one email, only when something needs Ahmed.
+export function morningReminders(rem, nowMs) {
+  const lines = [];
+  const uae = new Date(nowMs + 4 * 3600000);
+  const lessons = rem.lessons_missing || [], zoho = rem.zoho_open || [];
+  if (lessons.length) {
+    lines.push("Lessons record — the insight is not written yet for:");
+    lessons.forEach((x) => lines.push(`- ${x.request_no || "(request deleted)"}${x.delivered_at ? " (delivered " + uaeDate(x.delivered_at) + ")" : ""}`));
+    lines.push("On the request, press \"Copy the lessons prompt for Claude\" and paste it into the report chat. Claude writes it; you approve the wording.", "");
+  }
+  if (zoho.length) {
+    lines.push("Zoho Mail — delete the emails with client material (Inbox and Sent), then press Done ✓ in the request's Done block:");
+    zoho.forEach((r) => lines.push("- " + r));
+    lines.push("");
+  }
+  const monthly = uae.getUTCDate() === 1;
+  if (monthly) {
+    lines.push(`Monthly export due — last export ${rem.last_export_at ? uaeDate(rem.last_export_at) : "never"}.`,
+      "Admin page → Clients → Export everything (top right). Move the zip to OneDrive \\ PlanProof New \\ 08 Full backup \\ <date>; keep the two newest.", "");
+  }
+  const subject = monthly && !lessons.length && !zoho.length ? "PlanProof: monthly export due" : "PlanProof: this morning's reminders";
+  return { lines, subject, lessons: lessons.length, zoho: zoho.length, monthly };
+}
+
 export async function runPlayerPurge(deps) {
   const { env } = deps;
   const report = { removed: [], failed: [], reminded: [], retention: [], clientFiles: null, nightly: null, skipped: null };
@@ -121,18 +145,23 @@ export async function runPlayerPurge(deps) {
     const lines = ["As the privacy policy promises, the database deleted these client records last night:", ""];
     gone.forEach((x) => lines.push(`- ${x.company_name || "(no client name)"}${x.request_nos && x.request_nos.length ? " — " + x.request_nos.join(", ") : ""}: ${x.reason}.`));
     const delivered = gone.filter((x) => x.had_delivery);
-    if (delivered.length) {
-      lines.push("", "ACTION — please delete our copy of the delivered report for:");
-      delivered.forEach((x) => lines.push(`- ${x.company_name || "(no client name)"}${x.request_nos && x.request_nos.length ? " (" + x.request_nos.join(", ") + ")" : ""}`));
-      lines.push("", "Delete the client's folder in OneDrive \\ PlanProof New \\ 03 Delivered reports, and any emails with their files in the exercises@plan-proof.com mailbox.");
-    } else {
-      lines.push("", "None of them had a delivered report, so there is nothing to delete on the drive. If the mailbox still holds their emails with attachments, delete those.");
-    }
+    // W8 build 3 (decision 12): report files live in the database's private bucket and go
+    // with the client's record by themselves; the one hand deletion left is Zoho Mail.
+    lines.push("", "ACTION (Zoho Mail only) — delete their emails with client material (Inbox and Sent) in the exercises@plan-proof.com mailbox:");
+    gone.forEach((x) => lines.push(`- ${x.company_name || "(no client name)"}${x.request_nos && x.request_nos.length ? " (" + x.request_nos.join(", ") + ")" : ""}`));
+    lines.push("", "Their report files (also the archive copies) were deleted from storage with the record — nothing to delete on the drive.");
     lines.push("", "If someone had ticked \"marketing emails\", only their email address and the date they ticked are kept, until they withdraw.");
-    await sendViaResend({ to, subject: delivered.length ? "PlanProof: client records deleted — delete the report copy" : "PlanProof: old enquiries deleted", text: lines.join("\n") }, deps);
+    await sendViaResend({ to, subject: delivered.length ? "PlanProof: client records deleted — delete their emails in Zoho Mail" : "PlanProof: old enquiries deleted", text: lines.join("\n") }, deps);
     await rpc(deps, "service_mark_retention_reported", { p_ids: gone.map((x) => x.id) });
     report.retention.push(...gone);
   }
+  // W8 build 3 (18 November 2026): this morning's reminders — the lessons insight still to write,
+  // the Zoho Mail deletion still to tick, and on the 1st of the month the export (decision 11).
+  try {
+    const rem = await rpc(deps, "service_morning_reminders") || {};
+    report.reminders = morningReminders(rem, deps.nowMs ?? Date.now());
+    if (report.reminders.lines.length) await sendViaResend({ to, subject: report.reminders.subject, text: report.reminders.lines.join("\n") }, deps);
+  } catch (e) { report.reminders = { error: e.message }; }
   // W8 (11 November 2026): client files whose request or client was deleted overnight.
   try {
     const pending = await rpc(deps, "service_client_files_pending") || [];

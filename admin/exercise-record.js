@@ -367,6 +367,20 @@
     }
     push("");
 
+    // 5A. The facilitator's criterion ratings (W8 build 3, decision 9) — the facilitator's
+    // assessment, offered to the report as evidence; never a rating without an inject behind it.
+    push(line("="), "5A. FACILITATOR'S CRITERION RATINGS (the facilitator's assessment — evidence alongside sections 2 and 3)", line("="));
+    const crit = criteriaRows(rec);
+    if (!Array.isArray(rec.criteria)) push("This record was made before criterion ratings existed: no criteria rated by the facilitator.");
+    else if (!crit.some((c) => c.rating)) push("No criteria rated by the facilitator. Rate every criterion from the evidence in sections 2 and 3, as usual.");
+    else {
+      const rated = crit.filter((c) => c.rating).length;
+      push(`${rated} of ${crit.length} criteria rated by the facilitator. Use them as evidence: every rating in the report must still be traced to an inject (its "Tested by").`);
+      push("Criterion | Area | Facilitator's rating | Note | Tested by");
+      crit.forEach((c) => push(`${c.id} | ${c.area || ""} | ${c.rating ? RATING_WORD[c.rating] || c.rating : "not rated"} | ${c.note || ""} | ${c.tested_by || ""}`));
+    }
+    push("");
+
     // 6. Attachments and what was left out.
     push(line("="), "6. ATTACHMENTS IN THIS ZIP", line("="));
     if (!att.length) push("None.");
@@ -380,6 +394,18 @@
     push("", "After the report is delivered: mark the request \"Delivered\" on the admin page. The player data is removed 7 days later.");
     push("Delete this zip (and any copy) once the report is final. Never save it in OneDrive.");
     return out.join("\n") + "\n";
+  }
+
+  const RATING_WORD = { performed: "Performed", some_challenges: "Some challenges", major_challenges: "Major challenges", not_performed: "Not performed", not_tested: "Not tested" };
+  // criteria.json: one row per criterion of the scenario (W8 build 3).
+  function criteriaRows(rec) {
+    return (Array.isArray(rec.criteria) ? rec.criteria : []).map((c) => ({ id: c.id, area: c.area || null, text: c.text || null, tested_by: c.tested_by || null,
+      ncema: c.ncema || null, rating: c.rating || null, rating_word: c.rating ? RATING_WORD[c.rating] || c.rating : null, note: c.note || null, rated_at: c.rated_at || null }));
+  }
+  function criteriaJson(rec) {
+    const rows = criteriaRows(rec);
+    return { format: "planproof-criterion-ratings/1", session: rec.session && rec.session.id, run: rec.session && rec.session.run_number,
+      rated: rows.filter((c) => c.rating).length, total: rows.length, criteria: rows };
   }
 
   function manifestText(rec, files, exportedAt) {
@@ -401,6 +427,7 @@
       answers: (rec.submissions || []).length, notes: (rec.notes || []).length,
       attachments: attachmentEntries(rec).length, survey_responses: (rec.survey && rec.survey.responses) || 0,
       run: rec.session && rec.session.run_number,
+      criteria_rated: criteriaRows(rec).filter((c) => c.rating).length,
     };
   }
 
@@ -426,5 +453,5 @@
   }
 
   return { FORMAT, uae, publicJson, departments, departmentStatus, isResponsible, missedInject, playedIndexes, attachmentEntries,
-    buildText, manifestText, counts, warnings, fileBase, safeName, TYPE_SCORE };
+    buildText, manifestText, counts, warnings, fileBase, safeName, TYPE_SCORE, criteriaRows, criteriaJson };
 });
