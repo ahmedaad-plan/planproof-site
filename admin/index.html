@@ -1413,13 +1413,13 @@ function reviewEmail(ctx, v) {
     // v7.3 (remark 21, Ahmed 15 Nov): one plain promise instead of revision rounds; **…** = bold in the email
     // fix 14: Claude's reply to the sponsor (saved with the version by the scenario chat) comes first, under the link
     bottom: [v.sponsor_reply ? String(v.sponsor_reply).trim() : null, "On the page you can approve this version, or send us your comments. You can also print it or save it as a PDF.",
-      "**" + REVIEW_PROMISE + "**",
+      REVIEW_PROMISE,
       "Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond.",
       "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].filter(Boolean).join("\n\n"),
   };
 }
 const LINK_LINE = "Open the scenario: " + SEND_LINK_MARKER;
-const REVIEW_PROMISE = "We will send you the final scenario within 5 working days of your last comments. To leave enough time for the exercise arrangements, we would be grateful to receive any comments at least 10 working days before the exercise date.";
+const REVIEW_PROMISE = "We will send you the revised scenario within 5 working days of your last comments. To leave time for that, and for you to check it before the invitations go out, please send any comments **at least 10 working days before the exercise date**.";
 const composeEmail = (top, bottom) => [String(top || "").trim(), LINK_LINE, String(bottom || "").trim()].filter(Boolean).join("\n\n");
 async function session7() {
   const { data } = await sb.auth.getSession();
