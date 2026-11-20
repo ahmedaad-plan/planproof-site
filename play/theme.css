@@ -495,6 +495,8 @@ body.pp-has-tabs { padding-bottom: 24px; }
   .pp-tab, .pp-tabs .pp-tab { padding: 9px 6px; font-size: 14px; }
   /* Five tabs on a phone (Facilitator): the count sits in the corner. */
   .pp-tabs.many .pp-tab { font-size: 13px; padding: 9px 2px; position: relative; }
+  /* Six tabs (W8 build 3, Criteria): each tab sized to its word, so "Responses" and "Messages" are not cut. */
+  .pp-tabs.many .pp-tab, .pp-tabs.many > .pp-tab { flex: 1 1 auto; }
   .pp-tabs.many .pp-tab-badge { position: absolute; top: -7px; inset-inline-end: -4px; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; z-index: 1; }
   body.pp-has-tabs #liveStatus { bottom: 10px !important; }
   body.pp-has-tabs .pp-notice-fixed { bottom: 24px !important; }
