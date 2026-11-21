@@ -369,6 +369,44 @@
   .rejoin-row[hidden] { display: none; }
   .rejoin-row button { min-height: 40px; }
   .rejoin-row .pp-hint { flex: 1 1 220px; margin: 0; }
+
+/* W8 build 3 (18 Nov 2026): Before the day panel and the Criteria tab */
+.day-panel h2 { margin: 0; font-size: 1.05rem; }
+.day-fold > summary { cursor: pointer; list-style: none; }
+.day-fold > summary::-webkit-details-marker { display: none; }
+.day-panel.folded { border-color: var(--green, #2f7d62); }
+.day-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.day-line { display: grid; grid-template-columns: 22px 1fr; gap: 4px 8px; align-items: start; padding: 6px 0; border-top: 1px solid var(--border, #2b3642); }
+.day-line:first-child { border-top: 0; }
+.day-tick { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-muted, #9aa5b1); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.day-line.done .day-tick { background: var(--green, #2f7d62); border-color: var(--green, #2f7d62); color: #fff; }
+.day-status { color: var(--text-muted, #9aa5b1); }
+.day-btns { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.day-btns:empty { display: none; }
+.day-btn { min-height: 36px; }
+.crit-root { gap: 12px; }
+.crit-top .crit-count { font-weight: 600; margin: 6px 0 0; }
+.crit-trial { color: var(--red-soft, #f08a7e); font-weight: 600; }
+.crit-closed { color: var(--amber, #e3b341); margin: 6px 0 0; }
+.crit-group h3 { margin: 0 0 8px; font-size: 1rem; }
+.crit-group.current { border-color: var(--amber, #e3b341); }
+.crit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.crit-item { border-top: 1px solid var(--border, #2b3642); padding-top: 10px; }
+.crit-item:first-child { border-top: 0; padding-top: 0; }
+.crit-id { font-weight: 700; }
+.crit-meta { color: var(--text-muted, #9aa5b1); font-size: 13px; margin: 2px 0 6px; }
+.crit-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.crit-choice { min-height: 40px; padding: 6px 10px; }
+.crit-choice.on { outline: 3px solid currentColor; font-weight: 700; }
+.crit-choice.r-performed.on { background: #2f7d62; color: #fff; }
+.crit-choice.r-some_challenges.on { background: #b8860b; color: #fff; }
+.crit-choice.r-major_challenges.on { background: #c0562b; color: #fff; }
+.crit-choice.r-not_performed.on { background: #b0281c; color: #fff; }
+.crit-choice.r-not_tested.on { background: #5b6575; color: #fff; }
+.crit-saved { font-size: 13px; color: var(--text-muted, #9aa5b1); margin: 0 0 4px; }
+.crit-saved.on { color: var(--green, #3fb27f); font-weight: 600; }
+.crit-note { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 13px; }
+.crit-note input { width: 100%; min-height: 36px; }
 </style>
 </head>
 <body class="pp-has-tabs">
@@ -476,6 +514,8 @@
          watches, each a door to its tab. -->
     <div class="kpi-strip" id="kpiStrip" role="list" aria-label="At a glance" data-i18n-attr="aria-label:fac.kpi.aria"></div>
     <div class="pp-col">
+      <!-- W8 build 3 (18 November 2026): Before the day — lobby only; replaces "Before you start". -->
+      <div class="pp-card day-panel" id="dayPanel" hidden></div>
       <!-- W6a (2 November 2026): Before Start — the briefings, narration and captions, in one place. -->
       <div class="pp-card brief-panel" id="briefPanel" hidden>
         <h2 data-i18n="fac.brief.heading">Before Start</h2>
@@ -755,6 +795,11 @@
     </div>
   </section>
 
+  <!-- ===== Criteria (W8 build 3, 18 November 2026) — facilitator only ===== -->
+  <section id="tabCriteria" class="pp-cols wide" hidden>
+    <div class="pp-col crit-root" id="critRoot"></div>
+  </section>
+
   </div>
 
   <div class="pp-qr-large" id="qrLarge" hidden role="dialog" aria-modal="true">
@@ -774,6 +819,7 @@
 <script src="./mic.js"></script>
 <script src="./notes.js"></script>
 <script src="./answers.js"></script>
+<script src="./criteria.js"></script>
 <script>
   const sessionId = getSessionId();
   const facilitatorToken = getFacilitatorToken();
@@ -855,11 +901,13 @@
         { id: "people", label: T("fac.tabs.people"), panel: document.getElementById("tabPeople") },
         { id: "messages", label: T("fac.tabs.messages"), panel: document.getElementById("tabMessages") },
         { id: "notes", label: T("fac.tabs.notes"), panel: document.getElementById("tabNotes") },
+        { id: "criteria", label: T("fac.tabs.criteria"), panel: document.getElementById("tabCriteria") },
       ],
       onShow: (id) => {
         // Opening a tab counts as having seen what it holds.
         if (id === "messages") markInboxRead();
         if (id === "notes") markNotesRead();
+        if (id === "criteria" && window.__ppCrit) window.__ppCrit.refresh(true);
       },
     });
     // Remember each tab's count for the "At a glance" tiles.
@@ -1836,7 +1884,23 @@
     // Shown from Start until the player data is removed, so it serves the hot
     // debrief and the report check (Ahmed, 5 November 2026).
     const answersBtnEl = document.getElementById("facAnswersBtn");
-    const answersPage = PPAnswers.create({ role: "facilitator", sessionId, token: facilitatorToken, getRow: () => currentRow });
+    const answersPage = PPAnswers.create({ role: "facilitator", sessionId, token: facilitatorToken, getRow: () => currentRow, onRate: () => tabsApi.show("criteria", { user: true }) });
+    // W8 build 3: the Criteria tab and the Before the day panel (play/criteria.js).
+    const critApi = PPCriteria.tab(document.getElementById("critRoot"), {
+      sessionId, token: facilitatorToken, getRow: () => currentRow,
+      onBadge: (n) => tabsApi.badge("criteria", n, n ? "amber" : ""),
+    });
+    window.__ppCrit = critApi;
+    const dayApi = PPCriteria.dayPanel(document.getElementById("dayPanel"), {
+      sessionId, token: facilitatorToken, getRow: () => currentRow,
+      onAction: (a) => {
+        if (a === "check") { window.open(document.getElementById("checkLink").href, "_blank", "noopener"); return; }
+        if (a === "pack") { window.open(document.getElementById("printLink").href, "_blank", "noopener"); return; }
+        tabsApi.show("people", { user: true });
+        const setup = document.getElementById("setupDetails");
+        if (setup) { setup.open = true; setup.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      },
+    });
     answersBtnEl.addEventListener("click", () => answersPage.open());
     function updateAnswersBtn() {
       const r = currentRow;
@@ -2932,6 +2996,8 @@
           issues.push(T("fac.endCheck.deptIssue", { department: d, status: st.endLabel || st.label }));
         });
       }
+      const crit = critApi.unrated();
+      if (crit && crit.unrated > 0) issues.push(T("fac.endCheck.criteria", { count: crit.unrated, total: crit.total }));
       return issues;
     }
     function hideEndCheck() { endCheckEl.hidden = true; }
@@ -3308,7 +3374,10 @@
         else if (lastSetupStatus === "lobby" || lastSetupStatus === null) setupEl.open = false;
         lastSetupStatus = currentRow.status;
       }
-      document.getElementById("readyCard").hidden = currentRow.status !== "lobby";
+      // W8 build 3: the Before the day panel replaces this box (its two links moved into the panel).
+      document.getElementById("readyCard").hidden = true;
+      dayApi.refresh();
+      critApi.refresh();
       renderStatus();
       renderTower();
       renderEndStrip();

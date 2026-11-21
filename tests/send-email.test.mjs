@@ -50,6 +50,8 @@ test("send: logs first, sends from exercises@plan-proof.com with Reply-To, recor
   assert.deepEqual(w.emails[0].to, ["dana@example.test"]);
   assert.ok(w.emails[0].text.includes("https://plan-proof.com/c/" + TOKEN + " (valid until 25 November 2026)"));
   assert.ok(!w.emails[0].text.includes(LINK_MARKER));
+  const logo = (w.emails[0].attachments || []).find((x) => x.content_id === "planproof-logo");
+  assert.ok(logo && logo.content_type === "image/png" && logo.content.length > 1000 && w.emails[0].html.includes("cid:planproof-logo"), "the logo travels inside the email");
   assert.ok(w.emails[0].html.includes('<a href="https://plan-proof.com/c/' + TOKEN + '">'));
   assert.deepEqual([w.statusWrites[0].p_status, w.statusWrites[0].p_resend_id], ["sent", "re_1"]);
   assert.equal(w.recorded.p_version, VER);
@@ -92,10 +94,21 @@ test("send: refused without a sign-in, a kind, a request, a subject or a message
 
 test("the link goes where the marker is, or after the first paragraph if the marker was deleted", () => {
   const a = buildBody("Hello\n\nSee: " + LINK_MARKER + "\n\nBye", "https://x/c/T", "2026-11-25T10:00:00Z");
-  assert.equal(a.text, "Hello\n\nSee: https://x/c/T (valid until 25 November 2026)\n\nBye");
+  assert.equal(a.text, "Hello\n\nSee: https://x/c/T (valid until 25 November 2026)\n\nBye\n\nKind regards,\nThe PlanProof team");
   const b = buildBody("Hello\n\nBye", "https://x/c/T", null);
-  assert.equal(b.text, "Hello\n\nOpen it here: https://x/c/T\n\nBye");
+  assert.equal(b.text, "Hello\n\nOpen it here: https://x/c/T\n\nBye\n\nKind regards,\nThe PlanProof team");
   assert.ok(!buildBody("<b>x</b>", null).html.includes("<b>"), "escaped");
+});
+
+test("every client email ends with The PlanProof team (once) and carries the logo (build 3 finish)", () => {
+  const signed = buildBody("Hello\n\nKind regards,\nThe PlanProof team\nexercises@plan-proof.com", null);
+  assert.equal((signed.text.match(/PlanProof team/g) || []).length, 1, "not added twice");
+  const unsigned = buildBody("Hello\n\nKind regards,\nAhmed", null);
+  assert.match(unsigned.text, /The PlanProof team$/);
+  assert.ok(signed.html.includes('src="cid:planproof-logo"') && signed.html.includes('alt="PlanProof"'), "logo embedded in the HTML part");
+  assert.equal(buildBody("Hello\n\nKind regards,\nPlanProof\n\nKind regards,\nThe PlanProof team", null).text, "Hello\n\nKind regards,\nThe PlanProof team", "an old closing above is dropped");
+  assert.equal(buildBody("Hello\n\nKind regards,\nPlanProof", null).text, "Hello\n\nKind regards,\nThe PlanProof team", "the closing is corrected, not doubled");
+  assert.ok(!signed.text.includes("logo.png"), "no logo address in the plain-text part");
 });
 
 test("delivery status: Resend's events map to our words", () => {

@@ -90,6 +90,7 @@
       <div class="pp-ans-bar">
         <h2 id="ppAnsTitle">${esc(T("ans.title"))}</h2>
         <select id="ppAnsInject" aria-label="${esc(T("ans.chooseInject"))}"></select>
+        ${fac && opts.onRate ? `<button type="button" class="pp-btn ghost" id="ppAnsRate">${esc(T("ans.rateLink"))}</button>` : ""}
         <button type="button" class="pp-btn ghost" id="ppAnsClose">${esc(T("ans.close"))}</button>
       </div>
       <div class="pp-ans-sub" id="ppAnsSub"></div>
@@ -97,6 +98,9 @@
       <div class="pp-ans-status pp-ans-muted" id="ppAnsStatus" role="status"></div>
       <div id="ppAnsBody"></div>`;
     document.body.appendChild(root);
+    // W8 build 3: from the answers to the Criteria tab (the Answers view closes first).
+    const rateBtn = root.querySelector("#ppAnsRate");
+    if (rateBtn) rateBtn.addEventListener("click", () => { close(); opts.onRate(); });
     const selEl = root.querySelector("#ppAnsInject");
     const subEl = root.querySelector("#ppAnsSub");
     const movedEl = root.querySelector("#ppAnsMoved");

@@ -39,6 +39,9 @@
   .msg{ margin-top:10px; font-weight:600; } .msg.err{ color:#b0281c; } .msg.ok{ color:#2f7d62; }
   .center{ text-align:center; padding:60px 18px; }
   .center h1{ font-family:"Space Grotesk",system-ui,sans-serif; font-size:24px; margin:0 0 10px; }
+  .rfiles{ list-style:none; padding:0; margin:8px 0 0; display:grid; gap:10px; }
+  .rfiles li{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .rfiles .btn{ max-width:100%; white-space:normal; text-align:center; }
   :focus-visible{ outline:3px solid #1d2433; outline-offset:2px; }
   .pt{ width:100%; border-collapse:collapse; } .pt td{ padding:0; } .ph, .pf, .pfoot{ display:none; }
   .final{ background:#eaf6f0; border:1px solid #9fd3b9; border-radius:10px; padding:16px 18px; margin:0 0 14px; }
@@ -93,11 +96,69 @@
     if (d.state === "expired") return stop("This link has expired", "Please ask PlanProof for a new one — reply to the email, or write to exercises@plan-proof.com.");
     if (d.state === "revoked") return stop("This link is no longer active", "PlanProof has withdrawn it. Please ask PlanProof for a new one at exercises@plan-proof.com.");
     if (d.state !== "ok") return stop("This link is not recognised", "Please open the link exactly as it is in the email, or ask PlanProof for a new one at exercises@plan-proof.com.");
-    if (d.kind !== "scenario") return stop("Nothing to show yet", "This page will show your report. Please contact PlanProof at exercises@plan-proof.com.");
+    if (d.kind === "report") return drawReport(d);
+    if (d.kind !== "scenario") return stop("Nothing to show yet", "Please contact PlanProof at exercises@plan-proof.com.");
     if (d.withdrawn || !d.copy) return stop("This version was withdrawn", "PlanProof has withdrawn this version. Please use the newest link you received.");
     draw(d);
   }).catch(function (err) { stop("The page could not be opened", esc(err.message) + " If this keeps happening, write to exercises@plan-proof.com."); });
 
+  // W8 build 3 (D.9): the report page — the two client copies, the comments box and "We accept the report".
+  function drawReport(d) {
+    var org = d.organisation || "your organisation";
+    var conf = "Confidential — for " + (d.sponsor || "the sponsor") + " only.";
+    document.title = "PlanProof — exercise report for " + org;
+    document.getElementById("barTag").textContent = "Exercise report — for " + org;
+    var files = d.files || [];
+    var size = function (n) { return n ? (n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB") : ""; };
+    var list = files.length ? '<ul class="rfiles">' + files.map(function (f) {
+      var en = f.lang !== "ar";
+      return '<li><a class="btn dark" href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer" data-lang="' + esc(f.lang) + '">' + (en ? "Open the report in English" : "Open the report in Arabic — التقرير بالعربية") + '</a> <span class="hint">PDF' + (f.bytes ? ", " + size(f.bytes) : "") + "</span></li>";
+    }).join("") + "</ul>" : '<div class="notice red"><strong>The report files are no longer on this page.</strong>They are removed 7 days after the report is accepted, as our privacy policy promises. Please write to exercises@plan-proof.com if you need a copy.</div>';
+    var acc = d.accepted;
+    var top = '<div class="conf" id="confLine">' + esc(conf) + '</div>' +
+      (acc ? '<div class="final" role="status" id="finalBox"><strong>You accepted the report on ' + esc(longDateTime(acc.at)) + '.</strong>Thank you, ' + esc(firstName(acc.by)) + ' — PlanProof will close the exercise.</div>'
+           : '<div class="notice screen-only"><strong>Your exercise report for ' + esc(org) + ' is ready.</strong>Open each copy below, then send us any changes, or accept the report. This link works until ' + esc(longDate(d.expires_at)) + '.</div>');
+    var panel = acc ? "" : '<section class="panel" id="accept" aria-labelledby="acH"><h2 id="acH">We accept the report</h2>' +
+      '<p class="hint">When you are happy with the report, accept it here. PlanProof then closes the exercise: as our privacy policy says, the participants\' names and answers are deleted 7 days later.</p>' +
+      '<form id="rForm" novalidate><label for="rName">Your name</label><input type="text" id="rName" maxlength="200" autocomplete="name">' +
+      '<label class="tick"><input type="checkbox" id="rTick"> <span>We accept this report as final.</span></label>' +
+      '<div style="margin-top:12px"><button class="btn green" type="submit" id="rSend">We accept the report</button></div><div class="msg" id="rMsg" role="status"></div></form></section>' +
+      '<section class="panel" aria-labelledby="respH"><h2 id="respH">Your comments</h2>' +
+      '<p class="hint">Would you like a change? Write it here — your comments reach PlanProof at once, and we send you the revised report.</p>' +
+      '<form id="cForm" novalidate><label for="cName">Your name</label><input type="text" id="cName" maxlength="200" autocomplete="name">' +
+      '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
+      '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>';
+    main.innerHTML = top + '<section class="panel" aria-labelledby="fH"><h2 id="fH">Your report</h2>' + list + "</section>" + panel;
+    var cForm = document.getElementById("cForm");
+    if (cForm) cForm.onsubmit = function (e) {
+      e.preventDefault();
+      var cMsg = document.getElementById("cMsg"), cSend = document.getElementById("cSend");
+      var name = document.getElementById("cName").value.trim(), text = document.getElementById("cBody").value.trim();
+      cMsg.className = "msg err";
+      if (!name) { cMsg.textContent = "Please write your name."; document.getElementById("cName").focus(); return; }
+      if (!text) { cMsg.textContent = "Please write your comments."; document.getElementById("cBody").focus(); return; }
+      cSend.disabled = true; cMsg.className = "msg"; cMsg.textContent = "Sending…";
+      rpc("client_comment", { p_token: token, p_name: name, p_body: text }).then(function (r) {
+        if (r && r.ok) { nudge(); cMsg.className = "msg ok"; cMsg.textContent = "Received — thank you, " + name + ". PlanProof has your comments."; document.getElementById("cBody").value = ""; }
+        else { cMsg.className = "msg err"; cMsg.textContent = r && r.state === "expired" ? "This link has expired — nothing was sent. Please ask PlanProof for a new one." : "Not sent — this link is no longer active. Please write to exercises@plan-proof.com."; }
+      }).catch(function (err) { cMsg.className = "msg err"; cMsg.textContent = "Not sent — " + err.message; }).then(function () { cSend.disabled = false; });
+    };
+    var rForm = document.getElementById("rForm");
+    if (rForm) rForm.onsubmit = function (e) {
+      e.preventDefault();
+      var rMsg = document.getElementById("rMsg"), rSend = document.getElementById("rSend");
+      var name = document.getElementById("rName").value.trim();
+      rMsg.className = "msg err";
+      if (!name) { rMsg.textContent = "Please write your name."; document.getElementById("rName").focus(); return; }
+      if (!document.getElementById("rTick").checked) { rMsg.textContent = "Please tick “We accept this report as final”."; return; }
+      rSend.disabled = true; rMsg.className = "msg"; rMsg.textContent = "Sending…";
+      rpc("client_accept_report", { p_token: token, p_name: name, p_confirm: true }).then(function (r) {
+        if (r && r.ok) { nudge(); d.accepted = { by: name, at: new Date().toISOString() }; drawReport(d); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+        rMsg.className = "msg err"; rMsg.textContent = r && r.state === "expired" ? "This link has expired — please ask PlanProof for a new one." : "Not recorded — please write to exercises@plan-proof.com.";
+        rSend.disabled = false;
+      }).catch(function (err) { rMsg.className = "msg err"; rMsg.textContent = "Not recorded — " + err.message; rSend.disabled = false; });
+    };
+  }
   function draw(d) {
     var v = d.version_no, org = d.organisation || "your organisation";
     var conf = "Confidential — for " + (d.sponsor || "the sponsor") + " only. Not for participants.";

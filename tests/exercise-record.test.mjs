@@ -81,7 +81,7 @@ test("attachments get unique, safe names in the zip", () => {
 
 test("counts carry no names or answers", () => {
   const c = R.counts(sample());
-  assert.deepEqual(Object.keys(c).sort(), ["answers", "attachments", "injects_played", "injects_total", "notes", "observers", "participants", "run", "survey_responses"]);
+  assert.deepEqual(Object.keys(c).sort(), ["answers", "attachments", "criteria_rated", "injects_played", "injects_total", "notes", "observers", "participants", "run", "survey_responses"]);
   assert.equal(c.participants, 6);
 });
 
@@ -147,4 +147,27 @@ test("W4b: a trial run and a run stopped before End are flagged", () => {
   assert.match(t, /stopped with "Start fresh" on 31 Oct 2026/);
   assert.match(t, /Ended \(UAE\): +— \(stopped with "Start fresh"/);
   assert.match(t, /start time is estimated/);
+});
+
+// W8 build 3 (decision 9): the facilitator's criterion ratings travel in the record.
+test("criteria: section 5A and criteria.json match; an old record says so", () => {
+  const old = sample(); delete old.criteria;
+  assert.match(R.buildText(old), /made before criterion ratings existed/);
+  const none = sample(); none.criteria = [{ id: "A1", area: "Activation", text: "t", tested_by: "Inject 1 answer" }];
+  assert.match(R.buildText(none), /No criteria rated by the facilitator/);
+  const rec = sample();
+  rec.criteria = [
+    { id: "A1", area: "Activation and escalation", text: "crit one", tested_by: "Inject 1 answer", ncema: "8.5", rating: "some_challenges", note: "slow", rated_at: "2026-11-18T10:00:00Z" },
+    { id: "B1", area: "Communication", text: "crit two", tested_by: "Inject 2 answer", rating: null },
+  ];
+  const txt = R.buildText(rec);
+  assert.match(txt, /5A\. FACILITATOR'S CRITERION RATINGS/);
+  assert.match(txt, /1 of 2 criteria rated by the facilitator/);
+  assert.match(txt, /A1 \| Activation and escalation \| Some challenges \| slow \| Inject 1 answer/);
+  assert.match(txt, /B1 \| Communication \| not rated/);
+  assert.ok(txt.indexOf("5A.") > txt.indexOf("5. FEEDBACK") && txt.indexOf("5A.") < txt.indexOf("6. ATTACHMENTS"));
+  const j = R.criteriaJson(rec);
+  assert.equal(j.rated, 1); assert.equal(j.total, 2);
+  assert.equal(j.criteria[0].rating_word, "Some challenges");
+  assert.equal(R.counts(rec).criteria_rated, 1);
 });
