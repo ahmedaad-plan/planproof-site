@@ -1947,17 +1947,27 @@ function slotOfName(name) {
 // "(names removed)" check (D.9): the archive slots must hold the copy without names. The file name must say
 // ARCHIVE; where the PDF's text can be read, it must contain "(names removed)". A client slot must not hold it.
 async function pdfText(bytes) {
+  // build 3 finish: only words printed on the pages count — the text inside BT … ET blocks of the page streams.
+  // Font data (a font's licence text), the file's title and other metadata are left out: they made unreadable
+  // reports look "readable" and raised a false "(names removed)" alarm on every real Arabic archive copy.
   const raw = new TextDecoder("latin1").decode(bytes);
-  let out = raw;
+  let pages = "";
   const re = /stream\r?\n/g; let m;
   while ((m = re.exec(raw))) {
     const start = m.index + m[0].length, end = raw.indexOf("endstream", start);
     if (end < 0) break;
-    try { out += "\n" + new TextDecoder("latin1").decode(fflate.unzlibSync(bytes.subarray(start, end))); } catch { /* not a deflate stream */ }
+    const before = raw.slice(Math.max(0, m.index - 600), m.index);
+    const head = before.slice(Math.max(0, before.lastIndexOf(" obj")));   // this stream's own dictionary
+    let body = null;
+    if (/\/ASCII85Decode|\/ASCIIHexDecode|\/LZWDecode|\/DCTDecode/.test(head)) body = null;
+    else if (/\/FlateDecode/.test(head)) { try { body = new TextDecoder("latin1").decode(fflate.unzlibSync(bytes.subarray(start, end))); } catch { body = null; } }
+    else if (!/\/Filter/.test(head)) body = raw.slice(start, end);
+    if (body && /\bBT\b/.test(body)) pages += "\n" + body;
   }
+  const blocks = pages.match(/\bBT\b[\s\S]*?\bET\b/g) || [];
   // literal strings inside text operators: (na) (mes removed) → join pieces
-  const lit = (out.match(/\(((?:\\.|[^\\)])*)\)/g) || []).map((x) => x.slice(1, -1).replace(/\\(.)/g, "$1")).join("");
-  return (out + "\n" + lit).replace(/\s+/g, " ");
+  const lit = blocks.map((b) => (b.match(/\(((?:\\.|[^\\)])*)\)/g) || []).map((x) => x.slice(1, -1).replace(/\\(.)/g, "$1")).join("")).join(" ");
+  return lit.replace(/\s+/g, " ");
 }
 async function reportFileProblem(kind, file, bytes) {
   const named = /archive/i.test(file.name);
