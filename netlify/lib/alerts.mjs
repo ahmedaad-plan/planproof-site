@@ -20,6 +20,7 @@
 //     the system check's own (email_by "system-check").
 import webpush from "web-push";
 import { sendViaResend } from "./intake-core.mjs";
+import { sendThankYou, thankYouLine } from "./thank-you.mjs";
 
 export const ALERT_INBOX = "exercises@plan-proof.com";
 const SUBJECT_PREFIX = "PlanProof alert — ";
@@ -47,11 +48,11 @@ export function payloadFor(alert, origin) {
   });
 }
 
-export function emailFor(alert, origin) {
+export function emailFor(alert, origin, extraLine) {
   const url = alert.url ? new URL(alert.url, origin || "https://plan-proof.com").toString() : null;
   return {
     subject: SUBJECT_PREFIX + alert.title,
-    text: [alert.body, url ? `Open it: ${url}` : null, "",
+    text: [alert.body, extraLine || null, url ? `Open it: ${url}` : null, "",
       "You receive this email for every PlanProof alert (push notifications are an extra; this email is the record)."].filter((x) => x != null).join("\n"),
   };
 }
@@ -95,10 +96,18 @@ export async function deliverAlerts(deps) {
         if (r === "ok") { pushed++; ok.push(t.id); } else { failed++; if (r === "gone") gone.push(t.id); }
       }
     }
+    // W8 finish (fix 25): the client's thank-you rides on this alert — logged first, never twice
+    let thanks = null;
+    if (a.kind === "report_accepted") {
+      try { thanks = await (deps.sendThankYou || sendThankYou)(deps, rpc, a.submission_id); }
+      catch (err) { thanks = { sent: false, error: String(err.message || err).slice(0, 200) }; }
+      out.thank_you = thanks;
+      if (thanks && thanks.error) out.errors.push("thank-you: " + thanks.error);
+    }
     let emailed = false, emailError = null;
     if (a.email_by === "alerts") {
       try {
-        const m = emailFor(a, deps.origin);
+        const m = emailFor(a, deps.origin, thankYouLine(thanks));
         await (deps.sendEmail || sendViaResend)({ to: [ALERT_INBOX], subject: m.subject, text: m.text }, deps);
         emailed = true;
       } catch (err) { emailError = String(err.message || err).slice(0, 400); }
