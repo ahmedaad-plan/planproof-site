@@ -82,6 +82,9 @@
       if (!facts.expected_set) openAuto.push(T("fac.day.numbers"));
       var summary = manualDone && !openAuto.length ? T("fac.day.ready") : manualDone ? T("fac.day.foldedStill", { list: openAuto.join(" · ") }) : T("fac.day.heading");
       var wasOpen = el.querySelector("details") ? el.querySelector("details").open : !manualDone;
+      // The second manual tick folds the panel at once (not only at the next page load); reopening it by hand keeps it open.
+      if (manualDone && el.__ppDayManual === false) wasOpen = false;
+      el.__ppDayManual = manualDone;
       var html = '<details class="day-fold"' + (manualDone && !wasOpen ? "" : " open") + '><summary><h2>' + esc(summary) + "</h2></summary>" +
         '<p class="pp-hint">' + esc(T("fac.day.sub")) + "</p><ul class=\"day-list\">" + lines.join("") + "</ul>" +
         (err ? '<p class="pp-hint" role="alert">' + esc(err) + "</p>" : "") + "</details>";
