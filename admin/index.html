@@ -941,7 +941,10 @@ function stateOf(s, versions, comments, rec, x = {}) {
   const open = newest && newest.status !== "approved" && newest.version_no > (approved ? approved.version_no : 0) ? newest : null;
   // v7.4: reopened after approval (until the exercise starts) — back to the Scenario stage; the exercise and its links stay
   if (!open && approved && s.reopened_at) return R({ block: "scenario", tile: 2, where: `Reopened ${hm(s.reopened_at)}${s.reopen_reason ? " — " + s.reopen_reason : ""}`, next: { key: "revise", label: "Copy the revised prompt for Claude" }, hint: `The exercise and its three links stay as they are. Claude writes v${lastNo + 1}; send it, and when it is approved press Approve v${lastNo + 1} → update the exercise.` });
-  if (!open && approved) {
+  // build 3 finish: an exercise linked by hand (More… → Link an existing exercise) has no approved version;
+  // once it has ended, or the step was moved on by hand, it still reaches the Exercise and Report steps.
+  const handLinked = !approved && !!rec && !!rec.linked && (!!rec.ended || ["scenario_approved", "exercise_scheduled"].includes(s.status));
+  if (!open && (approved || handLinked)) {
     if (!rec || !rec.linked) return R({ block: "exercise", tile: 3, where: `v${approved.version_no} approved — the exercise is not set up yet`, next: { key: "setup", label: "Set up the exercise" }, hint: "Fill in the date, time, room and expected numbers, then press Set up the exercise." });
     // v7.4: before the day — test the links, the date and room, the two emails, voice and video
     const fr = x.facts ? x.facts.real : undefined;
@@ -950,7 +953,7 @@ function stateOf(s, versions, comments, rec, x = {}) {
       const sc = sentOk(mails, "confirmation"), si = sentOk(mails, "invitation");
       const daysTo = s.exercise_date ? Math.round((Date.parse(s.exercise_date + "T00:00:00Z") - Date.parse(dubaiYmd(new Date(nowMs).toISOString()) + "T00:00:00Z")) / 86400000) : null;
       const when = s.exercise_date ? `${dayName(s.exercise_date)}${daysTo != null && daysTo >= 0 ? ` · ${daysTo === 0 ? "today" : plural(daysTo, "day") + " to go"}` : ""}` : "date not set";
-      const base = `Exercise set up from v${approved.version_no} · ${when}`;
+      const base = `${approved ? "Exercise set up from v" + approved.version_no : "Exercise linked by hand"} · ${when}`;
       if (!s.links_tested_at || !(s.links_test && s.links_test.all)) return R({ block: "exercise", tile: 3, where: base + (s.links_tested_at ? " · the last link test failed" : " · links not tested yet"), next: { key: "test_links", label: "Test the links" }, hint: "Test the links: the page opens the three links in the background and checks that each answers." });
       if (!detailsSet(s)) return R({ block: "exercise", tile: 3, where: base, next: { key: "details", label: "Fill in the date, time and room" }, hint: "The confirmation and the invitation wait for the date, the start time and the room." });
       if (!sc || !si) return R({ block: "exercise", tile: 3, where: base + " · links tested", next: !sc && !si ? { key: "send_both", label: "Send both" } : !sc ? { key: "send_confirmation", label: "Send confirmation" } : { key: "send_invitation", label: "Send invitation" }, hint: "The confirmation goes to the sponsor; the invitation goes to the sponsor too, to forward to everyone taking part. Each has a calendar file." });
@@ -3102,7 +3105,7 @@ function exerciseBlock74(ctx) {
   const when = s.exercise_date && s.exercise_time ? `${longDay(s.exercise_date)}, ${s.exercise_time}–${addMinutes(s.exercise_time, minutes)} UAE time` : null;
   const dForm = detailsForm(ctx);
   parts.push(factsTable([
-    ["Exercise", h("span", {}, h("bdi", {}, x.label || ""), h("span", { class: "small muted" }, ` · v${x.version_no || "?"} · ${x.status}`))],
+    ["Exercise", h("span", {}, h("bdi", {}, x.label || ""), h("span", { class: "small muted" }, ` · ${x.version_no ? "v" + x.version_no : "linked by hand"} · ${x.status}`))],
     ["Date and time", when || h("span", { class: "due-bad" }, "not set yet — the emails wait for it")],
     ["Room", s.venue || h("span", { class: "due-bad" }, "not set yet")],
     ["People expected", countsLine(s.expected_counts || x.expected_counts) || "—"]]));
@@ -3173,7 +3176,7 @@ function exerciseBlock74(ctx) {
     body.querySelectorAll("[data-act]").forEach((b) => { const k = map[b.getAttribute("data-act")]; if (k) b.setAttribute("data-next", k); });
     parts.push(body);
   }
-  const line = [x.label ? `v${x.version_no}` : null, started ? (rec.downloaded ? "record downloaded" : x.status) : s.exercise_date ? dayName(s.exercise_date) : "date not set",
+  const line = [x.label ? (x.version_no ? `v${x.version_no}` : "linked by hand") : null, started ? (rec.downloaded ? "record downloaded" : x.status) : s.exercise_date ? dayName(s.exercise_date) : "date not set",
     !started && s.links_test && s.links_test.all ? "links tested" : null].filter(Boolean).join(" · ");
   return block("exercise", "Exercise", { status, line }, ...parts);
 }
