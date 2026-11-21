@@ -92,10 +92,19 @@ test("send: refused without a sign-in, a kind, a request, a subject or a message
 
 test("the link goes where the marker is, or after the first paragraph if the marker was deleted", () => {
   const a = buildBody("Hello\n\nSee: " + LINK_MARKER + "\n\nBye", "https://x/c/T", "2026-11-25T10:00:00Z");
-  assert.equal(a.text, "Hello\n\nSee: https://x/c/T (valid until 25 November 2026)\n\nBye");
+  assert.equal(a.text, "Hello\n\nSee: https://x/c/T (valid until 25 November 2026)\n\nBye\n\nKind regards,\nThe PlanProof team");
   const b = buildBody("Hello\n\nBye", "https://x/c/T", null);
-  assert.equal(b.text, "Hello\n\nOpen it here: https://x/c/T\n\nBye");
+  assert.equal(b.text, "Hello\n\nOpen it here: https://x/c/T\n\nBye\n\nKind regards,\nThe PlanProof team");
   assert.ok(!buildBody("<b>x</b>", null).html.includes("<b>"), "escaped");
+});
+
+test("every client email ends with The PlanProof team (once) and carries the logo (build 3 finish)", () => {
+  const signed = buildBody("Hello\n\nKind regards,\nThe PlanProof team\nexercises@plan-proof.com", null);
+  assert.equal((signed.text.match(/PlanProof team/g) || []).length, 1, "not added twice");
+  const unsigned = buildBody("Hello\n\nKind regards,\nAhmed", null);
+  assert.match(unsigned.text, /The PlanProof team$/);
+  assert.ok(signed.html.includes('src="https://plan-proof.com/logo.png"') && signed.html.includes('alt="PlanProof"'), "logo in the HTML part");
+  assert.ok(!signed.text.includes("logo.png"), "no logo address in the plain-text part");
 });
 
 test("delivery status: Resend's events map to our words", () => {

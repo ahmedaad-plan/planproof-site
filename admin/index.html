@@ -2009,7 +2009,7 @@ function reportEmail(ctx) {
     subject: `Your exercise report — ${c.company_name || ""} (${s.request_no || ""})`.replace(/ — \(/, " ("),
     message: [`Dear ${first || "colleague"},`, `Thank you for taking part in the exercise. Your report is ready, in English and Arabic.`, REPORT_LINK_LINE,
       "On the page you can view and download both copies. If you would like a change, write it in the comments box there. When you are happy with the report, please press \"We accept the report\" on the same page.",
-      "This link is private to you and works for 30 days.", "Kind regards,\nPlanProof"].join("\n\n"),
+      "This link is private to you and works for 30 days.", "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
   };
 }
 // Sign each client copy for the link's lifetime and put the signed addresses on the link (before the email goes).
@@ -3016,7 +3016,7 @@ function exerciseEmails(ctx) {
       "Please bring a charged phone or laptop (and a charger). There is nothing to install. On the day you will scan a code on the room screen to join; if you prefer, here is the join link: [the join link]",
       `Before the day, this short video explains how the exercise works: ${BRIEFING_VIDEO_URL}`,
       "This exercise tests the plan, not individuals. Your name and job title appear only in the attendance list of your organisation's report; everything entered during the exercise is deleted 7 days after the report is delivered.",
-      "The exercise is attached as a calendar invitation (exercise-invitation.ics): open it and choose Add (or Save) to put it in your calendar.\n\nThe PlanProof team"].join("\n\n"),
+      "The exercise is attached as a calendar invitation (exercise-invitation.ics): open it and choose Add (or Save) to put it in your calendar.", "Kind regards,\nThe PlanProof team"].join("\n\n"),
   };
   return { to: sp.email, conf, inv };
 }

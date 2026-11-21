@@ -76,6 +76,12 @@ const longDate = (iso) => new Date(iso).toLocaleDateString("en-GB", { timeZone: 
 // The message as Ahmed left it in the box, with the link put where the marker is
 // (or, if he deleted the marker, after the first paragraph) — the link itself is
 // never typed by hand. Returns { text, html }.
+// build 3 finish (Ahmed, 21 Nov 2026): the logo and the name under every client email (HTML part; the
+// plain-text part keeps the written sign-off). The logo is the site's own file on the live domain.
+export const SIGNATURE_HTML = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:6px;border-top:1px solid #e3e6ea"><tr>` +
+  `<td style="padding:14px 12px 0 0;vertical-align:middle"><img src="https://plan-proof.com/logo.png" width="44" height="44" alt="PlanProof" style="display:block;border:0;border-radius:10px"></td>` +
+  `<td style="padding:14px 0 0;vertical-align:middle;font-family:Arial,Helvetica,sans-serif"><div style="font-size:17px;font-weight:700;color:#11161d">Plan<span style="color:#d84a3a">Proof</span></div>` +
+  `<div style="font-size:12px;color:#6b7480">Business continuity exercises · <a href="https://plan-proof.com" style="color:#6b7480">plan-proof.com</a></div></td></tr></table>`;
 export function buildBody(message, link, expiresAt) {
   const linkLine = link ? `${link}${expiresAt ? ` (valid until ${longDate(expiresAt)})` : ""}` : "";
   let text = String(message || "").replace(/\r\n/g, "\n").trim();
@@ -87,10 +93,12 @@ export function buildBody(message, link, expiresAt) {
       text = parts.join("\n\n");
     }
   }
+  // build 3 finish (Ahmed, 21 Nov 2026): every client email ends with "The PlanProof team" — added if the box lost it
+  if (!/PlanProof team/i.test(text)) text += "\n\nKind regards,\nThe PlanProof team";
   // v7.3 (remark 21): **…** is bold in the HTML email; the plain-text part shows it without the stars
   const html = text.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>")
     .replace(link ? new RegExp(esc(link).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g") : /$^/, `<a href="${esc(link)}">${esc(link)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
-  return { text: text.replace(/\*\*(.+?)\*\*/gs, "$1"), html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}</div>` };
+  return { text: text.replace(/\*\*(.+?)\*\*/gs, "$1"), html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}${SIGNATURE_HTML}</div>` };
 }
 
 // One Resend send; tries the senders in order on a sender (4xx, not 429) refusal.
