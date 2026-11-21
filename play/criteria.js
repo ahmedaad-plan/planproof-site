@@ -145,6 +145,7 @@
       return '<li class="crit-item' + (cur ? " current" : "") + (c.rating ? " rated" : "") + '" data-crit-id="' + esc(c.id) + '">' +
         '<div class="crit-head"><span class="crit-id">' + esc(c.id) + '</span> <span class="crit-text">' + esc(c.text) + "</span></div>" +
         '<div class="crit-meta">' + esc(T("fac.crit.testedBy", { what: c.tested_by || "—" })) + (c.ncema ? " · NCEMA " + esc(c.ncema) : "") + "</div>" + // i18n-ok: clause label
+        '<div class="crit-saved' + (c.rating ? " on" : "") + '" role="status">' + esc(c.rating ? T("fac.crit.saved") : T("fac.crit.unsaved")) + "</div>" +
         '<div class="crit-choices" role="group" aria-label="' + esc(T("fac.crit.choicesAria", { id: c.id })) + '">' + choices + "</div>" +
         '<label class="crit-note"><span>' + esc(T("fac.crit.note")) + '</span><input type="text" maxlength="300" data-note="' + esc(c.id) + '" value="' + esc(c.note || "") + '"' + (data.open && c.rating ? "" : " disabled") + "></label></li>";
     }
