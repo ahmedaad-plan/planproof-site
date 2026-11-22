@@ -930,15 +930,24 @@ const hm = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Asi
 // Claude (v1 stays v1); a version already sent becomes the next version. Claude's own decision table (saved as a
 // remark at the moment it saves a version) and contact notes never count as new remarks.
 const CLAUDE_REMARK = "claude-scenario-chat";
-function remarksNotIn(v, remarks) {
-  if (!v) return [];
-  const live = (remarks || []).filter((r) => !r.withdrawn_at);
+// When a version's content was last written: content_at (fix 33b); older rows fall back to their times.
+function contentAt(v, remarks) {
+  if (v.content_at) return Date.parse(v.content_at) || 0;
   let t = Date.parse(v.created_at) || 0;
   if (v.status === "draft" && v.updated_at) t = Math.max(t, Date.parse(v.updated_at) || 0);
-  if (v.added_how === "claude") for (const r of live) if (r.author_email === CLAUDE_REMARK) { const ms = Date.parse(r.created_at) || 0; if (ms > t) t = ms; }
-  return live.filter((r) => r.author_email !== CLAUDE_REMARK && !/^Contact note:/i.test(r.body || "") && (Date.parse(r.created_at) || 0) > t + 1000)
+  if (v.added_how === "claude") for (const r of remarks || []) if (r.author_email === CLAUDE_REMARK && !r.withdrawn_at) { const ms = Date.parse(r.created_at) || 0; if (ms > t) t = ms; }
+  return t;
+}
+const ourRemark = (r) => !r.withdrawn_at && r.author_email !== CLAUDE_REMARK && !/^Contact note:/i.test(r.body || "");
+function remarksNotIn(v, remarks) {
+  if (!v) return [];
+  const t = contentAt(v, remarks);
+  return (remarks || []).filter((r) => ourRemark(r) && (Date.parse(r.created_at) || 0) > t + 1000)
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
 }
+// fix 33b (Ahmed 22 Nov 2026): rounds before sending are numbered inside PlanProof — v1, v1.1, v1.2 … The sponsor
+// only ever sees whole numbers: whatever round is sent arrives as v1.
+const roundLabel = (v, round = v.round_no) => "v" + v.version_no + (round > 0 ? "." + round : "");
 function stateOf(s, versions, comments, rec, x = {}) {
   const nowMs = x.nowMs ?? Date.now();
   const vs = liveVersions(versions);
@@ -1015,9 +1024,11 @@ function stateOf(s, versions, comments, rec, x = {}) {
   if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
   const v = open || newest;
   const late = remarksNotIn(v, x.remarks || s._remarks);
-  if (v.status === "draft" && late.length) return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — ${plural(late.length, "PlanProof remark")} newer than v${v.version_no}: update v${v.version_no} before sending`,
+  if (v.status === "draft" && late.length) return R({ block: "scenario", tile: 2, where: `${roundLabel(v)} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.content_at || v.created_at)} — ${plural(late.length, "PlanProof remark")} newer than ${roundLabel(v)}: ask Claude for ${roundLabel(v, (v.round_no || 0) + 1)} before sending`,
     next: { key: "update_draft", label: `Copy the update prompt for Claude` }, showDue: true, lateRemarks: late.length,
-    hint: `Paste it into your Claude chat for ${s.request_no}. Claude takes your remark into v${v.version_no} and saves it over v${v.version_no} (the sponsor has not seen it, so it stays v${v.version_no}). Then send v${v.version_no}.` });
+    hint: `Paste it into your Claude chat for ${s.request_no}. Claude writes ${roundLabel(v, (v.round_no || 0) + 1)} with your remark (${roundLabel(v)} is kept under Earlier rounds). The sponsor has not seen any of them: the one you send arrives as v${v.version_no}.` });
+  if (v.status === "draft" && v.round_no > 0) return R({ block: "scenario", tile: 2, where: `${roundLabel(v)} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.content_at || v.created_at)} — not sent yet (the sponsor will receive it as v${v.version_no})`,
+    next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Check "Remarks taken in" under the current version, press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
   if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve v${v.version_no}: one box asks for the date, time, room and numbers and sets up the exercise.` });
   if (v.status === "client_commented") {
@@ -1066,7 +1077,7 @@ async function renderRequests() {
     q(sb.from("submissions")
       .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, exercise_date, exercise_time, venue, expected_counts, reopened_at, reopen_reason, links_tested_at, links_test, report_client_accepted_at, report_client_accepted_by, zoho_done_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
-    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, updated_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
+    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, updated_at, content_at, round_no, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
     q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at, author_email").is("withdrawn_at", null)).catch(() => []),
     q(sb.from("sent_emails").select("submission_id, kind, status, created_at, to_address").in("kind", ["confirmation", "invitation", "report"])).catch(() => []),
@@ -1301,6 +1312,7 @@ async function renderRequest(id) {
     q(sb.from("sent_emails").select("*").eq("submission_id", id).order("created_at")).catch(() => []),
     q(sb.from("client_link_opens").select("link_id, at, what, outcome").eq("submission_id", id).order("at")).catch(() => []),
   ]);
+  s._rounds = await q(sb.from("submission_version_rounds").select("*").eq("submission_id", id).order("round_no")).catch(() => []);
   s._remarks = remarks || [];
   s._versions = (versions || []).filter((v) => !v.withdrawn_at);
   s._lastVersionNo = (versions || []).reduce((m, v) => Math.max(m, v.version_no), 0);
@@ -1543,7 +1555,7 @@ function sendForm(ctx, v, isResend) {
     if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
     const lateR = v.status === "draft" ? remarksNotIn(v, ctx.s._remarks) : [];
     if (lateR.length) {
-      const ok = await confirmBox({ title: `${plural(lateR.length, "PlanProof remark")} ${lateR.length === 1 ? "is" : "are"} not in v${v.version_no} yet`, text: `Your remark was added after Claude wrote v${v.version_no}. Copy the update prompt for Claude first, so the sponsor gets v${v.version_no} with it — or send v${v.version_no} as it is.`, ok: "Send anyway" });
+      const ok = await confirmBox({ title: `${plural(lateR.length, "PlanProof remark")} ${lateR.length === 1 ? "is" : "are"} not in ${roundLabel(v)} yet`, text: `Your remark was added after Claude wrote ${roundLabel(v)}. Copy the update prompt for Claude first, so the sponsor gets v${v.version_no} with it — or send ${roundLabel(v)} as it is (it arrives as v${v.version_no}).`, ok: "Send anyway" });
       if (!ok) return;
     }
     if (!previewed().has(v.id)) {
@@ -1656,12 +1668,12 @@ function revisePrompt(ctx, v) {
 function updatePrompt(ctx, v) {
   const { s, c } = ctx;
   const late = remarksNotIn(v, s._remarks);
-  return [`Update v${v.version_no} of the scenario for ${s.request_no} (${c.company_name || "the client"}) before it is sent.`,
-    `v${v.version_no} is NOT sent yet — the sponsor has not seen it. Since it was written, PlanProof added ${plural(late.length, "team remark")}:`,
+  return [`Update ${roundLabel(v)} of the scenario for ${s.request_no} (${c.company_name || "the client"}) into ${roundLabel(v, (v.round_no || 0) + 1)} before it is sent.`,
+    `${roundLabel(v)} is NOT sent yet — the sponsor has not seen it. Since it was written, PlanProof added ${plural(late.length, "team remark")}:`,
     ...late.map((r, i) => `${i + 1}. ${String(r.body).replace(/\s+/g, " ").trim()}`),
     `Use the planproof-scenario skill in revise mode. Read the request, v${v.version_no} and every team remark from the PlanProof database for ${s.request_no}.`,
     `First, list each new remark in a table (what it says, your plan: accept / question for me) and wait for my OK.`,
-    `Then rewrite the scenario KEEPING "version": ${v.version_no} — it replaces the unsent v${v.version_no}. Run the fresh-eyes check and save it with admin_save_scenario (your decision table is saved as a team remark). The versionNote is read by the sponsor as v${v.version_no}: do not mention a revision or our remarks in it.`].join("\n");
+    `Then rewrite the scenario KEEPING "version": ${v.version_no} — the page keeps ${roundLabel(v)} under Earlier rounds and shows yours as ${roundLabel(v, (v.round_no || 0) + 1)}. Run the fresh-eyes check and save it with admin_save_scenario (your decision table is saved as a team remark). The versionNote is read by the sponsor as v${v.version_no}: do not mention a revision or our remarks in it.`].join("\n");
 }
 // The facts of a version, from its file (or the summary the database stored).
 function factsOf(v) {
@@ -1693,7 +1705,8 @@ function versionPanel(ctx, v) {
   const late = link ? (extra.opens || []).filter((o) => o.link_id === link.id && o.outcome !== "ok") : [];
   const sm = factsOf(v);
   const parts = [h("div", { class: "v7-vtitle" }, pill(VERSION_WORD[v.status] || v.status, VERSION_TONE_V7[v.status]), sm && sm.label ? h("span", {}, sm.label) : null,
-    h("span", { class: "small muted" }, v.added_how === "claude" ? "added by Claude " + hm(v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded " + hm(v.created_at) : "recorded by hand"))];
+    v.status === "draft" && v.round_no > 0 ? h("span", { class: "small", style: "color:var(--attn)" }, `round ${roundLabel(v)} — the sponsor will receive it as v${v.version_no}`) : null,
+    h("span", { class: "small muted" }, v.added_how === "claude" ? "added by Claude " + hm(v.content_at || v.created_at) : v.added_how === "upload" || v.added_how === "paste" ? "uploaded " + hm(v.created_at) : "recorded by hand"))];
   if (sm) parts.push(table(["Length", "Messages", "Teams", "Things the report will score", "Tasks"], [[sm.minutes + " minutes", String(sm.injects), String(sm.teams), String(sm.criteria),
     plainTasks(sm)]], "facts"));
   else parts.push(h("p", { class: "small muted" }, "Recorded by hand — no scenario file on the page for this version."));
@@ -1730,7 +1743,28 @@ function versionPanel(ctx, v) {
       apForm.hidden = !apForm.hidden; if (!apForm.hidden) { const i = apForm.querySelector("input"); if (i) i.focus(); }
     } }, ctx.extra.facts && ctx.extra.facts.real ? `Approve v${v.version_no} → update the exercise` : "Approve v" + v.version_no));
   }
-  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, btns, form, apForm, btns2.childNodes.length ? btns2 : null);
+  // fix 33b: which PlanProof remarks this round has taken in, Claude's answers, and the earlier rounds
+  const rem = ctx.s._remarks || [];
+  const tNow = contentAt(v, rem);
+  const rounds = (ctx.s._rounds || []).filter((r) => r.version_id === v.id).sort((a, b) => a.round_no - b.round_no);
+  const prevV = liveVersions(ctx.s._versions).filter((x) => x.version_no < v.version_no).sort((a, b) => b.version_no - a.version_no)[0];
+  const tFrom = rounds.length ? (Date.parse(rounds[rounds.length - 1].content_at) || 0) : prevV ? contentAt(prevV, rem) : 0;
+  const takenIn = rem.filter((r) => ourRemark(r) && !/^Discovery-call notes:/i.test(r.body || "") && (Date.parse(r.created_at) || 0) > tFrom + 1000 && (Date.parse(r.created_at) || 0) <= tNow + 1000);
+  const answers = rem.filter((r) => r.author_email === CLAUDE_REMARK && !r.withdrawn_at && Math.abs((Date.parse(r.created_at) || 0) - tNow) < 120000);
+  const lateHere = remarksNotIn(v, rem);
+  const label = v.status === "draft" ? roundLabel(v) : "v" + v.version_no;
+  let remSec = null;
+  if (v.scenario && (takenIn.length || lateHere.length || answers.length)) remSec = h("div", { class: "v7-taken", "data-taken": String(takenIn.length) },
+    h("h4", { class: "cap", style: "margin:10px 0 4px" }, "Remarks taken in"),
+    ...takenIn.map((r) => h("p", { class: "ok-line small", style: "margin:0 0 4px" }, `✓ “${String(r.body).slice(0, 140)}${String(r.body).length > 140 ? "…" : ""}” — read by Claude in ${label}`)),
+    ...lateHere.map((r) => h("p", { class: "small", style: "margin:0 0 4px; color:var(--attn)" }, `○ “${String(r.body).slice(0, 140)}${String(r.body).length > 140 ? "…" : ""}” — not in ${label} yet`)),
+    answers.length ? h("details", { class: "v7-fold", style: "margin-top:4px" }, h("summary", {}, "Claude's answers (accepted / question for you)"),
+      ...answers.map((r) => h("div", { class: "small", style: "white-space:pre-wrap; margin:6px 0" }, r.body))) : null);
+  let roundsSec = null;
+  if (rounds.length) roundsSec = h("details", { class: "v7-fold", "data-fold": "rounds", style: "margin-top:8px" }, h("summary", {}, `Earlier rounds of v${v.version_no} (${rounds.length}) — PlanProof only`),
+    table(["Round", "Written", ""], rounds.map((r) => ({ attrs: { "data-round": roundLabel(v, r.round_no) }, cells: [h("strong", {}, roundLabel(v, r.round_no)), hm(r.content_at),
+      r.scenario ? h("button", { class: "btn quiet sm", type: "button", onclick: () => showClientCopy({ ...v, scenario: r.scenario, note: r.note }) }, "Preview what the sponsor would have seen") : null] })), "rounds"));
+  return h("div", { class: "v7-version", "data-version": String(v.version_no) }, ...parts, remSec, btns, form, apForm, btns2.childNodes.length ? btns2 : null, roundsSec);
 }
 function addBox(ctx, nextNo) {
   const { s } = ctx;
@@ -1942,15 +1976,15 @@ function scenarioBlock(ctx) {
   else if (!delivered && state.next && state.next.key === "update_draft" && newest) {
     const late = remarksNotIn(newest, s._remarks);
     todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
-      h("li", {}, h("div", {}, h("strong", {}, `Your ${late.length === 1 ? "remark is" : late.length + " remarks are"} not in v${newest.version_no} yet.`),
+      h("li", {}, h("div", {}, h("strong", {}, `Your ${late.length === 1 ? "remark is" : late.length + " remarks are"} not in ${roundLabel(newest)} yet.`),
         h("div", { class: "small muted" }, ...late.map((r) => h("div", {}, "• ", h("bdi", {}, String(r.body).slice(0, 160) + (String(r.body).length > 160 ? "…" : "")))))) ),
-      h("li", {}, h("div", {}, h("strong", {}, "Copy the update prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. Claude saves it over v${newest.version_no} — the sponsor has not seen v${newest.version_no}, so it keeps its number.`)),
+      h("li", {}, h("div", {}, h("strong", {}, "Copy the update prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. Claude writes ${roundLabel(newest, (newest.round_no || 0) + 1)}; ${roundLabel(newest)} stays under Earlier rounds. The sponsor sees only the one you send, as v${newest.version_no}.`)),
         h("button", { class: "btn primary", type: "button", "data-act": "update_prompt", "data-next": "update_draft", onclick: async () => {
           const text = updatePrompt(ctx, newest);
           try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
           catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
         } }, "Copy the update prompt for Claude")),
-      h("li", {}, h("div", {}, h("strong", {}, `v${newest.version_no} updates here by itself.`), h("div", { class: "small muted" }, `Then press "Preview what the sponsor will see" and "Send v${newest.version_no} to the sponsor".`))));
+      h("li", {}, h("div", {}, h("strong", {}, `${roundLabel(newest, (newest.round_no || 0) + 1)} appears here by itself.`), h("div", { class: "small muted" }, `Then press "Preview what the sponsor will see" and "Send v${newest.version_no} to the sponsor".`))));
   }
   else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
     h("li", {}, h("div", {}, h("strong", {}, "Anything else from the sponsor (by phone or email) or from us?"), h("div", { class: "small muted" }, "Add it with + Add a comment, so Claude sees it too. Comments the sponsor sent from their page are already in the list below.")), addBtn("")),
@@ -1963,7 +1997,7 @@ function scenarioBlock(ctx) {
   return block("scenario", "Scenario", { status, line, right: h("span", { class: "small", style: "color:var(--attn)" }, "Sponsor only — never participants") },
     todo,
     section("comments", `Comments and remarks (${nCount})`, delivered || commented ? null : addBtn("quiet sm"), nform, notes),
-    newest ? section("version", `Current version — v${newest.version_no}`, null, versionPanel(ctx, newest)) : null,
+    newest ? section("version", `Current version — ${newest.status === "draft" ? roundLabel(newest) : "v" + newest.version_no}`, null, versionPanel(ctx, newest)) : null,
     delivered ? null : playSection(ctx),
     older.length ? h("details", { class: "v7-fold", "data-fold": "versions" }, h("summary", {}, `Earlier versions (${older.length})`),
       table(["Version", "Status", "Added", "Sent", "Sponsor", "Sponsor comments", ""], older.map((v) => {
