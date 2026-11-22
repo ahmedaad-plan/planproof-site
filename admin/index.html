@@ -1028,7 +1028,7 @@ function stateOf(s, versions, comments, rec, x = {}) {
     next: { key: "update_draft", label: `Copy the update prompt for Claude` }, showDue: true, lateRemarks: late.length,
     hint: `Paste it into your Claude chat for ${s.request_no}. Claude writes ${roundLabel(v, (v.round_no || 0) + 1)} with your remark (${roundLabel(v)} is kept under Earlier rounds). The sponsor has not seen any of them: the one you send arrives as v${v.version_no}.` });
   if (v.status === "draft" && v.round_no > 0) return R({ block: "scenario", tile: 2, where: `${roundLabel(v)} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.content_at || v.created_at)} — not sent yet (the sponsor will receive it as v${v.version_no})`,
-    next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Check "Remarks taken in" under the current version, press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
+    next: { key: "send", label: `Send ${roundLabel(v)} to the sponsor` }, showDue: true, hint: `Check "Remarks taken in" under the current version, press "Preview what the sponsor will see", then "Send ${roundLabel(v)} to the sponsor". The sponsor receives it as v${v.version_no}.` });
   if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve v${v.version_no}: one box asks for the date, time, room and numbers and sets up the exercise.` });
   if (v.status === "client_commented") {
@@ -1559,7 +1559,7 @@ function sendForm(ctx, v, isResend) {
       if (!ok) return;
     }
     if (!previewed().has(v.id)) {
-      const ok = await confirmBox({ title: `You haven't previewed v${v.version_no}`, text: "Press \"Preview what the sponsor will see\" first, or send anyway.", ok: "Send anyway" });
+      const ok = await confirmBox({ title: `You haven't previewed ${v.status === "draft" ? roundLabel(v) : "v" + v.version_no}`, text: "Press \"Preview what the sponsor will see\" first, or send anyway.", ok: "Send anyway" });
       if (!ok) return;
     }
     const clientDom = (ctx.c.email || "").split("@")[1];
@@ -1583,12 +1583,13 @@ function sendForm(ctx, v, isResend) {
     try {
       const r = await postEmail({ action: "send", kind: "review", submission_id: ctx.s.id, version_id: v.id, to: addr, subject: subj.value, message: message() });
       clearDrafts(form);
-      toast(`v${v.version_no} sent to ${addr}` + (r.from && /notify\./.test(r.from) ? " (from exercises@notify.plan-proof.com, replies to exercises@plan-proof.com)" : ""));
+      toast(`${v.status === "draft" ? roundLabel(v) : "v" + v.version_no} sent to ${addr}` + (v.status === "draft" && v.round_no > 0 ? ` — the sponsor sees it as v${v.version_no}` : "") + (r.from && /notify\./.test(r.from) ? " (from exercises@notify.plan-proof.com, replies to exercises@plan-proof.com)" : ""));
       if (!r.recorded) toast("Sent — but the page could not record it yet; it will repair itself within the hour.", true);
       reloadKeepingPlace();
     } catch (err) { send.disabled = false; out.textContent = ""; fail(err); }
-  } }, isResend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`);
+  } }, isResend ? `Resend v${v.version_no} to the sponsor` : `Send ${roundLabel(v)} to the sponsor`);
   const form = h("div", { class: "inline-form stack send-form", hidden: true, "data-form": "send" },
+    !isResend && v.round_no > 0 ? h("p", { class: "small", style: "margin:0; color:var(--attn)", "data-as": "v" + v.version_no }, `You are sending ${roundLabel(v)}. The sponsor receives it as v${v.version_no} — the email and their page say v${v.version_no}.`) : null,
     h("div", { class: "row check-first" }, h("span", { class: "small muted" }, "Check it first:"),
       h("button", { class: "btn sm", type: "button", onclick: () => showClientCopy(v) }, "Preview what the sponsor will see"), previewMail, testBtn),
     h("label", { class: "f" }, "To (the sponsor)", to),
@@ -1728,7 +1729,7 @@ function versionPanel(ctx, v) {
     const resend = v.status !== "draft";
     form = sendForm(ctx, v, resend);
     add(btns, h("button", { class: "btn sm", type: "button", "data-act": resend ? "resend" : "send", "data-next": resend ? "resend" : "send", onclick: () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector("input[type=email]").focus(); } },
-      resend ? `Resend v${v.version_no} to the sponsor` : `Send v${v.version_no} to the sponsor`));
+      resend ? `Resend v${v.version_no} to the sponsor` : `Send ${roundLabel(v)} to the sponsor`));
   }
   if (liveLink) add(btns2, copyLinkBtn(liveLink), h("button", { class: "btn quiet sm", type: "button", "data-act": "extend", onclick: async () => {
     const r = await q(sb.rpc("admin_link_action", { p_link: liveLink.id, p_action: "extend" })).catch(fail);
