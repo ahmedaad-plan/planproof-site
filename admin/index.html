@@ -451,7 +451,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><a class="ver" href="#about" title="Page version — About PlanProof and how to move it">v7.7</a><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><a class="ver" href="#about" title="Page version — About PlanProof and how to move it">v7.8</a><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -993,7 +993,7 @@ function stateOf(s, versions, comments, rec, x = {}) {
       const daysTo = s.exercise_date ? Math.round((Date.parse(s.exercise_date + "T00:00:00Z") - Date.parse(dubaiYmd(new Date(nowMs).toISOString()) + "T00:00:00Z")) / 86400000) : null;
       const when = s.exercise_date ? `${dayName(s.exercise_date)}${daysTo != null && daysTo >= 0 ? ` · ${daysTo === 0 ? "today" : plural(daysTo, "day") + " to go"}` : ""}` : "date not set";
       const base = `${approved ? "Exercise set up from v" + approved.version_no : "Exercise linked by hand"} · ${when}`;
-      if (!s.links_tested_at || !(s.links_test && s.links_test.all)) return R({ block: "exercise", tile: 3, where: base + (s.links_tested_at ? " · the last link test failed" : " · links not tested yet"), next: { key: "test_links", label: "Test the links" }, hint: "Test the links: the page opens the three links in the background and checks that each answers." });
+      if (!s.links_tested_at || !(s.links_test && s.links_test.all)) return R({ block: "exercise", tile: 3, where: base + (s.links_tested_at ? " · the last link test failed" : " · links not tested yet"), next: { key: "test_links", label: "Test the links" }, hint: "Test the links before the invitation goes out, so nobody gets a dead link on the day." });
       if (!detailsSet(s)) return R({ block: "exercise", tile: 3, where: base, next: { key: "details", label: "Fill in the date, time and room" }, hint: "The confirmation and the invitation wait for the date, the start time and the room." });
       if (!sc || !si) return R({ block: "exercise", tile: 3, where: base + " · links tested", next: !sc && !si ? { key: "send_both", label: "Send both" } : !sc ? { key: "send_confirmation", label: "Send confirmation" } : { key: "send_invitation", label: "Send invitation" }, hint: "The confirmation goes to the sponsor; the invitation goes to the sponsor too, to forward to everyone taking part. Each has a calendar file." });
       if (fr) {
@@ -2376,7 +2376,7 @@ function renderAbout() {
   const li = (...x) => h("li", {}, ...x);
   app.replaceChildren(h("div", { class: "card stack about" },
     h("h1", {}, "About PlanProof — and how to move it"),
-    h("p", { class: "muted small" }, "Admin page v7.7 (W8 finish, 22 November 2026). The full version of this page is the Project doc planproof-reference/how-to-move-planproof.md."),
+    h("p", { class: "muted small" }, "Admin page v7.8 (W8 done, 22 November 2026). The full version of this page is the Project doc planproof-reference/how-to-move-planproof.md."),
     h("h2", {}, "What runs where"),
     table(["Part", "Service", "What it holds"], [
       ["Website, admin page, player, client pages, 11 functions", "Netlify (plan-proof.com)", "Code only — from GitHub ahmedaad-plan/planproof-site (main)"],
@@ -3056,11 +3056,11 @@ function setupForm(ctx, v, mode) {
   const form = h("div", { class: "inline-form stack setup-form", hidden: true, "data-form": "setup-" + mode },
     h("p", { class: "small", style: "margin:0" }, mode === "update"
       ? `This puts v${v.version_no} into the same exercise. The three links stay the same — nothing you sent needs changing. If voice and video were prepared, prepare them again.`
-      : `This makes v${v.version_no} the final version and sets up the real exercise from it: the three links and QR codes. You can fill in or change the date, time and room later — the emails wait for them.`),
+      : `This makes v${v.version_no} the final version and sets up the real exercise from it: the three links and QR codes. The confirmation and the invitation need the date, the start time and the room — fill them in now, or later with "Fill in the date, time and room".`),
     h("div", { class: "row", style: "gap:10px 18px; align-items:flex-end" },
       h("label", { class: "f" }, "Date", date), h("label", { class: "f" }, "Start time (UAE)", time),
       h("span", { class: "small muted" }, `${minutes} minutes`)),
-    h("label", { class: "f" }, "Room", room),
+    h("label", { class: "f" }, h("span", {}, "Room ", h("span", { class: "small muted" }, "(needed for the emails)")), room),
     teams.length ? h("div", {}, h("div", { class: "small muted", style: "margin:4px 0" }, "People expected (from the discovery call)"),
       table(["Team", "People"], nums.map(([t, i]) => [t, i]).concat([["Observers", obs]]), "counts")) : null,
     h("div", { class: "row" }, go, h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); } }, "Cancel")), out);
@@ -3115,10 +3115,10 @@ function exerciseEmails(ctx) {
       "1. A laptop for the room's screen. On the day, the exercise is shown on the room's screen from one laptop. Please connect a laptop to the screen and the speakers, on the same Wi-Fi the exercise will use.",
       "2. A quick check of that laptop, a few days before. Please ask your IT contact to open the link below on that laptop. It checks the connection, the sound and the screen in about 20 seconds. When it finishes, they press the button \"Email results to PlanProof\", so we can confirm that everything works:\n" + "[the connection check link]",
       "3. The participants' invitation. It comes in a separate email: please forward it to everyone taking part.",
-      "4. The names of the Observers.",
+      obs === 0 ? null : "4. The names and roles of your Observers — the colleagues who watch and take notes but do not answer. Please reply to this email with them, so we can greet and brief them on the day.",
       "Nothing needs to be installed; participants bring a charged phone or laptop. Everything entered during the exercise is deleted 7 days after your report is delivered; findings describe teams, never individuals.",
       "The exercise is also attached as a calendar invitation (exercise.ics): open it and choose Add (or Save) to put it in your calendar.",
-      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
+      "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].filter((x) => x !== null).join("\n\n"),
   };
   const inv = {
     subject: `Invitation — business continuity exercise, ${longDay(s.exercise_date)}, ${s.exercise_time}`,
@@ -3148,7 +3148,7 @@ function exerciseSendForm(ctx, which) {
     const d = $("mailDlg");
     $("mailTo").textContent = to.value; $("mailSubject").textContent = boxes.map((b) => b.subj.value).join("  +  ");
     $("mailBody").innerHTML = boxes.map((b) => `<h3>${b.k === "confirmation" ? "Confirmation" : "Invitation"}</h3>` + emailHtml(b.body.value
-      .split("[the join link]").join(`${SITE_ORIGIN}/play/join.html?session=•••`).split("[the connection check link]").join(`${SITE_ORIGIN}/play/check.html`), "")
+      .split("[the join link]").join((ctx.extra.facts && ctx.extra.facts.real && ctx.extra.facts.real.id) ? linkFor7.join(ctx.extra.facts.real) : `${SITE_ORIGIN}/play/join.html?session=…`).split("[the connection check link]").join(`${SITE_ORIGIN}/play/check.html`), "")
       + `<p class="small muted">Attached: ${b.k === "invitation" ? "exercise-invitation.ics" : "exercise.ics"} (calendar, UAE time)</p>`).join("<hr>");
     d.showModal();
   } }, "Preview the email" + (kinds.length > 1 ? "s" : ""));
@@ -3240,7 +3240,7 @@ function exerciseBlock74(ctx) {
       k === "facilitator" ? h("a", { class: "btn quiet sm", href: url, target: "_blank", rel: "noopener" }, "Open") : null,
       k !== "facilitator" ? h("button", { class: "btn quiet sm", type: "button", "data-act": "large_" + k, onclick: () => showLarge(name, url) }, "Show large") : null,
       k === "join" ? h("button", { class: "btn quiet sm", type: "button", "data-act": "print_" + k, onclick: () => printQr(name, url, c.company_name) }, "Print") : null);
-    return [h("strong", {}, name), h("span", { class: "small" }, who), btns];
+    return [h("strong", {}, name), h("span", { class: "small" }, who, k === "facilitator" ? h("span", { class: "muted", style: "display:block", "data-hint": "facilitator" }, "Your own page for the exercise day. Opening it now is safe — do not press Start until the day.") : null), btns];
   }), "links")));
   if (!started) {
     const tested = s.links_tested_at ? (s.links_test && s.links_test.all ? `✓ All three answered · ${hm(s.links_tested_at)}` : `Not all answered (${hm(s.links_tested_at)}): ` + ["facilitator", "join", "room"].filter((k) => !(s.links_test || {})[k]).join(", ") + " — check your connection, then test again") : "not tested yet";
@@ -3250,7 +3250,8 @@ function exerciseBlock74(ctx) {
       await q(sb.rpc("admin_record_link_test", { p_submission: s.id, p_result: { ...r, at: new Date().toISOString() } })).catch(fail);
       toast(r.all ? "All three answered" : "Not all three answered — see the line", !r.all); reloadKeepingPlace();
     } }, "Test the links");
-    parts.push(h("div", { class: "row", style: "align-items:center;gap:10px" }, tBtn, h("span", { class: "small " + (s.links_test && !s.links_test.all ? "due-bad" : "muted"), id: "linkTest" }, tested)));
+    parts.push(h("div", { class: "row", style: "align-items:center;gap:10px" }, tBtn, h("span", { class: "small " + (s.links_test && !s.links_test.all ? "due-bad" : "muted"), id: "linkTest" }, tested)),
+      h("p", { class: "small muted", style: "margin:4px 0 0", "data-hint": "test_links" }, "Checks that each page opens on plan-proof.com and finds this exercise with the right access — before the invitation goes out, so nobody gets a dead link on the day."));
   }
 
   // Voice and video (Prepare moved in here; refused on a play copy by the database).
@@ -3261,14 +3262,16 @@ function exerciseBlock74(ctx) {
   // The emails (grey until date, time and room are set).
   if (!started) {
     const ready = detailsSet(s);
-    const why = ready ? null : "Fill in the date, start time and room first";
+    const missing = [!s.exercise_date ? "the date" : null, !s.exercise_time ? "the start time" : null, !s.venue ? "the room" : null].filter(Boolean);
+    const why = ready ? null : `Send is grey because ${missing.length > 1 ? missing.slice(0, -1).join(", ") + " and " + missing[missing.length - 1] + " are" : missing[0] + " is"} missing — the emails need ${missing.length > 1 ? "them" : "it"}.`;
     const forms = { confirmation: exerciseSendForm(ctx, "confirmation"), invitation: exerciseSendForm(ctx, "invitation"), both: exerciseSendForm(ctx, "both") };
     const open = (k) => { Object.entries(forms).forEach(([kk, fm]) => { fm.hidden = kk !== k ? true : !fm.hidden; }); };
     const sentC = sentOk(ctx.extra.emails, "confirmation"), sentI = sentOk(ctx.extra.emails, "invitation");
     const eb = (k, label) => h("button", { class: "btn sm", type: "button", "data-act": "ex_" + k, "data-next": "send_" + k, disabled: !ready, title: why, onclick: () => open(k) }, label);
     parts.push(section("emails", "Confirmation and invitation", null,
       h("div", { class: "row v7-actions" }, eb("confirmation", sentC ? "Send confirmation again" : "Send confirmation"), eb("invitation", sentI ? "Send invitation again" : "Send invitation"), eb("both", "Send both")),
-      ready ? null : h("p", { class: "small muted", style: "margin:4px 0 0" }, why + " (Change date, time or room above)."),
+      ready ? null : h("div", { class: "row", style: "margin:4px 0 0;gap:8px", "data-why": "send" }, h("span", { class: "small", style: "color:var(--attn)" }, why),
+        h("button", { class: "btn quiet sm", type: "button", "data-act": "details_from_send", onclick: () => { dForm.hidden = false; dForm.scrollIntoView({ block: "center" }); const el = [...dForm.querySelectorAll("input")].find((i) => !i.value); if (el) el.focus(); } }, "Fill in the date, time and room")),
       forms.confirmation, forms.invitation, forms.both,
       (ctx.extra.emails || []).some((m) => m.kind === "confirmation" || m.kind === "invitation") ? table(["Email", "To", "When", "Status"],
         (ctx.extra.emails || []).filter((m) => m.kind === "confirmation" || m.kind === "invitation").map((m) => [m.kind === "confirmation" ? "Confirmation" : "Invitation", m.to_address, hm(m.created_at),
@@ -3572,7 +3575,8 @@ function contactsCard(clientId, contacts, reload, bare) {
         h("td", {}, h("bdi", {}, p.name || "")), h("td", {}, p.email || ""), h("td", {}, p.phone || ""), h("td", {}, p.role || ""),
         h("td", {}, h("button", { class: "btn quiet sm", onclick: async () => {
           await q(sb.from("client_contacts").update({ is_active: !p.is_active }).eq("id", p.id)).then(reload).catch(fail);
-        } }, p.is_active ? "Mark as left" : "Mark as active"))))))) : h("p", { class: "empty" }, "No contacts yet."),
+        } }, p.is_active ? "Left the organisation" : "Undo — still works there"))))))) : h("p", { class: "empty" }, "No contacts yet."),
+    contacts.length ? h("p", { class: "small muted", style: "margin:6px 0 0", "data-hint": "left" }, "Left the organisation: this person no longer works there — kept for history, greyed out.") : null,
     h("details", { style: "margin-top:12px" }, h("summary", {}, "+ Add a contact"),
       h("form", { class: "stack", onsubmit: async (e) => {
         e.preventDefault();
