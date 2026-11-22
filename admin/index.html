@@ -451,7 +451,7 @@
     <button data-view="requests" aria-current="page">Requests<span class="count" id="pendingCount" hidden></span></button>
     <button data-view="clients">Clients</button>
   </nav>
-  <div class="who"><a class="ver" href="#about" title="Page version — About PlanProof and how to move it">v7.6</a><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
+  <div class="who"><a class="ver" href="#about" title="Page version — About PlanProof and how to move it">v7.7</a><button class="btn quiet sm" id="bellBtn" type="button" title="Push alerts for this device" aria-label="Alerts: off">🔕<span class="bell-word"> Alerts: off</span></button><span id="whoEmail"></span><button class="btn quiet sm" id="signOut">Sign out</button></div>
 </header>
 
 <div class="sysalert-wrap" id="sysAlertWrap" hidden><div class="alert" role="alert" id="sysAlert"></div></div>
@@ -520,10 +520,22 @@
 // The key below is the same public key the website forms use.
 const SUPABASE_URL = "https://qryfayienxrngavhwfgw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_7jiMcaR_m87y9Avu5bZs9g_KdLij01H"; // publishable key (7 November 2026; was the legacy anon JWT)
-const IDLE_MINUTES = 30;
+// W8 finish (fix 32, Ahmed 22 Nov 2026): "Keep me signed in on this device". Ticked (his own phone or laptop):
+// the sign-in is kept in this browser (localStorage) until he presses Sign out — no idle sign-out. Not ticked
+// (the work PC, any shared computer): kept only in this tab (sessionStorage) and signed out after 2 hours
+// with no click or key, or when the tab or app is closed. The second factor (authenticator code) stays required
+// at every sign-in; the database still refuses anything without it.
+const IDLE_MINUTES = 120;
+const KEEP_FLAG = "pp_admin_keep";
+const keepOn = () => { try { return localStorage.getItem(KEEP_FLAG) === "1"; } catch { return false; } };
+const authStore = {
+  getItem: (k) => { try { return (keepOn() ? localStorage : sessionStorage).getItem(k); } catch { return null; } },
+  setItem: (k, v) => { try { const on = keepOn(); (on ? localStorage : sessionStorage).setItem(k, v); (on ? sessionStorage : localStorage).removeItem(k); } catch { /* storage blocked: the sign-in lasts this page only */ } },
+  removeItem: (k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } try { sessionStorage.removeItem(k); } catch { /* ignore */ } },
+};
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, storage: window.sessionStorage, autoRefreshToken: true }
+  auth: { persistSession: true, storage: authStore, autoRefreshToken: true }
 });
 
 // ---------- tiny DOM helpers (never inserts data as HTML) ----------
@@ -620,7 +632,7 @@ document.addEventListener("focusout", () => document.body.classList.remove("kbd"
 
 // ---------- idle sign-out ----------
 let idleTimer;
-function bumpIdle() { clearTimeout(idleTimer); idleTimer = setTimeout(async () => { await sb.auth.signOut(); location.reload(); }, IDLE_MINUTES * 60000); }
+function bumpIdle() { clearTimeout(idleTimer); if (keepOn()) return; idleTimer = setTimeout(async () => { await sb.auth.signOut(); location.reload(); }, IDLE_MINUTES * 60000); }
 ["click", "keydown", "scroll"].forEach((e) => window.addEventListener(e, bumpIdle, { passive: true }));
 
 // ================= Sign-in, MFA =================
@@ -629,8 +641,10 @@ function gate(...nodes) { $("gateBody").replaceChildren(...nodes); $("gate").hid
 function showSignIn(msg) {
   const email = h("input", { type: "email", autocomplete: "username", required: true });
   const pw = h("input", { type: "password", autocomplete: "current-password", required: true });
+  const keep = h("input", { type: "checkbox", id: "keepSignedIn", checked: keepOn() });
   const form = h("form", { class: "stack", onsubmit: async (e) => {
     e.preventDefault(); btn.disabled = true;
+    try { if (keep.checked) localStorage.setItem(KEEP_FLAG, "1"); else localStorage.removeItem(KEEP_FLAG); } catch { /* ignore */ }
     const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
     btn.disabled = false;
     if (error) return showSignIn("Sign-in failed: " + error.message);
@@ -638,7 +652,9 @@ function showSignIn(msg) {
   } },
     msg ? h("p", { class: "warn" }, msg) : null,
     h("label", { class: "f" }, "Email", email),
-    h("label", { class: "f" }, "Password", pw));
+    h("label", { class: "f" }, "Password", pw),
+    h("div", {}, h("label", { style: "display:flex; gap:8px; align-items:center; font-weight:600" }, keep, "Keep me signed in on this device"),
+      h("p", { class: "muted small", style: "margin:4px 0 0" }, "Tick only on your own phone or laptop — never on the work PC or a shared computer. Not ticked: you are signed out after 2 hours without a click, or when you close the page.")));
   const btn = h("button", { class: "btn primary", type: "submit" }, "Sign in");
   form.append(btn);
   gate(form); email.focus();
@@ -2274,7 +2290,7 @@ function renderAbout() {
   const li = (...x) => h("li", {}, ...x);
   app.replaceChildren(h("div", { class: "card stack about" },
     h("h1", {}, "About PlanProof — and how to move it"),
-    h("p", { class: "muted small" }, "Admin page v7.6 (W8 finish, 21 November 2026). The full version of this page is the Project doc planproof-reference/how-to-move-planproof.md."),
+    h("p", { class: "muted small" }, "Admin page v7.7 (W8 finish, 22 November 2026). The full version of this page is the Project doc planproof-reference/how-to-move-planproof.md."),
     h("h2", {}, "What runs where"),
     table(["Part", "Service", "What it holds"], [
       ["Website, admin page, player, client pages, 11 functions", "Netlify (plan-proof.com)", "Code only — from GitHub ahmedaad-plan/planproof-site (main)"],
