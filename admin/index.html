@@ -925,6 +925,20 @@ const hm = (iso) => iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Asi
 // stateOf: where the request is and the ONE next action.
 //   x: { contactedAt, links, emails, opens, nowMs } (links/emails/opens may be empty on the list)
 //   returns { block, tile, where, next:{key,label}|null, waiting, due, overdue, pill:{text,tone} }
+// W8 finish (fix 33, Ahmed 22 Nov 2026): a PlanProof remark written after a version was written is not in it yet.
+// The sponsor must only ever see a version that already has our remarks: an unsent draft is updated in place by
+// Claude (v1 stays v1); a version already sent becomes the next version. Claude's own decision table (saved as a
+// remark at the moment it saves a version) and contact notes never count as new remarks.
+const CLAUDE_REMARK = "claude-scenario-chat";
+function remarksNotIn(v, remarks) {
+  if (!v) return [];
+  const live = (remarks || []).filter((r) => !r.withdrawn_at);
+  let t = Date.parse(v.created_at) || 0;
+  if (v.status === "draft" && v.updated_at) t = Math.max(t, Date.parse(v.updated_at) || 0);
+  if (v.added_how === "claude") for (const r of live) if (r.author_email === CLAUDE_REMARK) { const ms = Date.parse(r.created_at) || 0; if (ms > t) t = ms; }
+  return live.filter((r) => r.author_email !== CLAUDE_REMARK && !/^Contact note:/i.test(r.body || "") && (Date.parse(r.created_at) || 0) > t + 1000)
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+}
 function stateOf(s, versions, comments, rec, x = {}) {
   const nowMs = x.nowMs ?? Date.now();
   const vs = liveVersions(versions);
@@ -1000,6 +1014,10 @@ function stateOf(s, versions, comments, rec, x = {}) {
   // Scenario
   if (!newest) return R({ block: "scenario", tile: 2, where: "Contacted" + (x.contactedAt ? " " + dShort(dubaiYmd(x.contactedAt)) : "") + (due ? ` · v${lastNo + 1} due by ${dayName(due)}` : ""), next: { key: "design", label: "Copy the first prompt for Claude" }, showDue: true, hint: `Paste it into a new Claude chat named "${s.request_no || "this request"} — scenario". v${lastNo + 1} then appears here by itself.` });
   const v = open || newest;
+  const late = remarksNotIn(v, x.remarks || s._remarks);
+  if (v.status === "draft" && late.length) return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — ${plural(late.length, "PlanProof remark")} newer than v${v.version_no}: update v${v.version_no} before sending`,
+    next: { key: "update_draft", label: `Copy the update prompt for Claude` }, showDue: true, lateRemarks: late.length,
+    hint: `Paste it into your Claude chat for ${s.request_no}. Claude takes your remark into v${v.version_no} and saves it over v${v.version_no} (the sponsor has not seen it, so it stays v${v.version_no}). Then send v${v.version_no}.` });
   if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve v${v.version_no}: one box asks for the date, time, room and numbers and sets up the exercise.` });
   if (v.status === "client_commented") {
@@ -1016,6 +1034,9 @@ function stateOf(s, versions, comments, rec, x = {}) {
   if (lastEmail && EMAIL_BAD.has(lastEmail.status)) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the email to ${lastEmail.to_address} was not delivered (${EMAIL_WORD[lastEmail.status]})`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Check the address, then resend. If it fails again, press Copy the link and send it from your own mailbox." });
   if (lateTry) return R({ block: "scenario", tile: 2, where: `v${v.version_no}: the sponsor tried the link after it ${link.revoked_at ? "was revoked" : "expired on " + dShort(dubaiYmd(link.expires_at))}`, next: { key: "resend", label: `Resend v${v.version_no} to the sponsor` }, hint: "Resend gives the sponsor a fresh link valid for 14 days." });
   const opened = link && link.open_count ? ` · opened by the sponsor ${hm(link.last_opened_at)}${link.open_count > 1 ? ` (${link.open_count} times)` : ""}` : link ? " · not opened yet" : "";
+  if (late.length && !v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${opened} — ${plural(late.length, "PlanProof remark")} not in any version yet`,
+    next: { key: "revise", label: "Copy the revised prompt for Claude" }, lateRemarks: late.length,
+    hint: `v${v.version_no} is already with the sponsor, so it cannot change. Claude writes v${v.version_no + 1} with your remark; then send v${v.version_no + 1}. The sponsor's comments on v${v.version_no}, if any come, are read too.` });
   return R({ block: "scenario", tile: 2, where: `v${v.version_no} sent ${v.sent_on ? dShort(v.sent_on) : ""}${link ? "" : " (recorded by hand)"}${opened} — waiting for the sponsor`, next: null, waitText: "Waiting for the sponsor", hint: "Nothing to do. The sponsor's comments or approval appear here by themselves." });
 }
 
@@ -1045,16 +1066,17 @@ async function renderRequests() {
     q(sb.from("submissions")
       .select("id, request_no, created_at, source, form_name, status, match_status, match_label, match_candidates, used_before, service_type, risk_concern_1, org_unit, exercise_language, delivered_at, exercise_date, exercise_time, venue, expected_counts, reopened_at, reopen_reason, links_tested_at, links_test, report_client_accepted_at, report_client_accepted_by, zoho_done_at, client:clients!submissions_client_id_fkey(id, company_name, contact_name, email, record_status, client_ref)")
       .order("created_at", { ascending: false }).limit(300)),
-    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
+    q(sb.from("submission_scenario_versions").select("id, submission_id, version_no, status, sent_on, created_at, updated_at, added_how, sponsor_approved_at, sponsor_approved_by, status_changed_on, withdrawn_at").is("withdrawn_at", null)).catch(() => []),
     loadSessions(null).catch(() => []),
-    q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at").ilike("body", "Contact note:%")).catch(() => []),
+    q(sb.from("submission_team_remarks").select("submission_id, body, created_at, withdrawn_at, author_email").is("withdrawn_at", null)).catch(() => []),
     q(sb.from("sent_emails").select("submission_id, kind, status, created_at, to_address").in("kind", ["confirmation", "invitation", "report"])).catch(() => []),
   ]);
   rows.forEach((r) => {
     const vs = (versions || []).filter((v) => v.submission_id === r.id);
     r._lastVersionNo = vs.reduce((m, v) => Math.max(m, v.version_no), 0);
     r._state = stateOf(r, vs, [], recordFacts(sessions.find((x) => x.submission_id === r.id), null),
-      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)), exEmails: (exMails || []).filter((m) => m.submission_id === r.id) });
+      { contactedAt: contactedAt((contactRemarks || []).filter((k) => k.submission_id === r.id)), exEmails: (exMails || []).filter((m) => m.submission_id === r.id),
+        remarks: (contactRemarks || []).filter((k) => k.submission_id === r.id) });
     r._tile = r._state.tile;
   });
   rows.sort((a, b) => urgencyOf(a) - urgencyOf(b)
@@ -1519,6 +1541,11 @@ function sendForm(ctx, v, isResend) {
   const send = h("button", { class: "btn primary", type: "button", "data-act": "send_go", onclick: async () => {
     const addr = to.value.trim();
     if (!/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(addr)) { toast("Check the email address", true); to.focus(); return; }
+    const lateR = v.status === "draft" ? remarksNotIn(v, ctx.s._remarks) : [];
+    if (lateR.length) {
+      const ok = await confirmBox({ title: `${plural(lateR.length, "PlanProof remark")} ${lateR.length === 1 ? "is" : "are"} not in v${v.version_no} yet`, text: `Your remark was added after Claude wrote v${v.version_no}. Copy the update prompt for Claude first, so the sponsor gets v${v.version_no} with it — or send v${v.version_no} as it is.`, ok: "Send anyway" });
+      if (!ok) return;
+    }
     if (!previewed().has(v.id)) {
       const ok = await confirmBox({ title: `You haven't previewed v${v.version_no}`, text: "Press \"Preview what the sponsor will see\" first, or send anyway.", ok: "Send anyway" });
       if (!ok) return;
@@ -1624,6 +1651,17 @@ function revisePrompt(ctx, v) {
     `Use the planproof-scenario skill in revise mode. Read the request, every version, every comment and every team remark from the PlanProof database for ${s.request_no}.`,
     `First, list every comment and remark you found in a table (source, what it says, your plan: accept / push back / question for me) and wait for my OK.`,
     `Then write v${(s._lastVersionNo || v.version_no) + 1}, run the fresh-eyes check, add it to ${s.request_no} on the admin page, save your decision table as a team remark, and give me the reply to the sponsor for anything you push back on.`].join("\n");
+}
+// fix 33: the prompt that takes PlanProof remarks into an UNSENT version (the same number — the sponsor has not seen it).
+function updatePrompt(ctx, v) {
+  const { s, c } = ctx;
+  const late = remarksNotIn(v, s._remarks);
+  return [`Update v${v.version_no} of the scenario for ${s.request_no} (${c.company_name || "the client"}) before it is sent.`,
+    `v${v.version_no} is NOT sent yet — the sponsor has not seen it. Since it was written, PlanProof added ${plural(late.length, "team remark")}:`,
+    ...late.map((r, i) => `${i + 1}. ${String(r.body).replace(/\s+/g, " ").trim()}`),
+    `Use the planproof-scenario skill in revise mode. Read the request, v${v.version_no} and every team remark from the PlanProof database for ${s.request_no}.`,
+    `First, list each new remark in a table (what it says, your plan: accept / question for me) and wait for my OK.`,
+    `Then rewrite the scenario KEEPING "version": ${v.version_no} — it replaces the unsent v${v.version_no}. Run the fresh-eyes check and save it with admin_save_scenario (your decision table is saved as a team remark). The versionNote is read by the sponsor as v${v.version_no}: do not mention a revision or our remarks in it.`].join("\n");
 }
 // The facts of a version, from its file (or the summary the database stored).
 function factsOf(v) {
@@ -1901,6 +1939,19 @@ function scenarioBlock(ctx) {
       callNotes ? null : h("button", { class: "btn", type: "button", "data-act": "add_call_notes", onclick: () => { cnForm.hidden = false; cnForm.querySelector("textarea").focus(); } }, "+ Add call notes"), cnForm),
     h("li", {}, h("div", {}, h("strong", {}, "Copy the first prompt for Claude."), h("div", { class: "small muted" }, `Then open a new Claude chat named "${s.request_no} — scenario" in your project, paste it and press Enter.`)), promptBtn("design")),
     h("li", {}, h("div", {}, h("strong", {}, "v1 appears here by itself."), h("div", { class: "small muted" }, "Then press \"Preview what the sponsor will see\" and \"Send v1 to the sponsor\"."))));
+  else if (!delivered && state.next && state.next.key === "update_draft" && newest) {
+    const late = remarksNotIn(newest, s._remarks);
+    todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
+      h("li", {}, h("div", {}, h("strong", {}, `Your ${late.length === 1 ? "remark is" : late.length + " remarks are"} not in v${newest.version_no} yet.`),
+        h("div", { class: "small muted" }, ...late.map((r) => h("div", {}, "• ", h("bdi", {}, String(r.body).slice(0, 160) + (String(r.body).length > 160 ? "…" : "")))))) ),
+      h("li", {}, h("div", {}, h("strong", {}, "Copy the update prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. Claude saves it over v${newest.version_no} — the sponsor has not seen v${newest.version_no}, so it keeps its number.`)),
+        h("button", { class: "btn primary", type: "button", "data-act": "update_prompt", "data-next": "update_draft", onclick: async () => {
+          const text = updatePrompt(ctx, newest);
+          try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
+          catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
+        } }, "Copy the update prompt for Claude")),
+      h("li", {}, h("div", {}, h("strong", {}, `v${newest.version_no} updates here by itself.`), h("div", { class: "small muted" }, `Then press "Preview what the sponsor will see" and "Send v${newest.version_no} to the sponsor".`))));
+  }
   else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
     h("li", {}, h("div", {}, h("strong", {}, "Anything else from the sponsor (by phone or email) or from us?"), h("div", { class: "small muted" }, "Add it with + Add a comment, so Claude sees it too. Comments the sponsor sent from their page are already in the list below.")), addBtn("")),
     h("li", {}, h("div", {}, h("strong", {}, "Copy the revised prompt for Claude."), h("div", { class: "small muted" }, `Then paste it into your Claude chat for ${s.request_no} and press Enter. v${nextNo} appears here by itself.`)), promptBtn("revise")));
