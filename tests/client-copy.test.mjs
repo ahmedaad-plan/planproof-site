@@ -7,13 +7,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { renderHtml, ALLOWED } = require("../c/copy.js");
+const { renderHtml, ALLOWED, LIVE, onTheDay } = require("../c/copy.js");
 const full = JSON.parse(readFileSync(new URL("./fixtures/sifc-scenario-v2.json", import.meta.url), "utf8"));
 const FORBIDDEN = /facilitator|expected|watch for|criterion|criteria|ground truth|groundtruth|observer|whatgoodlookslike|ifroomstalls|misinformation|script|readiness/i;
+// The fixed "how it is played" texts (live box, "On the day" lines) are PlanProof's own
+// words and use "script" / "facilitator" on purpose — they are taken out before the
+// leak scan, which then checks everything that came from the scenario.
+const scrub = (html) => html.replace(/<section class="cc-box cc-live">[\s\S]*?<\/section>/g, "").replace(/<div class="cc-onday">[^<]*<\/div>/g, "");
 const visible = (html) => html.replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/g, " ");
 
 test("LEAK TEST: the whole build data, unfiltered, still draws no facilitator text", () => {
-  const html = renderHtml({ copy: full, organisation: "Sareef Island Financial Centre (fictional)", version_no: 2 });
+  const html = scrub(renderHtml({ copy: full, organisation: "Sareef Island Financial Centre (fictional)", version_no: 2 }));
   const m = html.match(FORBIDDEN);
   assert.equal(m, null, m && "leaked: …" + html.slice(Math.max(0, m.index - 60), m.index + 40) + "…");
   // nothing of the hidden fields' own words appears either
@@ -48,4 +52,22 @@ test("every value is escaped (a scenario cannot inject HTML into the client page
 test("the allow-list names no facilitator field", () => {
   const all = Object.values(ALLOWED).flat().join(" ");
   assert.ok(!/facilitator|observer|readiness|ground|script|criteria|expected|video/i.test(all), all);
+});
+
+test("live experience: the box is at the top and every inject says how it is played", () => {
+  const html = renderHtml({ copy: full, organisation: "Sareef Island Financial Centre (fictional)", version_no: 2 });
+  assert.ok(html.indexOf("cc-live") < html.indexOf("The situation"), "box before the situation");
+  assert.ok(html.includes(LIVE.title) && html.includes("https://plan-proof.com/live-example") && html.includes("plan-proof.com/live-example"));
+  assert.equal((html.match(/class="cc-onday"/g) || []).length, 7, "one On the day line per inject");
+  // only fixed texts in the scrubbed parts: no scenario words inside them
+  for (const m of html.match(/<div class="cc-onday">[^<]*<\/div>/g)) assert.ok(/^<div class="cc-onday">On the day: /.test(m));
+});
+
+test("On the day follows the voice rule: off = not read aloud; a clip = news; a call = phone", () => {
+  assert.equal(onTheDay({ readAloud: false, newsClip: true, deliveredAs: "news" }), LIVE.quiet, "sensitive wins over a clip");
+  assert.equal(onTheDay({ readAloud: true, newsClip: true, deliveredAs: "news" }), LIVE.news);
+  assert.equal(onTheDay({ deliveredAs: "call" }), LIVE.call);
+  assert.match(onTheDay({ deliveredAs: "news" }), /a news report on the room screen .* a voice reads it aloud/, "a news inject with no clip is read aloud, not called a clip");
+  assert.match(onTheDay({ deliveredAs: "email" }), /^On the day: an email on the room screen and every phone/);
+  assert.match(onTheDay({ deliveredAs: "<b>x" }), /a message/, "an unknown kind never reaches the page");
 });

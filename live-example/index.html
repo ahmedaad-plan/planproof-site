@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>See an example of a live exercise — PlanProof</title>
+<meta name="description" content="How a PlanProof tabletop exercise is played on the day: messages on the room screen and every phone, a countdown, a voice that reads each message, and news clips with a presenter.">
+<link rel="canonical" href="https://plan-proof.com/live-example">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#10151b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="See an example of a live exercise — PlanProof">
+<meta property="og:url" content="https://plan-proof.com/live-example">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* live-experience (23 Nov 2026): the page the sponsor's email and review page link to.
+     One video and two real screens (fictional names) — replaced by the 60-second video later. */
+  :root{ --bg:#10151b; --panel:#1a222c; --border:#2b3642; --text:#e7eaee; --muted:#8b96a3; --red:#c2513f; --amber:#e2a63b; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font:16px/1.6 "IBM Plex Sans",system-ui,-apple-system,sans-serif; }
+  h1,h2{ font-family:"Space Grotesk",system-ui,sans-serif; line-height:1.2; margin:0; }
+  a{ color:inherit; }
+  .bar{ display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-bottom:1px solid var(--border); }
+  .brand{ font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:20px; text-decoration:none; }
+  .brand span{ color:var(--red); }
+  .wrap{ max-width:980px; margin:0 auto; padding:34px 22px 60px; }
+  .eyebrow{ font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber); font-weight:600; margin-bottom:8px; }
+  h1{ font-size:clamp(28px,5vw,42px); margin-bottom:12px; }
+  .lead{ color:var(--muted); font-size:17px; max-width:720px; margin:0 0 26px; }
+  .video{ position:relative; width:100%; aspect-ratio:16/9; background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .video video{ width:100%; height:100%; display:block; object-fit:cover; }
+  .cap{ font-size:13px; color:var(--muted); margin:8px 0 0; }
+  ul.points{ list-style:none; padding:0; margin:30px 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  ul.points li{ background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px 14px 44px; position:relative; }
+  ul.points li::before{ content:""; position:absolute; left:16px; top:20px; width:12px; height:12px; border-radius:50%; background:var(--red); }
+  h2{ font-size:22px; margin:36px 0 14px; }
+  .screens{ display:grid; grid-template-columns:minmax(0,2.4fr) minmax(0,1fr); gap:18px; align-items:start; }
+  .screens figure{ margin:0; }
+  .screens img{ width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:10px; }
+  .screens figcaption{ font-size:13px; color:var(--muted); margin-top:8px; }
+  .cta{ margin-top:38px; padding:22px; background:var(--panel); border:1px solid var(--border); border-radius:12px; display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; }
+  .btn{ display:inline-block; background:var(--red); color:#fff; text-decoration:none; font-weight:600; border-radius:9px; padding:11px 20px; }
+  .note{ font-size:13px; color:var(--muted); margin-top:26px; }
+  @media (max-width:700px){ ul.points{ grid-template-columns:1fr; } .screens{ grid-template-columns:1fr; } .screens figure.phone{ max-width:340px; } }
+</style>
+</head>
+<body>
+<header class="bar"><a class="brand" href="/">Plan<span>Proof</span></a><a href="/#tool">Request an exercise</a></header>
+<main class="wrap">
+  <div class="eyebrow">How the day looks</div>
+  <h1>See an example of a live exercise</h1>
+  <p class="lead">A PlanProof exercise is not read from paper. Each message is played live, in the room and on every phone, so your teams respond under the same pressure as in a real incident.</p>
+
+  <div class="video">
+    <video controls playsinline preload="metadata" poster="https://qryfayienxrngavhwfgw.supabase.co/storage/v1/object/public/exercise-media/site/demo-newsroom-en.jpg">
+      <source src="https://qryfayienxrngavhwfgw.supabase.co/storage/v1/object/public/exercise-media/site/demo-newsroom-en.mp4" type="video/mp4">
+      Your browser does not support embedded video.
+    </video>
+  </div>
+  <p class="cap">A news clip from Marsa News, the fictional channel used in our exercises, as it plays on the room screen.</p>
+
+  <ul class="points">
+    <li>The room screen shows each message with a large countdown.</li>
+    <li>A natural voice reads it aloud; news arrives as short clips from a fictional channel.</li>
+    <li>Every participant answers on their own phone.</li>
+    <li>The facilitator controls one shared clock for every room.</li>
+  </ul>
+
+  <h2>The same message, on the room screen and on a phone</h2>
+  <div class="screens">
+    <figure><img src="/live-example/room-screen.webp" width="1600" height="900" alt="The room screen during an exercise: a phone call titled Power failure at the main warehouse, with a large countdown." loading="lazy"><figcaption>The room screen: the message, who must respond, and the time left.</figcaption></figure>
+    <figure class="phone"><img src="/live-example/phone.webp" width="600" height="805" alt="A participant's phone showing the same message with its countdown." loading="lazy"><figcaption>A participant's phone: the same message, the same clock, and the answer box below.</figcaption></figure>
+  </div>
+
+  <div class="cta">
+    <div><strong>Ready to test your plan?</strong><br><span style="color:var(--muted)">Tell us about your organisation and we design the exercise around it.</span></div>
+    <a class="btn" href="/#tool">Request an exercise</a>
+  </div>
+  <p class="note">All organisations, people and news in these examples are fictional.</p>
+</main>
+</body>
+</html>
