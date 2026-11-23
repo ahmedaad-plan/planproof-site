@@ -162,8 +162,9 @@
   function draw(d) {
     var v = d.version_no, org = d.organisation || "your organisation";
     var conf = "Confidential — for " + (d.sponsor || "the sponsor") + " only. Not for participants.";
-    document.title = "PlanProof — scenario v" + v + " for " + org;
-    document.getElementById("barTag").textContent = "Scenario v" + v + " — for " + org;
+    // live-experience (23 Nov 2026): it is the script for review, not the experience
+    document.title = "PlanProof — exercise script v" + v + " for your review — " + org;
+    document.getElementById("barTag").textContent = "Exercise script v" + v + " — for your review";
     var top = [];
     top.push('<div class="notice screen-only"><strong>Prepared for ' + esc(org) + ' — version v' + esc(v) + ' — for the sponsor\'s approval.</strong>' +
       'Please keep this link to yourself and anyone you choose to help you review it. Do not share it with the people taking part: on the day, the messages must come as a surprise, otherwise the exercise cannot show how your teams really respond. This link works until ' + esc(longDate(d.expires_at)) + '.</div>');

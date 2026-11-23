@@ -115,7 +115,11 @@ export function buildBody(message, link, expiresAt) {
   text = withTeamSignOff(text);
   // v7.3 (remark 21): **…** is bold in the HTML email; the plain-text part shows it without the stars
   const html = text.split(/\n\s*\n/).map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>")
-    .replace(link ? new RegExp(esc(link).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g") : /$^/, `<a href="${esc(link)}">${esc(link)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
+    .replace(link ? new RegExp(esc(link).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g") : /$^/, `<a href="${esc(link)}">${esc(link)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
+    // fix 36 (23 Nov 2026): the review deadline is bold without ** in the box
+    .replace(/(?<!<strong>)at least 10 working days before the exercise date/g, "<strong>$&</strong>")
+    // live-experience (23 Nov 2026): the example page is a link in the HTML email too
+    .replace(/https:\/\/plan-proof\.com\/live-example(?![\w\/-])/g, (u) => `<a href="${u}">${u}</a>`)}</p>`).join("");
   return { text: text.replace(/\*\*(.+?)\*\*/gs, "$1"), html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}${SIGNATURE_HTML}</div>` };
 }
 

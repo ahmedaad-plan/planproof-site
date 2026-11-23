@@ -318,7 +318,7 @@
   .cc .pp-only-box{ background:#fff6e8; border-left:4px solid #c27a12; padding:8px 12px; border-radius:6px; margin-top:8px; }
   .cc table.t7 th{ color:#5b6575; } .cc table.t7 td{ border-color:#d9dee5; }
   #mailDlg{ width:min(720px,96vw); max-height:92vh; padding:0; border:0; border-radius:12px; background:#eef1f5; }
-  #mailDlg .mail{ background:#fff; color:#1d2433; margin:14px; border-radius:8px; padding:18px 22px; font:15px/1.5 Arial,Helvetica,sans-serif; }
+  #mailDlg .mail{ background:#fff; color:#1d2433; margin:14px; border-radius:8px; padding:18px 22px; font:15px/1.5 Arial,Helvetica,sans-serif; overflow-wrap:anywhere; }
   #mailDlg .mail .hdr{ font-size:13px; color:#5b6575; border-bottom:1px solid #d9dee5; padding-bottom:8px; margin-bottom:12px; }
   #mailDlg .fake-link{ color:#1a56c4; text-decoration:underline; }
   @media (max-width:640px){
@@ -973,7 +973,9 @@ function stateOf(s, versions, comments, rec, x = {}) {
     // v7.5: two things may still need you after delivery — the lessons insight, and the Zoho Mail deletion
     const lr = x.lessons;
     const nx = lr && !lr.has_insight ? { key: "lessons", label: "Complete the lessons record" } : x.lessons !== undefined && !s.zoho_done_at ? { key: "zoho", label: "Zoho Mail: delete the request emails" } : null;
-    return R({ block: "cleanup", tile: 5, where: o.step >= 7 ? "Done — " + o.sentence.replace(/^Nothing left to do — /, "") : "Delivered · " + o.sentence, next: nx, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue,
+    // fix 38 (23 Nov): while the lessons record or Zoho still waits, the strip never says "Nothing … to do"
+    const quiet = (t) => t.replace(/^Nothing left to do — /, "").replace(/\s*Nothing for you to do\.?$/, "");
+    return R({ block: "cleanup", tile: 5, where: nx ? "Delivered · " + quiet(o.sentence) : o.step >= 7 ? "Done — " + quiet(o.sentence) : "Delivered · " + o.sentence, next: nx, waitText: o.overdue ? "Data removal overdue" : "Done", overdue: !!o.overdue,
       hint: nx && nx.key === "lessons" ? "Copy the lessons prompt for Claude and paste it into the report chat. Claude writes the anonymised insight; you approve the wording." : nx ? "Delete this request's emails with client material in Zoho Mail (Inbox and Sent), then press Done ✓." : null });
   }
   // A version newer than the approved one (e.g. v3 after v2 was approved) is the live question.
@@ -1029,7 +1031,7 @@ function stateOf(s, versions, comments, rec, x = {}) {
     hint: `Paste it into your Claude chat for ${s.request_no}. Claude writes ${roundLabel(v, (v.round_no || 0) + 1)} with your remark (${roundLabel(v)} is kept under Earlier rounds). The sponsor has not seen any of them: the one you send arrives as v${v.version_no}.` });
   if (v.status === "draft" && v.round_no > 0) return R({ block: "scenario", tile: 2, where: `${roundLabel(v)} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.content_at || v.created_at)} — not sent yet (the sponsor will receive it as v${v.version_no})`,
     next: { key: "send", label: `Send ${roundLabel(v)} to the sponsor` }, showDue: true, hint: `Check "Remarks taken in" under the current version, press "Preview what the sponsor will see", then "Send ${roundLabel(v)} to the sponsor". The sponsor receives it as v${v.version_no}.` });
-  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send v${v.version_no} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send v${v.version_no} to the sponsor".` });
+  if (v.status === "draft") return R({ block: "scenario", tile: 2, where: `v${v.version_no} added${v.added_how === "claude" ? " by Claude" : ""} ${hm(v.created_at)} — not sent yet`, next: { key: "send", label: `Send ${roundLabel(v)} to the sponsor` }, showDue: true, hint: `Press "Preview what the sponsor will see", then "Send ${roundLabel(v)} to the sponsor".` });
   if (v.sponsor_approved_at) return R({ block: "scenario", tile: 2, where: `v${v.version_no} approved by the sponsor (${v.sponsor_approved_by}) on ${hm(v.sponsor_approved_at)}`, next: { key: "approve", label: `Approve v${v.version_no}` }, hint: `The sponsor approved v${v.version_no}. Press Approve v${v.version_no}: one box asks for the date, time, room and numbers and sets up the exercise.` });
   if (v.status === "client_commented") {
     const n = cs.filter((c) => c.version_id === v.id).length;
@@ -1445,7 +1447,9 @@ function clientBlock(ctx) {
   if (!done) {
     const btns = h("div", { class: "step-actions row" }), forms = h("div", { class: "step-forms" });
     const body = s.match_status === "pending" || !linked ? step1Body(ctx, false, btns, forms) : step2Body(ctx, false, btns, forms);
-    const main = btns.querySelector("button");
+    // fix 40 (23 Nov): when the page lists a likely match, the red NEXT is that match's "It's this client"
+    // (both buttons still ask first); "It's a new client" stays as a plain button beside the search
+    const main = (s.match_status === "pending" && !linked && body.querySelector(".cand button.btn.primary")) || btns.querySelector("button");
     if (main) main.setAttribute("data-next", s.match_status === "pending" ? "confirm_client" : "contacted");
     const loose = (el) => el.childNodes.length && !el.parentNode ? el : null;
     const who = linked ? (ctx.exercises || []).length ? "returning client" : "new client" : "not confirmed yet";
@@ -1488,6 +1492,8 @@ function reviewEmail(ctx, v) {
     // v7.3 (remarks 7, 8, 14): the message is two boxes around a fixed link line, so the link cannot be deleted.
     top: [`Dear ${first || "colleague"},`,
       `Version ${v.version_no} of the exercise scenario "${label}" is ready for your review.`,
+      // live-experience (Ahmed, 23 Nov 2026): the sponsor reads a script — say plainly that the day is played live
+      LIVE_EMAIL_PARA,
       prev && note ? `What changed from v${prev}: ${note}` : null].filter(Boolean).join("\n\n"),
     // v7.3 (remark 21, Ahmed 15 Nov): one plain promise instead of revision rounds; **…** = bold in the email
     // fix 14: Claude's reply to the sponsor (saved with the version by the scenario chat) comes first, under the link
@@ -1497,8 +1503,9 @@ function reviewEmail(ctx, v) {
       "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].filter(Boolean).join("\n\n"),
   };
 }
+const LIVE_EMAIL_PARA = "What you will read is the script of the exercise, written out so that you can check every detail. On the day it is played live: each message appears on a large screen in the room and on every participant\u2019s phone, with its own countdown; a voice reads it aloud; and some arrive as short news clips with a presenter. To see what this looks like, watch our short example: https://plan-proof.com/live-example";
 const LINK_LINE = "Open the scenario: " + SEND_LINK_MARKER;
-const REVIEW_PROMISE = "We will send you the revised scenario within 5 working days of your last comments. To leave time for that, and for you to check it before the invitations go out, please send any comments **at least 10 working days before the exercise date**.";
+const REVIEW_PROMISE = "We will send you the revised scenario within 5 working days of your last comments. To leave time for that, and for you to check it before the invitations go out, please send any comments at least 10 working days before the exercise date.";
 const composeEmail = (top, bottom) => [String(top || "").trim(), LINK_LINE, String(bottom || "").trim()].filter(Boolean).join("\n\n");
 async function session7() {
   const { data } = await sb.auth.getSession();
@@ -1523,7 +1530,10 @@ const previewed = () => new Set(JSON.parse(sessionStorage.getItem("pp_admin_prev
 const markPreviewed = (id) => { const p = previewed(); p.add(id); sessionStorage.setItem("pp_admin_previewed", JSON.stringify([...p])); };
 function emailHtml(message, linkText) {
   return String(message || "").replace(/\r\n/g, "\n").trim().split(/\n\s*\n/).map((p) =>
-    `<p>${esc7(p).replace(/\n/g, "<br>").split(esc7(SEND_LINK_MARKER)).join(`<a class="fake-link">${esc7(linkText)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
+    `<p>${esc7(p).replace(/\n/g, "<br>").split(esc7(SEND_LINK_MARKER)).join(`<a class="fake-link">${esc7(linkText)}</a>`).replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")
+    // fix 36 (23 Nov): the box shows no ** marks; the deadline phrase is bold in the email, as on the sponsor's page
+    .replace(/(?<!<strong>)at least 10 working days before the exercise date/g, "<strong>$&</strong>")
+    .replace(/https:\/\/plan-proof\.com\/live-example(?![\w\/-])/g, (u) => `<a class="fake-link">${u}</a>`)}</p>`).join("");
 }
 function sendForm(ctx, v, isResend) {
   const e = reviewEmail(ctx, v);
@@ -1985,7 +1995,7 @@ function scenarioBlock(ctx) {
           try { await navigator.clipboard.writeText(text); toast("Copied — now paste it into your Claude chat for " + s.request_no); }
           catch { window.prompt("Copy this, then paste it into your Claude chat:", text); }
         } }, "Copy the update prompt for Claude")),
-      h("li", {}, h("div", {}, h("strong", {}, `${roundLabel(newest, (newest.round_no || 0) + 1)} appears here by itself.`), h("div", { class: "small muted" }, `Then press "Preview what the sponsor will see" and "Send v${newest.version_no} to the sponsor".`))));
+      h("li", {}, h("div", {}, h("strong", {}, `${roundLabel(newest, (newest.round_no || 0) + 1)} appears here by itself.`), h("div", { class: "small muted" }, `Then press "Preview what the sponsor will see" and "Send ${roundLabel(newest, (newest.round_no || 0) + 1)} to the sponsor".`))));
   }
   else if (!delivered && commented) todo = h("ol", { class: "v7-todo", "aria-label": "What to do now" },
     h("li", {}, h("div", {}, h("strong", {}, "Anything else from the sponsor (by phone or email) or from us?"), h("div", { class: "small muted" }, "Add it with + Add a comment, so Claude sees it too. Comments the sponsor sent from their page are already in the list below.")), addBtn("")),
@@ -2528,7 +2538,8 @@ function step1Body(ctx, readOnly, btns, forms) {
     } }, h("div", { class: "row" }, h("div", { style: "flex:1;min-width:200px" }, sq), h("button", { class: "btn", type: "submit" }, "Search")), results);
     add(forms, searchBox);
     add(btns, 
-      h("button", { class: "btn red", type: "button", onclick: () => confirmNew(s, c.company_name) }, "It's a new client"),
+      // fix 40 (23 Nov): with a likely match listed, "It's a new client" is not the red (main) button
+      h("button", { class: cands.length ? "btn" : "btn red", type: "button", onclick: () => confirmNew(s, c.company_name) }, "It's a new client"),
       h("button", { class: "btn", type: "button", onclick: () => { searchBox.hidden = !searchBox.hidden; if (!searchBox.hidden) sq.focus(); } }, "Search my clients…"));
     // As drawn: the candidates, then the buttons, then the search, then the request.
     return h("div", {}, out, btns, forms, askedFor(s, c));
