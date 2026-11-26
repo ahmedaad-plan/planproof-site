@@ -100,9 +100,30 @@ export function withTeamSignOff(text) {
   if (/PlanProof team/i.test(text)) return text;
   return paras.join("\n\n") + "\n\nKind regards,\nThe PlanProof team";
 }
-export function buildBody(message, link, expiresAt) {
+// Fix 68 (Ahmed, 26 Nov 2026): the report email has two buttons — the short report and the full report.
+// Each goes to the same private page, opened at that copy (…/c/<token>?copy=short|full).
+export const REPORT_BUTTONS = [{ copy: "short", label: "Open the short report" }, { copy: "full", label: "Open the full report" }];
+export const reportButtonHref = (link, copy) => `${link}?copy=${copy}`;
+const BUTTONS_TOKEN = "\u0000PP_REPORT_BUTTONS\u0000";
+export function buildBody(message, link, expiresAt, opts = {}) {
   const linkLine = link ? `${link}${expiresAt ? ` (valid until ${longDate(expiresAt)})` : ""}` : "";
   let text = String(message || "").replace(/\r\n/g, "\n").trim();
+  if (link && opts.reportButtons) {
+    // the paragraph with the marker (or a new one after the first paragraph) becomes the two buttons
+    if (text.includes(LINK_MARKER)) text = text.split(LINK_MARKER).join(BUTTONS_TOKEN);
+    else { const parts = text.split(/\n\s*\n/); parts.splice(Math.min(1, parts.length), 0, BUTTONS_TOKEN); text = parts.join("\n\n"); }
+    text = withTeamSignOff(text);
+    const until = expiresAt ? ` (the link works until ${longDate(expiresAt)})` : "";
+    const plain = REPORT_BUTTONS.map((b) => `${b.label}: ${reportButtonHref(link, b.copy)}`).join("\n") + until;
+    const btn = (b, dark) => `<a href="${esc(reportButtonHref(link, b.copy))}" style="display:inline-block;margin:0 10px 10px 0;padding:12px 20px;border-radius:8px;font-weight:700;text-decoration:none;` +
+      (dark ? "background:#11161d;color:#ffffff" : "background:#ffffff;color:#11161d;border:2px solid #11161d") + `">${esc(b.label)}</a>`;
+    const buttonsHtml = `<p style="margin:0 0 14px">${btn(REPORT_BUTTONS[0], true)}${btn(REPORT_BUTTONS[1], false)}${until ? `<br><span style="font-size:13px;color:#6b7480">${esc(until.trim())}</span>` : ""}</p>`;
+    const paras = text.split(/\n\s*\n/);
+    const html = paras.map((p) => p.includes(BUTTONS_TOKEN) ? buttonsHtml
+      : `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>").replace(/\*\*(.+?)\*\*/gs, "<strong>$1</strong>")}</p>`).join("");
+    return { text: text.split(BUTTONS_TOKEN).join(plain).replace(/\*\*(.+?)\*\*/gs, "$1"),
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1d2433;max-width:620px">${html}${SIGNATURE_HTML}</div>` };
+  }
   if (link) {
     if (text.includes(LINK_MARKER)) text = text.split(LINK_MARKER).join(linkLine);
     else {
@@ -211,7 +232,7 @@ export async function sendClientEmail(deps, token, body) {
   if (/facilitator-test\.html|[?&]token=/.test(msg)) throw new SendError(400, "The facilitator link must never be emailed.");
   const { text, html } = kind === "test"
     ? buildBody(TEST_INTRO + "\n\n" + msg.split(LINK_MARKER).join(TEST_LINK_TEXT), null, null)
-    : buildBody(msg, link, rec.expires_at);
+    : buildBody(msg, link, rec.expires_at, { reportButtons: kind === "report" });
 
   // 2. send
   if (html.includes("cid:planproof-logo")) attachments = (attachments || []).concat([LOGO_ATTACHMENT]);

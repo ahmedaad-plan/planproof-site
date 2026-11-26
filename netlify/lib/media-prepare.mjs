@@ -420,15 +420,24 @@ export function heygenRequest(env, { audioUrl, backgroundUrl, engine, motionProm
   if (outputFormat === "webm") { body.output_format = "webm"; delete body.background; delete body.remove_background; }
   return body;
 }
+// Fix 48b (26 Nov 2026): a HeyGen render is paid when it is ASKED for. Netlify stops a
+// background run after 15 minutes and may start it again; without a record the restart
+// asked for the same clip a second time (24 Nov: the Arabic clip was rendered and charged
+// twice). Now the video id is saved the moment HeyGen accepts the job (opts.onStarted),
+// and a later run passes it back (opts.resumeId) to wait for THAT render — never a new one.
 export async function heygenClip(deps, opts) {
   const { env } = deps;
   const H = { "X-Api-Key": env.HEYGEN_API_KEY, "Content-Type": "application/json", Accept: "application/json" };
-  const gen = await deps.fetchFn("https://api.heygen.com/v3/videos", {
-    method: "POST", headers: H, signal: AbortSignal.timeout(60000), body: JSON.stringify(heygenRequest(env, opts)),
-  });
-  const gj = await gen.json().catch(() => ({}));
-  const id = gj && gj.data && (gj.data.video_id || gj.data.id);
-  if (!gen.ok || !id) throw new Error(`HeyGen → HTTP ${gen.status}: ${JSON.stringify(gj.error || gj.message || gj).slice(0, 200)}`);
+  let id = opts.resumeId || null;
+  if (!id) {
+    const gen = await deps.fetchFn("https://api.heygen.com/v3/videos", {
+      method: "POST", headers: H, signal: AbortSignal.timeout(60000), body: JSON.stringify(heygenRequest(env, opts)),
+    });
+    const gj = await gen.json().catch(() => ({}));
+    id = gj && gj.data && (gj.data.video_id || gj.data.id);
+    if (!gen.ok || !id) throw new Error(`HeyGen → HTTP ${gen.status}: ${JSON.stringify(gj.error || gj.message || gj).slice(0, 200)}`);
+    if (opts.onStarted) await opts.onStarted(id);
+  }
   const started = deps.now();
   const limit = deps.clipTimeoutMs ?? 12 * 60 * 1000;
   for (;;) {
@@ -441,9 +450,22 @@ export async function heygenClip(deps, opts) {
       if (!mp4.ok) throw new Error(`HeyGen video download → HTTP ${mp4.status}`);
       return { bytes: new Uint8Array(await mp4.arrayBuffer()), duration: d.duration || null, heygen_id: id };
     }
-    if (d.status === "failed" || d.status === "cancelled") throw new Error(`HeyGen could not make the clip: ${String(d.failure_message || d.failure_code || JSON.stringify(d.error || "")).slice(0, 200)}`);
-    if (deps.now() - started > limit) throw new Error("HeyGen took longer than 12 minutes; press Retry failed later.");
+    if (d.status === "failed" || d.status === "cancelled") {
+      const e = new Error(`HeyGen could not make the clip: ${String(d.failure_message || d.failure_code || JSON.stringify(d.error || "")).slice(0, 200)}`);
+      e.heygenGone = true; throw e;
+    }
+    if (st.status === 404) { const e = new Error("HeyGen no longer has this clip; press Retry failed to make it again."); e.heygenGone = true; throw e; }
+    if (deps.now() - started > limit) throw new Error("HeyGen took longer than 12 minutes; press Retry failed later (the same render is picked up, not paid again).");
   }
+}
+// A render asked for less than this long ago is waited for, not asked for again.
+export const PENDING_CLIP_MAX_MS = 24 * 3600 * 1000;
+// Fix 48 (26 Nov 2026): Prepare makes media only in the exercise's own language.
+export function exerciseLangs(sessionLanguage, requested) {
+  const ex = sessionLanguage === "ar" ? "ar" : sessionLanguage === "en" ? "en" : null;
+  const req = (Array.isArray(requested) && requested.length ? requested : ["en", "ar"]).filter((l) => l === "en" || l === "ar");
+  if (!ex) return req;
+  return [ex];
 }
 
 // The newsroom plate behind the presenter (bundled with the function; uploaded once).
@@ -466,7 +488,7 @@ export async function runMediaPrepare(deps, args) {
   if (service) {
     if (!/^[0-9a-f-]{36}$/i.test(String(args.session_id || ""))) return { ok: false, error: "Bad session." };
     api = service;
-    const rows = await api.select("exercise_sessions", `id=eq.${args.session_id}&select=status,scenario,media`);
+    const rows = await api.select("exercise_sessions", `id=eq.${args.session_id}&select=status,scenario,media,language,label,submission_id`);
     if (!rows || !rows[0]) return { ok: false, error: "No such exercise." };
     sess = rows[0];
   } else {
@@ -482,7 +504,7 @@ export async function runMediaPrepare(deps, args) {
 
   const media = { items: {}, ...(sess.media || {}) };
   media.items = { ...(media.items || {}) };
-  const plan = planMedia(sess.scenario, media, args);
+  const plan = planMedia(sess.scenario, media, { ...args, langs: exerciseLangs(sess.language, args.langs) });
   const prevLog = Array.isArray(media.log) ? media.log.slice(-40) : [];
   const runLog = [];
   const note = (msg) => { runLog.push({ at: new Date(deps.now()).toISOString(), msg }); log(msg); };
@@ -504,6 +526,10 @@ export async function runMediaPrepare(deps, args) {
     media.items[k].failed = { ...(media.items[k].failed || {}), [key]: String(err.message || err).slice(0, 200) };
     failures[`${k}:${key}`] = true;
     note(`Inject ${i + 1} ${key}: ${String(err.message || err).slice(0, 200)}`);
+  };
+  const clearPending = (i, lang) => {
+    const it = media.items[String(i)];
+    if (it && it.clip_pending) { delete it.clip_pending[lang]; if (!Object.keys(it.clip_pending).length) delete it.clip_pending; }
   };
   const clearFail = (i, key) => {
     const it = media.items[String(i)];
@@ -546,11 +572,26 @@ export async function runMediaPrepare(deps, args) {
       if (!speechReady) throw new Error("The speech service settings are missing.");
       if (!env.HEYGEN_API_KEY) throw new Error("HEYGEN_API_KEY is not set in Netlify yet.");
       if (!env.HEYGEN_AVATAR_ID) throw new Error("HEYGEN_AVATAR_ID (the chosen presenter) is not set in Netlify yet.");
-      const audio = await azureTts(deps, clipSsml(job.script, job.lang));
-      const audioPath = `clips/${args.session_id}/${uuid()}.mp3`;
-      await api.upload(audioPath, audio, "audio/mpeg");
-      const plate = await ensurePlate(deps, api, job.lang);
-      const clip = await heygenClip(deps, { audioUrl: api.publicUrl(audioPath), backgroundUrl: plate });
+      const k0 = String(job.index);
+      const pend = (((media.items[k0] || {}).clip_pending) || {})[job.lang];
+      const fresh = pend && pend.heygen_id && pend.audio && (deps.now() - Date.parse(pend.at || 0)) < PENDING_CLIP_MAX_MS;
+      let audio, audioPath, clip;
+      if (fresh) {
+        // 48b: this clip was already asked for — wait for that render; nothing is paid again.
+        note(`Inject ${job.index + 1}: ${job.lang} clip already asked for at HeyGen (${pend.at}); waiting for it, not making a new one.`);
+        audioPath = pend.audio; audio = { length: pend.audio_bytes || 0 };
+        clip = await heygenClip(deps, { resumeId: pend.heygen_id });
+      } else {
+        audio = await azureTts(deps, clipSsml(job.script, job.lang));
+        audioPath = `clips/${args.session_id}/${uuid()}.mp3`;
+        await api.upload(audioPath, audio, "audio/mpeg");
+        const plate = await ensurePlate(deps, api, job.lang);
+        clip = await heygenClip(deps, { audioUrl: api.publicUrl(audioPath), backgroundUrl: plate, onStarted: async (hid) => {
+          media.items[k0] = { ...(media.items[k0] || {}) };
+          media.items[k0].clip_pending = { ...(media.items[k0].clip_pending || {}), [job.lang]: { heygen_id: hid, audio: audioPath, audio_bytes: audio.length, at: new Date(deps.now()).toISOString() } };
+          await save("preparing");
+        } });
+      }
       const path = `clips/${args.session_id}/${uuid()}.mp4`;
       await api.upload(path, clip.bytes, "video/mp4");
       const duration = clip.duration || mp3Duration(audio.length);
@@ -559,9 +600,10 @@ export async function runMediaPrepare(deps, args) {
       media.items[k] = { ...(media.items[k] || {}) };
       media.items[k].clip = { ...(media.items[k].clip || {}), [job.lang]: { path, audio: audioPath, duration,
         cues: clipCues(job.script, mp3Duration(audio.length), video), heygen_id: clip.heygen_id } };
+      clearPending(job.index, job.lang);
       clearFail(job.index, key);
       note(`Inject ${job.index + 1}: ${job.lang} clip made (${duration} s).`);
-    } catch (err) { fail(job.index, key, err); }
+    } catch (err) { if (err && err.heygenGone) clearPending(job.index, job.lang); fail(job.index, key, err); }
     done += 1;
     await save("preparing");
   }

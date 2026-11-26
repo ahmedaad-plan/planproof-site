@@ -2184,15 +2184,11 @@ ${orgUnitHTML("f")}
       <label for="f_riskSearch">Risk concerns <span class="opt">(select up to 3, the first is your main concern; required)</span></label>
       <div class="dept-select" id="f_riskSelect">
         <div class="dept-chips" id="f_riskChips"></div>
-        <input type="text" id="f_riskSearch" placeholder="Search risks\u2026" autocomplete="off">
+        <input type="text" id="f_riskSearch" placeholder="Type a risk, or add your own\u2026" autocomplete="off" maxlength="80" enterkeyhint="done">
         <div class="dept-dropdown" id="f_riskDropdown"></div>
       </div>
       <div class="risk-note" id="f_riskNote" aria-live="polite"></div>
       <input type="hidden" name="risk" id="f_risk">
-      <div id="riskOtherWrap" style="display:none;">
-        <label for="f_risk_other">Please specify</label>
-        <input type="text" name="risk_other" id="f_risk_other" placeholder="Describe the other risk">
-      </div>
 
       <label for="f_ops">Key operations and what they depend on</label>
       <input type="text" name="operations" id="f_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
@@ -2202,18 +2198,11 @@ ${orgUnitHTML("f")}
         <option>ISO 22301</option><option>NCEMA 7000:2021</option><option>Both</option><option>Not sure</option>
       </select>
 
-      <label for="f_deptSearch">Who will participate? <span class="opt">(search and select all that apply, required)</span></label>
+      <label for="f_deptSearch">Who will participate? <span class="opt">(type to find one or add your own \u2014 all that apply, required)</span></label>
       <div class="dept-select" id="f_deptSelect">
         <div class="dept-chips" id="f_deptChips"></div>
-        <input type="text" id="f_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
+        <input type="text" id="f_deptSearch" placeholder="Type a department, or add your own\u2026" autocomplete="off" maxlength="80" enterkeyhint="done">
         <div class="dept-dropdown" id="f_deptDropdown"></div>
-      </div>
-      <div class="dept-other" id="f_deptOtherWrap" hidden>
-        <label for="f_deptOther">Other department \u2014 please specify</label>
-        <div class="dept-other-row">
-          <input type="text" id="f_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
-          <button type="button" class="dept-other-add" id="f_deptOtherAdd">Add</button>
-        </div>
       </div>
       <input type="hidden" name="audience" id="f_audience">
 
@@ -2243,7 +2232,7 @@ ${consentHTML("f")}
   document.getElementById("f_industry").addEventListener("change", (e)=>{
     document.getElementById("industryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
-  initRiskPicker("f", "riskOtherWrap");
+  initRiskPicker("f");
   initDeptPicker("f");
   initReturning("f");
   initLanguage("f");
@@ -2265,7 +2254,6 @@ ${consentHTML("f")}
     const mobileEl = document.getElementById("f_mobile");
     const emailEl = document.getElementById("f_email");
     const riskEl = document.getElementById("f_risk");
-    const riskOtherEl = document.getElementById("f_risk_other");
     const serviceEl = document.getElementById("f_service_type");
     const audienceEl = document.getElementById("f_audience");
     const audienceWrapEl = document.getElementById("f_deptSelect");
@@ -2277,7 +2265,6 @@ ${consentHTML("f")}
     const email = emailEl.value.trim();
     if(!email) markInvalid(emailEl);
     if(!riskEl.value.trim()) markInvalid(document.getElementById("f_riskSelect"));
-    if(/(^|, )Other( \(main\))?(,|$)/.test(riskEl.value) && !riskOtherEl.value.trim()) markInvalid(riskOtherEl);
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
     checkReturning("f", markInvalid);
@@ -2302,7 +2289,7 @@ ${consentHTML("f")}
         ["Industry", document.getElementById("f_industry").value + (document.getElementById("f_industry").value === "Other" ? " (" + document.getElementById("f_industry_other").value + ")" : "")],
         ["Location(s)", document.getElementById("f_location").value],
         ["Company size", document.getElementById("f_size").value],
-        ["Risk concerns (first = main)", document.getElementById("f_risk").value + (document.getElementById("f_risk_other").value.trim() ? " \u2014 Other: " + document.getElementById("f_risk_other").value.trim() : "")],
+        ["Risk concerns (first = main)", document.getElementById("f_risk").value],
         ["Key operations and dependencies", document.getElementById("f_ops").value],
         ["Regulatory framework", document.getElementById("f_reg").value],
         ["Audience (departments participating)", document.getElementById("f_audience").value],
@@ -2632,15 +2619,11 @@ ${orgUnitHTML("p")}
       <label for="p_riskSearch">Risk concerns <span class="opt">(select up to 3, the first is your main concern; required)</span></label>
       <div class="dept-select" id="p_riskSelect">
         <div class="dept-chips" id="p_riskChips"></div>
-        <input type="text" id="p_riskSearch" placeholder="Search risks\u2026" autocomplete="off">
+        <input type="text" id="p_riskSearch" placeholder="Type a risk, or add your own\u2026" autocomplete="off" maxlength="80" enterkeyhint="done">
         <div class="dept-dropdown" id="p_riskDropdown"></div>
       </div>
       <div class="risk-note" id="p_riskNote" aria-live="polite"></div>
       <input type="hidden" name="risk" id="p_risk">
-      <div id="planRiskOtherWrap" style="display:none;">
-        <label for="p_risk_other">Please specify</label>
-        <input type="text" name="risk_other" id="p_risk_other" placeholder="Describe the other risk">
-      </div>
 
       <label for="p_ops">Key operations and what they depend on</label>
       <input type="text" name="operations" id="p_ops" placeholder="e.g. main site, booking platform, critical equipment, key suppliers, key staff, essential records">
@@ -2650,18 +2633,11 @@ ${orgUnitHTML("p")}
         <option>ISO 22301</option><option>NCEMA 7000:2021</option><option>Both</option><option>Not sure</option>
       </select>
 
-      <label for="p_deptSearch">Who will participate? <span class="opt">(search and select all that apply, required)</span></label>
+      <label for="p_deptSearch">Who will participate? <span class="opt">(type to find one or add your own \u2014 all that apply, required)</span></label>
       <div class="dept-select" id="p_deptSelect">
         <div class="dept-chips" id="p_deptChips"></div>
-        <input type="text" id="p_deptSearch" placeholder="Search departments\u2026" autocomplete="off">
+        <input type="text" id="p_deptSearch" placeholder="Type a department, or add your own\u2026" autocomplete="off" maxlength="80" enterkeyhint="done">
         <div class="dept-dropdown" id="p_deptDropdown"></div>
-      </div>
-      <div class="dept-other" id="p_deptOtherWrap" hidden>
-        <label for="p_deptOther">Other department \u2014 please specify</label>
-        <div class="dept-other-row">
-          <input type="text" id="p_deptOther" placeholder="e.g. Ground Handling" autocomplete="off" maxlength="80">
-          <button type="button" class="dept-other-add" id="p_deptOtherAdd">Add</button>
-        </div>
       </div>
       <input type="hidden" name="audience" id="p_audience">
 
@@ -2699,7 +2675,7 @@ ${consentHTML("p")}
   document.getElementById("p_industry").addEventListener("change", (e)=>{
     document.getElementById("planIndustryOtherWrap").style.display = (e.target.value === "Other") ? "block" : "none";
   });
-  initRiskPicker("p", "planRiskOtherWrap");
+  initRiskPicker("p");
   initDeptPicker("p");
   initReturning("p");
   initLanguage("p");
@@ -2732,7 +2708,6 @@ ${consentHTML("p")}
     if(!emailEl.value.trim()) markInvalid(emailEl);
     if(!serviceEl.value) markInvalid(serviceEl);
     if(!document.getElementById("p_risk").value.trim()) markInvalid(document.getElementById("p_riskSelect"));
-    if(/(^|, )Other( \(main\))?(,|$)/.test(document.getElementById("p_risk").value) && !document.getElementById("p_risk_other").value.trim()) markInvalid(document.getElementById("p_risk_other"));
     if(!fileInput.files.length) markInvalid(fileInput);
     if(!audienceEl.value.trim()) markInvalid(audienceWrapEl);
     checkReturning("p", markInvalid);
@@ -2762,7 +2737,7 @@ ${consentHTML("p")}
         ["Industry", document.getElementById("p_industry").value + (document.getElementById("p_industry").value === "Other" ? " (" + document.getElementById("p_industry_other").value + ")" : "")],
         ["Location(s)", document.getElementById("p_location").value],
         ["Company size", document.getElementById("p_size").value],
-        ["Risk concerns (first = main)", document.getElementById("p_risk").value + (document.getElementById("p_risk_other").value.trim() ? " \u2014 Other: " + document.getElementById("p_risk_other").value.trim() : "")],
+        ["Risk concerns (first = main)", document.getElementById("p_risk").value],
         ["Key operations and dependencies", document.getElementById("p_ops").value],
         ["Regulatory framework", document.getElementById("p_reg").value],
         ["Audience (departments participating)", document.getElementById("p_audience").value],
@@ -2850,68 +2825,87 @@ const DEPARTMENTS = {
   ]
 };
 
-const RISKS = ["Cyberattack", "IT outage", "Data breach / privacy incident", "Natural disaster / extreme weather", "Pandemic / public health emergency", "Flooding", "Extreme heat", "Supply chain disruption", "Regulatory / compliance failure", "Reputational / media crisis", "Power outage", "Utility outage", "Geopolitical instability", "Terrorism / security threat", "Fire / structural incident", "Fraud / financial crime", "Critical equipment failure", "Loss of critical records or documents", "Key personnel loss / succession risk", "Other"];
+const RISKS = ["Cyberattack", "IT outage", "Data breach / privacy incident", "Natural disaster / extreme weather", "Pandemic / public health emergency", "Flooding", "Extreme heat", "Supply chain disruption", "Regulatory / compliance failure", "Reputational / media crisis", "Power outage", "Utility outage", "Geopolitical instability", "Terrorism / security threat", "Fire / structural incident", "Fraud / financial crime", "Critical equipment failure", "Loss of critical records or documents", "Key personnel loss / succession risk"];
 const MAX_RISKS = 3;
-function initRiskPicker(prefix, otherWrapId){
-  const selected = [];
-  const chipsEl = document.getElementById(prefix + "_riskChips");
-  const searchEl = document.getElementById(prefix + "_riskSearch");
-  const dropdownEl = document.getElementById(prefix + "_riskDropdown");
-  const hiddenEl = document.getElementById(prefix + "_risk");
-  const wrapEl = document.getElementById(prefix + "_riskSelect");
-  const noteEl = document.getElementById(prefix + "_riskNote");
-  const otherWrap = document.getElementById(otherWrapId);
-
-  function sync(){
-    hiddenEl.value = selected.map((r,i) => i === 0 ? r + " (main)" : r).join(", ");
-    wrapEl.classList.remove("field-error");
-    otherWrap.style.display = selected.includes("Other") ? "block" : "none";
-    searchEl.style.display = selected.length >= MAX_RISKS ? "none" : "";
-    noteEl.textContent = selected.length >= MAX_RISKS ? "Up to 3 risks. Remove one to choose another." : "";
-  }
+// Items 65 + 66 (Ahmed, 25 Nov 2026): ONE box for departments and ONE for risks. Type: matching
+// names appear; when nothing matches, the first line is "+ Add 'X' as a new department / as a
+// risk" (Enter does the same). After each choice the box stays open, empties and keeps the
+// cursor. Choices show as chips with ×. Typed risks count toward the 3 (the first is the main
+// one) and reach PlanProof as "Other: X", as before. No separate "Other (specify)" step.
+const escPick = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const cleanTyped = (t) => String(t || "").replace(/[,;]+/g, " /").replace(/\s+/g, " ").trim().slice(0, 80);
+function initPicker(o){
+  // o: { chipsEl, searchEl, dropdownEl, wrapEl, max, groups(term) -> [[label|null, [names]]], addWord(name), onChange(selected), chipText(item, i), typedValue(name) }
+  const selected = [];   // { name, typed }
+  const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
+  const has = (n) => selected.some((x) => sameName(x.name, n));
+  let firstAction = null;
+  function changed(){ o.wrapEl.classList.remove("field-error"); o.onChange(selected); renderChips(); }
   function renderChips(){
-    chipsEl.innerHTML = selected.map((r,i) => `
-      <span class="dept-chip">${i === 0 ? "1. " + r + " (main)" : (i + 1) + ". " + r}<button type="button" data-i="${i}" aria-label="Remove">\u00d7</button></span>
-    `).join("");
-    chipsEl.querySelectorAll("button").forEach(btn=>{
-      btn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        selected.splice(parseInt(btn.dataset.i,10), 1);
-        renderChips();
-        sync();
-      });
+    o.chipsEl.innerHTML = selected.map((x, i) => `<span class="dept-chip">${escPick(o.chipText(x, i))}<button type="button" data-i="${i}" aria-label="Remove ${escPick(x.name)}">\u00d7</button></span>`).join("");
+    o.chipsEl.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", (e) => {
+      e.stopPropagation(); selected.splice(parseInt(btn.dataset.i, 10), 1); changed();
+      o.searchEl.style.display = ""; if (o.noteEl) o.noteEl.textContent = "";
+    }));
+    const full = o.max && selected.length >= o.max;
+    o.searchEl.style.display = full ? "none" : "";
+    if (o.noteEl) o.noteEl.textContent = full ? "Up to 3 risks. Remove one to choose another." : "";
+  }
+  function add(name, typed){
+    const n = typed ? cleanTyped(name) : name;
+    if (!n || has(n) || (o.max && selected.length >= o.max)) { o.searchEl.value = ""; render(""); return; }
+    selected.push({ name: n, typed: !!typed });
+    changed();
+    o.searchEl.value = "";
+    if (o.max && selected.length >= o.max) { o.dropdownEl.classList.remove("open"); return; }
+    render(""); o.searchEl.focus();
+  }
+  function render(term){
+    const raw = term, t = term.trim().toLowerCase();
+    const typed = cleanTyped(raw);
+    let html = "", any = false, first = null;
+    const exact = [];
+    o.groups(t).forEach(([label, names]) => {
+      const m = names.filter((n) => !has(n) && n.toLowerCase().includes(t));
+      if (!m.length) return;
+      any = true;
+      if (label) html += `<div class="dept-group-label" role="presentation" aria-hidden="true">${escPick(label)}</div>`;
+      m.forEach((n) => { if (!first) first = { name: n, typed: false }; if (sameName(n, typed)) exact.push(n); html += `<div class="dept-option" data-name="${escPick(n)}">${escPick(n)}</div>`; });
     });
+    const canAdd = typed && !exact.length && !has(typed);
+    const addLine = canAdd ? `<div class="dept-option dept-add" data-add="1">+ Add \u201c${escPick(typed)}\u201d ${o.addWord}</div>` : "";
+    if (!any) html = addLine || `<div class="dept-empty">Type a name to add it.</div>`;
+    else if (canAdd) html += addLine;
+    firstAction = exact.length ? { name: exact[0], typed: false } : !any ? (canAdd ? { name: typed, typed: true } : null) : first;
+    o.dropdownEl.innerHTML = DONE_ROW_HTML + html;
+    o.dropdownEl.querySelectorAll(".dept-option").forEach((opt) => opt.addEventListener("mousedown", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (opt.dataset.add) add(typed, true); else add(opt.dataset.name, false);
+    }));
+    wireListClose(o.dropdownEl, o.searchEl);
+    o.dropdownEl.classList.add("open");
   }
-  function addRisk(name){
-    if(selected.length >= MAX_RISKS || selected.includes(name)) return;
-    selected.push(name);
-    renderChips();
-    sync();
-    searchEl.value = "";
-    if(selected.length < MAX_RISKS){ renderDropdown(""); searchEl.focus(); }
-    else dropdownEl.classList.remove("open");
-  }
-  function renderDropdown(term){
-    const t = term.trim().toLowerCase();
-    const matches = RISKS.filter(r => !selected.includes(r) && r.toLowerCase().includes(t));
-    dropdownEl.innerHTML = DONE_ROW_HTML + (matches.length
-      ? matches.map(r => `<div class="dept-option" data-name="${r}">${r}</div>`).join("")
-      : `<div class="dept-empty">No match. Choose \u201cOther\u201d to describe it.</div>`);
-    dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
-      opt.addEventListener("mousedown", (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        addRisk(opt.dataset.name);
-      });
-    });
-    wireListClose(dropdownEl, searchEl);
-    dropdownEl.classList.add("open");
-  }
-  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
-  searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
-  searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
-  searchEl.addEventListener("blur", ()=> setTimeout(()=> dropdownEl.classList.remove("open"), 150));
-  sync();
+  o.searchEl.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closePickList(o.dropdownEl, o.searchEl);
+    if (e.key === "Enter") { e.preventDefault(); render(o.searchEl.value); if (firstAction) add(firstAction.name, firstAction.typed); }
+  });
+  o.searchEl.addEventListener("input", () => render(o.searchEl.value));
+  o.searchEl.addEventListener("focus", () => render(o.searchEl.value));
+  o.searchEl.addEventListener("blur", () => setTimeout(() => o.dropdownEl.classList.remove("open"), 150));
+  o.onChange(selected);
+  return { add, selected };
+}
+function initRiskPicker(prefix){
+  const hiddenEl = document.getElementById(prefix + "_risk");
+  return initPicker({
+    chipsEl: document.getElementById(prefix + "_riskChips"), searchEl: document.getElementById(prefix + "_riskSearch"),
+    dropdownEl: document.getElementById(prefix + "_riskDropdown"), wrapEl: document.getElementById(prefix + "_riskSelect"),
+    noteEl: document.getElementById(prefix + "_riskNote"), max: MAX_RISKS, addWord: "as a risk",
+    groups: () => [[null, RISKS]],
+    chipText: (x, i) => (i + 1) + ". " + x.name + (i === 0 ? " (main)" : ""),
+    // typed risks reach PlanProof as "Other: X", exactly as before
+    onChange: (sel) => { hiddenEl.value = sel.map((x, i) => (x.typed ? "Other: " + x.name : x.name) + (i === 0 ? " (main)" : "")).join(", "); },
+  });
 }
 
 // The pick lists stay open after each choice so several can be chosen. A
@@ -2933,96 +2927,15 @@ function wireListClose(dropdownEl, searchEl){
 }
 
 function initDeptPicker(prefix){
-  const selected = [];
-  const chipsEl = document.getElementById(prefix + "_deptChips");
-  const searchEl = document.getElementById(prefix + "_deptSearch");
-  const dropdownEl = document.getElementById(prefix + "_deptDropdown");
   const hiddenEl = document.getElementById(prefix + "_audience");
-  const wrapEl = document.getElementById(prefix + "_deptSelect");
-
-  function syncHidden(){
-    hiddenEl.value = selected.join(", ");
-    wrapEl.classList.remove("field-error");
-  }
-
-  function renderChips(){
-    chipsEl.innerHTML = selected.map((d,i) => `
-      <span class="dept-chip">${d}<button type="button" data-i="${i}" aria-label="Remove">\u00d7</button></span>
-    `).join("");
-    chipsEl.querySelectorAll("button").forEach(btn=>{
-      btn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        selected.splice(parseInt(btn.dataset.i,10), 1);
-        renderChips();
-        syncHidden();
-      });
-    });
-  }
-
-  function addDept(name){
-    if(!selected.includes(name)) selected.push(name);
-    renderChips();
-    syncHidden();
-    searchEl.value = "";
-    renderDropdown("");
-    searchEl.focus();
-  }
-
-  // "Other (specify)" opens a typing box inside the form, under the list —
-  // like "Other" for the risks — instead of the browser's pop-up at the top.
-  const otherWrap = document.getElementById(prefix + "_deptOtherWrap");
-  const otherInput = document.getElementById(prefix + "_deptOther");
-  const otherAdd = document.getElementById(prefix + "_deptOtherAdd");
-  function addOtherDept(){
-    closePickList(dropdownEl, searchEl);
-    otherWrap.hidden = false;
-    otherInput.focus();
-  }
-  function commitOther(){
-    const v = otherInput.value.trim();
-    if(!v) { otherInput.focus(); return; }
-    otherInput.value = "";
-    otherWrap.hidden = true;
-    if(!selected.includes(v)) selected.push(v);
-    renderChips();
-    syncHidden();
-  }
-  otherAdd.addEventListener("click", commitOther);
-  otherInput.addEventListener("keydown", (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); commitOther(); }
-    if(e.key === "Escape"){ otherInput.value = ""; otherWrap.hidden = true; }
+  return initPicker({
+    chipsEl: document.getElementById(prefix + "_deptChips"), searchEl: document.getElementById(prefix + "_deptSearch"),
+    dropdownEl: document.getElementById(prefix + "_deptDropdown"), wrapEl: document.getElementById(prefix + "_deptSelect"),
+    max: 0, addWord: "as a new department",
+    groups: () => Object.entries(DEPARTMENTS),
+    chipText: (x) => x.name,
+    onChange: (sel) => { hiddenEl.value = sel.map((x) => x.name).join(", "); },
   });
-
-  function renderDropdown(term){
-    const t = term.trim().toLowerCase();
-    let html = "";
-    let anyMatch = false;
-    Object.entries(DEPARTMENTS).forEach(([group, list])=>{
-      const matches = list.filter(d => !selected.includes(d) && d.toLowerCase().includes(t));
-      if(matches.length){
-        anyMatch = true;
-        html += `<div class="dept-group-label" role="presentation" aria-hidden="true">${group}</div>`;
-        html += matches.map(d => `<div class="dept-option" data-name="${d}">${d}</div>`).join("");
-      }
-    });
-    html += `<div class="dept-option" data-name="__other__">+ Other (specify)</div>`;
-    dropdownEl.innerHTML = DONE_ROW_HTML + html;
-    dropdownEl.querySelectorAll(".dept-option").forEach(opt=>{
-      opt.addEventListener("mousedown", (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        if(opt.dataset.name === "__other__") addOtherDept();
-        else addDept(opt.dataset.name);
-      });
-    });
-    wireListClose(dropdownEl, searchEl);
-    dropdownEl.classList.add("open");
-  }
-  searchEl.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closePickList(dropdownEl, searchEl); });
-
-  searchEl.addEventListener("input", ()=> renderDropdown(searchEl.value));
-  searchEl.addEventListener("focus", ()=> renderDropdown(searchEl.value));
-  searchEl.addEventListener("blur", ()=> setTimeout(()=> dropdownEl.classList.remove("open"), 150));
 }
 let cachedVoices = [];
 function loadVoices(){

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   heygenRequest,
   timeWordsEn, timeWordsAr, headerSentence, messageParts, narrationSsml, clipSsml, clipCues,
-  planMedia, runMediaPrepare, wordCount, mp3Duration, MAX_CLIPS, urgencyOf, styleKey, URGENT_PROFILES,
+  planMedia, runMediaPrepare, exerciseLangs, wordCount, mp3Duration, MAX_CLIPS, urgencyOf, styleKey, URGENT_PROFILES,
 } from "../netlify/lib/media-prepare.mjs";
 
 const SID = "7f674d9e-7aa2-4e0c-8bef-9b02e118734e";
@@ -109,7 +109,7 @@ function world(opts = {}) {
       assert.equal(init.headers.apikey, "sb_publishable_test", "only the publishable key, never a secret key");
       assert.equal(init.headers.Authorization, `Bearer ${ADMIN}`, "the admin's own sign-in");
       if (u.pathname === "/rest/v1/rpc/admin_whoami") return json(opts.notAdmin ? false : true);
-      if (u.pathname === "/rest/v1/rpc/admin_session_scenario") return json({ id: SID, status: opts.status || "lobby", scenario: w.scenario, media: opts.media || {} });
+      if (u.pathname === "/rest/v1/rpc/admin_session_scenario") return json({ id: SID, status: opts.status || "lobby", language: opts.language, scenario: w.scenario, media: opts.media || {} });
       if (u.pathname === "/rest/v1/rpc/admin_set_media") { const b = JSON.parse(init.body); w.medias.push(b.p_media); return json({ ok: true }); }
       if (u.pathname.startsWith("/storage/v1/object/exercise-media/")) {
         assert.equal(init.headers["x-upsert"], "true");
@@ -127,7 +127,7 @@ function world(opts = {}) {
     if (u.hostname === "api.heygen.com") {
       assert.equal(init.headers["X-Api-Key"], "heygen_test");
       if (u.pathname === "/v3/videos" && init.method === "POST") { w.heygen.push(JSON.parse(init.body)); return json({ data: { video_id: "vid1" } }); }
-      if (u.pathname === "/v3/videos/vid1") {
+      if (u.pathname === "/v3/videos/vid1" || u.pathname === "/v3/videos/old-vid") {
         w.polls += 1;
         if (opts.heygenFails) return json({ data: { status: "failed", failure_message: "bad audio" } });
         return json({ code: 100, data: w.polls < 2 ? { status: "processing" } : { status: "completed", video_url: "https://files.test/v.mp4", duration: 41.5 } });
@@ -306,4 +306,55 @@ test("W6b: HeyGen v3 request — own audio, the plate, 1080p; engine and motion 
   const w = heygenRequest(env, { audioUrl: "u", backgroundUrl: "b", removeBackground: true, fit: "contain", outputFormat: "webm" });
   assert.equal(w.output_format, "webm"); assert.equal(w.fit, "contain");
   assert.equal(w.background, undefined); assert.equal(w.remove_background, undefined);
+});
+
+// ---- Wrap-up step 2 (26 Nov 2026): fixes 48 and 48b ----
+const BILINGUAL = { injects: [
+  { title: "A", desc: V7, video: { script_en: SCRIPT_EN, script_ar: "خبر عاجل من مرسى نيوز. " + "كلمة ".repeat(30) } },
+  { title: "C", desc: "Another one." },
+] };
+test("48: an English exercise makes English media only, even when the scenario carries script_ar and the page asks for both", async () => {
+  assert.deepEqual(exerciseLangs("en", ["en", "ar"]), ["en"]);
+  assert.deepEqual(exerciseLangs("ar", ["en", "ar"]), ["ar"]);
+  assert.deepEqual(exerciseLangs(undefined, ["en"]), ["en"], "unknown language: as asked");
+  const w = world({ scenario: BILINGUAL, language: "en" });
+  const r = await runMediaPrepare(w.deps, { session_id: SID, langs: ["en", "ar"], samples: false });
+  assert.equal(r.ok, true);
+  assert.equal(w.heygen.length, 1, "one HeyGen render — the English clip");
+  assert.match(w.heygen[0].background.url, /marsa-en/);
+  assert.ok(!w.ssml.some((x) => /ar-AE/.test(x)), "no Arabic voice at all");
+  assert.ok(!last(w).items["0"].clip.ar);
+  assert.deepEqual(last(w).langs, ["en"]);
+});
+test("48b: the HeyGen id is saved the moment the render is asked for, and cleared when the clip is in", async () => {
+  const w = world({ language: "en" });
+  await runMediaPrepare(w.deps, { session_id: SID, what: "clips", samples: false });
+  const asked = w.medias.find((m) => m.items && m.items["0"] && m.items["0"].clip_pending && m.items["0"].clip_pending.en);
+  assert.ok(asked, "a save with the pending render before the clip arrived");
+  assert.equal(asked.items["0"].clip_pending.en.heygen_id, "vid1");
+  assert.ok(!last(w).items["0"].clip_pending, "cleared after the clip was saved");
+  assert.equal(last(w).items["0"].clip.en.heygen_id, "vid1");
+});
+test("48b: a restarted run (15-minute limit) waits for the render already asked for — no second HeyGen job", async () => {
+  const now = new Date(2000).toISOString();
+  const w = world({ language: "en", media: { items: { "0": { clip_pending: { en: { heygen_id: "old-vid", audio: `clips/${SID}/a.mp3`, audio_bytes: 288000, at: now } } } } } });
+  const r = await runMediaPrepare(w.deps, { session_id: SID, what: "clips", samples: false });
+  assert.equal(r.ok, true);
+  assert.equal(w.heygen.length, 0, "no new render asked for");
+  assert.ok(!w.ssml.length, "no new voice track either");
+  assert.equal(last(w).items["0"].clip.en.heygen_id, "old-vid");
+  assert.equal(last(w).items["0"].clip.en.audio, `clips/${SID}/a.mp3`);
+  assert.ok(last(w).log.some((l) => /already asked for at HeyGen/.test(l.msg)));
+});
+test("48b: a pending render that HeyGen failed is forgotten, so Retry failed may ask again", async () => {
+  const w = world({ language: "en", heygenFails: true, media: { items: { "0": { clip_pending: { en: { heygen_id: "old-vid", audio: "clips/x/a.mp3", at: new Date(2000).toISOString() } } } } } });
+  await runMediaPrepare(w.deps, { session_id: SID, what: "clips", samples: false });
+  assert.equal(w.heygen.length, 0);
+  assert.ok(!last(w).items["0"].clip_pending, "pending cleared");
+  assert.match(last(w).items["0"].failed.clip_en, /HeyGen could not make the clip/);
+});
+test("48b: a pending render older than a day is not trusted — a new one is asked for", async () => {
+  const w = world({ language: "en", media: { items: { "0": { clip_pending: { en: { heygen_id: "old-vid", audio: "clips/x/a.mp3", at: "1969-12-01T00:00:00Z" } } } } } });
+  await runMediaPrepare(w.deps, { session_id: SID, what: "clips", samples: false });
+  assert.equal(w.heygen.length, 1);
 });

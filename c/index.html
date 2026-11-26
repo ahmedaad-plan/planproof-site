@@ -42,6 +42,9 @@
   .rfiles{ list-style:none; padding:0; margin:8px 0 0; display:grid; gap:10px; }
   .rfiles li{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .rfiles .btn{ max-width:100%; white-space:normal; text-align:center; }
+  .rcopy{ border:1px solid #d9dee5; border-radius:10px; padding:12px 14px; margin:10px 0; }
+  .rcopy h3{ margin:0 0 2px; font-size:1.05rem; }
+  .rcopy.picked{ border:2px solid #d84a3a; box-shadow:0 0 0 3px rgba(216,74,58,.12); }
   :focus-visible{ outline:3px solid #1d2433; outline-offset:2px; }
   .pt{ width:100%; border-collapse:collapse; } .pt td{ padding:0; } .ph, .pf, .pfoot{ display:none; }
   .final{ background:#eaf6f0; border:1px solid #9fd3b9; border-radius:10px; padding:16px 18px; margin:0 0 14px; }
@@ -110,10 +113,20 @@
     document.getElementById("barTag").textContent = "Exercise report — for " + org;
     var files = d.files || [];
     var size = function (n) { return n ? (n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB") : ""; };
-    var list = files.length ? '<ul class="rfiles">' + files.map(function (f) {
-      var en = f.lang !== "ar";
-      return '<li><a class="btn dark" href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer" data-lang="' + esc(f.lang) + '">' + (en ? "Open the report in English" : "Open the report in Arabic — التقرير بالعربية") + '</a> <span class="hint">PDF' + (f.bytes ? ", " + size(f.bytes) : "") + "</span></li>";
-    }).join("") + "</ul>" : '<div class="notice red"><strong>The report files are no longer on this page.</strong>They are removed 7 days after the report is accepted, as our privacy policy promises. Please write to exercises@plan-proof.com if you need a copy.</div>';
+    // Fix 68 (Ahmed, 26 Nov 2026): two copies, each with its own buttons — the short report (read first) and the full report.
+    var wanted = (location.search.match(/[?&]copy=(short|full)\b/) || [])[1] || "";
+    var group = function (copy, title, why) {
+      var fs = files.filter(function (f) { return (f.copy || "full") === copy; });
+      if (!fs.length) return "";
+      return '<div class="rcopy' + (wanted === copy ? " picked" : "") + '" id="copy-' + copy + '" data-copy="' + copy + '"><h3>' + esc(title) + '</h3><p class="hint">' + esc(why) + '</p><ul class="rfiles">' + fs.map(function (f) {
+        var en = f.lang !== "ar";
+        var label = copy === "short" ? (en ? "Short report — English" : "Short report — Arabic — التقرير المختصر") : (en ? "Full report — English" : "Full report — Arabic — التقرير الكامل");
+        return '<li><a class="btn dark" href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer" data-lang="' + esc(f.lang) + '" data-copy="' + copy + '">' + label + '</a> <span class="hint">PDF' + (f.bytes ? ", " + size(f.bytes) : "") + "</span></li>";
+      }).join("") + "</ul></div>";
+    };
+    var list = files.length ? group("short", "Short report", "Read this first: the result, the findings and the actions in a few pages.") +
+      group("full", "Full report", "Everything: each inject, every finding with its evidence, the criteria and the standards' clauses.")
+      : '<div class="notice red"><strong>The report files are no longer on this page.</strong>They are removed 7 days after the report is accepted, as our privacy policy promises. Please write to exercises@plan-proof.com if you need a copy.</div>';
     var acc = d.accepted;
     var top = '<div class="conf" id="confLine">' + esc(conf) + '</div>' +
       (acc ? '<div class="final" role="status" id="finalBox"><strong>You accepted the report on ' + esc(longDateTime(acc.at)) + '.</strong>Thank you, ' + esc(firstName(acc.by)) + ' — PlanProof will close the exercise.</div>'
@@ -129,6 +142,7 @@
       '<label for="cBody">Your comments</label><textarea id="cBody" maxlength="8000"></textarea>' +
       '<div style="margin-top:12px"><button class="btn dark" type="submit" id="cSend">Send comments</button></div><div class="msg" id="cMsg" role="status"></div></form></section>';
     main.innerHTML = top + '<section class="panel" aria-labelledby="fH"><h2 id="fH">Your report</h2>' + list + "</section>" + panel;
+    if (wanted) { var pk = document.getElementById("copy-" + wanted); if (pk) { try { pk.scrollIntoView({ block: "start" }); } catch (e) {} var a1 = pk.querySelector("a"); if (a1) a1.focus({ preventScroll: true }); } }
     var cForm = document.getElementById("cForm");
     if (cForm) cForm.onsubmit = function (e) {
       e.preventDefault();

@@ -182,3 +182,23 @@ test("v7.3 (remark 21): **…** in the message is bold in the HTML email and pla
   assert.ok(html.includes("<strong>We will send you the final scenario within 5 working days of your last comments.</strong>"));
   assert.ok(text.includes("We will send you the final scenario within 5 working days") && !text.includes("**"));
 });
+
+// ---- Fix 68 (26 Nov 2026): the report email has two buttons ----
+import { buildBody as bb68, REPORT_BUTTONS, reportButtonHref } from "../netlify/lib/send-email.mjs";
+test("68: the report email draws two buttons where the marker is — short and full — on the same private link", () => {
+  const link = "https://plan-proof.com/c/" + "a".repeat(43);
+  const { text, html } = bb68("Dear Dana,\n\nYour report is ready.\n\n[the private link]\n\nKind regards,\nThe PlanProof team", link, "2026-12-26T10:00:00Z", { reportButtons: true });
+  assert.deepEqual(REPORT_BUTTONS.map((b) => b.label), ["Open the short report", "Open the full report"]);
+  assert.ok(html.includes(`href="${reportButtonHref(link, "short")}"`) && html.includes(`href="${reportButtonHref(link, "full")}"`));
+  assert.ok(html.indexOf("Open the short report") < html.indexOf("Open the full report"), "short first");
+  assert.ok(!html.includes("[the private link]") && !text.includes("[the private link]"));
+  assert.match(text, /Open the short report: https:\/\/plan-proof\.com\/c\/a+\?copy=short\nOpen the full report: https:\/\/plan-proof\.com\/c\/a+\?copy=full \(the link works until 26 December 2026\)/);
+  assert.equal((text.match(/The PlanProof team/g) || []).length, 1, "one sign-off");
+});
+test("68: without the marker the buttons go after the first paragraph; other emails keep the plain link", () => {
+  const link = "https://plan-proof.com/c/" + "b".repeat(43);
+  const { html } = bb68("Dear Dana,\n\nSecond paragraph.", link, null, { reportButtons: true });
+  assert.ok(html.indexOf("Dear Dana") < html.indexOf("Open the short report") && html.indexOf("Open the full report") < html.indexOf("Second paragraph"));
+  const review = bb68("Dear Dana,\n\n[the private link]", link, null);
+  assert.ok(!review.html.includes("Open the short report") && review.html.includes(`<a href="${link}">`));
+});

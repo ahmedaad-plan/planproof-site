@@ -46,7 +46,7 @@ test("the thank-you text: accepted on <date>, both copies until <date> (download
   const m = thankYouMessage(FACTS);
   assert.match(m, /^Dear Marwan,/);
   assert.match(m, /Thank you — your exercise report is accepted \(R-2026-9902\)\. We recorded your acceptance on 21 November 2026\./);
-  assert.match(m, /Both copies of the report \(English and Arabic\) stay on your private report page until 28 November 2026\. Please download them/);
+  assert.match(m, /The short report and the full report \(each in English and Arabic\) stay on your private report page until 28 November 2026\. Please download them/); // fix 68
   assert.match(m, /please quote your client reference PP-2026-9999 \(this exercise was R-2026-9902\)/);
   assert.equal(thankYouSubject(FACTS), "Thank you — your exercise report is accepted (R-2026-9902)");
   // no client reference yet → the request number is quoted

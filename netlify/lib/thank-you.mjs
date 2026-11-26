@@ -26,7 +26,7 @@ export function thankYouMessage(f) {
   return [
     hello,
     `Thank you — your exercise report is accepted (${f.request_no}). We recorded your acceptance on ${longDate(f.accepted_on)}.`,
-    `Both copies of the report (English and Arabic) stay on your private report page until ${longDate(f.keep_until)}. Please download them before then: after that date they are removed, as our privacy policy promises.`,
+    `The short report and the full report (each in English and Arabic) stay on your private report page until ${longDate(f.keep_until)}. Please download them before then: after that date they are removed, as our privacy policy promises.`,
     `When you plan your next exercise, please quote ${ref}, so we can build on this one.`,
     "Kind regards,",
   ].join("\n\n");
