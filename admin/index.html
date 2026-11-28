@@ -485,6 +485,7 @@
       <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div></div>
   <article class="cc" id="copyArticle"></article>
 </dialog>
+<style>.report-btn{ display:inline-block; padding:8px 14px; border-radius:8px; border:2px solid #11161d; font-weight:700; text-decoration:none; margin:0 8px 8px 0; } .report-btn.dark{ background:#11161d; color:#fff; }</style>
 <dialog id="mailDlg" aria-labelledby="mailTitle">
   <div class="copy-bar"><h2 id="mailTitle">Preview of the email — nothing is sent</h2>
     <button class="btn quiet sm" type="button" onclick="this.closest('dialog').close()">Close</button></div>
@@ -552,6 +553,19 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const $ = (id) => document.getElementById(id);
+// Fix 47 (26 Nov 2026): a long text box shows how much room is left ("1,234 of 8,000").
+// The database limit for remarks and call notes is 8,000 characters.
+const REMARK_MAX = 8000;
+const CALL_NOTES_PREFIX = "Discovery-call notes:\n";
+function counted(ta) {
+  const max = Number(ta.getAttribute("maxlength")) || REMARK_MAX;
+  const c = h("div", { class: "small muted char-count", "aria-live": "polite", style: "text-align:right; margin-top:2px" });
+  const draw = () => { const n = ta.value.length; c.textContent = n.toLocaleString("en-GB") + " of " + max.toLocaleString("en-GB") + " characters"; c.style.color = n > max * 0.95 ? "var(--red-soft)" : ""; };
+  ta.addEventListener("input", draw); draw();
+  const wrap = h("div", { class: "counted" }, ta, c);
+  wrap.textarea = ta;
+  return wrap;
+}
 // replaceChildren that skips empty parts (the native one would write "null").
 const put = (el, ...kids) => el.replaceChildren(...kids.flat().filter((k) => k != null && k !== false && k !== ""));
 const add = (el, ...kids) => el.append(...kids.flat().filter((k) => k != null && k !== false && k !== ""));
@@ -1009,13 +1023,13 @@ function stateOf(s, versions, comments, rec, x = {}) {
     // v7.5: the Report stage — Add the report → Send the report → Client accepted the report
     if (rec.ended && rec.downloaded) {
       const rf = x.reportFiles;
-      const four = rf ? ["report_client_en", "report_client_ar", "report_archive_en", "report_archive_ar"].every((k) => rf.some((f) => f.kind === k)) : null;
+      const four = rf ? REPORT_SIX.every((k) => rf.some((f) => f.kind === k)) : null;
       const rsent = (x.emails || x.exEmails || []).filter((e) => e.kind === "report" && !EMAIL_BAD.has(e.status) && e.status !== "sending")
         .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
       if (s.report_client_accepted_at) return R({ block: "report", tile: 4, where: `${s.report_client_accepted_by || "The client"} accepted the report on the page, ${hm(s.report_client_accepted_at)}`, next: { key: "accept_report", label: "Client accepted the report" }, hint: "Press Client accepted the report: it closes the request, starts the 7-day clock and saves the anonymised lessons record." });
       if (rsent) return R({ block: "report", tile: 4, where: `Report sent ${dShort(dubaiYmd(rsent.created_at))} to ${rsent.to_address || "the client"} — waiting for the client`, next: { key: "accept_report", label: "Client accepted the report" }, hint: "When the client accepts — on the page, by email or by phone — press Client accepted the report. Comments from the page appear here and come as an alert." });
-      if (four) return R({ block: "report", tile: 4, where: `Run ${rec.run} downloaded · the four report files are added`, next: { key: "send_report", label: "Send the report" }, hint: "Check the email, then press Send the report. The client gets a private link (30 days) to the two client copies." });
-      return R({ block: "report", tile: 4, where: `Run ${rec.run} is downloaded — write the report with Claude from it`, next: { key: "add_report", label: "Add the report" }, hint: "When the report chat has made the four PDFs (client copy EN and AR, archive copy EN and AR), press Add the report and choose them." });
+      if (four) return R({ block: "report", tile: 4, where: `Run ${rec.run} downloaded · the six report files are added`, next: { key: "send_report", label: "Send the report" }, hint: "Check the email, then press Send the report. The client gets a private link (30 days) with two buttons: the short report and the full report (each in English and Arabic)." });
+      return R({ block: "report", tile: 4, where: `Run ${rec.run} is downloaded — write the report with Claude from it`, next: { key: "add_report", label: "Add the report" }, hint: "When the report chat has made the six PDFs (short report EN and AR, full report EN and AR, archive copy EN and AR), press Add the report and choose them all." });
     }
     const o = stepOf(s, versions, comments, rec);
     const b = (o.buttons || [])[0];
@@ -1838,8 +1852,8 @@ function pasteCommentForm(ctx) {
 }
 function remarksTable(s) {
   const items = s._remarks || [];
-  const ta = h("textarea", { rows: 3, maxlength: 4000, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
-  const addForm = h("div", { class: "inline-form", hidden: true, "data-form": "remark" }, ta, h("div", { class: "row", style: "margin-top:8px" },
+  const ta = h("textarea", { rows: 3, maxlength: REMARK_MAX, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
+  const addForm = h("div", { class: "inline-form", hidden: true, "data-form": "remark" }, counted(ta), h("div", { class: "row", style: "margin-top:8px" },
     h("button", { class: "btn primary sm", type: "button", onclick: async () => {
       const body = ta.value.trim(); if (!body) return;
       const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
@@ -1848,7 +1862,7 @@ function remarksTable(s) {
   const rows = items.map((r) => {
     const cell = h("div", { class: "body" }, r.body);
     const edit = h("button", { class: "btn quiet sm", type: "button", onclick: () => {
-      const t = h("textarea", { rows: 3, maxlength: 4000 }); t.value = r.body;
+      const t = h("textarea", { rows: 3, maxlength: REMARK_MAX }); t.value = r.body;
       put(cell, t, h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const body = t.value.trim(); if (!body) return;
         const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
@@ -1890,7 +1904,7 @@ function notesTable(ctx) {
     const r = it.r;
     const cell = h("div", { class: "body" }, r.body);
     const edit = h("button", { class: "btn quiet sm", type: "button", style: "margin-top:6px", onclick: () => {
-      const t = h("textarea", { rows: 3, maxlength: 4000 }); t.value = r.body;
+      const t = h("textarea", { rows: 3, maxlength: REMARK_MAX }); t.value = r.body;
       put(cell, t, h("div", { class: "row", style: "margin-top:6px" }, h("button", { class: "btn primary sm", type: "button", onclick: async () => {
         const body = t.value.trim(); if (!body) return;
         const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
@@ -1923,7 +1937,7 @@ function noteForm(ctx) {
     h("fieldset", { class: "who" }, h("legend", {}, "Who said it?"),
       h("label", { class: "row", style: "gap:8px" }, rSponsor, "The sponsor (by email, phone or in a meeting)"),
       h("label", { class: "row", style: "gap:8px" }, rTeam, "PlanProof team (never shown to the sponsor)")),
-    sponsorPart, teamNote, h("label", { class: "f" }, "Comment", body),
+    sponsorPart, teamNote, h("label", { class: "f" }, "Comment", counted(body)),
     h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", "data-act": "add_note_go", onclick: async (e) => {
       const text = body.value.trim();
       if (!rSponsor.checked && !rTeam.checked) { toast("Choose who said it: the sponsor or PlanProof", true); return; }
@@ -1945,12 +1959,12 @@ function noteForm(ctx) {
 // v7.3 (remark 4): the discovery-call notes, kept as a team remark Claude reads first.
 function callNotesForm(ctx) {
   const { s } = ctx;
-  const ta = h("textarea", { rows: 6, maxlength: 8000, "aria-label": "Discovery-call notes", placeholder: "Date and time, venue and rooms, departments and numbers, focus, key operations and suppliers, recent incidents, anything to avoid, who reviews the scenario." });
-  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "callnotes", style: "flex-basis:100%" }, ta,
+  const ta = h("textarea", { rows: 6, maxlength: REMARK_MAX - CALL_NOTES_PREFIX.length, "aria-label": "Discovery-call notes", placeholder: "Date and time, venue and rooms, departments and numbers, focus, key operations and suppliers, recent incidents, anything to avoid, who reviews the scenario." });
+  const form = h("div", { class: "inline-form stack", hidden: true, "data-form": "callnotes", style: "flex-basis:100%" }, counted(ta),
     h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async (e) => {
       const text = ta.value.trim(); if (!text) { toast("Write the call notes", true); ta.focus(); return; }
       e.target.disabled = true;
-      const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body: "Discovery-call notes:\n" + text }).select().single()).catch(fail);
+      const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body: CALL_NOTES_PREFIX + text }).select().single()).catch(fail);
       e.target.disabled = false;
       if (row) { clearDrafts(form); toast("Call notes saved — Claude will read them"); reloadKeepingPlace(); }
     } }, "Save the call notes"), h("button", { class: "btn quiet", type: "button", onclick: () => { form.hidden = true; clearDrafts(form); ta.value = ""; } }, "Cancel")));
@@ -2029,13 +2043,21 @@ function scenarioBlock(ctx) {
 // only) and Client accepted the report (delivered + 7-day clock + the anonymised lessons copy, one call).
 // The Clean-up block shows the dates, the one hand deletion left (Zoho Mail) and the lessons record line.
 const CLIENT_BUCKET = "client-files";
+// Fix 68 (Ahmed, 26 Nov 2026): two copies for the client, each with its own button — the short report
+// (read first) and the full report — in English and Arabic; plus the two archive copies.
 const REPORT_SLOTS = [
-  ["report_client_en", "Client copy — English", "with names · goes to the client"],
-  ["report_client_ar", "Client copy — Arabic", "with names · goes to the client"],
+  ["report_short_en", "Short report — English", "with names · goes to the client (read first)"],
+  ["report_short_ar", "Short report — Arabic", "with names · goes to the client (read first)"],
+  ["report_client_en", "Full report — English", "with names · goes to the client"],
+  ["report_client_ar", "Full report — Arabic", "with names · goes to the client"],
   ["report_archive_en", "Archive copy — English", "(names removed) · kept 3 years"],
   ["report_archive_ar", "Archive copy — Arabic", "(names removed) · kept 3 years"],
   ["signoff", "Signed sign-off page", "later, when it comes back signed (optional)"],
 ];
+const REPORT_CLIENT_KINDS = ["report_short_en", "report_short_ar", "report_client_en", "report_client_ar"];
+const REPORT_SIX = [...REPORT_CLIENT_KINDS, "report_archive_en", "report_archive_ar"];
+const isClientCopy = (k) => REPORT_CLIENT_KINDS.includes(k);
+const REPORT_KIND_WORD = { report_short_en: "English short report", report_short_ar: "Arabic short report", report_client_en: "English full report", report_client_ar: "Arabic full report" };
 const SECTOR_BANDS = ["Financial services", "Government services", "Healthcare", "Tourism, leisure and hospitality", "Real estate, construction and facilities",
   "Energy and utilities", "Logistics and transport", "Education", "Retail and consumer", "Technology and telecoms", "Industry and manufacturing", "Other"];
 // The client's sector → the broad band (anonymisation rule 1: bands only, never the organisation).
@@ -2049,12 +2071,14 @@ function sectorBandOf(sector) {
   const hit = map.find(([re]) => re.test(t));
   return hit ? hit[1] : "Other";
 }
-// Slot from a file name (Claude's names: <Client>-Exercise-Report-EN-v1.0[-ARCHIVE].pdf).
+// Slot from a file name (Claude's names: <Client>-Exercise-Report-Summary-EN-v1.0.pdf = short,
+// <Client>-Exercise-Report-EN-v1.0.pdf = full, <Client>-Exercise-Report-EN-v1.0-ARCHIVE.pdf = archive).
+const isShortName = (n) => /(^|[-_ .])(summary|short|compact)([-_ .]|$)/i.test(String(n || ""));
 function slotOfName(name) {
   const n = String(name || "");
   if (/sign-?off/i.test(n)) return "signoff";
   const ar = /(^|[-_ .])AR([-_ .]|$)/i.test(n) || /arabic/i.test(n);
-  return (/archive/i.test(n) ? "report_archive_" : "report_client_") + (ar ? "ar" : "en");
+  return (/archive/i.test(n) ? "report_archive_" : isShortName(n) ? "report_short_" : "report_client_") + (ar ? "ar" : "en");
 }
 // "(names removed)" check (D.9): the archive slots must hold the copy without names. The file name must say
 // ARCHIVE; where the PDF's text can be read, it must contain "(names removed)". A client slot must not hold it.
@@ -2092,6 +2116,8 @@ async function reportFileProblem(kind, file, bytes) {
   if (isArchive && !named) return `"${file.name}" does not look like the ARCHIVE copy (the archive copy's name ends in -ARCHIVE.pdf). The archive slots are kept for 3 years, so they must hold the copy with "(names removed)".`;
   if (isArchive && readable && !noNames) return `"${file.name}" does not contain "(names removed)". The archive copy is kept for 3 years and must not carry participants' names.`;
   if (!isArchive && named) return `"${file.name}" looks like the ARCHIVE copy (no names). The client copy is the one WITH the attendance list.`;
+  if (kind.startsWith("report_short") && !isShortName(file.name)) return `"${file.name}" does not look like the SHORT report (its name has -Summary- in it). The short report is the one the client reads first.`;
+  if (kind.startsWith("report_client") && isShortName(file.name)) return `"${file.name}" looks like the SHORT report (-Summary-). This slot is for the FULL report.`;
   return null;
 }
 async function uploadReportFile(s, kind, file) {
@@ -2111,7 +2137,8 @@ async function uploadReportFile(s, kind, file) {
   return true;
 }
 const kb = (n) => n ? (n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB") : "";
-const REPORT_LINK_LINE = "Open the report: " + SEND_LINK_MARKER;
+// Fix 68: the marker becomes two buttons in the email (Open the short report / Open the full report).
+const REPORT_LINK_LINE = SEND_LINK_MARKER;
 function reportEmail(ctx) {
   const { s, c } = ctx;
   const sp = sponsorOf(ctx);
@@ -2119,7 +2146,7 @@ function reportEmail(ctx) {
   return {
     to: sp.email || c.email || "",
     subject: `Your exercise report — ${c.company_name || ""} (${s.request_no || ""})`.replace(/ — \(/, " ("),
-    message: [`Dear ${first || "colleague"},`, `Thank you for taking part in the exercise. Your report is ready, in English and Arabic.`, REPORT_LINK_LINE,
+    message: [`Dear ${first || "colleague"},`, `Thank you for taking part in the exercise. Your report is ready, in English and Arabic, in two copies: a short report to read first, and the full report with all the detail.`, REPORT_LINK_LINE,
       "On the page you can view and download both copies. If you would like a change, write it in the comments box there. When you are happy with the report, please press \"We accept the report\" on the same page.",
       "This link is private to you and works for 30 days.", "Kind regards,\nThe PlanProof team\nexercises@plan-proof.com"].join("\n\n"),
   };
@@ -2131,12 +2158,20 @@ async function signReportLink(s) {
   const signed = [];
   for (const f of l.files || []) {
     const { data, error } = await sb.storage.from(CLIENT_BUCKET).createSignedUrl(f.path, secs);
-    if (error || !data) throw new Error(`The ${f.kind === "report_client_ar" ? "Arabic" : "English"} client copy could not be signed (${(error && error.message) || "no answer"}). Nothing was sent.`);
+    if (error || !data) throw new Error(`The ${REPORT_KIND_WORD[f.kind] || "client copy"} could not be signed (${(error && error.message) || "no answer"}). Nothing was sent.`);
     signed.push({ id: f.id, url: data.signedUrl });
   }
-  if (signed.length < 2) throw new Error("Both client copies (EN and AR) are needed on the link. Nothing was sent.");
+  if (signed.length < 4) throw new Error("All four client copies (short and full, English and Arabic) are needed on the link. Nothing was sent.");
   await q(sb.rpc("admin_report_link_files", { p_link: l.link_id, p_files: signed }));
   return l;
+}
+// Fix 69: re-sign the open report link with the current client copies (after a Replace).
+async function refreshOpenReportLink(s, busy) {
+  if (busy) busy.textContent = "Moving the open report link onto the new files…";
+  try { await signReportLink(s); toast("The client's open report link now shows the new file(s) — same link, nothing to resend."); }
+  catch (err) {
+    await confirmBox({ title: "The open report link still shows the old files", text: (err.message || String(err)) + " Add the missing files, then press Send the report again: that moves the same link onto the new files.", ok: "OK" });
+  }
 }
 function reportBlock(ctx) {
   const { s, rec, extra } = ctx;
@@ -2144,14 +2179,14 @@ function reportBlock(ctx) {
   const reached = rec.downloaded || delivered;
   const files = extra.reportFiles || [];
   const bySlot = Object.fromEntries(files.map((f) => [f.kind, f]));
-  const four = ["report_client_en", "report_client_ar", "report_archive_en", "report_archive_ar"].every((k) => bySlot[k]);
+  const four = REPORT_SIX.every((k) => bySlot[k]);
   const mails = (extra.emails || []).filter((e) => e.kind === "report").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const sentOkMail = mails.find((e) => !EMAIL_BAD.has(e.status) && e.status !== "sending");
   const rlinks = (extra.links || []).filter((l) => l.kind === "report").sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const rlink = rlinks[0] || null;
   const line = delivered ? "client accepted " + (s.delivered_at ? dShort(dubaiYmd(s.delivered_at)) : "") : !reached ? "after the exercise record is downloaded"
     : s.report_client_accepted_at ? "the client accepted it on the page" : sentOkMail ? "sent " + dShort(dubaiYmd(sentOkMail.created_at)) + (rlink && rlink.open_count ? " · opened" : " · not opened yet")
-    : four ? "four files added — not sent yet" : `${files.filter((f) => f.kind !== "signoff").length} of 4 files added`;
+    : four ? "six files added — not sent yet" : `${files.filter((f) => f.kind !== "signoff").length} of 6 files added`;
   if (!reached) return block("report", "Report", { status: "later", line });
   const busy = h("p", { class: "progress small", role: "status", "aria-live": "polite" });
   // 1. The record (the download itself stays in the Exercise block, where the run is chosen)
@@ -2163,19 +2198,24 @@ function reportBlock(ctx) {
     const list = [...picker.files]; picker.value = "";
     if (!list.length) return;
     try {
+      let clientCopyChanged = false;
       for (const f of list) {
         const kind = pickFor || slotOfName(f.name);
         if (delivered && kind !== "signoff") { toast("Delivered — only the signed sign-off page can still be added.", true); continue; }
         busy.textContent = `Adding ${f.name}…`;
         const done = await uploadReportFile(s, kind, f);
-        if (done) toast(`${f.name} added as: ${REPORT_SLOTS.find(([k]) => k === kind)[1]}`);
+        if (done) { toast(`${f.name} added as: ${REPORT_SLOTS.find(([k]) => k === kind)[1]}`); if (isClientCopy(kind)) clientCopyChanged = true; }
       }
+      // Fix 69 (26 Nov 2026): a client copy replaced after Send — the open report link moves onto the new files at once
+      // (before, the link kept the old files, which were queued for deletion).
+      if (clientCopyChanged && openReportLink) await refreshOpenReportLink(s, busy);
       busy.textContent = "";
       sessionStorage.setItem("pp_admin_keep_open", "report"); reloadKeepingPlace();
     } catch (err) { busy.textContent = ""; fail(err); }
     finally { pickFor = null; }
   };
   const pick = (kind) => { pickFor = kind; picker.click(); };
+  const openReportLink = rlink && !rlink.revoked_at && Date.parse(rlink.expires_at) > Date.now() ? rlink : null;
   const addBtn = h("button", { class: "btn primary", type: "button", "data-next": "add_report", "data-act": "add_report", disabled: delivered, onclick: () => pick(null) }, four ? "Add or replace report files" : "Add the report");
   const slots = table(["Slot", "File", "Size", "Added", ""], REPORT_SLOTS.map(([k, label, why]) => {
     const f = bySlot[k];
@@ -2183,14 +2223,14 @@ function reportBlock(ctx) {
       f ? h("bdi", {}, f.name) : h("span", { class: "muted" }, "—"), f ? kb(f.bytes) : null, f ? hm(f.uploaded_at) : null,
       h("div", { class: "row", style: "gap:6px" },
         (delivered && k !== "signoff") ? null : h("button", { class: "btn quiet sm", type: "button", "data-slot-add": k, onclick: () => pick(k) }, f ? "Replace" : "Add"),
-        f && k.startsWith("report_client") ? h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
+        f && isClientCopy(k) ? h("button", { class: "btn quiet sm", type: "button", onclick: async () => {
           const { data, error } = await sb.storage.from(CLIENT_BUCKET).createSignedUrl(f.path, 300);
           if (error || !data) return fail(new Error("Could not open it: " + ((error && error.message) || "no answer")));
           window.open(data.signedUrl, "_blank", "noopener");
         } }, "View") : null)] };
   }), "report-slots");
   const filesSec = section("report-files", "Report files", null,
-    h("p", { class: "small muted", style: "margin:0 0 6px" }, "Drop in the PDFs the report chat made. The page puts each in its slot by its name (…-EN-… / …-AR-…, …-ARCHIVE.pdf) and checks that the archive copies say \"(names removed)\". Files are stored privately, never in OneDrive."),
+    h("p", { class: "small muted", style: "margin:0 0 6px" }, "Drop in the six PDFs the report chat made. The page puts each in its slot by its name (…-Summary-EN-… = short, …-EN-… = full, …-ARCHIVE.pdf = archive; -AR- for Arabic) and checks that the archive copies say \"(names removed)\". Files are stored privately, never in OneDrive."),
     h("div", { class: "row v7-actions" }, addBtn), picker, slots);
   // 3. Send the report
   const draft = reportEmail(ctx);
@@ -2209,10 +2249,19 @@ function reportBlock(ctx) {
       clearDrafts(sForm); sessionStorage.setItem("pp_admin_keep_open", "report"); reloadKeepingPlace();
     } catch (err) { busy.textContent = ""; sendBtn.disabled = false; fail(err); }
   } }, sentOkMail ? "Send the report again" : "Send the report");
+  // Fix 68: the preview shows the two buttons exactly as the email draws them.
+  const previewReport = h("button", { class: "btn sm", type: "button", "data-act": "preview_report_email", onclick: () => {
+    const d = $("mailDlg");
+    $("mailTo").textContent = fTo.value; $("mailSubject").textContent = fSub.value;
+    const until = rlink ? dd(dubaiYmd(rlink.expires_at)) : dd(dubaiYmd(new Date(Date.now() + 30 * 86400000).toISOString()));
+    const buttons = `<span class="report-btns" data-report-buttons="1"><a class="fake-link report-btn dark">Open the short report</a> <a class="fake-link report-btn">Open the full report</a><br><span class="small muted">(private link, works until ${esc7(until)})</span></span>`;
+    $("mailBody").innerHTML = emailHtml(fMsg.value, "\u0000BTN\u0000").split(`<a class="fake-link">${esc7("\u0000BTN\u0000")}</a>`).join(buttons);
+    d.showModal();
+  } }, "Preview the email");
   const sForm = h("div", { class: "inline-form stack", "data-form": "send-report" },
-    h("p", { class: "small muted", style: "margin:0" }, four ? "The email carries a private link (30 days) to a page with the two client copies, a comments box and \"We accept the report\". Never the archive copy or the record." : "Add the four files first — Send the report is grey until then."),
+    h("p", { class: "small muted", style: "margin:0" }, four ? "The email has two buttons — Open the short report, Open the full report — to a private page (30 days) with both copies in English and Arabic, a comments box and \"We accept the report\". Never the archive copy or the record." : "Add the six files first — Send the report is grey until then."),
     h("label", { class: "f" }, "To", fTo), h("label", { class: "f" }, "Subject", fSub), h("label", { class: "f" }, "Message", fMsg),
-    h("div", { class: "row" }, sendBtn));
+    h("div", { class: "row" }, h("span", { class: "small muted" }, "Check it first:"), previewReport, sendBtn));
   const sentRows = mails.map((m) => [hm(m.created_at), m.to_address, h("span", { class: EMAIL_BAD.has(m.status) ? "due-bad" : "" }, EMAIL_WORD[m.status] || m.status)]);
   const linkRow = rlink ? h("div", { class: "row", style: "gap:8px; margin-top:6px; align-items:center" },
     h("span", { class: "small" }, `Report link: ${rlink.revoked_at ? "revoked" : Date.parse(rlink.expires_at) > Date.now() ? "works until " + dDay(rlink.expires_at) : "EXPIRED " + dDay(rlink.expires_at)} · ${rlink.open_count ? "opened " + plural(rlink.open_count, "time") + ", last " + hm(rlink.last_opened_at) : "not opened yet"}`),
@@ -2275,7 +2324,7 @@ function cleanupBlock(ctx, keep) {
     : rec.purged ? "Removed " + dt(rec.purged_at) + "."
     : rec.purge_due_at ? (rec.overdue ? "OVERDUE — was due " : "Removed automatically on or after ") + dt(rec.purge_due_at) + "."
     : purgeOn ? "Removed automatically on or after " + purgeOn + "." : "Removed automatically 7 days after the client accepts the report.";
-  const named = (extra.reportFiles || []).filter((f) => f.kind.startsWith("report_client"));
+  const named = (extra.reportFiles || []).filter((f) => isClientCopy(f.kind));
   const lr = extra.lessons;
   const lessonsLine = !lr ? (delivered ? "not saved (this request was delivered before W8 build 3)" : "saved automatically when the client accepts the report")
     : `numbers saved ${dShort(dubaiYmd(lr.numbers_saved_at))} · ` + (lr.has_insight ? `insight completed ${dShort(dubaiYmd(lr.insight_completed_at))}` : "insight not yet");
@@ -2724,7 +2773,7 @@ function remarksBox(s, readOnly) {
     const fill = () => put(row, h("div", { class: "body", style: "margin-top:0" }, r.body),
       h("div", { class: "meta" }, dt(r.created_at) + (r.updated_at && Date.parse(r.updated_at) - Date.parse(r.created_at) > 2000 ? " · edited " + dt(r.updated_at) : "")),
       readOnly ? null : h("div", { style: "margin-top:6px" }, h("button", { class: "btn quiet sm", type: "button", onclick: () => {
-        const ta = h("textarea", { rows: 3, maxlength: 4000 }); ta.value = r.body;
+        const ta = h("textarea", { rows: 3, maxlength: REMARK_MAX }); ta.value = r.body;
         const save = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
           const body = ta.value.trim(); if (!body) return;
           const upd = await q(sb.from("submission_team_remarks").update({ body }).eq("id", r.id).select().single()).catch(fail);
@@ -2737,7 +2786,7 @@ function remarksBox(s, readOnly) {
   }) : [h("p", { class: "empty" }, "No remarks yet. Add anything the scenario must test or take into account.")]));
   const box = h("div", { class: "remarks" }, h("h3", { class: "cap" }, "PlanProof remarks — team only, never shown to the client"), list);
   if (!readOnly) {
-    const ta = h("textarea", { rows: 3, maxlength: 4000, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
+    const ta = h("textarea", { rows: 3, maxlength: REMARK_MAX, placeholder: "e.g. Test the new generator failover. Avoid a fire scenario — they had a real fire last year.", "aria-label": "New PlanProof remark" });
     const addBtn = h("button", { class: "btn primary sm", type: "button", onclick: async () => {
       const body = ta.value.trim(); if (!body) return;
       const row = await q(sb.from("submission_team_remarks").insert({ submission_id: s.id, body }).select().single()).catch(fail);
@@ -2854,7 +2903,7 @@ async function startMediaPrepare(sessionId) {
   const token = data && data.session && data.session.access_token;
   if (!token) throw new Error("Sign in again first.");
   const res = await fetch("/api/media-prepare", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-    body: JSON.stringify({ session_id: sessionId, langs: ["en", "ar"], what: "all" }) });
+    body: JSON.stringify({ session_id: sessionId, what: "all" }) });
   if (res.status !== 202 && !res.ok) throw new Error("The voice and video service did not start (HTTP " + res.status + "). Try again in a minute.");
 }
 function mediaLine(x, readOnly) {
@@ -2870,10 +2919,13 @@ function mediaLine(x, readOnly) {
         let clips = 0;
         try {
           const sc = await q(sb.rpc("admin_session_scenario", { p_session: x.id }));
-          clips = ((sc && sc.scenario && sc.scenario.injects) || []).filter((i) => i && i.narration !== false && i.video && (i.video.script_en || i.video.script_ar)).length * 2;
+          // Fix 48: one language per exercise — only its clips are made.
+          var exLang = sc && sc.language === "ar" ? "ar" : "en";
+          clips = ((sc && sc.scenario && sc.scenario.injects) || []).filter((i) => i && i.narration !== false && i.video && i.video["script_" + exLang]).length;
         } catch (err) { return fail(err); }
+        const langWord = exLang === "ar" ? "Arabic" : "English";
         const ok = await confirmBox({ title: f.status === "none" ? "Make the voice files and news clips for this exercise now?" : f.status === "ready" ? "Check for anything missing and make it now?" : "Make the missing voice files and news clips again?",
-          text: clips ? `About USD ${MEDIA_USD_PER_CLIP} per clip (English and Arabic: up to ${clips} clips, about USD ${clips * MEDIA_USD_PER_CLIP}). Files already made are kept. It takes a few minutes; the page shows the progress.`
+          text: clips ? `About USD ${MEDIA_USD_PER_CLIP} per clip (${langWord} only, the exercise language: up to ${plural(clips, "clip")}, about USD ${clips * MEDIA_USD_PER_CLIP}). Files and clips already made or already asked for are kept — never paid twice. It takes a few minutes; the page shows the progress.`
             : "This scenario has no news clips, so only the narration is made (no HeyGen cost). Files already made are kept.",
           ok: f.status === "none" ? "Prepare" : f.status === "ready" ? "Prepare again" : "Retry failed" });
         if (!ok) return;

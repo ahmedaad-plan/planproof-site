@@ -428,12 +428,12 @@
       onRow(row) {
         const files = (row && row.briefing && row.briefing.files && row.briefing.files.participant) || {};
         if (!row || row.status !== "lobby" || !remote || (!files.en && !files.ar)) { if (playerKey) clear(); return; }
-        const key = String(row.run_number);
+        const key = String((row.briefing_run ?? row.run_number));
         if (key === playerKey) return;
         if (player) player.destroy();
         card.hidden = false;
         player = PPMedia.briefing(card, {
-          sessionId, run: row.run_number, role: "participant", lang: lang(row), files: row.briefing.files, small: true,
+          sessionId, run: (row.briefing_run ?? row.run_number), role: "participant", lang: lang(row), files: row.briefing.files, small: true,
           captions: true, langToggle: true, fullscreen: false, playedAt: "self",
           onState: () => { if (checkins) checkins.beatSoon(); },
           onWatched: () => {

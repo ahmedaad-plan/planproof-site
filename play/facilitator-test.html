@@ -189,6 +189,7 @@
   .brief-set select { font: inherit; }
   .brief-actions, .brief-start { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
   .brief-note { margin: 10px 0 4px; font-size: 0.92rem; color: var(--text-muted); }
+  .brief-note.ok { color: var(--green, #3fb950); font-weight: 600; }
   .brief-status { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.92rem; }
   .brief-status li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--border); }
   .brief-status li .st { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -922,11 +923,12 @@
     function renderAlerts() {
       if (!currentRow) { alertsApi.set([]); return; }
       const list = [];
-      (lastTowerWarnings || []).forEach((w, i) => list.push({
+      // Fix 61: presence alerts stop at End (the People tab still lists who is connected).
+      (currentRow.status === "ended" ? [] : lastTowerWarnings || []).forEach((w, i) => list.push({
         id: `tower-${i}`, tone: w.red ? "red" : "amber", text: w.text,
         actions: [{ label: T("fac.alerts.open"), run: () => tabsApi.show(w.tab || "people", { user: true }) }],
       }));
-      unreadMessages().filter(isMoreTimeRequest).slice(-3).forEach((m) => list.push({
+      unreadMessages().filter(isMoreTimeRequest).filter((m) => !(window.__ppMoreTimeAnswered && window.__ppMoreTimeAnswered(m))).slice(-3).forEach((m) => list.push({
         id: `time-${m.id}`, tone: "amber",
         text: T("fac.alerts.moreTime", { who: m.direction === "from_observer" ? observerRoomLabel(m.room) : (m.department || T("fac.inbox.unknownDept")), text: m.body }),
         actions: [
@@ -2081,7 +2083,8 @@
       states.filter((x) => x.a.role !== "observer").forEach((x) => {
         (byDept[x.a.department] = byDept[x.a.department] || []).push(x);
       });
-      Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
+      // Fix 61 (26 Nov 2026): once the exercise has ended, nobody needs to be online — no such alerts.
+      if (!(currentRow && currentRow.status === "ended")) Object.keys(byDept).sort((a, b) => a.localeCompare(b)).forEach((dept) => {
         if (!byDept[dept].some((x) => x.state === "green")) {
           warnings.push({ red: false, text: T("fac.tower.warnDeptNobody", { department: dept }) });
         }
@@ -2595,6 +2598,9 @@
           await closeObserverNotes(sessionId, facilitatorToken);
           closeConfirmOpen = false;
           await refresh();
+          // Fix 59 (26 Nov 2026): the Ended strip asks for the record's state again at once
+          // ("complete and ready for PlanProof"), not after a reload.
+          if (window.__ppEndStripNow) window.__ppEndStripNow();
         } catch (err) {
           errorBoxEl.textContent = T("fac.notesClose.failed", { message: PPLang.dbMessage(err.message) });
           errorBoxEl.style.display = "block";
@@ -2672,9 +2678,13 @@
       const gate = d && d.gate;
       const trial = !!currentRow.is_trial;
       window.__ppBriefHold = !!(gate && gate.ok === false && !trial);
+      briefNoteEl.classList.toggle("ok", !!(d && d.override_at));
       if (!d) briefNoteEl.textContent = T("fac.brief.note.loading");
-      else if (d.override_at) briefNoteEl.textContent = T("fac.brief.note.override");
+      // Fix 55: "I briefed them" shows when, and that Start is open.
+      else if (d.override_at) briefNoteEl.textContent = T("fac.brief.note.override", { time: new Date(d.override_at).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) });
       else if (!hasRoomVideo && !hasObsVideo) briefNoteEl.textContent = T("fac.brief.note.noVideo");
+      // Fix 62: with no room screen open yet, the briefings are not "done".
+      else if (hasRoomVideo && !(d.screens || []).length) briefNoteEl.textContent = T("fac.brief.note.noScreen");
       else if (gate && gate.ok) briefNoteEl.textContent = T("fac.brief.note.ready");
       else if (!d.played_at && hasRoomVideo && (d.screens || []).length) briefNoteEl.textContent = T("fac.brief.note.pressPlay");
       else briefNoteEl.textContent = T("fac.brief.note.waiting");
@@ -2931,9 +2941,21 @@
       if (overMs <= 0) return extra + 5;
       return extra + Math.ceil(overMs / 60000) + 5;
     }
-    function extendFive() {
+    // Fix 56 (26 Nov 2026): +5 answers the open "we need more time" requests about this inject —
+    // their alerts clear (the message stays in Messages). Kept per session in this browser.
+    const moreTimeKey = `pp_fac_moretime_${sessionId}`;
+    let moreTimeAnswered = {};
+    try { moreTimeAnswered = JSON.parse(localStorage.getItem(moreTimeKey) || "{}") || {}; } catch { moreTimeAnswered = {}; }
+    window.__ppMoreTimeAnswered = (m) => !!moreTimeAnswered[m.id];
+    async function extendFive() {
       if (!currentRow) return;
-      return patchSession(sessionId, { inject_extra_minutes: extendedMinutes() });
+      const open = unreadMessages().filter(isMoreTimeRequest);
+      const out = await patchSession(sessionId, { inject_extra_minutes: extendedMinutes() });
+      const at = new Date().toISOString();
+      open.forEach((m) => { moreTimeAnswered[m.id] = at; });
+      try { localStorage.setItem(moreTimeKey, JSON.stringify(moreTimeAnswered)); } catch { /* this page only */ }
+      renderAlerts();
+      return out;
     }
     onInjectClick(document.getElementById("extendBtn"), () => {
       if (!currentRow) return;
@@ -3134,6 +3156,7 @@
       endStripEl.hidden = false;
     }
     setInterval(renderEndStrip, 10000);
+    window.__ppEndStripNow = () => { feedbackFetchedAt = 0; refreshFeedbackCount(); setTimeout(() => { feedbackFetchedAt = 0; refreshFeedbackCount(); }, 2500); };
     const resetCheckEl = document.getElementById("resetCheck");
     const earlierCheckEl = document.getElementById("earlierCheck");
     function closeStartOverQuestions() { resetCheckEl.hidden = true; earlierCheckEl.hidden = true; resetBtn.hidden = false; }

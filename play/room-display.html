@@ -502,12 +502,12 @@
       const b = row.briefing || {};
       const lang = roomLang(row);
       if (!(files(row).participant || {})[lang]) { clear(); return; }
-      const key = `${row.run_number}|${b.played_at || "none"}|${lang}`;
+      const key = `${(row.briefing_run ?? row.run_number)}|${b.played_at || "none"}|${lang}`;
       if (key !== playerKey) {
         if (player) player.destroy();
         layer.innerHTML = "";
         player = PPMedia.briefing(layer, {
-          sessionId, run: row.run_number, role: "participant", lang, files: files(row), small: false,
+          sessionId, run: (row.briefing_run ?? row.run_number), role: "participant", lang, files: files(row), small: false,
           captions: !!row.captions_on_screens, langToggle: false, fullscreen: true, playedAt: b.played_at || "none",
           onState: () => { if (checkins) checkins.beatSoon(); },
           onWatched: () => {
@@ -526,7 +526,7 @@
         player.el.classList.toggle("no-captions", !row.captions_on_screens);
       }
     }
-    function keyOf(row) { return `${row.run_number}|${(row.briefing || {}).played_at || "none"}|${roomLang(row)}`; }
+    function keyOf(row) { return `${(row.briefing_run ?? row.run_number)}|${(row.briefing || {}).played_at || "none"}|${roomLang(row)}`; }
     function startPending() {
       if (!pending || pending !== playerKey || !player) return;
       pending = null;
@@ -540,12 +540,12 @@
       if (!has.en && !has.ar) { clear(); return; }
       const rep = (row.briefing && row.briefing.replay) || null;
       const replayKey = rep && (rep.room == null || rep.room === observer.room) ? rep.at : "self";
-      const key = `${row.run_number}|${replayKey}`;
+      const key = `${(row.briefing_run ?? row.run_number)}|${replayKey}`;
       if (key === playerKey) return;
       if (player) player.destroy();
       card.hidden = false;
       player = PPMedia.briefing(card, {
-        sessionId, run: row.run_number, role: "observer", lang: roomLang(row), files: files(row), small: true,
+        sessionId, run: (row.briefing_run ?? row.run_number), role: "observer", lang: roomLang(row), files: files(row), small: true,
         captions: true, langToggle: true, fullscreen: false, playedAt: replayKey,
         onState: () => { if (checkins) checkins.beatSoon(); },
         onWatched: () => {
